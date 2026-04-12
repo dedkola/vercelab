@@ -302,13 +302,6 @@ function buildAxisTicks(history: HistoryPoint[], count: number): AxisTick[] {
   });
 }
 
-function getMiniBarHeights(history: HistoryPoint[]) {
-  const values = history.slice(-18).map((entry) => entry.networkOut);
-  const maxValue = Math.max(...values, 1);
-
-  return values.map((value) => (value / maxValue) * 52);
-}
-
 function TrafficDonut({
   segments,
   centerValue,
@@ -505,38 +498,110 @@ function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
 }
 
 function MiniSparkline({ history }: { history: HistoryPoint[] }) {
-  const width = 226;
-  const height = 64;
-  const purpleBars = getMiniBarHeights(history);
-  const blueLine = history.slice(-18).map((entry) => entry.networkIn);
-  const bluePath = buildPath(blueLine, width, height, Math.max(...blueLine, 1));
+  const fallbackInbound = [18, 18, 17, 17, 16, 16, 15, 16, 15, 15, 14, 14];
+  const fallbackOutbound = [62, 62, 61, 17, 15, 54, 13, 20, 11, 39, 12, 66];
+  const series = history.slice(-12);
+  const inbound = series.length
+    ? series.map((entry) => entry.networkIn)
+    : fallbackInbound;
+  const outbound = series.length
+    ? series.map((entry) => entry.networkOut)
+    : fallbackOutbound;
+  const width = 248;
+  const height = 96;
+  const insetX = 10;
+  const insetY = 10;
+  const chartWidth = width - insetX * 2;
+  const chartHeight = height - insetY * 2;
+  const maxValue = getNiceMaxValue([...inbound, ...outbound], 64);
+  const inboundArea = buildArea(inbound, chartWidth, chartHeight, maxValue);
+  const outboundArea = buildArea(outbound, chartWidth, chartHeight, maxValue);
+  const inboundPath = buildPath(inbound, chartWidth, chartHeight, maxValue);
+  const outboundPath = buildPath(outbound, chartWidth, chartHeight, maxValue);
+  const lastX = chartWidth;
+  const inboundLast = inbound.at(-1) ?? 0;
+  const outboundLast = outbound.at(-1) ?? 0;
+  const inboundLastY =
+    chartHeight - (clamp(inboundLast, 0, maxValue) / maxValue) * chartHeight;
+  const outboundLastY =
+    chartHeight - (clamp(outboundLast, 0, maxValue) / maxValue) * chartHeight;
+  const horizontalGuides = [0, 0.5, 1];
+  const verticalGuides = [0.25, 0.5, 0.75];
 
   return (
     <div className="panel-sparkline">
-      <svg viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-        {purpleBars.map((value, index) => {
-          const x = 8 + index * 12;
-
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        aria-hidden="true"
+        preserveAspectRatio="none"
+      >
+        {horizontalGuides.map((position) => {
+          const y = insetY + chartHeight * position;
           return (
-            <rect
-              key={`bar-${index}`}
-              className="panel-sparkline__bar"
-              x={x}
-              y={height - value}
-              width="8"
-              height={value}
-              rx="2"
+            <line
+              key={`h-${position}`}
+              className="panel-sparkline__grid"
+              x1={insetX}
+              y1={y}
+              x2={width - insetX}
+              y2={y}
             />
           );
         })}
 
-        {bluePath ? (
-          <path
-            className="panel-sparkline__line"
-            d={bluePath}
-            transform="translate(0 0)"
+        {verticalGuides.map((position) => {
+          const x = insetX + chartWidth * position;
+          return (
+            <line
+              key={`v-${position}`}
+              className="panel-sparkline__grid panel-sparkline__grid--vertical"
+              x1={x}
+              y1={insetY}
+              x2={x}
+              y2={height - insetY}
+            />
+          );
+        })}
+
+        <g transform={`translate(${insetX} ${insetY})`}>
+          {inboundArea ? (
+            <path
+              className="panel-sparkline__area panel-sparkline__area--down"
+              d={inboundArea}
+            />
+          ) : null}
+          {outboundArea ? (
+            <path
+              className="panel-sparkline__area panel-sparkline__area--up"
+              d={outboundArea}
+            />
+          ) : null}
+          {inboundPath ? (
+            <path
+              className="panel-sparkline__line panel-sparkline__line--down"
+              d={inboundPath}
+            />
+          ) : null}
+          {outboundPath ? (
+            <path
+              className="panel-sparkline__line panel-sparkline__line--up"
+              d={outboundPath}
+            />
+          ) : null}
+
+          <circle
+            className="panel-sparkline__point panel-sparkline__point--down"
+            cx={lastX}
+            cy={inboundLastY}
+            r="3.5"
           />
-        ) : null}
+          <circle
+            className="panel-sparkline__point panel-sparkline__point--up"
+            cx={lastX}
+            cy={outboundLastY}
+            r="3.5"
+          />
+        </g>
       </svg>
     </div>
   );
@@ -788,40 +853,55 @@ export default function MetricsDashboard() {
             <span className="info-row__label">Monthly Data Usage</span>
             <span className="info-row__value">1.66 TB</span>
           </div>
-          <div className="info-row">
-            <span className="info-row__label">Throughput</span>
+          <section className="throughput-card" aria-label="Throughput">
+            <div className="throughput-card__header">
+              <span className="throughput-card__title">Throughput</span>
+              <span className="throughput-card__status">Live</span>
+            </div>
+
             <div className="throughput-row">
-              <span className="throughput-item throughput-item--down">
-                <Icon name="arrow-down" />
-                {deferredSnapshot
-                  ? formatRate(deferredSnapshot.network.rxBytesPerSecond)
-                  : "122 Kbps"}
+              <div className="throughput-stat throughput-stat--down">
+                <span className="throughput-stat__label">
+                  <Icon name="arrow-down" />
+                  Download
+                </span>
+                <span className="throughput-stat__value">
+                  {deferredSnapshot
+                    ? formatRate(deferredSnapshot.network.rxBytesPerSecond)
+                    : "91.5 Kbps"}
+                </span>
+              </div>
+
+              <div className="throughput-stat throughput-stat--up">
+                <span className="throughput-stat__label">
+                  <Icon name="arrow-up" />
+                  Upload
+                </span>
+                <span className="throughput-stat__value">
+                  {deferredSnapshot
+                    ? formatRate(deferredSnapshot.network.txBytesPerSecond)
+                    : "51.2 Kbps"}
+                </span>
+              </div>
+            </div>
+
+            <MiniSparkline history={deferredHistory} />
+
+            <div className="latency-dots">
+              <span className="latency-dot">
+                <span className="latency-dot__swatch latency-dot__swatch--windows" />
+                15ms
               </span>
-              <span className="throughput-item throughput-item--up">
-                <Icon name="arrow-up" />
-                {deferredSnapshot
-                  ? formatRate(deferredSnapshot.network.txBytesPerSecond)
-                  : "453 Kbps"}
+              <span className="latency-dot">
+                <span className="latency-dot__swatch latency-dot__swatch--google" />
+                15ms
+              </span>
+              <span className="latency-dot">
+                <span className="latency-dot__swatch latency-dot__swatch--cloud" />
+                1ms
               </span>
             </div>
-          </div>
-
-          <MiniSparkline history={deferredHistory} />
-
-          <div className="latency-dots">
-            <span className="latency-dot">
-              <span className="latency-dot__swatch latency-dot__swatch--windows" />
-              15ms
-            </span>
-            <span className="latency-dot">
-              <span className="latency-dot__swatch latency-dot__swatch--google" />
-              15ms
-            </span>
-            <span className="latency-dot">
-              <span className="latency-dot__swatch latency-dot__swatch--cloud" />
-              1ms
-            </span>
-          </div>
+          </section>
 
           <div className="action-buttons">
             <button className="action-btn" type="button">
