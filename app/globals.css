@@ -235,6 +235,11 @@ a:focus-visible {
   grid-template-columns: var(--rail-w) var(--panel-w) 1fr;
   min-height: 0;
   overflow: hidden;
+  transition: grid-template-columns 180ms ease;
+}
+
+.body--panel-collapsed {
+  grid-template-columns: var(--rail-w) 22px 1fr;
 }
 
 /* ── Sidebar Rail ── */
@@ -304,26 +309,67 @@ a:focus-visible {
   padding: 16px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  transition:
+    padding 180ms ease,
+    border-color 180ms ease;
+}
+
+.panel--collapsed {
+  padding: 0;
+  overflow: visible;
+  border-right-color: transparent;
+}
+
+.panel__content {
+  min-width: 0;
 }
 
 .panel__collapse {
   position: absolute;
-  top: 12px;
-  right: -12px;
-  width: 24px;
-  height: 24px;
+  top: 10px;
+  right: -18px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  padding: 0;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  box-shadow: none;
   color: var(--text-muted);
-  z-index: 2;
+  z-index: 3;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.panel__collapse:hover {
+  background: var(--border-light);
+  color: var(--text-secondary);
 }
 
 .panel__collapse .icon {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
+}
+
+.panel__collapse--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.panel__collapse--active:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.panel--collapsed .panel__collapse {
+  right: -18px;
 }
 
 /* Device header */
@@ -618,12 +664,20 @@ a:focus-visible {
 
 .throughput-stat--down {
   border-color: rgba(63, 181, 255, 0.2);
-  background: linear-gradient(180deg, rgba(63, 181, 255, 0.09), rgba(63, 181, 255, 0.02));
+  background: linear-gradient(
+    180deg,
+    rgba(63, 181, 255, 0.09),
+    rgba(63, 181, 255, 0.02)
+  );
 }
 
 .throughput-stat--up {
   border-color: rgba(143, 99, 242, 0.2);
-  background: linear-gradient(180deg, rgba(143, 99, 242, 0.1), rgba(143, 99, 242, 0.02));
+  background: linear-gradient(
+    180deg,
+    rgba(143, 99, 242, 0.1),
+    rgba(143, 99, 242, 0.02)
+  );
 }
 
 .throughput-stat__label {
@@ -698,18 +752,26 @@ a:focus-visible {
 
 .latency-dot__swatch--google {
   border-radius: 50%;
-  background:
-    conic-gradient(
-      #ea4335 0 90deg,
-      #fbbc05 90deg 180deg,
-      #34a853 180deg 270deg,
-      #4285f4 270deg 360deg
-    );
+  background: conic-gradient(
+    #ea4335 0 90deg,
+    #fbbc05 90deg 180deg,
+    #34a853 180deg 270deg,
+    #4285f4 270deg 360deg
+  );
 }
 
 .latency-dot__swatch--cloud {
   background: linear-gradient(180deg, #ffb25b 0%, #f08124 100%);
-  clip-path: polygon(14% 70%, 21% 44%, 39% 44%, 48% 30%, 66% 30%, 74% 44%, 89% 44%, 89% 70%);
+  clip-path: polygon(
+    14% 70%,
+    21% 44%,
+    39% 44%,
+    48% 30%,
+    66% 30%,
+    74% 44%,
+    89% 44%,
+    89% 70%
+  );
 }
 
 /* Action buttons */

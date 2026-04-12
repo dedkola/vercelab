@@ -608,6 +608,7 @@ function MiniSparkline({ history }: { history: HistoryPoint[] }) {
 }
 
 export default function MetricsDashboard() {
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -735,7 +736,9 @@ export default function MetricsDashboard() {
         </div>
       </header>
 
-      <div className="body">
+      <div
+        className={`body ${isPanelCollapsed ? "body--panel-collapsed" : ""}`}
+      >
         <aside className="rail" aria-label="Primary navigation">
           <div className="rail__group">
             {RAIL_PRIMARY.map((entry) => (
@@ -767,164 +770,182 @@ export default function MetricsDashboard() {
           </div>
         </aside>
 
-        <aside className="panel" aria-label="Gateway details">
+        <aside
+          className={`panel ${isPanelCollapsed ? "panel--collapsed" : ""}`}
+          aria-label="Gateway details"
+          id="gateway-panel"
+        >
           <button
-            className="panel__collapse"
+            className={`panel__collapse ${isPanelCollapsed ? "" : "panel__collapse--active"}`}
             type="button"
-            aria-label="Collapse"
+            aria-controls="gateway-panel"
+            aria-label={
+              isPanelCollapsed
+                ? "Show gateway details panel"
+                : "Hide gateway details panel"
+            }
+            onClick={() => setIsPanelCollapsed((current) => !current)}
           >
-            <Icon name="chevron-left" />
+            <Icon name={isPanelCollapsed ? "chevron-right" : "chevron-left"} />
           </button>
 
-          <div className="info-row">
-            <span className="info-row__label">Gateway IP</span>
-            <span className="info-row__value">192.168.0.1</span>
-          </div>
-          <div className="info-row">
-            <span className="info-row__label">System Uptime</span>
-            <span className="info-row__value">3w 2d 13h 37m</span>
-          </div>
+          {!isPanelCollapsed ? (
+            <div className="panel__content" id="gateway-panel-content">
+              <div className="info-row">
+                <span className="info-row__label">Gateway IP</span>
+                <span className="info-row__value">192.168.0.1</span>
+              </div>
+              <div className="info-row">
+                <span className="info-row__label">System Uptime</span>
+                <span className="info-row__value">3w 2d 13h 37m</span>
+              </div>
 
-          <div className="version-bar">
-            <span className="version-item">
-              Network 10.2.105
-              <Icon name="copy" />
-            </span>
-            <span className="version-item">
-              UniFi OS 5.0.16
-              <Icon name="copy" />
-            </span>
-          </div>
-
-          <hr className="panel__hr" />
-
-          <section className="throughput-card" aria-label="Throughput">
-            <div className="throughput-card__header">
-              <span className="throughput-card__title">Throughput</span>
-              <span className="throughput-card__status">Live</span>
-            </div>
-
-            <div className="throughput-row">
-              <div className="throughput-stat throughput-stat--down">
-                <span className="throughput-stat__label">
-                  <Icon name="arrow-down" />
-                  Download
+              <div className="version-bar">
+                <span className="version-item">
+                  Network 10.2.105
+                  <Icon name="copy" />
                 </span>
-                <span className="throughput-stat__value">
-                  {deferredSnapshot
-                    ? formatRate(deferredSnapshot.network.rxBytesPerSecond)
-                    : "91.5 Kbps"}
+                <span className="version-item">
+                  UniFi OS 5.0.16
+                  <Icon name="copy" />
                 </span>
               </div>
 
-              <div className="throughput-stat throughput-stat--up">
-                <span className="throughput-stat__label">
-                  <Icon name="arrow-up" />
-                  Upload
-                </span>
-                <span className="throughput-stat__value">
-                  {deferredSnapshot
-                    ? formatRate(deferredSnapshot.network.txBytesPerSecond)
-                    : "51.2 Kbps"}
-                </span>
-              </div>
-            </div>
+              <hr className="panel__hr" />
 
-            <MiniSparkline history={deferredHistory} />
-          </section>
+              <section className="throughput-card" aria-label="Throughput">
+                <div className="throughput-card__header">
+                  <span className="throughput-card__title">Throughput</span>
+                  <span className="throughput-card__status">Live</span>
+                </div>
 
-          <div className="action-buttons">
-            <button className="action-btn" type="button">
-              <Icon name="speed-test" />
-              Placeholder 1
-            </button>
-          </div>
+                <div className="throughput-row">
+                  <div className="throughput-stat throughput-stat--down">
+                    <span className="throughput-stat__label">
+                      <Icon name="arrow-down" />
+                      Download
+                    </span>
+                    <span className="throughput-stat__value">
+                      {deferredSnapshot
+                        ? formatRate(deferredSnapshot.network.rxBytesPerSecond)
+                        : "91.5 Kbps"}
+                    </span>
+                  </div>
 
-          <section className="panel__section">
-            <div className="panel-card">
-              <div className="panel-card__header">
-                <span className="panel-card__title">Default WiFi Speeds</span>
-                <button className="panel-card__action" type="button">
-                  Max. Speed
-                  <Icon name="chevron-right" />
+                  <div className="throughput-stat throughput-stat--up">
+                    <span className="throughput-stat__label">
+                      <Icon name="arrow-up" />
+                      Upload
+                    </span>
+                    <span className="throughput-stat__value">
+                      {deferredSnapshot
+                        ? formatRate(deferredSnapshot.network.txBytesPerSecond)
+                        : "51.2 Kbps"}
+                    </span>
+                  </div>
+                </div>
+
+                <MiniSparkline history={deferredHistory} />
+              </section>
+
+              <div className="action-buttons">
+                <button className="action-btn" type="button">
+                  <Icon name="speed-test" />
+                  Placeholder 1
                 </button>
               </div>
 
-              <div className="channel-grid">
-                <div className="channel-grid__label">Channel Widths (MHz)</div>
-                {WIFI_SPEED_ROWS.map((row) => (
-                  <div className="channel-row" key={row.band}>
-                    <span className="channel-row__band">{row.band}</span>
-                    {row.values.map((value) => (
-                      <span
-                        className={`channel-row__val ${
-                          value === "80" || value === "320"
-                            ? "channel-row__val--active"
-                            : value === "DFS"
-                              ? "channel-row__val--label"
-                              : ""
-                        }`}
-                        key={`${row.band}-${value}`}
-                      >
-                        {value}
-                      </span>
+              <section className="panel__section">
+                <div className="panel-card">
+                  <div className="panel-card__header">
+                    <span className="panel-card__title">
+                      Default WiFi Speeds
+                    </span>
+                    <button className="panel-card__action" type="button">
+                      Max. Speed
+                      <Icon name="chevron-right" />
+                    </button>
+                  </div>
+
+                  <div className="channel-grid">
+                    <div className="channel-grid__label">
+                      Channel Widths (MHz)
+                    </div>
+                    {WIFI_SPEED_ROWS.map((row) => (
+                      <div className="channel-row" key={row.band}>
+                        <span className="channel-row__band">{row.band}</span>
+                        {row.values.map((value) => (
+                          <span
+                            className={`channel-row__val ${
+                              value === "80" || value === "320"
+                                ? "channel-row__val--active"
+                                : value === "DFS"
+                                  ? "channel-row__val--label"
+                                  : ""
+                            }`}
+                            key={`${row.band}-${value}`}
+                          >
+                            {value}
+                          </span>
+                        ))}
+                      </div>
                     ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
+                </div>
+              </section>
 
-          <section className="panel__section">
-            <div className="panel-card">
-              <div className="panel-card__header">
-                <span className="panel-card__title">
-                  Critical Traffic Prioritization
-                </span>
-                <button className="panel-card__action" type="button">
-                  Configure
-                </button>
-              </div>
-
-              <div className="category-icons">
-                {[
-                  "syslog",
-                  "shield",
-                  "notifications",
-                  "theme",
-                  "layout-grid",
-                  "monitor",
-                ].map((icon) => (
-                  <div className="category-icon" key={icon}>
-                    <Icon name={icon as IconName} />
+              <section className="panel__section">
+                <div className="panel-card">
+                  <div className="panel-card__header">
+                    <span className="panel-card__title">
+                      Critical Traffic Prioritization
+                    </span>
+                    <button className="panel-card__action" type="button">
+                      Configure
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
-          </section>
 
-          <div className="cyber-card">
-            <div className="cyber-card__header">
-              <Icon name="shield" />
-              <div className="cyber-card__title">CyberSecure Enhanced</div>
-              <button className="cyber-card__action" type="button">
-                Activate
+                  <div className="category-icons">
+                    {[
+                      "syslog",
+                      "shield",
+                      "notifications",
+                      "theme",
+                      "layout-grid",
+                      "monitor",
+                    ].map((icon) => (
+                      <div className="category-icon" key={icon}>
+                        <Icon name={icon as IconName} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <div className="cyber-card">
+                <div className="cyber-card__header">
+                  <Icon name="shield" />
+                  <div className="cyber-card__title">CyberSecure Enhanced</div>
+                  <button className="cyber-card__action" type="button">
+                    Activate
+                  </button>
+                </div>
+
+                <ul className="cyber-card__list">
+                  <li>Up to 55K signatures updated real-time.</li>
+                  <li>100+ content filters.</li>
+                </ul>
+
+                <div className="cyber-card__footer">
+                  Powered by proofpoint and cloudflare
+                </div>
+              </div>
+
+              <button className="widgets-btn" type="button">
+                Dashboard Widgets
               </button>
             </div>
-
-            <ul className="cyber-card__list">
-              <li>Up to 55K signatures updated real-time.</li>
-              <li>100+ content filters.</li>
-            </ul>
-
-            <div className="cyber-card__footer">
-              Powered by proofpoint and cloudflare
-            </div>
-          </div>
-
-          <button className="widgets-btn" type="button">
-            Dashboard Widgets
-          </button>
+          ) : null}
         </aside>
 
         <main className="main">
