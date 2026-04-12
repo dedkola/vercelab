@@ -118,6 +118,32 @@ For a clean reinstall, remove the current runtime state first and then run the i
 ./install.sh
 ```
 
+## Recreate the UI container
+
+The Vercelab UI runs inside the `control-plane` service in the root `docker-compose.yml`.
+If you change control-plane or UI code and want to refresh only that container, run this from the repository root:
+
+```bash
+docker compose up -d --build --no-deps control-plane
+```
+
+That rebuilds the control-plane image from the current checkout and recreates only the UI container. Traefik and managed app containers stay up.
+
+If you already built the image and only want to replace the container, force a recreate without rebuilding:
+
+```bash
+docker compose up -d --force-recreate --no-deps control-plane
+```
+
+Useful follow-up checks:
+
+```bash
+docker compose ps
+docker compose logs -f control-plane
+```
+
+If you changed `.env`, domains, certificates, or host paths, rerun `./install.sh` instead so the generated runtime config and TLS assets stay aligned.
+
 ## Uninstall
 
 Vercelab now includes an uninstall script.
