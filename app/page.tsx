@@ -6,9 +6,19 @@ import {
   removeDeploymentAction,
   stopDeploymentAction,
 } from "@/app/actions";
+import {
+  DashboardIcon,
+  DonutChart,
+  TrendChart,
+} from "@/components/dashboard-kit";
 import { SubmitButton } from "@/components/submit-button";
 import { getAppConfig } from "@/lib/app-config";
-import { listDashboardData, type DashboardDeployment } from "@/lib/persistence";
+import { getPlatformHealth } from "@/lib/platform-health";
+import {
+  getDatabaseHealth,
+  listDashboardData,
+  type DashboardDeployment,
+} from "@/lib/persistence";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +26,15 @@ type HomePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function readParam(
-  value: string | string[] | undefined,
-): string | undefined {
+const railItems = [
+  { href: "#overview", label: "Overview", icon: "overview" as const },
+  { href: "#deployments", label: "Deployments", icon: "deployments" as const },
+  { href: "#activity", label: "Activity", icon: "activity" as const },
+  { href: "#health", label: "Health", icon: "health" as const },
+  { href: "#deploy-form", label: "Create", icon: "create" as const },
+];
+
+function readParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {
     return value[0];
   }
@@ -35,6 +51,25 @@ function formatTimestamp(value: string | null): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatRelativeTime(value: string): string {
+  const timestamp = new Date(value).getTime();
+  const now = Date.now();
+  const diffInMinutes = Math.round((timestamp - now) / (1000 * 60));
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  if (Math.abs(diffInMinutes) < 60) {
+    return formatter.format(diffInMinutes, "minute");
+  }
+
+  const diffInHours = Math.round(diffInMinutes / 60);
+
+  if (Math.abs(diffInHours) < 48) {
+    return formatter.format(diffInHours, "hour");
+  }
+
+  return formatter.format(Math.round(diffInHours / 24), "day");
 }
 
 function formatStatusLabel(status: DashboardDeployment["status"]): string {
@@ -54,385 +89,804 @@ function formatStatusLabel(status: DashboardDeployment["status"]): string {
   }
 }
 
+function formatOperationLabel(value: string): string {
+  switch (value) {
+    case "redeploy":
+      return "Redeploy";
+    default:
+      return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+}
+
+function formatModeLabel(mode: "dockerfile" | "compose" | "unknown"): string {
+  switch (mode) {
+    case "dockerfile":
+      return "Dockerfile";
+    case "compose":
+      return "Docker Compose";
+    default:
+      return "Undetected";
+  }
+}
+
 function formatVisibility(tokenStored: boolean): string {
   return tokenStored ? "Private ready" : "Public only";
+}
+
+function formatLogPreview(value: string | null): string {
+  if (!value) {
+    return "No deployment logs yet.";
+  }
+
+  return value.trim().slice(-640);
+}
+
+function getActivityTone(status: "pending" | "success" | "failed"): string {
+  switch (status) {
+    case "success":
+      return "positive";
+    case "failed":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+function getSeverityTone(severity: "error" | "warning", ok: boolean): string {
+  if (ok) {
+    return "positive";
+  }
+
+  return severity === "error" ? "danger" : "warning";
 }
 
 export default async function Home({ searchParams }: HomePageProps) {
   await connection();
 
-  const [dashboard, params] = await Promise.all([
+  const [dashboard, params, platform] = await Promise.all([
     listDashboardData(),
     searchParams,
+    getPlatformHealth(),
   ]);
   const config = getAppConfig();
+  const database = getDatabaseHealth();
 
   const noticeMessage = readParam(params.message);
-  const noticeStatus = readParam(params.status) === "error" ? "error" : "success";
+  const noticeStatus =
+    readParam(params.status) === "error" ? "error" : "success";
   const notice =
     noticeMessage && noticeMessage.length > 0
       ? { message: noticeMessage, status: noticeStatus }
       : null;
 
+  const totalChecks = platform.checks.length;
+  const readyChecks = platform.checks.filter((check) => check.ok).length;
+  const blockingChecks = platform.checks.filter(
+    (check) => !check.ok && check.severity === "error",
+  ).length;
+  const warningChecks = platform.checks.filter(
+    (check) => !check.ok && check.severity === "warning",
+  ).length;
+  const healthScore =
+    totalChecks > 0 ? Math.round((readyChecks / totalChecks) * 100) : 0;
+  const runningShare =
+    dashboard.stats.totalDeployments > 0
+      ? Math.round(
+          (dashboard.stats.runningDeployments /
+            dashboard.stats.totalDeployments) *
+            100,
+        )
+      : 0;
+  const windowTotals = dashboard.trends.reduce(
+    (totals, point) => ({
+      total: totals.total + point.total,
+      success: totals.success + point.success,
+      failed: totals.failed + point.failed,
+    }),
+    {
+      total: 0,
+      success: 0,
+      failed: 0,
+    },
+  );
+
+  const statusSegments = dashboard.statusDistribution.map((segment) => ({
+    label: formatStatusLabel(segment.status),
+    value: segment.count,
+    tone: segment.status,
+  }));
+
+  const modeSegments = dashboard.modeDistribution.map((segment) => ({
+    label: formatModeLabel(segment.mode),
+    value: segment.count,
+    tone: segment.mode,
+  }));
+
   return (
-    <div className="page-shell">
-      <main className="page-content">
-        <header className="topbar" aria-label="Workspace header">
-          <div className="brand">
-            <div className="brand-mark" aria-hidden="true">
-              VL
-            </div>
-            <div className="brand-copy">
-              <h1>Vercelab</h1>
-              <p>Private homelab deploy control plane</p>
-            </div>
+    <div className="dashboard-shell">
+      <aside className="dashboard-rail" aria-label="Feature sections">
+        <a className="rail-brand" href="#overview" aria-label="Go to overview">
+          <span className="rail-brand__mark">VL</span>
+        </a>
+
+        <nav className="rail-nav">
+          {railItems.map((item, index) => (
+            <a
+              aria-current={index === 0 ? "page" : undefined}
+              className={`rail-link ${index === 0 ? "rail-link--active" : ""}`}
+              href={item.href}
+              key={item.label}
+              title={item.label}
+            >
+              <DashboardIcon name={item.icon} title={item.label} />
+            </a>
+          ))}
+        </nav>
+
+        <a
+          className="rail-link rail-link--utility"
+          href="#health"
+          title="Health checks"
+        >
+          <DashboardIcon name="settings" title="Health checks" />
+        </a>
+      </aside>
+
+      <main className="workspace-shell">
+        <header className="workspace-header">
+          <div className="workspace-copy">
+            <span className="eyebrow">Operator dashboard</span>
+            <h1>Feature dashboard</h1>
+            <p>
+              UniFi-inspired control surface for deployments, runtime signals,
+              and platform readiness.
+            </p>
           </div>
 
-          <div className="topbar-pills" aria-label="Environment summary">
-            <span className="stack-pill">Latest Next.js 16 control plane</span>
-            <span className="stack-pill">Traefik + self-signed TLS</span>
-            <span className="stack-pill">SQLite now, Postgres later</span>
+          <div className="workspace-actions">
+            <div className="header-chip-row" aria-label="Environment summary">
+              <span className="header-chip">Domain {config.baseDomain}</span>
+              <span className="header-chip">Proxy {config.proxy.network}</span>
+              <span className="header-chip">SQLite {database.version}</span>
+            </div>
+
+            <div className="header-button-row">
+              <a className="button button--secondary" href="#activity">
+                Review activity
+              </a>
+              <a className="button button--primary" href="#deploy-form">
+                Add deployment
+              </a>
+            </div>
           </div>
         </header>
 
         {notice ? (
-          <div
-            className={`notice notice--${notice.status}`}
-            role={notice.status === "error" ? "alert" : "status"}
-          >
-            {notice.message}
-          </div>
-        ) : null}
-
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="surface hero-card hero-copy">
-            <span className="eyebrow">Internal Vercel-style homelab hosting</span>
-            <h2 id="hero-title">Clone private GitHub repos and route them on your LAN.</h2>
-            <p>
-              Vercelab keeps the operator flow simple: add a GitHub repo, choose a
-              subdomain, point Traefik at the right container port, and let the
-              platform build and run it behind self-signed HTTPS.
-            </p>
-
-            <div className="hero-actions">
-              <a className="button button--primary" href="#deploy-form">
-                Add deployment
-              </a>
-              <a className="button button--secondary" href="#deployments">
-                View active apps
-              </a>
-            </div>
-
-            <div className="stack-badges" aria-label="Platform capabilities">
-              <span className="stack-pill">Dockerfile or docker-compose.yml</span>
-              <span className="stack-pill">GitHub PAT for private repos</span>
-              <span className="stack-pill">Wildcard LAN domain routing</span>
-            </div>
-          </div>
-
-          <aside className="surface hero-card hero-side" aria-labelledby="stack-title">
-            <div className="section-copy">
-              <h3 id="stack-title" className="section-title">
-                Stack snapshot
-              </h3>
-              <p className="muted">
-                The control plane runs with a small self-hosted footprint and keeps
-                the deployable app logic in Docker where Traefik can discover it.
-              </p>
-            </div>
-
-            <div className="stat-grid" aria-label="Platform stats">
-              <div className="stat-card">
-                <span>Total deployments</span>
-                <strong>{dashboard.stats.totalDeployments}</strong>
-              </div>
-              <div className="stat-card">
-                <span>Running now</span>
-                <strong>{dashboard.stats.runningDeployments}</strong>
-              </div>
-              <div className="stat-card">
-                <span>Failed runs</span>
-                <strong>{dashboard.stats.failedDeployments}</strong>
-              </div>
-              <div className="stat-card">
-                <span>Saved repos</span>
-                <strong>{dashboard.stats.totalRepositories}</strong>
-              </div>
-            </div>
-
-            <ul className="helper-list" aria-label="Platform notes">
-              <li>
-                Base domain: <strong>{config.baseDomain}</strong>
-              </li>
-              <li>
-                Proxy network: <strong>{config.proxy.network}</strong>
-              </li>
-              <li>
-                SQLite path: <strong>{config.database.sqlitePath}</strong>
-              </li>
-            </ul>
-          </aside>
-        </section>
-
-        <section className="surface panel" id="deploy-form" aria-labelledby="deploy-form-title">
-          <div className="panel-header">
-            <div className="section-copy">
-              <h3 id="deploy-form-title">Create a deployment</h3>
-              <p>
-                MVP accepts repositories that already include a root-level
-                <code> Dockerfile </code>
-                or
-                <code> docker-compose.yml </code>
-                compatible with Docker Compose.
-              </p>
-            </div>
-          </div>
-
-          <form action={createDeploymentAction} className="form-grid">
-            <div className="section-block field--full">
-              <div className="section-copy">
-                <h4>Repository source</h4>
-                <p className="muted">
-                  Use an HTTPS GitHub URL. Add a PAT if the repository is private.
-                </p>
-              </div>
-
-              <div className="field">
-                <label htmlFor="repositoryUrl">Repository URL</label>
-                <input
-                  id="repositoryUrl"
-                  name="repositoryUrl"
-                  type="url"
-                  placeholder="https://github.com/owner/repo.git"
-                  required
-                />
-              </div>
-
-              <div className="field-grid">
-                <div className="field">
-                  <label htmlFor="githubToken">GitHub token</label>
-                  <input
-                    id="githubToken"
-                    name="githubToken"
-                    type="password"
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                    autoComplete="off"
-                  />
-                  <small>Stored encrypted so redeploys can re-clone private repositories.</small>
-                </div>
-
-                <div className="field">
-                  <label htmlFor="branch">Branch</label>
-                  <input
-                    id="branch"
-                    name="branch"
-                    type="text"
-                    placeholder="main"
-                    autoComplete="off"
-                  />
-                  <small>Leave blank to use the repository default branch.</small>
-                </div>
-
-                <div className="field">
-                  <label htmlFor="serviceName">Compose service name</label>
-                  <input
-                    id="serviceName"
-                    name="serviceName"
-                    type="text"
-                    placeholder="web"
-                    autoComplete="off"
-                  />
-                  <small>Required when your compose file defines multiple app services.</small>
-                </div>
-              </div>
-            </div>
-
-            <div className="section-block field--full">
-              <div className="section-copy">
-                <h4>Routing and runtime</h4>
-                <p className="muted">
-                  Container port is the internal app port Traefik should forward to.
-                </p>
-              </div>
-
-              <div className="field-grid">
-                <div className="field">
-                  <label htmlFor="appName">App name</label>
-                  <input
-                    id="appName"
-                    name="appName"
-                    type="text"
-                    placeholder="Production API"
-                    required
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="subdomain">Subdomain</label>
-                  <input
-                    id="subdomain"
-                    name="subdomain"
-                    type="text"
-                    placeholder="prod1"
-                    required
-                  />
-                  <small>{`Will route to https://<subdomain>.${config.baseDomain}`}</small>
-                </div>
-
-                <div className="field">
-                  <label htmlFor="port">Container port</label>
-                  <input
-                    id="port"
-                    name="port"
-                    type="number"
-                    min="1"
-                    max="65535"
-                    placeholder="3000"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="field--full">
-              <SubmitButton
-                idleLabel="Clone, build, and deploy"
-                pendingLabel="Deploying..."
-                variant="primary"
-              />
-            </div>
-          </form>
-        </section>
-
-        <section
-          className="surface panel"
-          id="deployments"
-          aria-labelledby="deployments-title"
-        >
-          <div className="panel-header">
-            <div className="section-copy">
-              <h3 id="deployments-title">Deployed apps</h3>
-              <p>
-                Every card tracks the repo source, routing target, latest operation,
-                and quick lifecycle actions.
-              </p>
-            </div>
-          </div>
-
-          {dashboard.deployments.length === 0 ? (
-            <div className="empty-state">
-              <h4>No deployments yet</h4>
-              <p className="muted">
-                Start with a Docker-ready GitHub repository and Vercelab will create
-                the workspace, build it, and attach it to Traefik.
-              </p>
+          notice.status === "error" ? (
+            <div className="notice notice--error" role="alert">
+              {notice.message}
             </div>
           ) : (
-            <div className="deployment-list">
-              {dashboard.deployments.map((deployment) => {
-                const href = `https://${deployment.subdomain}.${config.baseDomain}`;
+            <div className="notice notice--success" role="status">
+              {notice.message}
+            </div>
+          )
+        ) : null}
 
-                return (
-                  <article className="surface deployment-card" key={deployment.id}>
-                    <div className="deployment-header">
-                      <div className="deployment-title">
-                        <div className="badge-row">
-                          <span className={`badge badge--${deployment.status}`}>
-                            {formatStatusLabel(deployment.status)}
+        <div className="workspace-grid">
+          <aside className="summary-column">
+            <section className="module module--summary" id="overview">
+              <div className="summary-topline">
+                <div>
+                  <span className="eyebrow eyebrow--muted">Deploy fabric</span>
+                  <h2>{config.baseDomain}</h2>
+                </div>
+                <span
+                  className={`status-pill ${platform.ok ? "status-pill--positive" : "status-pill--warning"}`}
+                >
+                  {platform.ok ? "Online" : "Attention"}
+                </span>
+              </div>
+
+              <div className="topology-strip" aria-label="Platform footprint">
+                <div className="topology-node">
+                  <strong>{dashboard.stats.totalDeployments}</strong>
+                  <span>Apps</span>
+                </div>
+                <div className="topology-node">
+                  <strong>{dashboard.stats.runningDeployments}</strong>
+                  <span>Running</span>
+                </div>
+                <div className="topology-node">
+                  <strong>{dashboard.stats.totalRepositories}</strong>
+                  <span>Repos</span>
+                </div>
+                <div className="topology-node">
+                  <strong>{healthScore}%</strong>
+                  <span>Ready</span>
+                </div>
+              </div>
+
+              <div className="summary-grid">
+                <div>
+                  <span>Proxy network</span>
+                  <strong>{config.proxy.network}</strong>
+                </div>
+                <div>
+                  <span>Database</span>
+                  <strong>{database.provider}</strong>
+                </div>
+                <div>
+                  <span>Running share</span>
+                  <strong>{runningShare}%</strong>
+                </div>
+                <div>
+                  <span>Action volume</span>
+                  <strong>{windowTotals.total}</strong>
+                </div>
+              </div>
+
+              <div className="status-track" aria-hidden="true">
+                {statusSegments.length > 0 ? (
+                  statusSegments.map((segment) =>
+                    Array.from({ length: segment.value }, (_, index) => (
+                      <span
+                        className={`status-track__segment status-track__segment--${segment.label.toLowerCase().replace(/\s+/g, "-")}`}
+                        key={`${segment.label}-${index}`}
+                      />
+                    )),
+                  )
+                ) : (
+                  <span className="status-track__segment status-track__segment--idle" />
+                )}
+              </div>
+
+              <p className="module-note">
+                {dashboard.stats.runningDeployments} active routes across{" "}
+                {dashboard.stats.totalRepositories} repository sources.
+              </p>
+            </section>
+
+            <section className="module module--compact">
+              <div className="module-header">
+                <div>
+                  <span className="eyebrow eyebrow--muted">Quick access</span>
+                  <h3>Routing shortcuts</h3>
+                </div>
+              </div>
+
+              <div className="link-stack">
+                <a
+                  className="shortcut-link"
+                  href="/api/health"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span>Health JSON</span>
+                  <DashboardIcon name="external" title="Open health JSON" />
+                </a>
+                <a className="shortcut-link" href="#deploy-form">
+                  <span>Create deployment</span>
+                  <DashboardIcon name="create" title="Create deployment" />
+                </a>
+                <a className="shortcut-link" href="#deployments">
+                  <span>Manage deployments</span>
+                  <DashboardIcon
+                    name="deployments"
+                    title="Manage deployments"
+                  />
+                </a>
+              </div>
+            </section>
+
+            <section className="module module--compact">
+              <div className="module-header">
+                <div>
+                  <span className="eyebrow eyebrow--muted">
+                    Feature pattern
+                  </span>
+                  <h3>Default controls</h3>
+                </div>
+              </div>
+
+              <div className="chip-stack">
+                <span className="ui-chip ui-chip--active">Overview</span>
+                <span className="ui-chip">Signals</span>
+                <span className="ui-chip">Health</span>
+                <span className="ui-chip">Forms</span>
+              </div>
+
+              <p className="module-note">
+                White surfaces, compact rails, chart-led headers, and dense
+                action rows now define the default dashboard language.
+              </p>
+            </section>
+          </aside>
+
+          <div className="content-column">
+            <section
+              className="kpi-grid"
+              aria-label="Deployment overview metrics"
+            >
+              <article className="kpi-card">
+                <span>Running apps</span>
+                <strong>{dashboard.stats.runningDeployments}</strong>
+                <small>{runningShare}% of tracked deployments are live.</small>
+              </article>
+              <article className="kpi-card">
+                <span>Failures in window</span>
+                <strong>{windowTotals.failed}</strong>
+                <small>Historical failures across the last eight days.</small>
+              </article>
+              <article className="kpi-card">
+                <span>Health score</span>
+                <strong>{healthScore}%</strong>
+                <small>
+                  {blockingChecks} blocking checks require attention.
+                </small>
+              </article>
+              <article className="kpi-card">
+                <span>Tracked repos</span>
+                <strong>{dashboard.stats.totalRepositories}</strong>
+                <small>
+                  {modeSegments.find(
+                    (segment) => segment.label === "Docker Compose",
+                  )?.value ?? 0}{" "}
+                  compose stacks currently mapped.
+                </small>
+              </article>
+            </section>
+
+            <section className="module module--hero-chart">
+              <div className="module-header module-header--split">
+                <div>
+                  <span className="eyebrow eyebrow--muted">
+                    Historical traffic
+                  </span>
+                  <h2>Deployment activity</h2>
+                  <p className="module-note">
+                    Trend line built from real operation history in the existing
+                    SQLite store.
+                  </p>
+                </div>
+
+                <div
+                  className="toolbar-row"
+                  aria-label="Dashboard time controls"
+                >
+                  <span className="ui-chip ui-chip--active">1W</span>
+                  <span className="ui-chip">1M</span>
+                  <span className="ui-chip ui-chip--live">Live window</span>
+                </div>
+              </div>
+
+              <TrendChart data={dashboard.trends} />
+
+              <div className="legend-row">
+                <span className="legend-item">
+                  <span className="legend-swatch legend-swatch--primary" />
+                  Total activity
+                </span>
+                <span className="legend-item">
+                  <span className="legend-swatch legend-swatch--success" />
+                  Successful runs
+                </span>
+                <span className="legend-item">
+                  <span className="legend-swatch legend-swatch--danger" />
+                  Failed runs
+                </span>
+                <span className="legend-meta">
+                  {windowTotals.total} operations in the current window
+                </span>
+              </div>
+            </section>
+
+            <section className="insight-grid">
+              <article className="module">
+                <div className="module-header">
+                  <div>
+                    <span className="eyebrow eyebrow--muted">Current mix</span>
+                    <h3>Deployment status</h3>
+                  </div>
+                </div>
+
+                <DonutChart
+                  segments={statusSegments}
+                  totalLabel="Tracked deployments"
+                  totalValue={String(dashboard.stats.totalDeployments)}
+                />
+              </article>
+
+              <article className="module">
+                <div className="module-header">
+                  <div>
+                    <span className="eyebrow eyebrow--muted">
+                      Runtime pattern
+                    </span>
+                    <h3>Build modes</h3>
+                  </div>
+                </div>
+
+                <DonutChart
+                  segments={modeSegments}
+                  totalLabel="Build targets"
+                  totalValue={String(
+                    modeSegments.reduce(
+                      (sum, segment) => sum + segment.value,
+                      0,
+                    ),
+                  )}
+                />
+              </article>
+
+              <article className="module" id="activity">
+                <div className="module-header module-header--split">
+                  <div>
+                    <span className="eyebrow eyebrow--muted">
+                      Activity feed
+                    </span>
+                    <h3>Recent operations</h3>
+                  </div>
+                  <span className="module-note">
+                    {dashboard.recentActivity.length} recent events
+                  </span>
+                </div>
+
+                {dashboard.recentActivity.length > 0 ? (
+                  <ul className="activity-list">
+                    {dashboard.recentActivity.map((item) => (
+                      <li className="activity-row" key={item.id}>
+                        <div>
+                          <div className="activity-heading">
+                            <strong>{item.appName}</strong>
+                            <span
+                              className={`status-pill status-pill--${getActivityTone(item.status)}`}
+                            >
+                              {item.status}
+                            </span>
+                          </div>
+                          <p>
+                            {item.summary ??
+                              `${formatOperationLabel(item.operationType)} recorded.`}
+                          </p>
+                        </div>
+                        <div className="activity-meta">
+                          <span>
+                            {formatOperationLabel(item.operationType)}
                           </span>
-                          <span className="mini-badge">
-                            {deployment.composeMode === "compose"
-                              ? "docker-compose"
-                              : "Dockerfile"}
-                          </span>
-                          <span className="mini-badge">
-                            {formatVisibility(deployment.tokenStored)}
+                          <strong>{formatRelativeTime(item.createdAt)}</strong>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="empty-state empty-state--tight">
+                    <h4>No activity yet</h4>
+                    <p className="muted">
+                      Operations will appear here after the first deployment
+                      workflow completes.
+                    </p>
+                  </div>
+                )}
+              </article>
+            </section>
+
+            <section className="feature-grid">
+              <article className="module" id="deploy-form">
+                <div className="module-header module-header--split">
+                  <div>
+                    <span className="eyebrow eyebrow--muted">Quick action</span>
+                    <h3>Create deployment</h3>
+                    <p className="module-note">
+                      Compact feature form with the same backend workflow as the
+                      original page.
+                    </p>
+                  </div>
+                  <span className="status-pill">Secure PAT supported</span>
+                </div>
+
+                <form
+                  action={createDeploymentAction}
+                  className="deploy-form-grid"
+                >
+                  <div className="field field--full">
+                    <label htmlFor="repositoryUrl">Repository URL</label>
+                    <input
+                      autoComplete="off"
+                      id="repositoryUrl"
+                      name="repositoryUrl"
+                      placeholder="https://github.com/owner/repo.git"
+                      required
+                      type="url"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="appName">App name</label>
+                    <input
+                      id="appName"
+                      name="appName"
+                      placeholder="Production API"
+                      required
+                      type="text"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="subdomain">Subdomain</label>
+                    <input
+                      id="subdomain"
+                      name="subdomain"
+                      placeholder="prod1"
+                      required
+                      type="text"
+                    />
+                    <small>{`Will route to https://<subdomain>.${config.baseDomain}`}</small>
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="port">Container port</label>
+                    <input
+                      id="port"
+                      max="65535"
+                      min="1"
+                      name="port"
+                      placeholder="3000"
+                      required
+                      type="number"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="branch">Branch</label>
+                    <input
+                      autoComplete="off"
+                      id="branch"
+                      name="branch"
+                      placeholder="main"
+                      type="text"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="serviceName">Compose service</label>
+                    <input
+                      autoComplete="off"
+                      id="serviceName"
+                      name="serviceName"
+                      placeholder="web"
+                      type="text"
+                    />
+                  </div>
+
+                  <div className="field field--full">
+                    <label htmlFor="githubToken">GitHub token</label>
+                    <input
+                      autoComplete="off"
+                      id="githubToken"
+                      name="githubToken"
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      type="password"
+                    />
+                    <small>
+                      Encrypted at rest for private repository redeploys.
+                    </small>
+                  </div>
+
+                  <div className="submit-row field--full">
+                    <SubmitButton
+                      idleLabel="Clone, build, and deploy"
+                      pendingLabel="Deploying..."
+                      variant="primary"
+                    />
+                  </div>
+                </form>
+              </article>
+
+              <article className="module" id="health">
+                <div className="module-header module-header--split">
+                  <div>
+                    <span className="eyebrow eyebrow--muted">Readiness</span>
+                    <h3>Platform health</h3>
+                    <p className="module-note">
+                      Checks sourced from the same readiness logic used by the
+                      health API.
+                    </p>
+                  </div>
+                  <span
+                    className={`status-pill ${platform.ok ? "status-pill--positive" : "status-pill--warning"}`}
+                  >
+                    {platform.ok ? "Ready" : "Review required"}
+                  </span>
+                </div>
+
+                <div className="health-overview-grid">
+                  <div className="health-overview-card">
+                    <span>Passing</span>
+                    <strong>{readyChecks}</strong>
+                  </div>
+                  <div className="health-overview-card">
+                    <span>Warnings</span>
+                    <strong>{warningChecks}</strong>
+                  </div>
+                  <div className="health-overview-card">
+                    <span>Blocking</span>
+                    <strong>{blockingChecks}</strong>
+                  </div>
+                </div>
+
+                <ul className="health-list">
+                  {platform.checks.map((check) => (
+                    <li className="health-row" key={check.id}>
+                      <div>
+                        <div className="activity-heading">
+                          <strong>{check.label}</strong>
+                          <span
+                            className={`status-pill status-pill--${getSeverityTone(check.severity, check.ok)}`}
+                          >
+                            {check.ok ? "ok" : check.severity}
                           </span>
                         </div>
-                        <h4>{deployment.appName}</h4>
-                        <a
-                          className="deployment-link"
-                          href={href}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          {href}
-                        </a>
+                        <p>{check.message}</p>
                       </div>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            </section>
 
-                      <div className="section-copy">
-                        <span className="muted">Last updated</span>
-                        <strong>{formatTimestamp(deployment.updatedAt)}</strong>
-                      </div>
-                    </div>
+            <section className="module module--deployments" id="deployments">
+              <div className="module-header module-header--split">
+                <div>
+                  <span className="eyebrow eyebrow--muted">
+                    Runtime inventory
+                  </span>
+                  <h2>Deployed apps</h2>
+                  <p className="module-note">
+                    Compact operator rows with lifecycle actions, route targets,
+                    and expandable log tails.
+                  </p>
+                </div>
+                <div className="toolbar-row">
+                  <span className="ui-chip ui-chip--active">All</span>
+                  <span className="ui-chip">Running</span>
+                  <span className="ui-chip">Failed</span>
+                </div>
+              </div>
 
-                    <div className="deployment-meta">
-                      <div className="meta-card">
-                        <span>Repository</span>
-                        <strong>{deployment.repositoryUrl}</strong>
-                      </div>
-                      <div className="meta-card">
-                        <span>Branch / service</span>
-                        <strong>
-                          {deployment.branch ?? "default"} / {deployment.serviceName ?? "auto"}
-                        </strong>
-                      </div>
-                      <div className="meta-card">
-                        <span>Traefik target</span>
-                        <strong>
-                          {deployment.subdomain}.{config.baseDomain}:{deployment.port}
-                        </strong>
-                      </div>
-                      <div className="meta-card">
-                        <span>Compose project</span>
-                        <strong>{deployment.projectName}</strong>
-                      </div>
-                    </div>
+              {dashboard.deployments.length === 0 ? (
+                <div className="empty-state">
+                  <h4>No deployments yet</h4>
+                  <p className="muted">
+                    Start with a Docker-ready GitHub repository and Vercelab
+                    will build, route, and track it here.
+                  </p>
+                </div>
+              ) : (
+                <div className="deployment-rows">
+                  {dashboard.deployments.map((deployment) => {
+                    const href = `https://${deployment.subdomain}.${config.baseDomain}`;
 
-                    <div className="log-block">
-                      <div className="section-copy">
-                        <h4>Latest operation</h4>
-                        <p className="muted">
-                          {deployment.lastOperationSummary ?? "No operations recorded yet."}
-                        </p>
-                      </div>
-                      <pre>{deployment.lastOutput ?? "No deployment logs yet."}</pre>
-                    </div>
+                    return (
+                      <article
+                        className="deployment-row-card"
+                        key={deployment.id}
+                      >
+                        <div className="deployment-row-card__grid">
+                          <div className="deployment-primary">
+                            <div className="deployment-heading-row">
+                              <span
+                                className={`status-pill status-pill--${deployment.status}`}
+                              >
+                                {formatStatusLabel(deployment.status)}
+                              </span>
+                              <span className="mini-pill">
+                                {formatModeLabel(
+                                  deployment.composeMode ?? "unknown",
+                                )}
+                              </span>
+                              <span className="mini-pill">
+                                {formatVisibility(deployment.tokenStored)}
+                              </span>
+                            </div>
+                            <h3>{deployment.appName}</h3>
+                            <p>{deployment.repositoryUrl}</p>
+                          </div>
 
-                    <div className="card-actions">
-                      <form action={redeployDeploymentAction}>
-                        <input name="deploymentId" type="hidden" value={deployment.id} />
-                        <SubmitButton
-                          idleLabel="Redeploy"
-                          pendingLabel="Redeploying..."
-                          variant="secondary"
-                        />
-                      </form>
+                          <div className="deployment-cell">
+                            <span>Route</span>
+                            <a
+                              className="deployment-link"
+                              href={href}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              {href}
+                              <DashboardIcon
+                                name="external"
+                                title="Open deployment"
+                              />
+                            </a>
+                            <small>
+                              {deployment.subdomain}.{config.baseDomain}:
+                              {deployment.port}
+                            </small>
+                          </div>
 
-                      <form action={stopDeploymentAction}>
-                        <input name="deploymentId" type="hidden" value={deployment.id} />
-                        <SubmitButton
-                          idleLabel="Stop"
-                          pendingLabel="Stopping..."
-                          variant="secondary"
-                        />
-                      </form>
+                          <div className="deployment-cell">
+                            <span>Build target</span>
+                            <strong>
+                              {deployment.branch ?? "default"} /{" "}
+                              {deployment.serviceName ?? "auto"}
+                            </strong>
+                            <small>{deployment.projectName}</small>
+                          </div>
 
-                      <form action={removeDeploymentAction}>
-                        <input name="deploymentId" type="hidden" value={deployment.id} />
-                        <SubmitButton
-                          idleLabel="Remove"
-                          pendingLabel="Removing..."
-                          variant="danger"
-                        />
-                      </form>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                          <div className="deployment-cell">
+                            <span>Latest operation</span>
+                            <strong>
+                              {deployment.lastOperationSummary ??
+                                "No operations recorded yet."}
+                            </strong>
+                            <small>
+                              {formatTimestamp(deployment.updatedAt)}
+                            </small>
+                          </div>
+
+                          <div className="deployment-actions">
+                            <form action={redeployDeploymentAction}>
+                              <input
+                                name="deploymentId"
+                                type="hidden"
+                                value={deployment.id}
+                              />
+                              <SubmitButton
+                                idleLabel="Redeploy"
+                                pendingLabel="Redeploying..."
+                                variant="secondary"
+                              />
+                            </form>
+
+                            <form action={stopDeploymentAction}>
+                              <input
+                                name="deploymentId"
+                                type="hidden"
+                                value={deployment.id}
+                              />
+                              <SubmitButton
+                                idleLabel="Stop"
+                                pendingLabel="Stopping..."
+                                variant="secondary"
+                              />
+                            </form>
+
+                            <form action={removeDeploymentAction}>
+                              <input
+                                name="deploymentId"
+                                type="hidden"
+                                value={deployment.id}
+                              />
+                              <SubmitButton
+                                idleLabel="Remove"
+                                pendingLabel="Removing..."
+                                variant="danger"
+                              />
+                            </form>
+                          </div>
+                        </div>
+
+                        <details className="log-disclosure">
+                          <summary>Inspect latest log tail</summary>
+                          <pre>{formatLogPreview(deployment.lastOutput)}</pre>
+                        </details>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
       </main>
     </div>
   );

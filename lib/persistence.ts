@@ -58,6 +58,32 @@ export type DashboardDeployment = {
   tokenStored: boolean;
 };
 
+export type DashboardTrendPoint = {
+  label: string;
+  total: number;
+  success: number;
+  failed: number;
+};
+
+export type DashboardActivity = {
+  id: string;
+  appName: string;
+  operationType: OperationType;
+  status: OperationStatus;
+  summary: string | null;
+  createdAt: string;
+};
+
+export type DashboardStatusDistribution = {
+  status: DeploymentStatus;
+  count: number;
+};
+
+export type DashboardModeDistribution = {
+  mode: "dockerfile" | "compose" | "unknown";
+  count: number;
+};
+
 export type DashboardData = {
   deployments: DashboardDeployment[];
   stats: {
@@ -66,6 +92,10 @@ export type DashboardData = {
     failedDeployments: number;
     totalRepositories: number;
   };
+  trends: DashboardTrendPoint[];
+  recentActivity: DashboardActivity[];
+  statusDistribution: DashboardStatusDistribution[];
+  modeDistribution: DashboardModeDistribution[];
 };
 
 type StoredDeploymentRow = {
@@ -108,7 +138,22 @@ type DashboardDeploymentRow = {
   token_stored: number;
 };
 
+type DashboardActivityRow = {
+  id: string;
+  app_name: string;
+  operation_type: OperationType;
+  status: OperationStatus;
+  summary: string | null;
+  created_at: string;
+};
+
+type DashboardTrendRow = {
+  status: OperationStatus;
+  created_at: string;
+};
+
 let database: DatabaseHandle | undefined;
+const trendLabelFormatter = new Intl.DateTimeFormat("en", { weekday: "short" });
 
 function toSlug(value: string): string {
   return value
@@ -150,6 +195,54 @@ function mapStoredDeployment(row: StoredDeploymentRow): StoredDeployment {
     updatedAt: row.updated_at,
     deployedAt: row.deployed_at,
   };
+}
+
+function buildTrendPoints(
+  rows: DashboardTrendRow[],
+  days = 8,
+): DashboardTrendPoint[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const buckets = Array.from({ length: days }, (_, index) => {
+    const bucketDate = new Date(today);
+    bucketDate.setDate(today.getDate() - (days - index - 1));
+
+    return {
+      dateKey: bucketDate.toISOString().slice(0, 10),
+      label: trendLabelFormatter.format(bucketDate),
+      total: 0,
+      success: 0,
+      failed: 0,
+    };
+  });
+
+  const bucketMap = new Map(buckets.map((bucket) => [bucket.dateKey, bucket]));
+
+  for (const row of rows) {
+    const bucket = bucketMap.get(row.created_at.slice(0, 10));
+
+    if (!bucket) {
+      continue;
+    }
+
+    bucket.total += 1;
+
+    if (row.status === "success") {
+      bucket.success += 1;
+    }
+
+    if (row.status === "failed") {
+      bucket.failed += 1;
+    }
+  }
+
+  return buckets.map((bucket) => ({
+    label: bucket.label,
+    total: bucket.total,
+    success: bucket.success,
+    failed: bucket.failed,
+  }));
 }
 
 function getDatabase(): DatabaseHandle {
@@ -266,6 +359,41 @@ export function listDashboardData(): DashboardData {
     )
     .all() as DashboardDeploymentRow[];
 
+  const activityRows = db
+    .prepare(
+      `
+        SELECT
+          o.id,
+          d.app_name,
+          o.operation_type,
+          o.status,
+          o.summary,
+          o.created_at
+        FROM operations o
+        INNER JOIN deployments d ON d.id = o.deployment_id
+        ORDER BY o.created_at DESC
+        LIMIT 7
+      `,
+    )
+    .all() as DashboardActivityRow[];
+
+  const sinceDate = new Date();
+  sinceDate.setHours(0, 0, 0, 0);
+  sinceDate.setDate(sinceDate.getDate() - 7);
+
+  const trendRows = db
+    .prepare(
+      `
+        SELECT
+          status,
+          created_at
+        FROM operations
+        WHERE created_at >= ?
+        ORDER BY created_at ASC
+      `,
+    )
+    .all(sinceDate.toISOString()) as DashboardTrendRow[];
+
   const repositoryCount = db
     .prepare("SELECT COUNT(*) AS count FROM repositories")
     .get() as { count: number };
@@ -291,6 +419,23 @@ export function listDashboardData(): DashboardData {
     },
   );
 
+  const statusDistribution = (
+    ["running", "deploying", "failed", "stopped", "removing"] as const
+  )
+    .map((status) => ({
+      status,
+      count: rows.filter((row) => row.status === status).length,
+    }))
+    .filter((entry) => entry.count > 0);
+
+  const modeDistribution = (["dockerfile", "compose", "unknown"] as const)
+    .map((mode) => ({
+      mode,
+      count: rows.filter((row) => (row.compose_mode ?? "unknown") === mode)
+        .length,
+    }))
+    .filter((entry) => entry.count > 0);
+
   return {
     deployments: rows.map((row) => ({
       id: row.id,
@@ -314,6 +459,17 @@ export function listDashboardData(): DashboardData {
       failedDeployments: stats.failedDeployments,
       totalRepositories: repositoryCount.count,
     },
+    trends: buildTrendPoints(trendRows),
+    recentActivity: activityRows.map((row) => ({
+      id: row.id,
+      appName: row.app_name,
+      operationType: row.operation_type,
+      status: row.status,
+      summary: row.summary,
+      createdAt: row.created_at,
+    })),
+    statusDistribution,
+    modeDistribution,
   };
 }
 
@@ -322,7 +478,11 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
   const now = new Date().toISOString();
   const repositoryId = crypto.randomUUID();
   const deploymentId = crypto.randomUUID();
-  const repoName = input.repositoryUrl.split("/").pop()?.replace(/\.git$/, "") ?? "repo";
+  const repoName =
+    input.repositoryUrl
+      .split("/")
+      .pop()
+      ?.replace(/\.git$/, "") ?? "repo";
   const appSlug = toSlug(input.appName);
   const workspacePath = path.join(getAppConfig().paths.appsDir, deploymentId);
   const projectName = `vercelab-${appSlug}-${deploymentId.slice(0, 8)}`;
@@ -395,7 +555,9 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
     transaction();
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) {
-      throw new Error("That subdomain is already reserved by another deployment.");
+      throw new Error(
+        "That subdomain is already reserved by another deployment.",
+      );
     }
 
     throw error;
@@ -408,7 +570,9 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
   };
 }
 
-export function getStoredDeploymentById(deploymentId: string): StoredDeployment {
+export function getStoredDeploymentById(
+  deploymentId: string,
+): StoredDeployment {
   const db = getDatabase();
   const row = db
     .prepare(
@@ -472,7 +636,9 @@ export function updateDeploymentRecord(
   update: DeploymentUpdate,
 ) {
   const db = getDatabase();
-  const entries = Object.entries(update).filter(([, value]) => value !== undefined);
+  const entries = Object.entries(update).filter(
+    ([, value]) => value !== undefined,
+  );
 
   if (entries.length === 0) {
     return;
@@ -498,7 +664,9 @@ export function updateDeploymentRecord(
     .concat("updated_at = @updatedAt")
     .join(", ");
 
-  db.prepare(`UPDATE deployments SET ${statement} WHERE id = @deploymentId`).run({
+  db.prepare(
+    `UPDATE deployments SET ${statement} WHERE id = @deploymentId`,
+  ).run({
     deploymentId,
     updatedAt: new Date().toISOString(),
     ...Object.fromEntries(
@@ -563,11 +731,15 @@ export function deleteDeploymentRecord(deploymentId: string) {
     db.prepare("DELETE FROM deployments WHERE id = ?").run(deploymentId);
 
     const remaining = db
-      .prepare("SELECT COUNT(*) AS count FROM deployments WHERE repository_id = ?")
+      .prepare(
+        "SELECT COUNT(*) AS count FROM deployments WHERE repository_id = ?",
+      )
       .get(deployment.repositoryId) as { count: number };
 
     if (remaining.count === 0) {
-      db.prepare("DELETE FROM repositories WHERE id = ?").run(deployment.repositoryId);
+      db.prepare("DELETE FROM repositories WHERE id = ?").run(
+        deployment.repositoryId,
+      );
     }
   });
 
