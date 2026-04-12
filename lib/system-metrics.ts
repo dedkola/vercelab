@@ -56,7 +56,7 @@ export type MetricsSnapshot = {
 };
 
 const CACHE_WINDOW_MS = 2500;
-const INTERFACE_IGNORE_RE = /^(lo|docker\d+|veth|br-|tun|tap|vboxnet)/;
+const LOOPBACK_INTERFACE_RE = /^(lo|lo0)$/;
 
 let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
 let lastCpuCounters: SampleState<CpuCounters> | null = null;
@@ -100,6 +100,16 @@ async function readProcFile(relativePath: string) {
   }
 
   throw new Error(`Unable to read proc file ${relativePath}.`);
+}
+
+async function readFirstAvailableFile(candidates: string[]) {
+  for (const candidate of candidates) {
+    if (await pathExists(candidate)) {
+      return await readFile(candidate, "utf8");
+    }
+  }
+
+  throw new Error(`Unable to read any file from ${candidates.join(", ")}.`);
 }
 
 async function runCommand(command: string, args: string[]) {
@@ -247,7 +257,7 @@ async function readMemorySnapshot() {
 }
 
 function isRelevantInterface(name: string) {
-  return !INTERFACE_IGNORE_RE.test(name);
+  return !LOOPBACK_INTERFACE_RE.test(name);
 }
 
 function parseLinuxNetworkCounters(source: string) {
@@ -334,7 +344,14 @@ function parseDarwinNetworkCounters(source: string) {
 
 async function readNetworkCounters() {
   try {
-    return parseLinuxNetworkCounters(await readProcFile("net/dev"));
+    const config = getAppConfig();
+    return parseLinuxNetworkCounters(
+      await readFirstAvailableFile([
+        path.join(config.runtime.hostProcPath, "1/net/dev"),
+        path.join(config.runtime.hostProcPath, "net/dev"),
+        path.join("/proc", "net/dev"),
+      ]),
+    );
   } catch {
     if (process.platform === "darwin") {
       return parseDarwinNetworkCounters(await runCommand("netstat", ["-ibn"]));

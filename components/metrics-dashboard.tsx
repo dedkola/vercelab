@@ -137,6 +137,7 @@ type HistoryPoint = {
   memory: number;
   networkIn: number;
   networkOut: number;
+  networkTotal: number;
   containersCpu: number;
   containersMemory: number;
 };
@@ -197,6 +198,19 @@ function formatMegabitsPerSecond(value: number) {
   return mbps.toFixed(1);
 }
 
+function buildSeedSeries(latestValue: number, length: number) {
+  const seed = Math.max(latestValue, 0);
+
+  if (length <= 0) {
+    return [];
+  }
+
+  return Array.from({ length }, (_, index) => {
+    const ratio = length === 1 ? 1 : (index + 1) / length;
+    return seed * ratio;
+  });
+}
+
 function appendHistory(history: HistoryPoint[], snapshot: MetricsSnapshot) {
   if (history.at(-1)?.timestamp === snapshot.timestamp) {
     return history;
@@ -210,6 +224,8 @@ function appendHistory(history: HistoryPoint[], snapshot: MetricsSnapshot) {
       memory: snapshot.system.memoryPercent,
       networkIn: snapshot.network.rxBytesPerSecond,
       networkOut: snapshot.network.txBytesPerSecond,
+      networkTotal:
+        snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond,
       containersCpu: snapshot.containers.cpuPercent,
       containersMemory: snapshot.containers.memoryPercent,
     },
@@ -357,18 +373,36 @@ function TrafficDonut({
   );
 }
 
-function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
+function MainTrafficChart({
+  history,
+  currentNetworkIn,
+  currentNetworkOut,
+}: {
+  history: HistoryPoint[];
+  currentNetworkIn: number;
+  currentNetworkOut: number;
+}) {
   const width = 1160;
   const height = 262;
   const lineInset = 56;
   const graphWidth = width - lineInset * 2;
   const graphHeight = height - 38;
-  const inbound = history.map((entry) => entry.networkIn);
-  const outbound = history.map((entry) => entry.networkOut);
+  const inbound = history.length
+    ? history.map((entry) => entry.networkIn)
+    : buildSeedSeries(currentNetworkIn, 8);
+  const outbound = history.length
+    ? history.map((entry) => entry.networkOut)
+    : buildSeedSeries(currentNetworkOut, 8);
+  const total = history.length
+    ? history.map((entry) => entry.networkTotal)
+    : buildSeedSeries(currentNetworkIn + currentNetworkOut, 8);
   const latency = history.map(
     (entry) => 1 + entry.cpu / 14 + entry.memory / 35,
   );
-  const networkPeak = getNiceMaxValue([...inbound, ...outbound], 84_600_000);
+  const networkPeak = getNiceMaxValue(
+    [...total, ...inbound, ...outbound],
+    Math.max(16_000, currentNetworkIn + currentNetworkOut),
+  );
   const latencyPeak = 120;
   const xTicks = buildAxisTicks(history, 7);
   const yTicks = Array.from({ length: 5 }, (_, index) => index / 4);
@@ -379,6 +413,7 @@ function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
     graphHeight,
     networkPeak,
   );
+  const totalPath = buildPath(total, graphWidth, graphHeight, networkPeak);
   const inboundArea = buildArea(inbound, graphWidth, graphHeight, networkPeak);
   const outboundArea = buildArea(
     outbound,
@@ -386,6 +421,7 @@ function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
     graphHeight,
     networkPeak,
   );
+  const totalArea = buildArea(total, graphWidth, graphHeight, networkPeak);
   const latencyPath = buildPath(latency, graphWidth, graphHeight, latencyPeak);
 
   return (
@@ -461,6 +497,12 @@ function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
         })}
 
         <g transform={`translate(${lineInset} 24)`}>
+          {totalArea ? (
+            <path
+              className="main-chart__area main-chart__area--total"
+              d={totalArea}
+            />
+          ) : null}
           {inboundArea ? (
             <path
               className="main-chart__area main-chart__area--blue"
@@ -483,6 +525,12 @@ function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
             <path
               className="main-chart__line main-chart__line--violet"
               d={outboundPath}
+            />
+          ) : null}
+          {totalPath ? (
+            <path
+              className="main-chart__line main-chart__line--total"
+              d={totalPath}
             />
           ) : null}
           {latencyPath ? (
@@ -676,10 +724,9 @@ export default function MetricsDashboard() {
     ? deferredSnapshot.network.rxBytesPerSecond +
       deferredSnapshot.network.txBytesPerSecond
     : 0;
-  const primaryInterface = deferredSnapshot?.network.interfaces[0];
   const topContainers = deferredSnapshot?.containers.top ?? [];
   const statusMessage = deferredSnapshot
-    ? `Live traffic on ${primaryInterface?.name ?? "main uplink"}`
+    ? "Live host traffic aggregated across server interfaces"
     : (errorMessage ?? "Connecting to metrics feed");
   const donutSegments = TRAFFIC_ROWS.map((row) => {
     const numericValue =
@@ -1008,7 +1055,11 @@ export default function MetricsDashboard() {
           </div>
 
           <section className="chart-area">
-            <MainTrafficChart history={deferredHistory} />
+            <MainTrafficChart
+              history={deferredHistory}
+              currentNetworkIn={deferredSnapshot?.network.rxBytesPerSecond ?? 0}
+              currentNetworkOut={deferredSnapshot?.network.txBytesPerSecond ?? 0}
+            />
           </section>
 
           <div className="scrubber">
