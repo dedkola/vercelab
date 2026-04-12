@@ -823,7 +823,7 @@ export default function MetricsDashboard() {
           id="gateway-panel"
         >
           <button
-            className={`panel__collapse ${isPanelCollapsed ? "" : "panel__collapse--active"}`}
+            className="panel__collapse"
             type="button"
             aria-controls="gateway-panel"
             aria-label={
@@ -1058,7 +1058,9 @@ export default function MetricsDashboard() {
             <MainTrafficChart
               history={deferredHistory}
               currentNetworkIn={deferredSnapshot?.network.rxBytesPerSecond ?? 0}
-              currentNetworkOut={deferredSnapshot?.network.txBytesPerSecond ?? 0}
+              currentNetworkOut={
+                deferredSnapshot?.network.txBytesPerSecond ?? 0
+              }
             />
           </section>
 

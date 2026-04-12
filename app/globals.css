@@ -254,6 +254,13 @@ a:focus-visible {
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
+  -ms-overflow-style: none;
+}
+
+.rail::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .rail__group {
@@ -309,6 +316,7 @@ a:focus-visible {
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
+  -ms-overflow-style: none;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -316,6 +324,12 @@ a:focus-visible {
   transition:
     padding 180ms ease,
     border-color 180ms ease;
+}
+
+.panel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .panel--collapsed {
@@ -330,18 +344,18 @@ a:focus-visible {
 
 .panel__collapse {
   position: absolute;
-  top: 10px;
-  right: -18px;
-  width: 36px;
-  height: 36px;
+  top: 18px;
+  right: -11px;
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
   padding: 0;
   background: var(--surface);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  box-shadow: none;
-  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  color: var(--text-secondary);
   z-index: 3;
   transition:
     color 150ms ease,
@@ -351,8 +365,10 @@ a:focus-visible {
 }
 
 .panel__collapse:hover {
-  background: var(--border-light);
-  color: var(--text-secondary);
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+  transform: translateX(-1px);
 }
 
 .panel__collapse .icon {
@@ -360,19 +376,13 @@ a:focus-visible {
   height: 8px;
 }
 
-.panel__collapse--active {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.panel__collapse--active:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
-  color: var(--accent);
+.panel__collapse--closed .icon {
+  width: 8px;
+  height: 8px;
 }
 
 .panel--collapsed .panel__collapse {
-  right: -18px;
+  right: -11px;
 }
 
 /* Device header */
