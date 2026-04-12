@@ -344,7 +344,7 @@ gather_configuration() {
   VERCELAB_BASE_DOMAIN="${VERCELAB_BASE_DOMAIN:-$(prompt_with_default "Base wildcard domain" "$default_base_domain")}" 
 
   VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-${existing_admin_host:-}}"
-  VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-$(prompt_with_default "Control plane host" "vercelab.${VERCELAB_BASE_DOMAIN}")}" 
+  VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-$(prompt_with_default "Dashboard host" "dash.${VERCELAB_BASE_DOMAIN}")}"
 
   VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-${existing_host_root:-}}"
   VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-$(prompt_with_default "Shared host root for data and Traefik assets" "/opt/vercelab")}" 
@@ -376,7 +376,7 @@ gather_configuration() {
   validate_absolute_path "$VERCELAB_DATABASE_PATH" "VERCELAB_DATABASE_PATH"
   validate_absolute_path "$VERCELAB_DOCKER_SOCKET_PATH" "VERCELAB_DOCKER_SOCKET_PATH"
 
-  [[ "$VERCELAB_ADMIN_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] || fail "VERCELAB_ADMIN_HOST must be inside VERCELAB_BASE_DOMAIN."
+  [[ "$VERCELAB_ADMIN_HOST" == "$VERCELAB_BASE_DOMAIN" || "$VERCELAB_ADMIN_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] || fail "VERCELAB_ADMIN_HOST must be inside VERCELAB_BASE_DOMAIN."
   [[ "$VERCELAB_DATABASE_PROVIDER" == "sqlite" || "$VERCELAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCELAB_DATABASE_PROVIDER must be sqlite or postgres."
 
   ensure_path_inside_root "$VERCELAB_DATA_ROOT" "VERCELAB_DATA_ROOT"
