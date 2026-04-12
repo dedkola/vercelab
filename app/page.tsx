@@ -88,7 +88,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             </div>
           </div>
 
-          <div className="status-row" aria-label="Environment summary">
+          <div className="topbar-pills" aria-label="Environment summary">
             <span className="stack-pill">Latest Next.js 16 control plane</span>
             <span className="stack-pill">Traefik + self-signed TLS</span>
             <span className="stack-pill">SQLite now, Postgres later</span>
@@ -336,7 +336,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                   <article className="surface deployment-card" key={deployment.id}>
                     <div className="deployment-header">
                       <div className="deployment-title">
-                        <div className="status-row">
+                        <div className="badge-row">
                           <span className={`badge badge--${deployment.status}`}>
                             {formatStatusLabel(deployment.status)}
                           </span>
