@@ -776,47 +776,6 @@ export default function MetricsDashboard() {
             <Icon name="chevron-left" />
           </button>
 
-          <div className="device-header">
-            <div className="device-hero">
-              <div className="device-hero__body">
-                <div className="device-hero__plate" />
-                <div className="device-hero__badge">UCG</div>
-              </div>
-            </div>
-
-            <div className="device-name">tk</div>
-
-            <button
-              className="device-header__end"
-              type="button"
-              aria-label="Device settings"
-            >
-              <Icon name="settings" />
-            </button>
-          </div>
-
-          <div className="device-counts">
-            <div className="device-count">
-              <Icon name="gateway" />
-              <span className="device-count__num">1</span>
-            </div>
-            <span className="device-count__line device-count__line--solid" />
-            <div className="device-count">
-              <Icon name="switch-device" />
-              <span className="device-count__num">3</span>
-            </div>
-            <span className="device-count__line device-count__line--dashed" />
-            <div className="device-count">
-              <Icon name="ap" />
-              <span className="device-count__num">1</span>
-            </div>
-            <span className="device-count__line device-count__line--dotted" />
-            <div className="device-count">
-              <Icon name="client-device" />
-              <span className="device-count__num">20</span>
-            </div>
-          </div>
-
           <div className="info-row">
             <span className="info-row__label">Gateway IP</span>
             <span className="info-row__value">192.168.0.1</span>
@@ -839,20 +798,6 @@ export default function MetricsDashboard() {
 
           <hr className="panel__hr" />
 
-          <div className="isp-header">
-            <Icon name="globe" />
-            <div className="isp-header__name">Private Joint-stock Comp...</div>
-            <div className="isp-header__status">100%</div>
-          </div>
-
-          <div className="info-row">
-            <span className="info-row__label">WAN IP</span>
-            <span className="info-row__value">93.127.118.68</span>
-          </div>
-          <div className="info-row">
-            <span className="info-row__label">Monthly Data Usage</span>
-            <span className="info-row__value">1.66 TB</span>
-          </div>
           <section className="throughput-card" aria-label="Throughput">
             <div className="throughput-card__header">
               <span className="throughput-card__title">Throughput</span>
@@ -886,31 +831,12 @@ export default function MetricsDashboard() {
             </div>
 
             <MiniSparkline history={deferredHistory} />
-
-            <div className="latency-dots">
-              <span className="latency-dot">
-                <span className="latency-dot__swatch latency-dot__swatch--windows" />
-                15ms
-              </span>
-              <span className="latency-dot">
-                <span className="latency-dot__swatch latency-dot__swatch--google" />
-                15ms
-              </span>
-              <span className="latency-dot">
-                <span className="latency-dot__swatch latency-dot__swatch--cloud" />
-                1ms
-              </span>
-            </div>
           </section>
 
           <div className="action-buttons">
             <button className="action-btn" type="button">
               <Icon name="speed-test" />
-              ISP Speed Test
-            </button>
-            <button className="action-btn" type="button">
-              <Icon name="wifi-doctor" />
-              WiFi Doctor
+              Placeholder 1
             </button>
           </div>
 
@@ -1186,7 +1112,6 @@ export default function MetricsDashboard() {
                   </div>
                 </article>
               </div>
-
             </div>
 
             <div className="dashboard-overview__side">
