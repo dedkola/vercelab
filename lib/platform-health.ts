@@ -62,7 +62,10 @@ async function runProbe(command: string, args: string[]) {
   });
 }
 
-async function checkWritablePath(label: string, targetPath: string): Promise<PlatformCheck> {
+async function checkWritablePath(
+  label: string,
+  targetPath: string,
+): Promise<PlatformCheck> {
   try {
     await access(targetPath, constants.W_OK);
 
@@ -181,6 +184,31 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
         error instanceof Error
           ? `Docker socket is unavailable: ${error.message}`
           : "Docker socket is unavailable.",
+    });
+  }
+
+  try {
+    const procStats = await stat(config.runtime.hostProcPath);
+
+    checks.push({
+      id: "host-proc",
+      label: "Host metrics mount",
+      ok: procStats.isDirectory(),
+      severity: runtimeSeverity,
+      message: procStats.isDirectory()
+        ? `Host metrics path is available at ${config.runtime.hostProcPath}.`
+        : `${config.runtime.hostProcPath} exists but is not a directory.`,
+    });
+  } catch (error) {
+    checks.push({
+      id: "host-proc",
+      label: "Host metrics mount",
+      ok: false,
+      severity: runtimeSeverity,
+      message:
+        error instanceof Error
+          ? `Host metrics path is unavailable: ${error.message}`
+          : "Host metrics path is unavailable.",
     });
   }
 

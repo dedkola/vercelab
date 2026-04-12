@@ -44,6 +44,7 @@ services:
       VERCELAB_LOCKS_DIR: ${VERCELAB_LOCKS_DIR:-/opt/vercelab/data/locks}
       VERCELAB_DATABASE_PATH: ${VERCELAB_DATABASE_PATH:-/opt/vercelab/data/db/vercelab.sqlite}
       VERCELAB_DOCKER_SOCKET_PATH: ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+      VERCELAB_HOST_PROC_PATH: ${VERCELAB_HOST_PROC_PATH:-/host/proc}
     healthcheck:
       test:
         [
@@ -59,10 +60,11 @@ services:
     volumes:
       - ${VERCELAB_HOST_ROOT:-/opt/vercelab}:${VERCELAB_HOST_ROOT:-/opt/vercelab}
       - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+      - /proc:${VERCELAB_HOST_PROC_PATH:-/host/proc}:ro
     labels:
       - traefik.enable=true
       - traefik.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
-      - 'traefik.http.routers.vercelab.rule=Host(`${VERCELAB_ADMIN_HOST}`)'
+      - "traefik.http.routers.vercelab.rule=Host(`${VERCELAB_ADMIN_HOST}`)"
       - traefik.http.routers.vercelab.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
       - traefik.http.routers.vercelab.tls=true
       - traefik.http.services.vercelab.loadbalancer.server.port=${PORT:-3000}

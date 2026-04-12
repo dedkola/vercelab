@@ -1,436 +1,375 @@
-type DashboardIconName =
-  | "overview"
-  | "deployments"
-  | "activity"
-  | "health"
-  | "create"
+export type IconName =
+  | "dashboard"
+  | "topology"
+  | "devices"
+  | "clients"
+  | "ports"
+  | "airview"
+  | "insights"
   | "settings"
-  | "external";
+  | "syslog"
+  | "integrations"
+  | "alarm"
+  | "innerspace"
+  | "admins"
+  | "network"
+  | "theme"
+  | "profile"
+  | "chevron-down"
+  | "chevron-left"
+  | "chevron-right"
+  | "globe"
+  | "copy"
+  | "search"
+  | "check"
+  | "bars"
+  | "arrow-down"
+  | "arrow-up"
+  | "gateway"
+  | "switch-device"
+  | "ap"
+  | "client-device"
+  | "wifi"
+  | "shield"
+  | "speed-test"
+  | "wifi-doctor"
+  | "layout-grid"
+  | "notifications"
+  | "monitor"
+  | "gamepad"
+  | "chat"
+  | "film"
+  | "cloud"
+  | "headphones";
 
-export type TrendPoint = {
-  label: string;
-  total: number;
-  success: number;
-  failed: number;
-};
-
-export type DonutSegment = {
-  label: string;
-  value: number;
-  tone: string;
-};
-
-type DashboardIconProps = {
-  name: DashboardIconName;
+type IconProps = {
+  name: IconName;
+  className?: string;
   title?: string;
 };
 
-type TrendChartProps = {
-  data: TrendPoint[];
-};
-
-type DonutChartProps = {
-  segments: DonutSegment[];
-  totalLabel: string;
-  totalValue: string;
-};
-
-type ChartPoint = {
-  x: number;
-  y: number;
-};
-
-function buildPolyline(points: ChartPoint[]): string {
-  if (points.length === 0) {
-    return "";
-  }
-
-  return points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
-    .join(" ");
-}
-
-function buildArea(points: ChartPoint[], baseline: number): string {
-  if (points.length === 0) {
-    return "";
-  }
-
-  const firstPoint = points[0];
-  const lastPoint = points[points.length - 1];
-
-  return `${buildPolyline(points)} L ${lastPoint.x} ${baseline} L ${firstPoint.x} ${baseline} Z`;
-}
-
-function formatCompact(value: number): string {
-  return new Intl.NumberFormat("en", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
-export function DashboardIcon({ name, title }: DashboardIconProps) {
-  const titleId = title
-    ? `icon-${name}-${title.replace(/\s+/g, "-").toLowerCase()}`
-    : undefined;
-
-  const sharedProps = {
+export function Icon({ name, className = "icon", title }: IconProps) {
+  const s = {
     fill: "none",
     stroke: "currentColor",
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    strokeWidth: 1.7,
+    strokeWidth: 1.6,
   };
 
-  const iconContent = (
-    <>
-      {title ? <title id={titleId}>{title}</title> : null}
-
-      {name === "overview" ? (
-        <>
-          <rect
-            x="3.5"
-            y="3.5"
-            width="7"
-            height="7"
-            rx="1.5"
-            {...sharedProps}
-          />
-          <rect
-            x="13.5"
-            y="3.5"
-            width="7"
-            height="7"
-            rx="1.5"
-            {...sharedProps}
-          />
-          <rect
-            x="3.5"
-            y="13.5"
-            width="7"
-            height="7"
-            rx="1.5"
-            {...sharedProps}
-          />
-          <rect
-            x="13.5"
-            y="13.5"
-            width="7"
-            height="7"
-            rx="1.5"
-            {...sharedProps}
-          />
-        </>
-      ) : null}
-
-      {name === "deployments" ? (
-        <>
-          <path d="M4 7.5h16" {...sharedProps} />
-          <path
-            d="M7 4.5h10a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 17 19.5H7A1.5 1.5 0 0 1 5.5 18V6A1.5 1.5 0 0 1 7 4.5Z"
-            {...sharedProps}
-          />
-          <path d="M8.5 11.5h7" {...sharedProps} />
-          <path d="M8.5 15h5" {...sharedProps} />
-        </>
-      ) : null}
-
-      {name === "activity" ? (
-        <>
-          <path d="M4 18.5h16" {...sharedProps} />
-          <path d="M6 15.5 9.5 11l3 2.5 5.5-7" {...sharedProps} />
-          <circle cx="6" cy="15.5" r="1" fill="currentColor" />
-          <circle cx="9.5" cy="11" r="1" fill="currentColor" />
-          <circle cx="12.5" cy="13.5" r="1" fill="currentColor" />
-          <circle cx="18" cy="6.5" r="1" fill="currentColor" />
-        </>
-      ) : null}
-
-      {name === "health" ? (
-        <>
-          <path
-            d="M12 3.5 18.5 6v5.5c0 4-2.1 7.5-6.5 9-4.4-1.5-6.5-5-6.5-9V6L12 3.5Z"
-            {...sharedProps}
-          />
-          <path d="m8.5 12.5 2.1 2.1 4.9-5.1" {...sharedProps} />
-        </>
-      ) : null}
-
-      {name === "create" ? (
-        <>
-          <circle cx="12" cy="12" r="8" {...sharedProps} />
-          <path d="M12 8v8" {...sharedProps} />
-          <path d="M8 12h8" {...sharedProps} />
-        </>
-      ) : null}
-
-      {name === "settings" ? (
-        <>
-          <circle cx="12" cy="12" r="2.7" {...sharedProps} />
-          <path d="M12 3.5v2.3" {...sharedProps} />
-          <path d="M12 18.2v2.3" {...sharedProps} />
-          <path d="m5.9 5.9 1.7 1.7" {...sharedProps} />
-          <path d="m16.4 16.4 1.7 1.7" {...sharedProps} />
-          <path d="M3.5 12h2.3" {...sharedProps} />
-          <path d="M18.2 12h2.3" {...sharedProps} />
-          <path d="m5.9 18.1 1.7-1.7" {...sharedProps} />
-          <path d="m16.4 7.6 1.7-1.7" {...sharedProps} />
-        </>
-      ) : null}
-
-      {name === "external" ? (
-        <>
-          <path
-            d="M10 6.5H6.5A1.5 1.5 0 0 0 5 8v9.5A1.5 1.5 0 0 0 6.5 19H16a1.5 1.5 0 0 0 1.5-1.5V14"
-            {...sharedProps}
-          />
-          <path d="M13 5h6v6" {...sharedProps} />
-          <path d="M11 13 19 5" {...sharedProps} />
-        </>
-      ) : null}
-    </>
-  );
-
-  if (title) {
-    return (
-      <svg
-        aria-labelledby={titleId}
-        className="dashboard-icon"
-        role="img"
-        viewBox="0 0 24 24"
-      >
-        {iconContent}
-      </svg>
-    );
-  }
-
-  return (
-    <svg aria-hidden="true" className="dashboard-icon" viewBox="0 0 24 24">
-      {iconContent}
-    </svg>
-  );
-}
-
-export function TrendChart({ data }: TrendChartProps) {
-  const width = 780;
-  const height = 290;
-  const padding = {
-    top: 20,
-    right: 54,
-    bottom: 42,
-    left: 18,
-  };
-  const plotWidth = width - padding.left - padding.right;
-  const plotHeight = height - padding.top - padding.bottom;
-  const baseline = height - padding.bottom;
-  const maxValue = Math.max(
-    ...data.flatMap((point) => [point.total, point.success, point.failed]),
-    1,
-  );
-  const roundedMax = Math.max(4, Math.ceil(maxValue / 4) * 4);
-  const xStep = data.length > 1 ? plotWidth / (data.length - 1) : plotWidth;
-  const hasData = data.some(
-    (point) => point.total > 0 || point.success > 0 || point.failed > 0,
-  );
-
-  const projectY = (value: number) => {
-    const scaled = value / roundedMax;
-    return padding.top + plotHeight - scaled * plotHeight;
-  };
-
-  const projectX = (index: number) => padding.left + index * xStep;
-
-  const totalPoints = data.map((point, index) => ({
-    x: projectX(index),
-    y: projectY(point.total),
-  }));
-  const successPoints = data.map((point, index) => ({
-    x: projectX(index),
-    y: projectY(point.success),
-  }));
-  const failedPoints = data.map((point, index) => ({
-    x: projectX(index),
-    y: projectY(point.failed),
-  }));
-  const lastPoint = totalPoints[totalPoints.length - 1];
-
-  return (
-    <div className="trend-chart">
-      <svg
-        role="img"
-        aria-label="Deployment activity chart"
-        viewBox={`0 0 ${width} ${height}`}
-      >
-        {Array.from({ length: 5 }, (_, index) => {
-          const value = roundedMax - (roundedMax / 4) * index;
-          const y = padding.top + (plotHeight / 4) * index;
-
-          return (
-            <g key={`grid-${value}`}>
-              <line
-                className="chart-grid-line"
-                x1={padding.left}
-                y1={y}
-                x2={width - padding.right}
-                y2={y}
-              />
-              <text
-                className="chart-axis-label"
-                x={width - padding.right + 8}
-                y={y + 4}
-              >
-                {formatCompact(value)}
-              </text>
-            </g>
-          );
-        })}
-
-        {data.map((point, index) => {
-          const x = projectX(index);
-          const barHeight = plotHeight * (point.total / roundedMax);
-
-          return (
-            <g key={`point-${index}-${point.label}`}>
-              <line
-                className="chart-grid-column"
-                x1={x}
-                y1={padding.top}
-                x2={x}
-                y2={baseline}
-              />
-              {hasData ? (
-                <rect
-                  className="chart-bar"
-                  x={x - 11}
-                  y={baseline - barHeight}
-                  width="22"
-                  height={Math.max(barHeight, 2)}
-                  rx="11"
-                />
-              ) : null}
-              <text className="chart-label" x={x} y={height - 14}>
-                {point.label}
-              </text>
-            </g>
-          );
-        })}
-
-        {hasData ? (
+  const content = (() => {
+    switch (name) {
+      case "dashboard":
+        return (
           <>
-            <path className="chart-area" d={buildArea(totalPoints, baseline)} />
-            <path
-              className="chart-line chart-line--primary"
-              d={buildPolyline(totalPoints)}
-            />
-            <path
-              className="chart-line chart-line--success"
-              d={buildPolyline(successPoints)}
-            />
-            <path
-              className="chart-line chart-line--danger"
-              d={buildPolyline(failedPoints)}
-            />
-            {lastPoint ? (
-              <g>
-                <circle
-                  className="chart-live-ping"
-                  cx={lastPoint.x}
-                  cy={lastPoint.y}
-                  r="10"
-                />
-                <circle
-                  className="chart-live-dot"
-                  cx={lastPoint.x}
-                  cy={lastPoint.y}
-                  r="4.5"
-                />
-              </g>
-            ) : null}
+            <path d="M5 16a7 7 0 0 1 14 0" {...s} />
+            <path d="M12 12.5l3-3" {...s} />
+            <circle cx="12" cy="16" r="1" fill="currentColor" stroke="none" />
           </>
-        ) : (
-          <text className="chart-empty-label" x={width / 2} y={height / 2}>
-            Waiting for deployment history
-          </text>
-        )}
-      </svg>
-    </div>
-  );
-}
-
-export function DonutChart({
-  segments,
-  totalLabel,
-  totalValue,
-}: DonutChartProps) {
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-
-  let offset = 0;
+        );
+      case "topology":
+        return (
+          <>
+            <circle cx="7" cy="7" r="2" {...s} />
+            <circle cx="17" cy="7" r="2" {...s} />
+            <circle cx="12" cy="17" r="2" {...s} />
+            <path d="M8.5 8.5l2 5.5M15.5 8.5l-2 5.5M9 7h6" {...s} />
+          </>
+        );
+      case "devices":
+        return (
+          <>
+            <rect x="4" y="5" width="16" height="11" rx="2" {...s} />
+            <path d="M8 20h8M12 16v4" {...s} />
+          </>
+        );
+      case "clients":
+        return (
+          <>
+            <circle cx="9" cy="9" r="2.5" {...s} />
+            <path d="M4 19c1-3 3-4.5 5-4.5s4 1.5 5 4.5" {...s} />
+            <circle cx="16" cy="10" r="2" {...s} />
+            <path d="M15 19c.5-2 1.5-3 3-3 1.2 0 2.2.6 2.8 1.5" {...s} />
+          </>
+        );
+      case "ports":
+        return (
+          <>
+            <rect x="4" y="5" width="16" height="14" rx="2" {...s} />
+            <path d="M8 9v6M12 9v6M16 9v6" {...s} />
+          </>
+        );
+      case "airview":
+        return (
+          <>
+            <path d="M12 18h.01" {...s} strokeWidth={2} />
+            <path d="M8.5 14.5a5 5 0 0 1 7 0" {...s} />
+            <path d="M5.5 11.5a9 9 0 0 1 13 0" {...s} />
+            <path d="M3 8.5a13 13 0 0 1 18 0" {...s} />
+          </>
+        );
+      case "insights":
+        return (
+          <>
+            <path d="M4 19h16" {...s} />
+            <path d="M4 19V5" {...s} />
+            <path d="M7 15l3.5-4 3 2.5L18 8" {...s} />
+          </>
+        );
+      case "settings":
+        return (
+          <>
+            <circle cx="12" cy="12" r="3" {...s} />
+            <path
+              d="M12 4v2M12 18v2M4.9 7.1l1.4 1.4M17.7 15.5l1.4 1.4M4 12h2M18 12h2M4.9 16.9l1.4-1.4M17.7 8.5l1.4-1.4"
+              {...s}
+            />
+          </>
+        );
+      case "syslog":
+        return (
+          <>
+            <path
+              d="M7 4h7l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
+              {...s}
+            />
+            <path d="M14 4v4h4" {...s} />
+            <path d="M9 13h6M9 17h4" {...s} />
+          </>
+        );
+      case "integrations":
+        return (
+          <>
+            <rect x="3" y="8" width="6" height="8" rx="1.5" {...s} />
+            <rect x="15" y="5" width="6" height="5.5" rx="1.5" {...s} />
+            <rect x="15" y="13.5" width="6" height="5.5" rx="1.5" {...s} />
+            <path d="M9 12h6M15 12V8M15 12v3.5" {...s} />
+          </>
+        );
+      case "alarm":
+        return (
+          <>
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" {...s} />
+            <path d="M13.7 21a2 2 0 0 1-3.4 0" {...s} />
+          </>
+        );
+      case "innerspace":
+        return (
+          <>
+            <rect x="3" y="3" width="18" height="18" rx="2" {...s} />
+            <path d="M3 9h18M9 3v18" {...s} />
+          </>
+        );
+      case "admins":
+        return (
+          <>
+            <circle cx="8" cy="8" r="2" {...s} />
+            <circle cx="16" cy="8" r="2" {...s} />
+            <path d="M4 18c.7-2.5 2.3-3.5 4-3.5s3.3 1 4 3.5" {...s} />
+            <path d="M12 18c.7-2.5 2.3-3.5 4-3.5s3.3 1 4 3.5" {...s} />
+          </>
+        );
+      case "network":
+        return (
+          <>
+            <circle cx="12" cy="12" r="8" {...s} />
+            <circle cx="12" cy="12" r="3" {...s} />
+          </>
+        );
+      case "theme":
+        return (
+          <>
+            <circle cx="12" cy="12" r="7" {...s} />
+            <path d="M12 5a7 7 0 0 1 0 14" fill="currentColor" stroke="none" />
+          </>
+        );
+      case "profile":
+        return (
+          <>
+            <circle cx="12" cy="9" r="3" {...s} />
+            <path d="M6 20c1-3.5 3-5 6-5s5 1.5 6 5" {...s} />
+          </>
+        );
+      case "chevron-down":
+        return <path d="M7 10l5 4 5-4" {...s} />;
+      case "chevron-left":
+        return <path d="M15 7l-5 5 5 5" {...s} />;
+      case "chevron-right":
+        return <path d="M9 7l5 5-5 5" {...s} />;
+      case "globe":
+        return (
+          <>
+            <circle cx="12" cy="12" r="8" {...s} />
+            <path d="M4 12h16" {...s} />
+            <path
+              d="M12 4c2.5 2.5 3.5 5 3.5 8s-1 5.5-3.5 8c-2.5-2.5-3.5-5-3.5-8s1-5.5 3.5-8"
+              {...s}
+            />
+          </>
+        );
+      case "copy":
+        return (
+          <>
+            <rect x="8" y="8" width="10" height="12" rx="1.5" {...s} />
+            <path d="M6 16V5.5A1.5 1.5 0 0 1 7.5 4H15" {...s} />
+          </>
+        );
+      case "search":
+        return (
+          <>
+            <circle cx="10.5" cy="10.5" r="5" {...s} />
+            <path d="M14.5 14.5l4.5 4.5" {...s} />
+          </>
+        );
+      case "check":
+        return <path d="M5 12l5 5L20 7" {...s} />;
+      case "bars":
+        return (
+          <path d="M6 18V14M10 18V9M14 18V11M18 18V7" {...s} strokeWidth={2} />
+        );
+      case "arrow-down":
+        return <path d="M12 5v14M8 15l4 4 4-4" {...s} />;
+      case "arrow-up":
+        return <path d="M12 19V5M8 9l4-4 4 4" {...s} />;
+      case "gateway":
+        return (
+          <>
+            <rect x="3" y="8" width="18" height="8" rx="2" {...s} />
+            <circle cx="7" cy="12" r="1" fill="currentColor" stroke="none" />
+            <path d="M12 12h6" {...s} />
+            <path d="M8 5l4 3 4-3" {...s} />
+          </>
+        );
+      case "switch-device":
+        return (
+          <>
+            <rect x="3" y="7" width="18" height="10" rx="2" {...s} />
+            <path d="M7 11v2M10 10v3M13 11v2M16 10v3" {...s} />
+          </>
+        );
+      case "ap":
+        return (
+          <>
+            <circle cx="12" cy="14" r="3.5" {...s} />
+            <path d="M8 9.5a6 6 0 0 1 8 0" {...s} />
+            <path d="M5.5 6.5a10 10 0 0 1 13 0" {...s} />
+          </>
+        );
+      case "client-device":
+        return (
+          <>
+            <rect x="5" y="5" width="14" height="10" rx="1.5" {...s} />
+            <path d="M9 19h6M12 15v4" {...s} />
+          </>
+        );
+      case "wifi":
+        return (
+          <>
+            <circle cx="12" cy="18" r="1" fill="currentColor" stroke="none" />
+            <path d="M8.5 14.5a5 5 0 0 1 7 0" {...s} />
+            <path d="M5 11a10 10 0 0 1 14 0" {...s} />
+          </>
+        );
+      case "shield":
+        return (
+          <path
+            d="M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z"
+            {...s}
+          />
+        );
+      case "speed-test":
+        return (
+          <>
+            <circle cx="12" cy="12" r="8" {...s} />
+            <path d="M12 8v4l2.5 2.5" {...s} />
+          </>
+        );
+      case "wifi-doctor":
+        return (
+          <>
+            <path d="M8.5 15a5 5 0 0 1 7 0" {...s} />
+            <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+            <path d="M5 12a10 10 0 0 1 14 0" {...s} />
+            <path d="M18 4v5M15.5 6.5h5" {...s} />
+          </>
+        );
+      case "layout-grid":
+        return (
+          <>
+            <rect x="3" y="3" width="7" height="7" rx="1" {...s} />
+            <rect x="14" y="3" width="7" height="7" rx="1" {...s} />
+            <rect x="3" y="14" width="7" height="7" rx="1" {...s} />
+            <rect x="14" y="14" width="7" height="7" rx="1" {...s} />
+          </>
+        );
+      case "notifications":
+        return (
+          <>
+            <circle cx="10.5" cy="10.5" r="5" {...s} />
+            <path d="M14.5 14.5l4.5 4.5" {...s} />
+          </>
+        );
+      case "monitor":
+        return (
+          <>
+            <rect x="5" y="5" width="14" height="10" rx="1.5" {...s} />
+            <path d="M9 19h6M12 15v4" {...s} />
+          </>
+        );
+      case "gamepad":
+        return (
+          <>
+            <rect x="4" y="7" width="16" height="10" rx="3" {...s} />
+            <path d="M9 10v4M7 12h4" {...s} />
+            <circle cx="16" cy="12" r="1" fill="currentColor" stroke="none" />
+          </>
+        );
+      case "chat":
+        return (
+          <>
+            <path
+              d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 3V6z"
+              {...s}
+            />
+            <path d="M8 9h8M8 13h5" {...s} />
+          </>
+        );
+      case "film":
+        return (
+          <>
+            <rect x="4" y="4" width="16" height="16" rx="2" {...s} />
+            <path d="M4 8h16M4 16h16M8 4v16M16 4v16" {...s} />
+          </>
+        );
+      case "cloud":
+        return (
+          <path
+            d="M6 18h11a4 4 0 0 0 .5-7.97A7 7 0 0 0 5.2 14 3 3 0 0 0 6 18z"
+            {...s}
+          />
+        );
+      case "headphones":
+        return (
+          <>
+            <path d="M3 14v-2a9 9 0 0 1 18 0v2" {...s} />
+            <rect x="3" y="14" width="4" height="5" rx="1" {...s} />
+            <rect x="17" y="14" width="4" height="5" rx="1" {...s} />
+          </>
+        );
+      default:
+        return <circle cx="12" cy="12" r="6" {...s} />;
+    }
+  })();
 
   return (
-    <div className="donut-chart">
-      <div className="donut-chart__visual">
-        <svg viewBox="0 0 140 140" aria-hidden="true">
-          <circle
-            className="donut-chart__track"
-            cx="70"
-            cy="70"
-            r={radius}
-            fill="none"
-            strokeWidth="14"
-          />
-          {total > 0
-            ? segments.map((segment) => {
-                const segmentLength = (segment.value / total) * circumference;
-                const dashArray = `${segmentLength} ${circumference - segmentLength}`;
-                const currentOffset = offset;
-
-                offset += segmentLength;
-
-                return (
-                  <circle
-                    className={`donut-chart__segment donut-chart__segment--${segment.tone}`}
-                    key={segment.label}
-                    cx="70"
-                    cy="70"
-                    r={radius}
-                    fill="none"
-                    strokeDasharray={dashArray}
-                    strokeDashoffset={circumference / 4 - currentOffset}
-                    strokeLinecap="round"
-                    strokeWidth="14"
-                    transform="rotate(-90 70 70)"
-                  />
-                );
-              })
-            : null}
-        </svg>
-
-        <div className="donut-chart__center">
-          <strong>{totalValue}</strong>
-          <span>{totalLabel}</span>
-        </div>
-      </div>
-
-      <ul className="donut-legend">
-        {segments.length > 0 ? (
-          segments.map((segment) => (
-            <li className="donut-legend__item" key={segment.label}>
-              <span
-                className={`donut-legend__swatch donut-legend__swatch--${segment.tone}`}
-              />
-              <span>{segment.label}</span>
-              <strong>{segment.value}</strong>
-            </li>
-          ))
-        ) : (
-          <li className="donut-legend__item donut-legend__item--muted">
-            <span className="donut-legend__swatch donut-legend__swatch--empty" />
-            <span>No data yet</span>
-            <strong>0</strong>
-          </li>
-        )}
-      </ul>
-    </div>
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      aria-hidden={!title}
+      {...(title ? { role: "img", "aria-label": title } : {})}
+    >
+      {title && <title>{title}</title>}
+      {content}
+    </svg>
   );
 }

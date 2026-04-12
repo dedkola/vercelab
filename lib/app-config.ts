@@ -4,7 +4,9 @@ import path from "node:path";
 import { z } from "zod";
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
   VERCELAB_DATABASE_PROVIDER: z.enum(["sqlite", "postgres"]).default("sqlite"),
   VERCELAB_DATABASE_PATH: z.string().optional(),
   VERCELAB_POSTGRES_URL: z.string().optional(),
@@ -25,21 +27,16 @@ const envSchema = z.object({
     .refine((value) => !value || path.isAbsolute(value), {
       message: "VERCELAB_DOCKER_SOCKET_PATH must be an absolute path.",
     }),
-  VERCELAB_BASE_DOMAIN: z
+  VERCELAB_HOST_PROC_PATH: z
     .string()
     .trim()
-    .min(3)
-    .default("myhomelan.com"),
-  VERCELAB_PROXY_NETWORK: z
-    .string()
-    .trim()
-    .min(3)
-    .default("vercelab_proxy"),
-  VERCELAB_PROXY_ENTRYPOINT: z
-    .string()
-    .trim()
-    .min(2)
-    .default("websecure"),
+    .optional()
+    .refine((value) => !value || path.isAbsolute(value), {
+      message: "VERCELAB_HOST_PROC_PATH must be an absolute path.",
+    }),
+  VERCELAB_BASE_DOMAIN: z.string().trim().min(3).default("myhomelan.com"),
+  VERCELAB_PROXY_NETWORK: z.string().trim().min(3).default("vercelab_proxy"),
+  VERCELAB_PROXY_ENTRYPOINT: z.string().trim().min(2).default("websecure"),
   VERCELAB_ENCRYPTION_SECRET: z
     .string()
     .min(16)
@@ -74,7 +71,9 @@ function buildConfig() {
       entrypoint: parsed.VERCELAB_PROXY_ENTRYPOINT,
     },
     runtime: {
-      dockerSocketPath: parsed.VERCELAB_DOCKER_SOCKET_PATH ?? "/var/run/docker.sock",
+      dockerSocketPath:
+        parsed.VERCELAB_DOCKER_SOCKET_PATH ?? "/var/run/docker.sock",
+      hostProcPath: parsed.VERCELAB_HOST_PROC_PATH ?? "/host/proc",
     },
     database: {
       provider: parsed.VERCELAB_DATABASE_PROVIDER,
