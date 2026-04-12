@@ -1,4 +1,4 @@
-name: verclab
+name: vercelab
 
 services:
   traefik:
@@ -7,21 +7,21 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
-      - --providers.docker.network=${VERCLAB_PROXY_NETWORK:-verclab_proxy}
+      - --providers.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
       - --providers.file.directory=/etc/traefik/dynamic
       - --providers.file.watch=true
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
-      - --entrypoints.web.http.redirections.entrypoint.to=${VERCLAB_PROXY_ENTRYPOINT:-websecure}
+      - --entrypoints.web.http.redirections.entrypoint.to=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --ping=true
     ports:
       - 80:80
       - 443:443
     volumes:
-      - ${VERCLAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCLAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:ro
-      - ${VERCLAB_HOST_ROOT:-/opt/verclab}/traefik/dynamic:/etc/traefik/dynamic:ro
-      - ${VERCLAB_HOST_ROOT:-/opt/verclab}/traefik/certs:/etc/traefik/certs:ro
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:ro
+      - ${VERCELAB_TRAEFIK_DYNAMIC_DIR:-/opt/vercelab/traefik/dynamic}:/etc/traefik/dynamic:ro
+      - ${VERCELAB_TRAEFIK_CERTS_DIR:-/opt/vercelab/traefik/certs}:/etc/traefik/certs:ro
     networks:
       - proxy
 
@@ -32,40 +32,43 @@ services:
     env_file:
       - .env
     environment:
-      NODE_ENV: production
-      PORT: 3000
-      HOSTNAME: 0.0.0.0
-      VERCLAB_HOST_ROOT: ${VERCLAB_HOST_ROOT:-/opt/verclab}
-      VERCLAB_APPS_DIR: ${VERCLAB_HOST_ROOT:-/opt/verclab}/data/apps
-      VERCLAB_LOGS_DIR: ${VERCLAB_HOST_ROOT:-/opt/verclab}/data/logs
-      VERCLAB_LOCKS_DIR: ${VERCLAB_HOST_ROOT:-/opt/verclab}/data/locks
-      VERCLAB_DATABASE_PATH: ${VERCLAB_HOST_ROOT:-/opt/verclab}/data/db/verclab.sqlite
-      VERCLAB_DOCKER_SOCKET_PATH: ${VERCLAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      HOSTNAME: ${HOSTNAME:-0.0.0.0}
+      VERCELAB_HOST_ROOT: ${VERCELAB_HOST_ROOT:-/opt/vercelab}
+      VERCELAB_DATA_ROOT: ${VERCELAB_DATA_ROOT:-/opt/vercelab/data}
+      VERCELAB_TRAEFIK_DYNAMIC_DIR: ${VERCELAB_TRAEFIK_DYNAMIC_DIR:-/opt/vercelab/traefik/dynamic}
+      VERCELAB_TRAEFIK_CERTS_DIR: ${VERCELAB_TRAEFIK_CERTS_DIR:-/opt/vercelab/traefik/certs}
+      VERCELAB_APPS_DIR: ${VERCELAB_APPS_DIR:-/opt/vercelab/data/apps}
+      VERCELAB_LOGS_DIR: ${VERCELAB_LOGS_DIR:-/opt/vercelab/data/logs}
+      VERCELAB_LOCKS_DIR: ${VERCELAB_LOCKS_DIR:-/opt/vercelab/data/locks}
+      VERCELAB_DATABASE_PATH: ${VERCELAB_DATABASE_PATH:-/opt/vercelab/data/db/vercelab.sqlite}
+      VERCELAB_DOCKER_SOCKET_PATH: ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
     healthcheck:
       test:
         [
           CMD,
           node,
           -e,
-          "fetch('http://127.0.0.1:3000/api/health').then((response) => { process.exit(response.ok ? 0 : 1); }).catch(() => process.exit(1));",
+          "const port = process.env.PORT || '3000'; fetch('http://127.0.0.1:' + port + '/api/health').then((response) => { process.exit(response.ok ? 0 : 1); }).catch(() => process.exit(1));",
         ]
       interval: 20s
       timeout: 5s
       retries: 3
       start_period: 20s
     volumes:
-      - ${VERCLAB_HOST_ROOT:-/opt/verclab}:${VERCLAB_HOST_ROOT:-/opt/verclab}
-      - ${VERCLAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCLAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+      - ${VERCELAB_HOST_ROOT:-/opt/vercelab}:${VERCELAB_HOST_ROOT:-/opt/vercelab}
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
     labels:
       - traefik.enable=true
-      - traefik.docker.network=${VERCLAB_PROXY_NETWORK:-verclab_proxy}
-      - 'traefik.http.routers.verclab.rule=Host(`${VERCLAB_ADMIN_HOST}`)'
-      - traefik.http.routers.verclab.entrypoints=${VERCLAB_PROXY_ENTRYPOINT:-websecure}
-      - traefik.http.routers.verclab.tls=true
-      - traefik.http.services.verclab.loadbalancer.server.port=3000
+      - traefik.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
+      - 'traefik.http.routers.vercelab.rule=Host(`${VERCELAB_ADMIN_HOST}`)'
+      - traefik.http.routers.vercelab.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vercelab.tls=true
+      - traefik.http.services.vercelab.loadbalancer.server.port=${PORT:-3000}
     networks:
       - proxy
 
 networks:
   proxy:
-    name: ${VERCLAB_PROXY_NETWORK:-verclab_proxy}
+    name: ${VERCELAB_PROXY_NETWORK:-vercelab_proxy}

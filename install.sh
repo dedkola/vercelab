@@ -9,16 +9,21 @@ readonly ENV_EXAMPLE="$REPO_ROOT/.env.example"
 readonly COMPOSE_FILE="$REPO_ROOT/docker-compose.yml"
 readonly NODE_MAJOR="22"
 readonly DOCKER_MAJOR="28"
+readonly DEFAULT_NODE_ENV="production"
+readonly DEFAULT_HOSTNAME="0.0.0.0"
+readonly DEFAULT_PORT="3000"
+
+CONTROL_PLANE_HOSTNAME=""
 
 SUDO=()
 DOCKER_CMD=()
 
 log() {
-  printf '[verclab] %s\n' "$*"
+  printf '[vercelab] %s\n' "$*"
 }
 
 fail() {
-  printf '[verclab] %s\n' "$*" >&2
+  printf '[vercelab] %s\n' "$*" >&2
   exit 1
 }
 
@@ -32,12 +37,14 @@ command_exists() {
 
 read_env_value() {
   local key="$1"
+  local value=""
 
   if [[ ! -f "$ENV_FILE" ]]; then
     return 0
   fi
 
-  grep -E "^${key}=" "$ENV_FILE" | tail -n 1 | cut -d= -f2-
+  value="$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  printf '%s' "$value"
 }
 
 prompt_with_default() {
@@ -133,8 +140,10 @@ ensure_nodejs() {
 resolve_latest_package_version() {
   local package_name="$1"
   local version_prefix="$2"
+  local package_versions=""
 
-  apt-cache madison "$package_name" | awk -v prefix="$version_prefix" '$3 ~ ("^" prefix) { print $3; exit }'
+  package_versions="$(apt-cache madison "$package_name")"
+  awk -v prefix="$version_prefix" '$3 ~ ("^" prefix) { print $3; exit }' <<<"$package_versions"
 }
 
 ensure_docker_engine() {
@@ -144,6 +153,10 @@ ensure_docker_engine() {
 
   if command_exists docker; then
     installed_major="$(docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1 || true)"
+
+    if [[ -z "$installed_major" ]] && (( ${#SUDO[@]} > 0 )); then
+      installed_major="$(sudo docker version --format '{{.Server.Version}}' 2>/dev/null | cut -d. -f1 || true)"
+    fi
   fi
 
   if [[ "$installed_major" == "$DOCKER_MAJOR" ]]; then
@@ -214,6 +227,44 @@ resolve_docker_command() {
   fail "Docker is installed but the daemon is not reachable."
 }
 
+detect_primary_ipv4() {
+  local detected_ip=""
+
+  if command_exists ip; then
+    detected_ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i <= NF; i += 1) { if ($i == "src") { print $(i + 1); exit } }}')"
+  fi
+
+  if [[ -n "$detected_ip" ]]; then
+    printf '%s' "$detected_ip"
+    return
+  fi
+
+  hostname -I 2>/dev/null \
+    | tr ' ' '\n' \
+    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+    | grep -v '^127\.' \
+    | head -n 1
+}
+
+build_sslip_domain() {
+  local ipv4_address="$1"
+
+  printf '%s.sslip.io' "${ipv4_address//./-}"
+}
+
+detect_default_base_domain() {
+  local primary_ipv4=""
+
+  primary_ipv4="$(detect_primary_ipv4)"
+
+  if [[ -n "$primary_ipv4" ]]; then
+    build_sslip_domain "$primary_ipv4"
+    return
+  fi
+
+  printf '%s' "myhomelan.com"
+}
+
 install_host_node_dependencies() {
   log "Installing npm dependencies on the host for local maintenance workflows."
 
@@ -246,63 +297,118 @@ validate_domain() {
   [[ "$value" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || fail "$label must look like a real domain name."
 }
 
+ensure_path_inside_root() {
+  local value="$1"
+  local label="$2"
+
+  case "$value" in
+    "$VERCELAB_HOST_ROOT"|"$VERCELAB_HOST_ROOT"/*)
+      ;;
+    *)
+      fail "$label must stay under VERCELAB_HOST_ROOT ($VERCELAB_HOST_ROOT)."
+      ;;
+  esac
+}
+
 gather_configuration() {
-  local existing_base_domain existing_admin_host existing_host_root existing_proxy_network existing_socket existing_database_provider existing_postgres_url existing_secret
+  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_database_path existing_postgres_url existing_secret default_base_domain
 
-  existing_base_domain="$(read_env_value VERCLAB_BASE_DOMAIN)"
-  existing_admin_host="$(read_env_value VERCLAB_ADMIN_HOST)"
-  existing_host_root="$(read_env_value VERCLAB_HOST_ROOT)"
-  existing_proxy_network="$(read_env_value VERCLAB_PROXY_NETWORK)"
-  existing_socket="$(read_env_value VERCLAB_DOCKER_SOCKET_PATH)"
-  existing_database_provider="$(read_env_value VERCLAB_DATABASE_PROVIDER)"
-  existing_postgres_url="$(read_env_value VERCLAB_POSTGRES_URL)"
-  existing_secret="$(read_env_value VERCLAB_ENCRYPTION_SECRET)"
+  existing_node_env="$(read_env_value NODE_ENV)"
+  existing_runtime_host="$(read_env_value HOSTNAME)"
+  existing_port="$(read_env_value PORT)"
 
-  VERCLAB_BASE_DOMAIN="${VERCLAB_BASE_DOMAIN:-${existing_base_domain:-}}"
-  VERCLAB_BASE_DOMAIN="${VERCLAB_BASE_DOMAIN:-$(prompt_with_default "Base wildcard domain" "myhomelan.com")}" 
+  existing_base_domain="$(read_env_value VERCELAB_BASE_DOMAIN)"
+  existing_admin_host="$(read_env_value VERCELAB_ADMIN_HOST)"
+  existing_host_root="$(read_env_value VERCELAB_HOST_ROOT)"
+  existing_data_root="$(read_env_value VERCELAB_DATA_ROOT)"
+  existing_dynamic_dir="$(read_env_value VERCELAB_TRAEFIK_DYNAMIC_DIR)"
+  existing_certs_dir="$(read_env_value VERCELAB_TRAEFIK_CERTS_DIR)"
+  existing_proxy_network="$(read_env_value VERCELAB_PROXY_NETWORK)"
+  existing_proxy_entrypoint="$(read_env_value VERCELAB_PROXY_ENTRYPOINT)"
+  existing_socket="$(read_env_value VERCELAB_DOCKER_SOCKET_PATH)"
+  existing_apps_dir="$(read_env_value VERCELAB_APPS_DIR)"
+  existing_logs_dir="$(read_env_value VERCELAB_LOGS_DIR)"
+  existing_locks_dir="$(read_env_value VERCELAB_LOCKS_DIR)"
+  existing_database_provider="$(read_env_value VERCELAB_DATABASE_PROVIDER)"
+  existing_database_path="$(read_env_value VERCELAB_DATABASE_PATH)"
+  existing_postgres_url="$(read_env_value VERCELAB_POSTGRES_URL)"
+  existing_secret="$(read_env_value VERCELAB_ENCRYPTION_SECRET)"
 
-  VERCLAB_ADMIN_HOST="${VERCLAB_ADMIN_HOST:-${existing_admin_host:-}}"
-  VERCLAB_ADMIN_HOST="${VERCLAB_ADMIN_HOST:-$(prompt_with_default "Control plane host" "verclab.${VERCLAB_BASE_DOMAIN}")}" 
+  default_base_domain="$(detect_default_base_domain)"
 
-  VERCLAB_HOST_ROOT="${VERCLAB_HOST_ROOT:-${existing_host_root:-}}"
-  VERCLAB_HOST_ROOT="${VERCLAB_HOST_ROOT:-$(prompt_with_default "Shared host root for data and Traefik assets" "/opt/verclab")}" 
+  NODE_ENV="${NODE_ENV:-${existing_node_env:-$DEFAULT_NODE_ENV}}"
+  PORT="${PORT:-${existing_port:-$DEFAULT_PORT}}"
+  CONTROL_PLANE_HOSTNAME="${VERCELAB_CONTROL_PLANE_HOSTNAME:-${existing_runtime_host:-$DEFAULT_HOSTNAME}}"
 
-  VERCLAB_PROXY_NETWORK="${VERCLAB_PROXY_NETWORK:-${existing_proxy_network:-verclab_proxy}}"
-  VERCLAB_DOCKER_SOCKET_PATH="${VERCLAB_DOCKER_SOCKET_PATH:-${existing_socket:-/var/run/docker.sock}}"
-  VERCLAB_DATABASE_PROVIDER="${VERCLAB_DATABASE_PROVIDER:-${existing_database_provider:-sqlite}}"
-  VERCLAB_POSTGRES_URL="${VERCLAB_POSTGRES_URL:-${existing_postgres_url:-}}"
-  VERCLAB_ENCRYPTION_SECRET="${VERCLAB_ENCRYPTION_SECRET:-${existing_secret:-}}"
+  VERCELAB_BASE_DOMAIN="${VERCELAB_BASE_DOMAIN:-${existing_base_domain:-}}"
+  VERCELAB_BASE_DOMAIN="${VERCELAB_BASE_DOMAIN:-$(prompt_with_default "Base wildcard domain" "$default_base_domain")}" 
 
-  validate_domain "$VERCLAB_BASE_DOMAIN" "VERCLAB_BASE_DOMAIN"
-  validate_domain "$VERCLAB_ADMIN_HOST" "VERCLAB_ADMIN_HOST"
-  validate_absolute_path "$VERCLAB_HOST_ROOT" "VERCLAB_HOST_ROOT"
-  validate_absolute_path "$VERCLAB_DOCKER_SOCKET_PATH" "VERCLAB_DOCKER_SOCKET_PATH"
+  VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-${existing_admin_host:-}}"
+  VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-$(prompt_with_default "Control plane host" "vercelab.${VERCELAB_BASE_DOMAIN}")}" 
 
-  [[ "$VERCLAB_ADMIN_HOST" == *".${VERCLAB_BASE_DOMAIN}" ]] || fail "VERCLAB_ADMIN_HOST must be inside VERCLAB_BASE_DOMAIN."
-  [[ "$VERCLAB_DATABASE_PROVIDER" == "sqlite" || "$VERCLAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCLAB_DATABASE_PROVIDER must be sqlite or postgres."
+  VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-${existing_host_root:-}}"
+  VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-$(prompt_with_default "Shared host root for data and Traefik assets" "/opt/vercelab")}" 
 
-  if [[ "$VERCLAB_DATABASE_PROVIDER" == "postgres" && -z "$VERCLAB_POSTGRES_URL" ]]; then
-    fail "Set VERCLAB_POSTGRES_URL when using the postgres provider."
+  VERCELAB_DATA_ROOT="${VERCELAB_DATA_ROOT:-${existing_data_root:-${VERCELAB_HOST_ROOT}/data}}"
+  VERCELAB_TRAEFIK_DYNAMIC_DIR="${VERCELAB_TRAEFIK_DYNAMIC_DIR:-${existing_dynamic_dir:-${VERCELAB_HOST_ROOT}/traefik/dynamic}}"
+  VERCELAB_TRAEFIK_CERTS_DIR="${VERCELAB_TRAEFIK_CERTS_DIR:-${existing_certs_dir:-${VERCELAB_HOST_ROOT}/traefik/certs}}"
+  VERCELAB_APPS_DIR="${VERCELAB_APPS_DIR:-${existing_apps_dir:-${VERCELAB_DATA_ROOT}/apps}}"
+  VERCELAB_LOGS_DIR="${VERCELAB_LOGS_DIR:-${existing_logs_dir:-${VERCELAB_DATA_ROOT}/logs}}"
+  VERCELAB_LOCKS_DIR="${VERCELAB_LOCKS_DIR:-${existing_locks_dir:-${VERCELAB_DATA_ROOT}/locks}}"
+  VERCELAB_DATABASE_PATH="${VERCELAB_DATABASE_PATH:-${existing_database_path:-${VERCELAB_DATA_ROOT}/db/vercelab.sqlite}}"
+
+  VERCELAB_PROXY_NETWORK="${VERCELAB_PROXY_NETWORK:-${existing_proxy_network:-vercelab_proxy}}"
+  VERCELAB_PROXY_ENTRYPOINT="${VERCELAB_PROXY_ENTRYPOINT:-${existing_proxy_entrypoint:-websecure}}"
+  VERCELAB_DOCKER_SOCKET_PATH="${VERCELAB_DOCKER_SOCKET_PATH:-${existing_socket:-/var/run/docker.sock}}"
+  VERCELAB_DATABASE_PROVIDER="${VERCELAB_DATABASE_PROVIDER:-${existing_database_provider:-sqlite}}"
+  VERCELAB_POSTGRES_URL="${VERCELAB_POSTGRES_URL:-${existing_postgres_url:-}}"
+  VERCELAB_ENCRYPTION_SECRET="${VERCELAB_ENCRYPTION_SECRET:-${existing_secret:-}}"
+
+  validate_domain "$VERCELAB_BASE_DOMAIN" "VERCELAB_BASE_DOMAIN"
+  validate_domain "$VERCELAB_ADMIN_HOST" "VERCELAB_ADMIN_HOST"
+  validate_absolute_path "$VERCELAB_DATA_ROOT" "VERCELAB_DATA_ROOT"
+  validate_absolute_path "$VERCELAB_HOST_ROOT" "VERCELAB_HOST_ROOT"
+  validate_absolute_path "$VERCELAB_TRAEFIK_DYNAMIC_DIR" "VERCELAB_TRAEFIK_DYNAMIC_DIR"
+  validate_absolute_path "$VERCELAB_TRAEFIK_CERTS_DIR" "VERCELAB_TRAEFIK_CERTS_DIR"
+  validate_absolute_path "$VERCELAB_APPS_DIR" "VERCELAB_APPS_DIR"
+  validate_absolute_path "$VERCELAB_LOGS_DIR" "VERCELAB_LOGS_DIR"
+  validate_absolute_path "$VERCELAB_LOCKS_DIR" "VERCELAB_LOCKS_DIR"
+  validate_absolute_path "$VERCELAB_DATABASE_PATH" "VERCELAB_DATABASE_PATH"
+  validate_absolute_path "$VERCELAB_DOCKER_SOCKET_PATH" "VERCELAB_DOCKER_SOCKET_PATH"
+
+  [[ "$VERCELAB_ADMIN_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] || fail "VERCELAB_ADMIN_HOST must be inside VERCELAB_BASE_DOMAIN."
+  [[ "$VERCELAB_DATABASE_PROVIDER" == "sqlite" || "$VERCELAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCELAB_DATABASE_PROVIDER must be sqlite or postgres."
+
+  ensure_path_inside_root "$VERCELAB_DATA_ROOT" "VERCELAB_DATA_ROOT"
+  ensure_path_inside_root "$VERCELAB_TRAEFIK_DYNAMIC_DIR" "VERCELAB_TRAEFIK_DYNAMIC_DIR"
+  ensure_path_inside_root "$VERCELAB_TRAEFIK_CERTS_DIR" "VERCELAB_TRAEFIK_CERTS_DIR"
+  ensure_path_inside_root "$VERCELAB_APPS_DIR" "VERCELAB_APPS_DIR"
+  ensure_path_inside_root "$VERCELAB_LOGS_DIR" "VERCELAB_LOGS_DIR"
+  ensure_path_inside_root "$VERCELAB_LOCKS_DIR" "VERCELAB_LOCKS_DIR"
+  ensure_path_inside_root "$VERCELAB_DATABASE_PATH" "VERCELAB_DATABASE_PATH"
+
+  if [[ "$VERCELAB_DATABASE_PROVIDER" == "postgres" && -z "$VERCELAB_POSTGRES_URL" ]]; then
+    fail "Set VERCELAB_POSTGRES_URL when using the postgres provider."
   fi
 
-  if [[ -z "$VERCLAB_ENCRYPTION_SECRET" ]]; then
-    VERCLAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)"
+  if [[ -z "$VERCELAB_ENCRYPTION_SECRET" ]]; then
+    VERCELAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)"
   fi
 }
 
 prepare_host_directories() {
-  log "Preparing host directories under $VERCLAB_HOST_ROOT"
+  log "Preparing host directories under $VERCELAB_HOST_ROOT"
   run_privileged mkdir -p \
-    "$VERCLAB_HOST_ROOT/traefik/dynamic" \
-    "$VERCLAB_HOST_ROOT/traefik/certs" \
-    "$VERCLAB_HOST_ROOT/data/apps" \
-    "$VERCLAB_HOST_ROOT/data/logs" \
-    "$VERCLAB_HOST_ROOT/data/locks" \
-    "$VERCLAB_HOST_ROOT/data/db"
+    "$VERCELAB_TRAEFIK_DYNAMIC_DIR" \
+    "$VERCELAB_TRAEFIK_CERTS_DIR" \
+    "$VERCELAB_APPS_DIR" \
+    "$VERCELAB_LOGS_DIR" \
+    "$VERCELAB_LOCKS_DIR" \
+    "$(dirname "$VERCELAB_DATABASE_PATH")"
 }
 
 validate_docker_socket() {
-  [[ -S "$VERCLAB_DOCKER_SOCKET_PATH" ]] || fail "Docker socket was not found at $VERCLAB_DOCKER_SOCKET_PATH."
+  [[ -S "$VERCELAB_DOCKER_SOCKET_PATH" ]] || fail "Docker socket was not found at $VERCELAB_DOCKER_SOCKET_PATH."
 }
 
 certificate_matches_domain() {
@@ -310,12 +416,12 @@ certificate_matches_domain() {
 
   [[ -f "$cert_file" ]] || return 1
 
-  openssl x509 -in "$cert_file" -noout -text 2>/dev/null | grep -F "DNS:${VERCLAB_BASE_DOMAIN}" >/dev/null 2>&1 \
-    && openssl x509 -in "$cert_file" -noout -text 2>/dev/null | grep -F "DNS:*.${VERCLAB_BASE_DOMAIN}" >/dev/null 2>&1
+  openssl x509 -in "$cert_file" -noout -text 2>/dev/null | grep -F "DNS:${VERCELAB_BASE_DOMAIN}" >/dev/null 2>&1 \
+    && openssl x509 -in "$cert_file" -noout -text 2>/dev/null | grep -F "DNS:*.${VERCELAB_BASE_DOMAIN}" >/dev/null 2>&1
 }
 
 write_tls_config() {
-  local tls_file="$VERCLAB_HOST_ROOT/traefik/dynamic/tls.yml"
+  local tls_file="$VERCELAB_TRAEFIK_DYNAMIC_DIR/tls.yml"
 
   run_privileged tee "$tls_file" >/dev/null <<EOF
 tls:
@@ -331,15 +437,15 @@ EOF
 }
 
 ensure_certificate() {
-  local cert_file="$VERCLAB_HOST_ROOT/traefik/certs/wildcard.crt"
-  local key_file="$VERCLAB_HOST_ROOT/traefik/certs/wildcard.key"
+  local cert_file="$VERCELAB_TRAEFIK_CERTS_DIR/wildcard.crt"
+  local key_file="$VERCELAB_TRAEFIK_CERTS_DIR/wildcard.key"
 
   if certificate_matches_domain "$cert_file" && [[ -f "$key_file" ]]; then
     log "Reusing the existing wildcard certificate."
     return
   fi
 
-  log "Generating a self-signed wildcard certificate for $VERCLAB_BASE_DOMAIN"
+  log "Generating a self-signed wildcard certificate for $VERCELAB_BASE_DOMAIN"
   run_privileged openssl req \
     -x509 \
     -nodes \
@@ -347,30 +453,44 @@ ensure_certificate() {
     -newkey rsa:4096 \
     -keyout "$key_file" \
     -out "$cert_file" \
-    -subj "/CN=${VERCLAB_BASE_DOMAIN}" \
-    -addext "subjectAltName=DNS:${VERCLAB_BASE_DOMAIN},DNS:*.${VERCLAB_BASE_DOMAIN},DNS:${VERCLAB_ADMIN_HOST}"
+    -subj "/CN=${VERCELAB_BASE_DOMAIN}" \
+    -addext "subjectAltName=DNS:${VERCELAB_BASE_DOMAIN},DNS:*.${VERCELAB_BASE_DOMAIN},DNS:${VERCELAB_ADMIN_HOST}"
 }
 
 write_env_file() {
   log "Writing $ENV_FILE"
 
   tee "$ENV_FILE" >/dev/null <<EOF
-VERCLAB_BASE_DOMAIN=$VERCLAB_BASE_DOMAIN
-VERCLAB_ADMIN_HOST=$VERCLAB_ADMIN_HOST
-VERCLAB_PROXY_NETWORK=$VERCLAB_PROXY_NETWORK
-VERCLAB_PROXY_ENTRYPOINT=websecure
-VERCLAB_HOST_ROOT=$VERCLAB_HOST_ROOT
-VERCLAB_DOCKER_SOCKET_PATH=$VERCLAB_DOCKER_SOCKET_PATH
-VERCLAB_DATABASE_PROVIDER=$VERCLAB_DATABASE_PROVIDER
-VERCLAB_POSTGRES_URL=$VERCLAB_POSTGRES_URL
-VERCLAB_ENCRYPTION_SECRET=$VERCLAB_ENCRYPTION_SECRET
+NODE_ENV=$NODE_ENV
+HOSTNAME=$CONTROL_PLANE_HOSTNAME
+PORT=$PORT
+
+VERCELAB_BASE_DOMAIN=$VERCELAB_BASE_DOMAIN
+VERCELAB_ADMIN_HOST=$VERCELAB_ADMIN_HOST
+VERCELAB_PROXY_NETWORK=$VERCELAB_PROXY_NETWORK
+VERCELAB_PROXY_ENTRYPOINT=$VERCELAB_PROXY_ENTRYPOINT
+
+VERCELAB_HOST_ROOT=$VERCELAB_HOST_ROOT
+VERCELAB_DATA_ROOT=$VERCELAB_DATA_ROOT
+VERCELAB_TRAEFIK_DYNAMIC_DIR=$VERCELAB_TRAEFIK_DYNAMIC_DIR
+VERCELAB_TRAEFIK_CERTS_DIR=$VERCELAB_TRAEFIK_CERTS_DIR
+VERCELAB_APPS_DIR=$VERCELAB_APPS_DIR
+VERCELAB_LOGS_DIR=$VERCELAB_LOGS_DIR
+VERCELAB_LOCKS_DIR=$VERCELAB_LOCKS_DIR
+VERCELAB_DATABASE_PATH=$VERCELAB_DATABASE_PATH
+VERCELAB_DOCKER_SOCKET_PATH=$VERCELAB_DOCKER_SOCKET_PATH
+
+VERCELAB_DATABASE_PROVIDER=$VERCELAB_DATABASE_PROVIDER
+VERCELAB_POSTGRES_URL=$VERCELAB_POSTGRES_URL
+
+VERCELAB_ENCRYPTION_SECRET=$VERCELAB_ENCRYPTION_SECRET
 EOF
 
   chmod 600 "$ENV_FILE"
 }
 
 start_stack() {
-  log "Starting the Verclab control plane stack."
+  log "Starting the Vercelab control plane stack."
   (
     cd "$REPO_ROOT"
     "${DOCKER_CMD[@]}" compose up -d --build
@@ -378,10 +498,11 @@ start_stack() {
 }
 
 print_summary() {
-  log "Verclab is starting at https://$VERCLAB_ADMIN_HOST"
-  log "Health endpoint: https://$VERCLAB_ADMIN_HOST/api/health"
-  log "Docker state root: $VERCLAB_HOST_ROOT"
-  log "Import $VERCLAB_HOST_ROOT/traefik/certs/wildcard.crt into your client trust store to remove browser warnings."
+  log "Vercelab is starting at https://$VERCELAB_ADMIN_HOST"
+  log "Health endpoint: https://$VERCELAB_ADMIN_HOST/api/health"
+  log "Docker state root: $VERCELAB_HOST_ROOT"
+  log "All runtime variables are written to $ENV_FILE for future edits."
+  log "Import $VERCELAB_TRAEFIK_CERTS_DIR/wildcard.crt into your client trust store to remove browser warnings."
 }
 
 main() {

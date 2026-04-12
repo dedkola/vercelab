@@ -1,6 +1,6 @@
-# Verclab
+# Vercelab
 
-Verclab is a self-hosted homelab deployment control plane built with Next.js 16. It clones a GitHub repository, detects a root `Dockerfile` or `docker-compose.yml`, stores deployment state in SQLite, encrypts GitHub tokens at rest, and exposes each deployed app behind Traefik with self-signed HTTPS.
+Vercelab is a self-hosted homelab deployment control plane built with Next.js 16. It clones a GitHub repository, detects a root `Dockerfile` or `docker-compose.yml`, stores deployment state in SQLite, encrypts GitHub tokens at rest, and exposes each deployed app behind Traefik with self-signed HTTPS.
 
 ## Current scope
 
@@ -21,7 +21,7 @@ The app runs on `http://localhost:3000` by default. Local development keeps the 
 
 ## Ubuntu server install
 
-The production path assumes an Ubuntu host with wildcard LAN DNS pointing `*.your-domain` and `verclab.your-domain` at the server.
+The production path assumes an Ubuntu host. If you do not provide a custom domain, the installer derives a reachable default base domain from the server's primary LAN IPv4 using `sslip.io`, for example `10-10-0-36.sslip.io`.
 
 ```bash
 chmod +x install.sh
@@ -31,47 +31,142 @@ chmod +x install.sh
 For a fully unattended bootstrap, export the required values inline and run the same script:
 
 ```bash
-VERCLAB_BASE_DOMAIN=lab.example.com \
-VERCLAB_ADMIN_HOST=verclab.lab.example.com \
-VERCLAB_HOST_ROOT=/opt/verclab \
-VERCLAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)" \
+VERCELAB_BASE_DOMAIN=lab.example.com \
+VERCELAB_ADMIN_HOST=vercelab.lab.example.com \
+VERCELAB_HOST_ROOT=/opt/vercelab \
+VERCELAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)" \
 ./install.sh
 ```
 
-The installer is now a full bootstrap script for a plain Ubuntu server. It will:
+Any runtime variable listed below can be exported before running `./install.sh`. On later runs, the installer reuses the current `.env` values unless you override them again.
+
+The installer is a full bootstrap script for a plain Ubuntu server. It will:
 
 - install Node.js and npm on the host
 - install the native toolchain needed by packages such as `better-sqlite3`
 - install and pin Docker Engine `28.x` plus the Compose plugin, because Traefik's Docker provider is not compatible with Docker `29.x` on this stack
 - run `npm ci` and a host-side `npm run build` smoke test
-- create a shared host root under `/opt/verclab` by default
+- create a shared host root under `/opt/vercelab` by default
+- auto-generate a reachable default base domain from the server IP when you do not provide one
 - generate a wildcard self-signed certificate for your base domain
-- write the runtime `.env` file for the control plane
+- write the complete runtime `.env` file for the control plane, including derived paths and runtime settings
 - build and start the root Docker and Traefik stack
 
-`myhomelan.com` is only an example domain. If you keep it, you must point `verclab.myhomelan.com` at this server in your LAN DNS or local hosts file, otherwise your browser will hit whatever public DNS already serves that name.
+If you later edit `.env`, rerun `./install.sh` so the stack and self-signed wildcard certificate stay aligned with the new domain and paths.
+
+## Where Vercelab stores state
+
+Runtime variables for the Ubuntu install are written to `.env` in the repository root. `install.sh` rewrites that file on each successful run and locks it down with `chmod 600`. The current installer writes `VERCELAB_*` variables.
+
+Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/opt/vercelab`:
+
+- `/opt/vercelab/data/apps`: cloned deployment repositories and generated compose overrides
+- `/opt/vercelab/data/logs`: deployment logs
+- `/opt/vercelab/data/locks`: deployment lock files
+- `/opt/vercelab/data/db/vercelab.sqlite`: SQLite database
+- `/opt/vercelab/traefik/dynamic/tls.yml`: Traefik TLS dynamic config
+- `/opt/vercelab/traefik/certs/wildcard.crt`: self-signed wildcard certificate
+- `/opt/vercelab/traefik/certs/wildcard.key`: private key for the wildcard certificate
+
+Local development has a different fallback layout when you do not set production paths:
+
+- `./data/apps`
+- `./data/logs`
+- `./data/locks`
+- `./data/vercelab.sqlite`
+
+## Default runtime variables
+
+These are the defaults the installer writes into `.env` unless you override them.
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `NODE_ENV` | `production` | Runtime mode for the control plane container |
+| `HOSTNAME` | `0.0.0.0` | Bind address inside the container |
+| `PORT` | `3000` | Internal port Traefik forwards to |
+| `VERCELAB_BASE_DOMAIN` | auto-derived from the host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps |
+| `VERCELAB_ADMIN_HOST` | `vercelab.${VERCELAB_BASE_DOMAIN}` | Control plane hostname |
+| `VERCELAB_PROXY_NETWORK` | `vercelab_proxy` | Shared Docker network for Traefik and managed apps |
+| `VERCELAB_PROXY_ENTRYPOINT` | `websecure` | Traefik HTTPS entrypoint |
+| `VERCELAB_HOST_ROOT` | `/opt/vercelab` | Shared host path mounted into the control-plane container at the same absolute path |
+| `VERCELAB_DATA_ROOT` | `${VERCELAB_HOST_ROOT}/data` | Parent directory for apps, logs, locks, and the database |
+| `VERCELAB_TRAEFIK_DYNAMIC_DIR` | `${VERCELAB_HOST_ROOT}/traefik/dynamic` | Generated Traefik dynamic config location |
+| `VERCELAB_TRAEFIK_CERTS_DIR` | `${VERCELAB_HOST_ROOT}/traefik/certs` | Wildcard certificate and key |
+| `VERCELAB_APPS_DIR` | `${VERCELAB_DATA_ROOT}/apps` | Cloned app repositories |
+| `VERCELAB_LOGS_DIR` | `${VERCELAB_DATA_ROOT}/logs` | Deployment logs |
+| `VERCELAB_LOCKS_DIR` | `${VERCELAB_DATA_ROOT}/locks` | Deployment lock files |
+| `VERCELAB_DATABASE_PATH` | `${VERCELAB_DATA_ROOT}/db/vercelab.sqlite` | SQLite database path |
+| `VERCELAB_DOCKER_SOCKET_PATH` | `/var/run/docker.sock` | Host Docker socket passed into Traefik and the control plane |
+| `VERCELAB_DATABASE_PROVIDER` | `sqlite` | `postgres` is accepted, but requires `VERCELAB_POSTGRES_URL` |
+| `VERCELAB_POSTGRES_URL` | empty | Required only when `VERCELAB_DATABASE_PROVIDER=postgres` |
+| `VERCELAB_ENCRYPTION_SECRET` | auto-generated 64-hex-character secret when unset | Used to encrypt stored GitHub tokens |
+
+## Reinstall
+
+For an in-place reinstall, keep your current data and rerun the installer:
+
+```bash
+./install.sh
+```
+
+Use that path after editing `.env`, changing the domain, changing storage paths, or pulling a newer version of Vercelab. The installer will rebuild the stack, refresh the generated `.env`, and regenerate the wildcard certificate if the base domain changed.
+
+For a clean reinstall, remove the current runtime state first and then run the installer again:
+
+```bash
+./uninstall.sh --purge
+./install.sh
+```
+
+## Uninstall
+
+Vercelab now includes an uninstall script.
+
+Stop and remove the Vercelab control plane plus all managed deployment containers, while keeping the generated `.env`, certificates, database, cloned apps, and Docker volumes:
+
+```bash
+chmod +x uninstall.sh
+./uninstall.sh
+```
+
+Remove the generated `.env`, everything under `VERCELAB_HOST_ROOT`, and Docker volumes that belong to Vercelab compose projects:
+
+```bash
+./uninstall.sh --purge
+```
+
+Also remove Docker images labeled for Vercelab compose projects:
+
+```bash
+./uninstall.sh --purge --purge-images
+```
+
+`uninstall.sh` intentionally leaves Docker Engine, the Docker Compose plugin, Node.js, and npm installed on the host. That keeps reinstall simple and avoids removing software the host may be using for other workloads.
 
 ## Why the shared host root matters
 
-Verclab talks to the host Docker daemon through the host Docker socket. That means Docker build contexts and bind mounts referenced by deployment compose files must exist at the same absolute path on both the host and inside the control-plane container.
+Vercelab talks to the host Docker daemon through the host Docker socket. That means Docker build contexts and bind mounts referenced by deployment compose files must exist at the same absolute path on both the host and inside the control-plane container.
 
-The root stack handles this by mounting `VERCLAB_HOST_ROOT` into the container at the exact same absolute path. Keep deployment workspaces, logs, locks, and the SQLite database under that root.
+The root stack handles this by mounting `VERCELAB_HOST_ROOT` into the container at the exact same absolute path. Keep deployment workspaces, logs, locks, and the SQLite database under that root.
 
 ## Runtime files
 
 - `.env.example`: template for the production stack
-- `docker-compose.yml`: Traefik plus the Verclab control plane
+- `.env`: full generated runtime configuration written by `install.sh`
+- `docker-compose.yml`: Traefik plus the Vercelab control plane
 - `Dockerfile`: standalone Next.js production image with Git and Docker CLI tooling
 - `install.sh`: Ubuntu bootstrapper for Docker, TLS assets, and the control-plane stack
+- `uninstall.sh`: removes the control plane and managed deployments, with optional purge flags for data and images
 
 ## Important environment variables
 
-- `VERCLAB_BASE_DOMAIN`: wildcard domain for deployed apps such as `myhomelan.com`
-- `VERCLAB_ADMIN_HOST`: full host name for the control plane such as `verclab.myhomelan.com`
-- `VERCLAB_HOST_ROOT`: shared absolute host path mounted into the app container at the same path
-- `VERCLAB_DOCKER_SOCKET_PATH`: Docker socket passed through to the control plane and Traefik
-- `VERCLAB_PROXY_NETWORK`: shared Docker network Traefik and deployed apps use
-- `VERCLAB_ENCRYPTION_SECRET`: secret used to encrypt stored GitHub tokens
+- `VERCELAB_BASE_DOMAIN`: wildcard domain for deployed apps such as `myhomelan.com`
+- `VERCELAB_ADMIN_HOST`: full host name for the control plane such as `vercelab.myhomelan.com`
+- `VERCELAB_HOST_ROOT`: shared absolute host path mounted into the app container at the same path
+- `VERCELAB_APPS_DIR`, `VERCELAB_LOGS_DIR`, `VERCELAB_LOCKS_DIR`, `VERCELAB_DATABASE_PATH`: explicit managed paths written into `.env` on install
+- `VERCELAB_DOCKER_SOCKET_PATH`: Docker socket passed through to the control plane and Traefik
+- `VERCELAB_PROXY_NETWORK`: shared Docker network Traefik and deployed apps use
+- `VERCELAB_ENCRYPTION_SECRET`: secret used to encrypt stored GitHub tokens
 
 ## Health and readiness
 
@@ -81,11 +176,11 @@ The root stack handles this by mounting `VERCLAB_HOST_ROOT` into the container a
 - the Docker daemon is reachable
 - the Docker Compose plugin is installed
 - managed directories are writable
-- `VERCLAB_HOST_ROOT` aligns with all managed paths
+- `VERCELAB_HOST_ROOT` aligns with all managed paths
 - the base domain and encryption secret are not still placeholders
 
 The route returns HTTP `503` until the platform is ready.
 
 ## Certificates
 
-The installer writes the wildcard certificate to `VERCLAB_HOST_ROOT/traefik/certs/wildcard.crt`. Import that certificate into your workstation or browser trust store if you want to remove self-signed certificate warnings on your LAN.
+The installer writes the wildcard certificate to `VERCELAB_TRAEFIK_CERTS_DIR/wildcard.crt`. Import that certificate into your workstation or browser trust store if you want to remove self-signed certificate warnings on your LAN.

@@ -180,7 +180,7 @@ async function removeWorkspace(workspacePath: string) {
   const appsRoot = path.resolve(getAppConfig().paths.appsDir);
 
   if (!resolvedWorkspace.startsWith(appsRoot)) {
-    throw new Error("Refusing to remove a workspace outside the Verclab apps directory.");
+    throw new Error("Refusing to remove a workspace outside the Vercelab apps directory.");
   }
 
   await fs.rm(resolvedWorkspace, { recursive: true, force: true });
@@ -260,7 +260,7 @@ async function detectRuntimeFiles(deployment: StoredDeployment): Promise<Runtime
         .replace(/[^a-z0-9-]/g, "-");
       const overridePath = path.join(
         deployment.workspacePath,
-        ".verclab.override.compose.yml",
+        ".vercelab.override.compose.yml",
       );
 
       const override = {
@@ -313,7 +313,7 @@ async function detectRuntimeFiles(deployment: StoredDeployment): Promise<Runtime
     .replace(/[^a-z0-9-]/g, "-");
   const generatedComposePath = path.join(
     deployment.workspacePath,
-    ".verclab.generated.compose.yml",
+    ".vercelab.generated.compose.yml",
   );
   const generatedCompose = {
     services: {

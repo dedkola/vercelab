@@ -83,7 +83,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               VL
             </div>
             <div className="brand-copy">
-              <h1>Verclab</h1>
+              <h1>Vercelab</h1>
               <p>Private homelab deploy control plane</p>
             </div>
           </div>
@@ -109,7 +109,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             <span className="eyebrow">Internal Vercel-style homelab hosting</span>
             <h2 id="hero-title">Clone private GitHub repos and route them on your LAN.</h2>
             <p>
-              Verclab keeps the operator flow simple: add a GitHub repo, choose a
+              Vercelab keeps the operator flow simple: add a GitHub repo, choose a
               subdomain, point Traefik at the right container port, and let the
               platform build and run it behind self-signed HTTPS.
             </p>
@@ -323,7 +323,7 @@ export default async function Home({ searchParams }: HomePageProps) {
             <div className="empty-state">
               <h4>No deployments yet</h4>
               <p className="muted">
-                Start with a Docker-ready GitHub repository and Verclab will create
+                Start with a Docker-ready GitHub repository and Vercelab will create
                 the workspace, build it, and attach it to Traefik.
               </p>
             </div>

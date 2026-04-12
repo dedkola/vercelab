@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Verclab",
+  title: "Vercelab",
   description: "Internal homelab deployment control plane for Docker and Traefik.",
 };
 

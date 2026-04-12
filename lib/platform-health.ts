@@ -19,7 +19,7 @@ export type PlatformHealth = {
 };
 
 const PLACEHOLDER_BASE_DOMAIN = "myhomelan.com";
-const PLACEHOLDER_SECRET = "change-this-verclab-secret";
+const PLACEHOLDER_SECRET = "change-this-vercelab-secret";
 
 function isWithinRoot(targetPath: string, rootPath: string) {
   const relativePath = path.relative(rootPath, targetPath);
@@ -103,7 +103,7 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
     message:
       config.baseDomain !== PLACEHOLDER_BASE_DOMAIN
         ? `Configured for ${config.baseDomain}.`
-        : "VERCLAB_BASE_DOMAIN is still using the example domain. Make sure your LAN DNS or hosts file points that hostname at this server.",
+        : "VERCELAB_BASE_DOMAIN is still using the example domain. Make sure your LAN DNS or hosts file points that hostname at this server.",
   });
 
   checks.push({
@@ -114,7 +114,7 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
     message:
       config.security.encryptionSecret !== PLACEHOLDER_SECRET
         ? "A non-default encryption secret is configured."
-        : "VERCLAB_ENCRYPTION_SECRET is still using the default placeholder.",
+        : "VERCELAB_ENCRYPTION_SECRET is still using the default placeholder.",
   });
 
   checks.push({
@@ -124,7 +124,7 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
     severity: runtimeSeverity,
     message: config.paths.hostRoot
       ? `Shared Docker host root is ${config.paths.hostRoot}.`
-      : "VERCLAB_HOST_ROOT is not set. Use a shared absolute host path when running through the Docker socket.",
+      : "VERCELAB_HOST_ROOT is not set. Use a shared absolute host path when running through the Docker socket.",
   });
 
   if (config.paths.hostRoot) {
@@ -144,8 +144,8 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
       ok: aligned,
       severity: runtimeSeverity,
       message: aligned
-        ? "Managed paths live under VERCLAB_HOST_ROOT, so Docker build contexts resolve on the host."
-        : "Managed paths must stay under VERCLAB_HOST_ROOT when deployments run through the host Docker socket.",
+        ? "Managed paths live under VERCELAB_HOST_ROOT, so Docker build contexts resolve on the host."
+        : "Managed paths must stay under VERCELAB_HOST_ROOT when deployments run through the host Docker socket.",
     });
   }
 

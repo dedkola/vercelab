@@ -325,7 +325,7 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
   const repoName = input.repositoryUrl.split("/").pop()?.replace(/\.git$/, "") ?? "repo";
   const appSlug = toSlug(input.appName);
   const workspacePath = path.join(getAppConfig().paths.appsDir, deploymentId);
-  const projectName = `verclab-${appSlug}-${deploymentId.slice(0, 8)}`;
+  const projectName = `vercelab-${appSlug}-${deploymentId.slice(0, 8)}`;
 
   const transaction = db.transaction(() => {
     db.prepare(
