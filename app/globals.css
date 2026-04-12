@@ -1,4 +1,7 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../app/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../components/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../lib/**/*.{js,ts,jsx,tsx,mdx}";
 
 /* ── UniFi Design Tokens ── */
 :root {
@@ -1259,6 +1262,10 @@ a:focus-visible {
   fill: rgba(142, 98, 242, 0.11);
 }
 
+.main-chart__area--total {
+  fill: rgba(29, 116, 244, 0.12);
+}
+
 .main-chart__line {
   fill: none;
   stroke-width: 2;
@@ -1272,6 +1279,11 @@ a:focus-visible {
 
 .main-chart__line--violet {
   stroke: #9d5eff;
+}
+
+.main-chart__line--total {
+  stroke: #1d74f4;
+  stroke-width: 2.4;
 }
 
 .main-chart__line--amber {
