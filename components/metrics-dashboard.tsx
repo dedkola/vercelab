@@ -61,11 +61,6 @@ const RAIL_SECONDARY: IconName[] = [
   "innerspace",
 ];
 
-const WIFI_SPEED_ROWS = [
-  { band: "5 GHz", values: ["20", "40", "80", "160", "DFS"] },
-  { band: "6 GHz", values: ["20", "40", "80", "160", "320"] },
-];
-
 const TRAFFIC_ROWS = [
   {
     name: "DelugeTorrent",
@@ -1134,107 +1129,6 @@ export default function MetricsDashboard({
 
                     <MiniNetworkChart history={deferredHistory} />
                   </section>
-
-                  <div className="action-buttons">
-                    <button className="action-btn" type="button">
-                      <Icon name="speed-test" />
-                      Placeholder 1
-                    </button>
-                  </div>
-
-                  <section className="panel__section">
-                    <div className="panel-card">
-                      <div className="panel-card__header">
-                        <span className="panel-card__title">
-                          Default WiFi Speeds
-                        </span>
-                        <button className="panel-card__action" type="button">
-                          Max. Speed
-                          <Icon name="chevron-right" />
-                        </button>
-                      </div>
-
-                      <div className="channel-grid">
-                        <div className="channel-grid__label">
-                          Channel Widths (MHz)
-                        </div>
-                        {WIFI_SPEED_ROWS.map((row) => (
-                          <div className="channel-row" key={row.band}>
-                            <span className="channel-row__band">
-                              {row.band}
-                            </span>
-                            {row.values.map((value) => (
-                              <span
-                                className={`channel-row__val ${
-                                  value === "80" || value === "320"
-                                    ? "channel-row__val--active"
-                                    : value === "DFS"
-                                      ? "channel-row__val--label"
-                                      : ""
-                                }`}
-                                key={`${row.band}-${value}`}
-                              >
-                                {value}
-                              </span>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-
-                  <section className="panel__section">
-                    <div className="panel-card">
-                      <div className="panel-card__header">
-                        <span className="panel-card__title">
-                          Critical Traffic Prioritization
-                        </span>
-                        <button className="panel-card__action" type="button">
-                          Configure
-                        </button>
-                      </div>
-
-                      <div className="category-icons">
-                        {[
-                          "syslog",
-                          "shield",
-                          "notifications",
-                          "theme",
-                          "layout-grid",
-                          "monitor",
-                        ].map((icon) => (
-                          <div className="category-icon" key={icon}>
-                            <Icon name={icon as IconName} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-
-                  <div className="cyber-card">
-                    <div className="cyber-card__header">
-                      <Icon name="shield" />
-                      <div className="cyber-card__title">
-                        CyberSecure Enhanced
-                      </div>
-                      <button className="cyber-card__action" type="button">
-                        Activate
-                      </button>
-                    </div>
-
-                    <ul className="cyber-card__list">
-                      <li>Up to 55K signatures updated real-time.</li>
-                      <li>100+ content filters.</li>
-                    </ul>
-
-                    <div className="cyber-card__footer">
-                      Powered by proofpoint and cloudflare
-                    </div>
-                  </div>
-
-                  <button className="widgets-btn" type="button">
-                    Dashboard Widgets
-                  </button>
                 </>
               ) : (
                 <div className="git-panel">
@@ -1405,67 +1299,6 @@ export default function MetricsDashboard({
         <main className="main">
           {isOverviewSection ? (
             <>
-              <div className="main__header">
-                <div className="header-tabs">
-                  <button
-                    className="header-tab header-tab--active"
-                    type="button"
-                  >
-                    Internet
-                  </button>
-                  <button className="header-tab" type="button">
-                    WiFi
-                  </button>
-                </div>
-
-                <button className="header-dropdown" type="button">
-                  All WANs
-                  <Icon name="chevron-down" />
-                </button>
-
-                <div className="main__header-spacer" />
-
-                <button className="header-dropdown" type="button">
-                  <span className="header-check__dot header-check__dot--violet" />
-                  Internet Activity
-                  <Icon name="chevron-down" />
-                </button>
-
-                <button className="header-check" type="button">
-                  <span className="header-check__box header-check__box--checked">
-                    <Icon name="check" />
-                  </span>
-                  <span className="header-check__dot header-check__dot--amber" />
-                  Avg. Latency
-                </button>
-
-                <button className="header-check" type="button">
-                  <span className="header-check__box header-check__box--checked">
-                    <Icon name="check" />
-                  </span>
-                  <span className="header-check__dot header-check__dot--red" />
-                  Packet Loss
-                </button>
-
-                <button className="header-check" type="button">
-                  <span className="header-check__box" />
-                  <span className="header-check__dot header-check__dot--gray" />
-                  Connections
-                </button>
-
-                <div className="time-selector">
-                  {["1h", "1D", "1W", "1M"].map((entry) => (
-                    <button
-                      className={`time-btn ${entry === "1D" ? "time-btn--active" : ""}`}
-                      key={entry}
-                      type="button"
-                    >
-                      {entry}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <section className="chart-area">
                 <MainTrafficChart
                   history={deferredHistory}
@@ -1477,14 +1310,6 @@ export default function MetricsDashboard({
                   }
                 />
               </section>
-
-              <div className="scrubber">
-                <Icon className="icon scrubber__globe" name="globe" />
-                <div className="scrubber__bar">
-                  <div className="scrubber__fill" />
-                </div>
-                <Icon className="icon scrubber__chevron" name="chevron-right" />
-              </div>
 
               <section className="dashboard-overview">
                 <div className="dashboard-overview__main">
