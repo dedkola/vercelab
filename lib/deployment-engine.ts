@@ -18,7 +18,10 @@ import {
   type OperationType,
   type StoredDeployment,
 } from "@/lib/persistence";
-import { createDeploymentSchema } from "@/lib/validation";
+import {
+  createDeploymentSchema,
+  updateDeploymentSettingsSchema,
+} from "@/lib/validation";
 
 type CommandOptions = {
   cwd?: string;
@@ -256,6 +259,35 @@ async function cloneRepository(deployment: StoredDeployment) {
   args.push(cloneUrl, deployment.workspacePath);
 
   return await runCommand("git", args);
+}
+
+async function deployWorkspace(
+  deployment: StoredDeployment,
+  syncWithGit: boolean,
+) {
+  await ensureProxyNetwork();
+
+  const shouldClone =
+    syncWithGit || !(await pathExists(deployment.workspacePath));
+  const cloneOutput = shouldClone ? await cloneRepository(deployment) : "";
+  const runtimeFiles = await detectRuntimeFiles(deployment);
+
+  updateDeploymentRecord(deployment.id, {
+    composeMode: runtimeFiles.composeMode,
+    composeFile: runtimeFiles.composeFile,
+    serviceName: runtimeFiles.serviceName,
+  });
+
+  const composeOutput = await runComposeCommand(deployment, runtimeFiles, [
+    "up",
+    "-d",
+    "--build",
+  ]);
+
+  return (
+    truncateOutput([cloneOutput, composeOutput].filter(Boolean).join("\n\n")) ??
+    ""
+  );
 }
 
 async function detectRuntimeFiles(
@@ -498,7 +530,7 @@ export async function createAndDeployFromForm(input: {
   branch: FormDataEntryValue | string | null;
   serviceName: FormDataEntryValue | string | null;
   appName: string;
-  domain: string;
+  subdomain: string;
   port: string;
 }) {
   const parsed = createDeploymentSchema.parse({
@@ -507,12 +539,12 @@ export async function createAndDeployFromForm(input: {
     branch: normalizeStringInput(input.branch),
     serviceName: normalizeStringInput(input.serviceName),
     appName: input.appName,
-    subdomain: normalizeDomainInput(input.domain),
+    subdomain: normalizeDomainInput(input.subdomain),
     port: input.port,
   });
 
   const { deploymentId, domain } = createDeploymentRecord(parsed);
-  await redeployDeploymentById(deploymentId, "deploy");
+  await fetchDeploymentFromGitById(deploymentId, "deploy");
 
   return {
     deploymentId,
@@ -520,38 +552,64 @@ export async function createAndDeployFromForm(input: {
   };
 }
 
-export async function redeployDeploymentById(
+export async function redeployDeploymentById(deploymentId: string) {
+  return await executeLifecycleOperation(
+    deploymentId,
+    "redeploy",
+    async (deployment) => {
+      return await deployWorkspace(deployment, false);
+    },
+    "running",
+  );
+}
+
+export async function fetchDeploymentFromGitById(
   deploymentId: string,
   operationType: "deploy" | "redeploy" = "redeploy",
 ) {
   return await executeLifecycleOperation(
     deploymentId,
     operationType,
-    async (deployment) => {
-      await ensureProxyNetwork();
-      const cloneOutput = await cloneRepository(deployment);
-      const runtimeFiles = await detectRuntimeFiles(deployment);
-
-      updateDeploymentRecord(deployment.id, {
-        composeMode: runtimeFiles.composeMode,
-        composeFile: runtimeFiles.composeFile,
-        serviceName: runtimeFiles.serviceName,
-      });
-
-      const composeOutput = await runComposeCommand(deployment, runtimeFiles, [
-        "up",
-        "-d",
-        "--build",
-      ]);
-
-      return (
-        truncateOutput(
-          [cloneOutput, composeOutput].filter(Boolean).join("\n\n"),
-        ) ?? ""
-      );
-    },
+    async (deployment) => await deployWorkspace(deployment, true),
     "running",
   );
+}
+
+export async function updateDeploymentSettingsById(input: {
+  deploymentId: string;
+  appName: string;
+  subdomain: string;
+  port: string;
+}) {
+  const parsed = updateDeploymentSettingsSchema.parse({
+    deploymentId: input.deploymentId,
+    appName: input.appName,
+    subdomain: normalizeDomainInput(input.subdomain),
+    port: input.port,
+  });
+
+  try {
+    updateDeploymentRecord(parsed.deploymentId, {
+      appName: parsed.appName,
+      subdomain: parsed.subdomain,
+      port: parsed.port,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("UNIQUE")) {
+      throw new Error(
+        "That subdomain is already reserved by another deployment.",
+      );
+    }
+
+    throw error;
+  }
+
+  const result = await redeployDeploymentById(parsed.deploymentId);
+
+  return {
+    appName: parsed.appName,
+    domain: result.domain,
+  };
 }
 
 export async function stopDeploymentById(deploymentId: string) {

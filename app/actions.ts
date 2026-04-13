@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 
 import {
   createAndDeployFromForm,
+  fetchDeploymentFromGitById,
   redeployDeploymentById,
   removeDeploymentById,
   stopDeploymentById,
+  updateDeploymentSettingsById,
 } from "@/lib/deployment-engine";
 
 function getRequiredFormValue(formData: FormData, name: string): string {
@@ -51,7 +53,7 @@ export async function createDeploymentAction(formData: FormData) {
       branch: formData.get("branch"),
       serviceName: formData.get("serviceName"),
       appName: getRequiredFormValue(formData, "appName"),
-      domain: getRequiredFormValue(formData, "domain"),
+      subdomain: getRequiredFormValue(formData, "subdomain"),
       port: getRequiredFormValue(formData, "port"),
     });
     url = formatRedirectUrl(
@@ -84,6 +86,24 @@ export async function redeployDeploymentAction(formData: FormData) {
   redirect(url);
 }
 
+export async function fetchDeploymentFromGitAction(formData: FormData) {
+  const deploymentId = getRequiredFormValue(formData, "deploymentId");
+  let url: string;
+
+  try {
+    const result = await fetchDeploymentFromGitById(deploymentId);
+    url = formatRedirectUrl(
+      "success",
+      `Fetched latest changes for ${result.appName} at https://${result.domain}`,
+      "git",
+    );
+  } catch (error) {
+    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+  }
+
+  redirect(url);
+}
+
 export async function stopDeploymentAction(formData: FormData) {
   const deploymentId = getRequiredFormValue(formData, "deploymentId");
   let url: string;
@@ -105,6 +125,28 @@ export async function removeDeploymentAction(formData: FormData) {
   try {
     const result = await removeDeploymentById(deploymentId);
     url = formatRedirectUrl("success", `Removed ${result.appName}.`, "git");
+  } catch (error) {
+    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+  }
+
+  redirect(url);
+}
+
+export async function updateDeploymentAction(formData: FormData) {
+  let url: string;
+
+  try {
+    const result = await updateDeploymentSettingsById({
+      deploymentId: getRequiredFormValue(formData, "deploymentId"),
+      appName: getRequiredFormValue(formData, "appName"),
+      subdomain: getRequiredFormValue(formData, "subdomain"),
+      port: getRequiredFormValue(formData, "port"),
+    });
+    url = formatRedirectUrl(
+      "success",
+      `Updated ${result.appName}. Deployment live at https://${result.domain}`,
+      "git",
+    );
   } catch (error) {
     url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
   }

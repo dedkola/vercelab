@@ -60,4 +60,25 @@ export const deploymentActionSchema = z.object({
   deploymentId: z.string().uuid("Deployment id is invalid."),
 });
 
+export const updateDeploymentSettingsSchema = deploymentActionSchema.extend({
+  appName: z
+    .string()
+    .trim()
+    .min(2, "App name is too short.")
+    .max(60, "App name is too long."),
+  subdomain: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(
+      slugPattern,
+      "Subdomain must be lowercase letters, numbers, or dashes.",
+    ),
+  port: z.coerce
+    .number()
+    .int()
+    .min(1, "Port must be between 1 and 65535.")
+    .max(65535, "Port must be between 1 and 65535."),
+});
+
 export type CreateDeploymentInput = z.infer<typeof createDeploymentSchema>;

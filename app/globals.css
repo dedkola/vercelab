@@ -159,6 +159,13 @@ a:focus-visible {
   background: #ffe8e8;
 }
 
+.button--small {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
 /* ── Shell ── */
 .shell {
   height: 100vh;
@@ -305,7 +312,7 @@ a:focus-visible {
   flex-direction: column;
   align-items: center;
   padding: 12px 0;
-  background: var(--bg);
+  background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
   -ms-overflow-style: none;
@@ -376,7 +383,7 @@ a:focus-visible {
 /* ── Left Panel ── */
 .panel {
   position: relative;
-  background: var(--bg);
+  background: var(--surface);
   border-right: 1px solid var(--border);
   overflow: visible;
   -ms-overflow-style: none;
@@ -1328,7 +1335,7 @@ a:focus-visible {
 
 /* ── Main Content ── */
 .main {
-  background: var(--bg);
+  background: var(--surface);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -2242,6 +2249,10 @@ a:focus-visible {
   }
 
   .git-line {
+    gap: 12px;
+  }
+
+  .git-line__main {
     grid-template-columns: 1fr;
   }
 
@@ -2251,6 +2262,14 @@ a:focus-visible {
 
   .git-line__summary {
     text-align: left;
+  }
+
+  .git-line__actions {
+    justify-content: start;
+  }
+
+  .git-edit-form {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2331,13 +2350,7 @@ a:focus-visible {
   min-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr;
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(0, 111, 255, 0.08),
-      transparent 28%
-    ),
-    linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+  background: var(--surface);
 }
 
 .metrics-header {
@@ -2872,6 +2885,11 @@ a:focus-visible {
   font-weight: 600;
 }
 
+.flash-banner__link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .flash-banner--success {
   color: #16643b;
   background: #e9f8ef;
@@ -2955,6 +2973,59 @@ a:focus-visible {
   background: #fbfcfe;
 }
 
+.field-combo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: #fbfcfe;
+  overflow: hidden;
+}
+
+.field-combo input {
+  border: 0;
+  background: transparent;
+}
+
+.field-combo__suffix {
+  display: inline-flex;
+  align-items: center;
+  min-height: 100%;
+  padding: 0 14px;
+  border-left: 1px solid var(--border);
+  background: #f2f6fb;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (min-width: 1025px) {
+  .field {
+    gap: 6px;
+  }
+
+  .field input,
+  .field-combo {
+    min-height: 38px;
+  }
+
+  .field input {
+    padding: 0 12px;
+    border-radius: 10px;
+  }
+
+  .field-combo {
+    border-radius: 10px;
+  }
+
+  .field-combo__suffix {
+    padding: 0 12px;
+    font-size: 12px;
+  }
+}
+
 .field__hint {
   color: var(--text-muted);
   font-size: 12px;
@@ -2978,13 +3049,18 @@ a:focus-visible {
 
 .git-line {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(180px, 0.9fr);
-  gap: 16px;
-  align-items: center;
+  gap: 14px;
   padding: 14px 16px;
   border: 1px solid #e8edf3;
   border-radius: 14px;
   background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+}
+
+.git-line__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(180px, 0.9fr);
+  gap: 16px;
+  align-items: center;
 }
 
 .git-line__identity,
@@ -2999,11 +3075,14 @@ a:focus-visible {
 }
 
 .git-line__host {
+  display: inline-flex;
   margin-top: 4px;
   color: var(--accent);
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .git-line__details {
@@ -3021,6 +3100,18 @@ a:focus-visible {
   padding: 6px 10px;
   border-radius: 999px;
   background: #f5f8fb;
+}
+
+.git-line__details a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .git-line__status-wrap {
@@ -3065,6 +3156,61 @@ a:focus-visible {
   font-size: 12px;
   line-height: 1.5;
   text-align: right;
+}
+
+.git-line__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.git-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(234, 84, 85, 0.16);
+  border-radius: 12px;
+  background: #fff6f6;
+}
+
+.git-delete-confirm__copy {
+  color: #8e3031;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.git-delete-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.field--compact {
+  gap: 6px;
+}
+
+.git-edit-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  padding-top: 2px;
+  border-top: 1px solid #edf1f6;
+}
+
+.git-edit-form__actions {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+@media (max-width: 1024px) {
+  .git-delete-confirm {
+    flex-direction: column;
+    align-items: start;
+  }
 }
 
 .git-empty-state {

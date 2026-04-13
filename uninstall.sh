@@ -110,7 +110,7 @@ Options:
   --help          Show this help text.
 
 Notes:
-  - Docker Engine, the Docker Compose plugin, Node.js, and npm are left installed on the host.
+  - Docker Engine, the Docker Compose plugin, Node.js, and pnpm are left installed on the host.
   - Without --purge, the generated .env file, database, certificates, cloned apps, and Docker volumes are preserved.
 EOF
 }
@@ -371,7 +371,7 @@ print_summary() {
     warn "Docker cleanup was skipped. Any remaining Vercelab containers, networks, volumes, or images must be removed manually."
   fi
 
-  log "Docker Engine, the Docker Compose plugin, Node.js, and npm were left installed on the host."
+  log "Docker Engine, the Docker Compose plugin, Node.js, and pnpm were left installed on the host."
 }
 
 main() {

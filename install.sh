@@ -9,6 +9,7 @@ readonly ENV_EXAMPLE="$REPO_ROOT/.env.example"
 readonly COMPOSE_FILE="$REPO_ROOT/docker-compose.yml"
 readonly NODE_MAJOR="22"
 readonly DOCKER_MAJOR="28"
+readonly PNPM_VERSION="10.0.0"
 readonly DEFAULT_NODE_ENV="production"
 readonly DEFAULT_HOSTNAME="0.0.0.0"
 readonly DEFAULT_PORT="3000"
@@ -116,12 +117,12 @@ ensure_nodejs() {
     installed_major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || true)"
   fi
 
-  if [[ "$installed_major" == "$NODE_MAJOR" ]] && command_exists npm; then
+  if [[ "$installed_major" == "$NODE_MAJOR" ]]; then
     log "Node.js ${NODE_MAJOR} is already installed."
     return
   fi
 
-  log "Installing Node.js ${NODE_MAJOR} and npm."
+  log "Installing Node.js ${NODE_MAJOR}."
   run_privileged install -m 0755 -d /etc/apt/keyrings
 
   if [[ ! -f /etc/apt/keyrings/nodesource.gpg ]]; then
@@ -135,6 +136,25 @@ ensure_nodejs() {
 
   run_privileged apt-get update
   run_privileged apt-get install -y nodejs
+}
+
+ensure_pnpm() {
+  if command_exists pnpm; then
+    log "pnpm is already installed."
+    return
+  fi
+
+  if command_exists corepack; then
+    log "Installing pnpm ${PNPM_VERSION} via corepack."
+    run_privileged corepack enable
+    run_privileged corepack prepare "pnpm@${PNPM_VERSION}" --activate
+    return
+  fi
+
+  command_exists npm || fail "npm is required to install pnpm when corepack is unavailable."
+
+  log "corepack not found; installing pnpm ${PNPM_VERSION} globally via npm."
+  run_privileged npm install -g "pnpm@${PNPM_VERSION}"
 }
 
 resolve_latest_package_version() {
@@ -202,6 +222,7 @@ ensure_docker_engine() {
 ensure_prerequisites() {
   ensure_base_packages
   ensure_nodejs
+  ensure_pnpm
   ensure_docker_engine
 }
 
@@ -266,11 +287,11 @@ detect_default_base_domain() {
 }
 
 install_host_node_dependencies() {
-  log "Installing npm dependencies on the host for local maintenance workflows."
+  log "Installing pnpm dependencies on the host for local maintenance workflows."
 
   (
     cd "$REPO_ROOT"
-    npm ci
+    pnpm install --frozen-lockfile
   )
 }
 
@@ -279,7 +300,7 @@ run_host_build_smoke_test() {
 
   (
     cd "$REPO_ROOT"
-    npm run build
+    pnpm run build
   )
 }
 

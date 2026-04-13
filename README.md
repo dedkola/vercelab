@@ -13,8 +13,8 @@ Vercelab is a self-hosted homelab deployment control plane built with Next.js 16
 ## Local development
 
 ```bash
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
 The app runs on `http://localhost:3000` by default. Local development keeps the default project-relative `data/` storage unless you override it with environment variables.
@@ -42,10 +42,10 @@ Any runtime variable listed below can be exported before running `./install.sh`.
 
 The installer is a full bootstrap script for a plain Ubuntu server. It will:
 
-- install Node.js and npm on the host
+- install Node.js and pnpm on the host
 - install the native toolchain needed by packages such as `better-sqlite3`
 - install and pin Docker Engine `28.x` plus the Compose plugin, because Traefik's Docker provider is not compatible with Docker `29.x` on this stack
-- run `npm ci` and a host-side `npm run build` smoke test
+- run `pnpm install --frozen-lockfile` and a host-side `pnpm run build` smoke test
 - create a shared host root under `/opt/vercelab` by default
 - auto-generate a reachable default base domain from the server IP when you do not provide one
 - generate a wildcard self-signed certificate for your base domain
@@ -79,27 +79,27 @@ Local development has a different fallback layout when you do not set production
 
 These are the defaults the installer writes into `.env` unless you override them.
 
-| Variable | Default | Notes |
-| --- | --- | --- |
-| `NODE_ENV` | `production` | Runtime mode for the control plane container |
-| `HOSTNAME` | `0.0.0.0` | Bind address inside the container |
-| `PORT` | `3000` | Internal port Traefik forwards to |
-| `VERCELAB_BASE_DOMAIN` | auto-derived from the host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps |
-| `VERCELAB_ADMIN_HOST` | `vercelab.${VERCELAB_BASE_DOMAIN}` | Control plane hostname |
-| `VERCELAB_PROXY_NETWORK` | `vercelab_proxy` | Shared Docker network for Traefik and managed apps |
-| `VERCELAB_PROXY_ENTRYPOINT` | `websecure` | Traefik HTTPS entrypoint |
-| `VERCELAB_HOST_ROOT` | `/opt/vercelab` | Shared host path mounted into the control-plane container at the same absolute path |
-| `VERCELAB_DATA_ROOT` | `${VERCELAB_HOST_ROOT}/data` | Parent directory for apps, logs, locks, and the database |
-| `VERCELAB_TRAEFIK_DYNAMIC_DIR` | `${VERCELAB_HOST_ROOT}/traefik/dynamic` | Generated Traefik dynamic config location |
-| `VERCELAB_TRAEFIK_CERTS_DIR` | `${VERCELAB_HOST_ROOT}/traefik/certs` | Wildcard certificate and key |
-| `VERCELAB_APPS_DIR` | `${VERCELAB_DATA_ROOT}/apps` | Cloned app repositories |
-| `VERCELAB_LOGS_DIR` | `${VERCELAB_DATA_ROOT}/logs` | Deployment logs |
-| `VERCELAB_LOCKS_DIR` | `${VERCELAB_DATA_ROOT}/locks` | Deployment lock files |
-| `VERCELAB_DATABASE_PATH` | `${VERCELAB_DATA_ROOT}/db/vercelab.sqlite` | SQLite database path |
-| `VERCELAB_DOCKER_SOCKET_PATH` | `/var/run/docker.sock` | Host Docker socket passed into Traefik and the control plane |
-| `VERCELAB_DATABASE_PROVIDER` | `sqlite` | `postgres` is accepted, but requires `VERCELAB_POSTGRES_URL` |
-| `VERCELAB_POSTGRES_URL` | empty | Required only when `VERCELAB_DATABASE_PROVIDER=postgres` |
-| `VERCELAB_ENCRYPTION_SECRET` | auto-generated 64-hex-character secret when unset | Used to encrypt stored GitHub tokens |
+| Variable                       | Default                                                                      | Notes                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `NODE_ENV`                     | `production`                                                                 | Runtime mode for the control plane container                                        |
+| `HOSTNAME`                     | `0.0.0.0`                                                                    | Bind address inside the container                                                   |
+| `PORT`                         | `3000`                                                                       | Internal port Traefik forwards to                                                   |
+| `VERCELAB_BASE_DOMAIN`         | auto-derived from the host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps                                              |
+| `VERCELAB_ADMIN_HOST`          | `vercelab.${VERCELAB_BASE_DOMAIN}`                                           | Control plane hostname                                                              |
+| `VERCELAB_PROXY_NETWORK`       | `vercelab_proxy`                                                             | Shared Docker network for Traefik and managed apps                                  |
+| `VERCELAB_PROXY_ENTRYPOINT`    | `websecure`                                                                  | Traefik HTTPS entrypoint                                                            |
+| `VERCELAB_HOST_ROOT`           | `/opt/vercelab`                                                              | Shared host path mounted into the control-plane container at the same absolute path |
+| `VERCELAB_DATA_ROOT`           | `${VERCELAB_HOST_ROOT}/data`                                                 | Parent directory for apps, logs, locks, and the database                            |
+| `VERCELAB_TRAEFIK_DYNAMIC_DIR` | `${VERCELAB_HOST_ROOT}/traefik/dynamic`                                      | Generated Traefik dynamic config location                                           |
+| `VERCELAB_TRAEFIK_CERTS_DIR`   | `${VERCELAB_HOST_ROOT}/traefik/certs`                                        | Wildcard certificate and key                                                        |
+| `VERCELAB_APPS_DIR`            | `${VERCELAB_DATA_ROOT}/apps`                                                 | Cloned app repositories                                                             |
+| `VERCELAB_LOGS_DIR`            | `${VERCELAB_DATA_ROOT}/logs`                                                 | Deployment logs                                                                     |
+| `VERCELAB_LOCKS_DIR`           | `${VERCELAB_DATA_ROOT}/locks`                                                | Deployment lock files                                                               |
+| `VERCELAB_DATABASE_PATH`       | `${VERCELAB_DATA_ROOT}/db/vercelab.sqlite`                                   | SQLite database path                                                                |
+| `VERCELAB_DOCKER_SOCKET_PATH`  | `/var/run/docker.sock`                                                       | Host Docker socket passed into Traefik and the control plane                        |
+| `VERCELAB_DATABASE_PROVIDER`   | `sqlite`                                                                     | `postgres` is accepted, but requires `VERCELAB_POSTGRES_URL`                        |
+| `VERCELAB_POSTGRES_URL`        | empty                                                                        | Required only when `VERCELAB_DATABASE_PROVIDER=postgres`                            |
+| `VERCELAB_ENCRYPTION_SECRET`   | auto-generated 64-hex-character secret when unset                            | Used to encrypt stored GitHub tokens                                                |
 
 ## Reinstall
 
@@ -167,7 +167,7 @@ Also remove Docker images labeled for Vercelab compose projects:
 ./uninstall.sh --purge --purge-images
 ```
 
-`uninstall.sh` intentionally leaves Docker Engine, the Docker Compose plugin, Node.js, and npm installed on the host. That keeps reinstall simple and avoids removing software the host may be using for other workloads.
+`uninstall.sh` intentionally leaves Docker Engine, the Docker Compose plugin, Node.js, and pnpm installed on the host. That keeps reinstall simple and avoids removing software the host may be using for other workloads.
 
 ## Why the shared host root matters
 
