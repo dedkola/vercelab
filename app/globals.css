@@ -209,6 +209,22 @@ a:focus-visible {
   grid-template-columns: var(--rail-w) 20px 1fr;
 }
 
+.shell--compact .body--right-open {
+  grid-template-columns: var(--rail-w) var(--panel-w) 1fr var(--panel-right-w);
+}
+
+.shell--compact .body--right-collapsed {
+  grid-template-columns: var(--rail-w) var(--panel-w) 1fr 22px;
+}
+
+.shell--compact .body--panel-collapsed.body--right-open {
+  grid-template-columns: var(--rail-w) 20px 1fr var(--panel-right-w);
+}
+
+.shell--compact .body--panel-collapsed.body--right-collapsed {
+  grid-template-columns: var(--rail-w) 20px 1fr 22px;
+}
+
 .shell--compact .rail {
   padding: 8px 0;
 }

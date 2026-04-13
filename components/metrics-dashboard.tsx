@@ -671,7 +671,7 @@ export default function MetricsDashboard({
   const [activeSection, setActiveSection] =
     useState<DashboardSection>(initialSection);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
-  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(true);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [logDeploymentId, setLogDeploymentId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
