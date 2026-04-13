@@ -945,7 +945,7 @@ export default function MetricsDashboard({
         <div className="topbar__left">
           <button className="site-switch" type="button">
             <span className="site-switch__dot" />
-            <span className="site-switch__name">tk</span>
+            <span className="site-switch__name">Vercelab</span>
           </button>
 
           <span className="app-pill">
@@ -954,7 +954,50 @@ export default function MetricsDashboard({
           </span>
         </div>
 
-        <div className="topbar__center">Vercelab</div>
+        <div className="topbar__center">
+          <div className="header-sysinfo">
+            <span className="header-sysinfo__item">
+              <span className="header-sysinfo__label">Host IP</span>
+              <span className="header-sysinfo__value">
+                {deferredSnapshot?.hostIp ?? "—"}
+              </span>
+              <button
+                className="header-sysinfo__copy"
+                type="button"
+                aria-label="Copy host IP"
+                onClick={() =>
+                  void navigator.clipboard.writeText(
+                    deferredSnapshot?.hostIp ?? "",
+                  )
+                }
+              >
+                <Icon name="copy" />
+              </button>
+            </span>
+            <span className="header-sysinfo__sep" />
+            <span className="header-sysinfo__item">
+              <span className="header-sysinfo__label">Traefik</span>
+              <span className="header-sysinfo__value">{baseDomain}</span>
+              <button
+                className="header-sysinfo__copy"
+                type="button"
+                aria-label="Copy traefik hostname"
+                onClick={() => void navigator.clipboard.writeText(baseDomain)}
+              >
+                <Icon name="copy" />
+              </button>
+            </span>
+            <span className="header-sysinfo__sep" />
+            <span className="header-sysinfo__item">
+              <span className="header-sysinfo__label">LA</span>
+              <span className="header-sysinfo__value">
+                {deferredSnapshot
+                  ? deferredSnapshot.system.loadAverage[0].toFixed(2)
+                  : "—"}
+              </span>
+            </span>
+          </div>
+        </div>
 
         <div className="topbar__right">
           <button className="topbar-btn" type="button" aria-label="Theme">

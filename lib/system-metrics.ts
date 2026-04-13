@@ -30,6 +30,7 @@ type SampleState<T> = {
 export type MetricsSnapshot = {
   timestamp: string;
   warnings: string[];
+  hostIp: string;
   system: {
     cpuPercent: number;
     loadAverage: [number, number, number];
@@ -579,9 +580,23 @@ async function buildSnapshot(): Promise<MetricsSnapshot> {
     warnings.push("Network interface counters are unavailable.");
   }
 
+  const hostIp = (() => {
+    const ifaces = os.networkInterfaces();
+    for (const iface of Object.values(ifaces)) {
+      if (!iface) continue;
+      for (const addr of iface) {
+        if (addr.family === "IPv4" && !addr.internal) {
+          return addr.address;
+        }
+      }
+    }
+    return "unknown";
+  })();
+
   return {
     timestamp: new Date().toISOString(),
     warnings,
+    hostIp,
     system,
     network,
     containers: {

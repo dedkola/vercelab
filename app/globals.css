@@ -418,10 +418,12 @@ a:focus-visible {
 }
 
 .topbar__center {
-  color: var(--text-faint);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
   text-align: center;
 }
 
@@ -1819,6 +1821,58 @@ a:focus-visible {
 .main__header-spacer {
   flex: 1;
   min-width: 12px;
+}
+
+/* Header sysinfo chips — same design as .version-item */
+.header-sysinfo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-sysinfo__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.header-sysinfo__label,
+.header-sysinfo__value {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.header-sysinfo__copy {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.header-sysinfo__copy .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.header-sysinfo__copy:hover .icon {
+  color: var(--text-secondary);
+}
+
+.header-sysinfo__sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  display: inline-block;
 }
 
 /* Time selector */
