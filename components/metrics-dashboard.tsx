@@ -982,7 +982,7 @@ export default function MetricsDashboard({
     RAIL_PRIMARY[0];
 
   return (
-    <section className="shell" aria-label="UniFi styled dashboard">
+    <section className="shell shell--compact" aria-label="UniFi styled dashboard">
       <header className="topbar">
         <div className="topbar__left">
           <button className="site-switch" type="button">

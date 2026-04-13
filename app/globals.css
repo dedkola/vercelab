@@ -173,6 +173,215 @@ a:focus-visible {
   grid-template-rows: var(--topbar-h) 1fr;
 }
 
+.shell--compact {
+  --topbar-h: 42px;
+  --panel-w: 272px;
+}
+
+.shell--compact .topbar {
+  gap: 10px;
+  padding: 0 10px;
+}
+
+.shell--compact .site-switch,
+.shell--compact .app-pill {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.shell--compact .topbar__center {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.shell--compact .topbar-btn,
+.shell--compact .topbar-avatar {
+  width: 28px;
+  height: 28px;
+}
+
+.shell--compact .body {
+  grid-template-columns: var(--rail-w) var(--panel-w) 1fr;
+}
+
+.shell--compact .body--panel-collapsed {
+  grid-template-columns: var(--rail-w) 20px 1fr;
+}
+
+.shell--compact .rail {
+  padding: 8px 0;
+}
+
+.shell--compact .rail__link {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.shell--compact .panel {
+  padding: 12px;
+}
+
+.shell--compact .panel__section {
+  padding: 10px 0;
+}
+
+.shell--compact .main__header {
+  gap: 8px;
+  padding: 8px 14px;
+}
+
+.shell--compact .header-tab,
+.shell--compact .header-dropdown,
+.shell--compact .header-check,
+.shell--compact .time-btn {
+  font-size: 12px;
+}
+
+.shell--compact .header-tab {
+  padding: 4px 8px;
+}
+
+.shell--compact .header-dropdown {
+  padding: 4px 8px;
+}
+
+.shell--compact .header-check {
+  padding: 3px 5px;
+}
+
+.shell--compact .time-btn {
+  padding: 3px 8px;
+}
+
+.shell--compact .chart-area {
+  min-height: 260px;
+  padding: 10px 14px;
+}
+
+.shell--compact .chart-placeholder {
+  min-height: 240px;
+  border-radius: 10px;
+}
+
+.shell--compact .scrubber {
+  gap: 6px;
+  padding: 4px 14px;
+}
+
+.shell--compact .dashboard-overview {
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.shell--compact .overview-grid {
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 390px);
+}
+
+.shell--compact .overview-card__header {
+  gap: 10px;
+  padding: 10px 12px 0;
+}
+
+.shell--compact .overview-card__title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.shell--compact .overview-card__meta,
+.shell--compact .overview-card__stamp,
+.shell--compact .traffic-table th,
+.shell--compact .traffic-table td,
+.shell--compact .connections-table__head,
+.shell--compact .connections-table__row {
+  font-size: 11px;
+}
+
+.shell--compact .unifi-card--traffic .traffic,
+.shell--compact .connections-card {
+  padding: 10px 12px 8px;
+  gap: 12px;
+}
+
+.shell--compact .donut {
+  width: 152px;
+  height: 152px;
+}
+
+.shell--compact .donut__value {
+  font-size: 20px;
+}
+
+.shell--compact .donut__label {
+  font-size: 11px;
+}
+
+.shell--compact .side-note {
+  padding: 12px;
+}
+
+.shell--compact .side-note__value {
+  margin-top: 8px;
+  font-size: 22px;
+}
+
+.shell--compact .side-note__meta,
+.shell--compact .side-note__row {
+  font-size: 12px;
+}
+
+.shell--compact .throughput-card {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.shell--compact .throughput-compact {
+  gap: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+
+.shell--compact .throughput-compact__value-main {
+  font-size: 14px;
+}
+
+.shell--compact .panel-card__title {
+  font-size: 13px;
+}
+
+.shell--compact .channel-row,
+.shell--compact .channel-grid__label {
+  font-size: 11px;
+}
+
+.shell--compact .action-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.shell--compact .cyber-card,
+.shell--compact .widgets-btn {
+  margin-top: 10px;
+}
+
+.shell--compact .cyber-card {
+  padding: 10px;
+}
+
+.shell--compact .cyber-card__title {
+  font-size: 13px;
+}
+
+.shell--compact .cyber-card__list,
+.shell--compact .cyber-card__footer,
+.shell--compact .widgets-btn {
+  font-size: 11px;
+}
+
 /* ── Top Bar ── */
 .topbar {
   display: grid;
@@ -3806,5 +4015,23 @@ a:focus-visible {
 
   .network-card__anchor {
     margin-left: auto;
+  }
+
+  .shell--compact .main__header {
+    padding: 8px 10px;
+  }
+
+  .shell--compact .chart-area {
+    padding: 8px 10px;
+  }
+
+  .shell--compact .dashboard-overview {
+    grid-template-columns: 1fr;
+    padding: 0 10px 10px;
+  }
+
+  .shell--compact .overview-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }

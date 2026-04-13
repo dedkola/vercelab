@@ -577,7 +577,7 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
           created_at,
           updated_at,
           deployed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     ).run(
       deploymentId,
