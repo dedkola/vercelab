@@ -240,6 +240,18 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
       : composePlugin.output || "Docker Compose is unavailable.",
   });
 
+  const buildxPlugin = await runProbe("docker", ["buildx", "version"]);
+
+  checks.push({
+    id: "docker-buildx",
+    label: "Docker Buildx",
+    ok: buildxPlugin.ok,
+    severity: runtimeSeverity,
+    message: buildxPlugin.ok
+      ? buildxPlugin.output || "Docker Buildx is available."
+      : buildxPlugin.output || "Docker Buildx is unavailable.",
+  });
+
   return {
     ok: checks.every((check) => check.ok || check.severity === "warning"),
     checks,

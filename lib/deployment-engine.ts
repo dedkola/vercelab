@@ -455,6 +455,10 @@ async function runComposeCommand(
     ],
     {
       cwd: deployment.workspacePath,
+      env: {
+        DOCKER_BUILDKIT: "1",
+        COMPOSE_DOCKER_CLI_BUILD: "1",
+      },
     },
   );
 }
