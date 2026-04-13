@@ -44,7 +44,8 @@ read_env_value() {
     return 0
   fi
 
-  value="$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  # Normalize CRLF-edited .env files.
+  value="$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d '\r' || true)"
   printf '%s' "$value"
 }
 
@@ -79,6 +80,41 @@ prompt_optional_secret() {
     printf '\n' >&2
     printf '%s' "$input"
   fi
+}
+
+mask_secret() {
+  local value="$1"
+  local length=0
+
+  length="${#value}"
+  if (( length == 0 )); then
+    printf '%s' "(empty)"
+    return
+  fi
+
+  if (( length <= 8 )); then
+    printf '%s' "********"
+    return
+  fi
+
+  printf '%s' "${value:0:4}********${value:length-4:4}"
+}
+
+confirm_configuration() {
+  if [[ ! -t 0 ]]; then
+    return
+  fi
+
+  local answer=""
+  read -r -p "Continue with this configuration? [Y/n]: " answer || true
+
+  case "${answer:-Y}" in
+    y|Y|yes|YES|"")
+      ;;
+    *)
+      fail "Installation canceled by user."
+      ;;
+  esac
 }
 
 ensure_sudo() {
@@ -438,7 +474,12 @@ gather_configuration() {
     VERCELAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)"
   fi
 
-  VERCELAB_GITHUB_TOKEN="${VERCELAB_GITHUB_TOKEN:-$(prompt_optional_secret "GitHub personal access token (repo scope)" "$existing_github_token")}"
+  # Reinstall behavior:
+  # - explicit env value wins
+  # - then existing .env value
+  # - prompt only if still empty
+  VERCELAB_GITHUB_TOKEN="${VERCELAB_GITHUB_TOKEN:-${existing_github_token:-}}"
+  [[ -n "$VERCELAB_GITHUB_TOKEN" ]] || VERCELAB_GITHUB_TOKEN="$(prompt_optional_secret "GitHub personal access token (repo scope)" "")"
 }
 
 prepare_host_directories() {
@@ -543,12 +584,63 @@ start_stack() {
   )
 }
 
+print_configuration_review() {
+  log "Configuration review"
+  printf '\n'
+  printf '============================================================\n'
+  printf '                    Vercelab Setup Review                   \n'
+  printf '============================================================\n'
+  printf ' Runtime\n'
+  printf '   NODE_ENV                 : %s\n' "$NODE_ENV"
+  printf '   HOSTNAME                 : %s\n' "$CONTROL_PLANE_HOSTNAME"
+  printf '   PORT                     : %s\n' "$PORT"
+  printf '\n'
+  printf ' Domains & Routing\n'
+  printf '   VERCELAB_BASE_DOMAIN     : %s\n' "$VERCELAB_BASE_DOMAIN"
+  printf '   VERCELAB_ADMIN_HOST      : %s\n' "$VERCELAB_ADMIN_HOST"
+  printf '   VERCELAB_PROXY_NETWORK   : %s\n' "$VERCELAB_PROXY_NETWORK"
+  printf '   VERCELAB_PROXY_ENTRYPOINT: %s\n' "$VERCELAB_PROXY_ENTRYPOINT"
+  printf '\n'
+  printf ' Paths\n'
+  printf '   VERCELAB_HOST_ROOT       : %s\n' "$VERCELAB_HOST_ROOT"
+  printf '   VERCELAB_DATA_ROOT       : %s\n' "$VERCELAB_DATA_ROOT"
+  printf '   VERCELAB_APPS_DIR        : %s\n' "$VERCELAB_APPS_DIR"
+  printf '   VERCELAB_LOGS_DIR        : %s\n' "$VERCELAB_LOGS_DIR"
+  printf '   VERCELAB_LOCKS_DIR       : %s\n' "$VERCELAB_LOCKS_DIR"
+  printf '   VERCELAB_DATABASE_PATH   : %s\n' "$VERCELAB_DATABASE_PATH"
+  printf '   VERCELAB_DOCKER_SOCKET   : %s\n' "$VERCELAB_DOCKER_SOCKET_PATH"
+  printf '\n'
+  printf ' Security\n'
+  printf '   VERCELAB_ENCRYPTION_SECRET: %s\n' "$(mask_secret "$VERCELAB_ENCRYPTION_SECRET")"
+  printf '   VERCELAB_GITHUB_TOKEN     : %s\n' "$(mask_secret "$VERCELAB_GITHUB_TOKEN")"
+  printf '============================================================\n'
+  printf '\n'
+
+  confirm_configuration
+}
+
 print_summary() {
-  log "Vercelab is starting at https://$VERCELAB_ADMIN_HOST"
-  log "Health endpoint: https://$VERCELAB_ADMIN_HOST/api/health"
-  log "Docker state root: $VERCELAB_HOST_ROOT"
-  log "All runtime variables are written to $ENV_FILE for future edits."
-  log "Import $VERCELAB_TRAEFIK_CERTS_DIR/wildcard.crt into your client trust store to remove browser warnings."
+  local dashboard_url="https://$VERCELAB_ADMIN_HOST"
+  local health_url="$dashboard_url/api/health"
+  local wildcard_example_url="https://demo.$VERCELAB_BASE_DOMAIN"
+
+  printf '\n'
+  printf '============================================================\n'
+  printf '                    Vercelab Setup Complete                 \n'
+  printf '============================================================\n'
+  printf ' Dashboard   : %s\n' "$dashboard_url"
+  printf ' Health API  : %s\n' "$health_url"
+  printf ' App Example : %s\n' "$wildcard_example_url"
+  printf '\n'
+  printf ' Host Root   : %s\n' "$VERCELAB_HOST_ROOT"
+  printf ' Env File    : %s\n' "$ENV_FILE"
+  printf ' TLS Cert    : %s/wildcard.crt\n' "$VERCELAB_TRAEFIK_CERTS_DIR"
+  printf '\n'
+  printf ' Next:\n'
+  printf '  1) Import wildcard.crt into your browser/system trust store.\n'
+  printf '  2) Open Dashboard URL above.\n'
+  printf '  3) Check Health API if dashboard is unreachable.\n'
+  printf '============================================================\n'
 }
 
 main() {
@@ -557,10 +649,11 @@ main() {
   ensure_repo_layout
   ensure_prerequisites
   ensure_docker_group_access
+  gather_configuration
+  print_configuration_review
   resolve_docker_command
   install_host_node_dependencies
   run_host_build_smoke_test
-  gather_configuration
   prepare_host_directories
   validate_docker_socket
   write_env_file

@@ -46,7 +46,8 @@ read_env_value() {
     return 0
   fi
 
-  value="$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  # Normalize CRLF-edited .env files.
+  value="$(grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d '\r' || true)"
   printf '%s' "$value"
 }
 
@@ -150,12 +151,32 @@ load_configuration() {
   VERCELAB_PROXY_NETWORK="${VERCELAB_PROXY_NETWORK:-${existing_proxy_network:-vercelab_proxy}}"
 }
 
+print_uninstall_review() {
+  if [[ "$ASSUME_YES" == true || ! -t 0 ]]; then
+    return
+  fi
+
+  printf '\n'
+  printf '============================================================\n'
+  printf '                  Vercelab Uninstall Review                 \n'
+  printf '============================================================\n'
+  printf ' Purge runtime state : %s\n' "$PURGE_RUNTIME_STATE"
+  printf ' Purge images        : %s\n' "$PURGE_IMAGES"
+  printf ' Env file            : %s\n' "$ENV_FILE"
+  printf ' Host root           : %s\n' "$VERCELAB_HOST_ROOT"
+  printf ' Proxy network       : %s\n' "$VERCELAB_PROXY_NETWORK"
+  printf '============================================================\n'
+  printf '\n'
+}
+
 confirm_uninstall() {
   local answer=""
 
   if [[ "$ASSUME_YES" == true || ! -t 0 ]]; then
     return
   fi
+
+  print_uninstall_review
 
   log "This will remove the Vercelab control plane and managed deployment containers."
 
@@ -356,22 +377,34 @@ remove_docker_resources() {
 }
 
 print_summary() {
-  if [[ "$PURGE_RUNTIME_STATE" == true ]]; then
-    log "Vercelab has been removed from this host."
+  printf '\n'
+  printf '============================================================\n'
+  printf '                 Vercelab Uninstall Complete                \n'
+  printf '============================================================\n'
+
+  if [[ "$DOCKER_CLEANUP_SKIPPED" == true ]]; then
+    printf ' Docker cleanup      : skipped (daemon unavailable)\n'
   else
-    log "Vercelab containers have been removed, but runtime data was preserved."
-    log "Preserved state remains in $ENV_FILE and under $VERCELAB_HOST_ROOT."
+    printf ' Docker cleanup      : done\n'
+  fi
+
+  if [[ "$PURGE_RUNTIME_STATE" == true ]]; then
+    printf ' Runtime state       : purged\n'
+  else
+    printf ' Runtime state       : preserved\n'
+    printf '   - %s\n' "$ENV_FILE"
+    printf '   - %s\n' "$VERCELAB_HOST_ROOT"
   fi
 
   if [[ "$PURGE_IMAGES" == true ]]; then
-    log "Docker images labeled for Vercelab compose projects were also removed when possible."
+    printf ' Images              : purged when possible\n'
+  else
+    printf ' Images              : preserved\n'
   fi
 
-  if [[ "$DOCKER_CLEANUP_SKIPPED" == true ]]; then
-    warn "Docker cleanup was skipped. Any remaining Vercelab containers, networks, volumes, or images must be removed manually."
-  fi
-
-  log "Docker Engine, the Docker Compose plugin, Node.js, and pnpm were left installed on the host."
+  printf '\n'
+  printf ' Host tooling kept   : Docker Engine, Compose plugin, Node.js, pnpm\n'
+  printf '============================================================\n'
 }
 
 main() {
