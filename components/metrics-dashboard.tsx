@@ -11,11 +11,16 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { StackedArea, themes, useContainerWidth } from "@derpdaderp/chartkit";
+
 import { Icon, type IconName } from "@/components/dashboard-kit";
-import { GitDeploymentPage } from "./git-deployment-page";
+import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
 import type { GitHubRepository } from "@/lib/github";
 import type { DashboardData } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
+
+// Patch pearl theme: swap second series color to purple for upload indicator
+themes["pearl"].colors[1] = "#8b5cf6";
 
 const POLL_INTERVAL_MS = 5000;
 const HISTORY_LIMIT = 48;
@@ -611,148 +616,49 @@ function MainTrafficChart({
   );
 }
 
-function MiniSparkline({ history }: { history: HistoryPoint[] }) {
-  const fallbackInbound = [18, 18, 17, 17, 16, 16, 15, 16, 15, 15, 14, 14];
-  const fallbackOutbound = [62, 62, 61, 17, 15, 54, 13, 20, 11, 39, 12, 66];
-  const series = history.slice(-12);
-  const inbound = series.length
-    ? series.map((entry) => entry.networkIn)
-    : fallbackInbound;
-  const outbound = series.length
-    ? series.map((entry) => entry.networkOut)
-    : fallbackOutbound;
-  const width = 248;
-  const height = 96;
-  const insetX = 10;
-  const insetY = 10;
-  const chartWidth = width - insetX * 2;
-  const chartHeight = height - insetY * 2;
-  const maxValue = getNiceMaxValue([...inbound, ...outbound], 64);
-  const inboundArea = buildArea(inbound, chartWidth, chartHeight, maxValue);
-  const outboundArea = buildArea(outbound, chartWidth, chartHeight, maxValue);
-  const inboundPath = buildPath(inbound, chartWidth, chartHeight, maxValue);
-  const outboundPath = buildPath(outbound, chartWidth, chartHeight, maxValue);
-  const lastX = chartWidth;
-  const inboundLast = inbound.at(-1) ?? 0;
-  const outboundLast = outbound.at(-1) ?? 0;
-  const inboundLastY =
-    chartHeight - (clamp(inboundLast, 0, maxValue) / maxValue) * chartHeight;
-  const outboundLastY =
-    chartHeight - (clamp(outboundLast, 0, maxValue) / maxValue) * chartHeight;
-  const horizontalGuides = [0, 0.5, 1];
-  const verticalGuides = [0.25, 0.5, 0.75];
-  const peakDisplay = formatBitRateParts(maxValue);
+const FALLBACK_NETWORK_DATA = [
+  { time: "0s", download: 0.11, upload: 0.49 },
+  { time: "5s", download: 0.11, upload: 0.49 },
+  { time: "10s", download: 0.1, upload: 0.49 },
+  { time: "15s", download: 0.1, upload: 0.13 },
+  { time: "20s", download: 0.1, upload: 0.11 },
+  { time: "25s", download: 0.09, upload: 0.41 },
+  { time: "30s", download: 0.09, upload: 0.1 },
+  { time: "35s", download: 0.1, upload: 0.15 },
+  { time: "40s", download: 0.08, upload: 0.08 },
+  { time: "45s", download: 0.1, upload: 0.3 },
+  { time: "50s", download: 0.08, upload: 0.09 },
+  { time: "55s", download: 0.09, upload: 0.5 },
+];
+
+function MiniNetworkChart({ history }: { history: HistoryPoint[] }) {
+  const { ref, width } = useContainerWidth<HTMLDivElement>();
+  const series = history.slice(-24);
+  const data = series.length
+    ? series.map((entry, i) => ({
+        time: `${i * (POLL_INTERVAL_MS / 1000)}s`,
+        download: parseFloat(((entry.networkIn * 8) / 1_000_000).toFixed(2)),
+        upload: parseFloat(((entry.networkOut * 8) / 1_000_000).toFixed(2)),
+      }))
+    : FALLBACK_NETWORK_DATA;
 
   return (
-    <div className="panel-sparkline">
-      <div className="panel-sparkline__topline">
-        <span className="panel-sparkline__label">Traffic history</span>
-        <span className="panel-sparkline__value">
-          Peak {peakDisplay.amount} {peakDisplay.unit}
-        </span>
-      </div>
-
-      <div className="panel-sparkline__shell">
-        <span className="panel-sparkline__axis panel-sparkline__axis--top">
-          {peakDisplay.amount} {peakDisplay.unit}
-        </span>
-        <span className="panel-sparkline__axis panel-sparkline__axis--bottom">
-          0 bps
-        </span>
-
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          aria-hidden="true"
-          preserveAspectRatio="none"
-        >
-          {horizontalGuides.map((position) => {
-            const y = insetY + chartHeight * position;
-            return (
-              <line
-                key={`h-${position}`}
-                className="panel-sparkline__grid"
-                x1={insetX}
-                y1={y}
-                x2={width - insetX}
-                y2={y}
-              />
-            );
-          })}
-
-          {verticalGuides.map((position) => {
-            const x = insetX + chartWidth * position;
-            return (
-              <line
-                key={`v-${position}`}
-                className="panel-sparkline__grid panel-sparkline__grid--vertical"
-                x1={x}
-                y1={insetY}
-                x2={x}
-                y2={height - insetY}
-              />
-            );
-          })}
-
-          <g transform={`translate(${insetX} ${insetY})`}>
-            {inboundArea ? (
-              <path
-                className="panel-sparkline__area panel-sparkline__area--down"
-                d={inboundArea}
-              />
-            ) : null}
-            {outboundArea ? (
-              <path
-                className="panel-sparkline__area panel-sparkline__area--up"
-                d={outboundArea}
-              />
-            ) : null}
-            {inboundPath ? (
-              <path
-                className="panel-sparkline__line panel-sparkline__line--down"
-                d={inboundPath}
-              />
-            ) : null}
-            {outboundPath ? (
-              <path
-                className="panel-sparkline__line panel-sparkline__line--up"
-                d={outboundPath}
-              />
-            ) : null}
-
-            <circle
-              className="panel-sparkline__point panel-sparkline__point--down"
-              cx={lastX}
-              cy={inboundLastY}
-              r="3.5"
-            />
-            <circle
-              className="panel-sparkline__point panel-sparkline__point--up"
-              cx={lastX}
-              cy={outboundLastY}
-              r="3.5"
-            />
-          </g>
-        </svg>
-
-        <div className="panel-sparkline__scanline" aria-hidden="true" />
-      </div>
-
-      <div className="panel-sparkline__footer">
-        <span className="panel-sparkline__legend-item">
-          <span className="panel-sparkline__legend-dot panel-sparkline__legend-dot--down" />
-          WAN Rx
-        </span>
-        <span className="panel-sparkline__legend-item">
-          <span className="panel-sparkline__legend-dot panel-sparkline__legend-dot--up" />
-          WAN Tx
-        </span>
-        <span className="panel-sparkline__stamp">
-          Last{" "}
-          {Math.max(inbound.length, outbound.length) *
-            (POLL_INTERVAL_MS / 1000)}
-          s
-        </span>
-      </div>
+    <div className="mini-network-chart" ref={ref}>
+      {width > 0 && (
+        <StackedArea
+          data={data}
+          dataKeys={["download", "upload"]}
+          timeKey="time"
+          theme="pearl"
+          unit="Mbps"
+          showArea
+          fillOpacity={0.5}
+          seriesLabels={{ download: "WAN Rx", upload: "WAN Tx" }}
+          width={width}
+          height={160}
+          style={{ background: "transparent" }}
+        />
+      )}
     </div>
   );
 }
@@ -767,6 +673,8 @@ export default function MetricsDashboard({
   const [activeSection, setActiveSection] =
     useState<DashboardSection>(initialSection);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(true);
+  const [logDeploymentId, setLogDeploymentId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1025,6 +933,7 @@ export default function MetricsDashboard({
   const downloadRateDisplay = formatBitRateParts(downloadRate);
   const uploadRateDisplay = formatBitRateParts(uploadRate);
   const isOverviewSection = activeSection === "overview";
+  const isGitSection = activeSection === "git";
   const activeRailEntry =
     RAIL_PRIMARY.find((entry) => entry.section === activeSection) ??
     RAIL_PRIMARY[0];
@@ -1060,7 +969,7 @@ export default function MetricsDashboard({
       </header>
 
       <div
-        className={`body ${isPanelCollapsed ? "body--panel-collapsed" : ""}`}
+        className={`body ${isPanelCollapsed ? "body--panel-collapsed" : ""} ${isGitSection ? (isRightPanelCollapsed ? "body--right-collapsed" : "body--right-open") : ""}`}
       >
         <aside className="rail" aria-label="Primary navigation">
           <div className="rail__group">
@@ -1182,7 +1091,7 @@ export default function MetricsDashboard({
                       </div>
                     </div>
 
-                    <MiniSparkline history={deferredHistory} />
+                    <MiniNetworkChart history={deferredHistory} />
                   </section>
 
                   <div className="action-buttons">
@@ -1691,11 +1600,47 @@ export default function MetricsDashboard({
               dashboardData={dashboardData}
               flashMessage={flashMessage}
               githubToken={githubToken}
+              onDeploymentSelect={(id) => setLogDeploymentId(id)}
+              onToggleLogs={(id) => {
+                setLogDeploymentId(id);
+                setIsRightPanelCollapsed(false);
+              }}
               repositoryDraft={repositoryDraft}
               repositoryDraftSignal={repositoryDraftSignal}
             />
           )}
         </main>
+
+        {isGitSection ? (
+          <aside
+            className={`panel-right ${isRightPanelCollapsed ? "panel-right--collapsed" : ""}`}
+            aria-label="Deployment logs sidebar"
+            id="logs-panel"
+          >
+            <button
+              className="panel-right__collapse"
+              type="button"
+              aria-controls="logs-panel"
+              aria-label={
+                isRightPanelCollapsed ? "Show logs panel" : "Hide logs panel"
+              }
+              onClick={() => setIsRightPanelCollapsed((current) => !current)}
+            >
+              <Icon
+                name={isRightPanelCollapsed ? "chevron-left" : "chevron-right"}
+              />
+            </button>
+
+            {!isRightPanelCollapsed ? (
+              <div className="panel-right__content">
+                <GitLogPanel
+                  deploymentId={logDeploymentId}
+                  deployments={dashboardData.deployments}
+                />
+              </div>
+            ) : null}
+          </aside>
+        ) : null}
       </div>
     </section>
   );

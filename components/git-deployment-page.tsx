@@ -23,6 +23,8 @@ type GitDeploymentPageProps = {
     status: "success" | "error";
   } | null;
   githubToken: string;
+  onDeploymentSelect?: (id: string | null) => void;
+  onToggleLogs?: (id: string) => void;
   repositoryDraft: GitHubRepository | null;
   repositoryDraftSignal: number;
 };
@@ -175,6 +177,8 @@ export function GitDeploymentPage({
   dashboardData,
   flashMessage,
   githubToken,
+  onDeploymentSelect,
+  onToggleLogs,
   repositoryDraft,
   repositoryDraftSignal,
 }: GitDeploymentPageProps) {
@@ -183,7 +187,6 @@ export function GitDeploymentPage({
 
   const [view, setView] = useState<PageView>("list");
   const [showForm, setShowForm] = useState(false);
-  const [logsExpanded, setLogsExpanded] = useState(false);
 
   const [editingDeploymentId, setEditingDeploymentId] = useState<string | null>(
     null,
@@ -203,17 +206,6 @@ export function GitDeploymentPage({
   const [preferredDeploymentId, setPreferredDeploymentId] = useState<
     string | null
   >(null);
-  const [activeLogTab, setActiveLogTab] = useState<LogTab>("build");
-  const [logRefreshKey, setLogRefreshKey] = useState(0);
-  const [logState, setLogState] = useState<{
-    isLoading: boolean;
-    error: string | null;
-    payload: DeploymentLogPayload | null;
-  }>({
-    isLoading: false,
-    error: null,
-    payload: null,
-  });
 
   const activeBanner = localBanner ?? flashMessage;
   const selectedDeployment =
@@ -261,76 +253,6 @@ export function GitDeploymentPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deployments, preferredDeploymentId]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    if (!selectedDeploymentId) {
-      setLogState({
-        isLoading: false,
-        error: null,
-        payload: null,
-      });
-      return;
-    }
-
-    const loadLogs = async () => {
-      setLogState((current) => ({
-        ...current,
-        isLoading: true,
-        error: null,
-      }));
-
-      try {
-        const response = await fetch(
-          `/api/deployments/${selectedDeploymentId}/logs?type=${activeLogTab}`,
-          {
-            cache: "no-store",
-          },
-        );
-        const payload = (await response.json()) as
-          | DeploymentLogPayload
-          | { error?: string };
-
-        if (!response.ok) {
-          throw new Error(
-            "error" in payload && payload.error
-              ? payload.error
-              : "Unable to load deployment logs.",
-          );
-        }
-
-        if (cancelled) {
-          return;
-        }
-
-        setLogState({
-          isLoading: false,
-          error: null,
-          payload: payload as DeploymentLogPayload,
-        });
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setLogState({
-          isLoading: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Unable to load deployment logs.",
-          payload: null,
-        });
-      }
-    };
-
-    void loadLogs();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDeploymentId, activeLogTab, logRefreshKey]);
-
   async function handleCreateDeployment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -360,8 +282,7 @@ export function GitDeploymentPage({
 
       setPreferredDeploymentId(payload.deploymentId);
       setSelectedDeploymentId(payload.deploymentId);
-      setActiveLogTab("build");
-      setLogsExpanded(true);
+      onDeploymentSelect?.(payload.deploymentId);
       setView("detail");
       setLocalBanner({
         status: "success",
@@ -386,7 +307,7 @@ export function GitDeploymentPage({
     setEditingDeploymentId(null);
     setPendingDeleteDeploymentId(null);
     setView("detail");
-    setLogsExpanded(false);
+    onDeploymentSelect?.(deploymentId);
   }
 
   function handleBackToList() {
@@ -394,7 +315,7 @@ export function GitDeploymentPage({
     setSelectedDeploymentId(null);
     setEditingDeploymentId(null);
     setPendingDeleteDeploymentId(null);
-    setLogState({ isLoading: false, error: null, payload: null });
+    onDeploymentSelect?.(null);
   }
 
   return (
@@ -642,6 +563,7 @@ export function GitDeploymentPage({
                 <span>Domain</span>
                 <span>Branch</span>
                 <span>Updated</span>
+                <span>Logs</span>
               </div>
               {deployments.map((deployment) => (
                 <button
@@ -672,6 +594,25 @@ export function GitDeploymentPage({
                       deployment.deployedAt ?? deployment.updatedAt,
                     )}
                   </span>
+                  <span
+                    className="git-apps-table__logs-btn"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View logs for ${deployment.appName}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLogs?.(deployment.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onToggleLogs?.(deployment.id);
+                      }
+                    }}
+                  >
+                    <Icon name="syslog" className="git-apps-table__logs-icon" />
+                  </span>
                 </button>
               ))}
             </div>
@@ -694,338 +635,418 @@ export function GitDeploymentPage({
             Back to deployments
           </button>
 
-          <div
-            className={`git-detail-shell ${logsExpanded ? "git-detail-shell--logs-open" : ""}`}
-          >
-            <div className="unifi-card git-detail-info">
-              <div className="git-section-head">
-                <div>
-                  <div className="git-section-head__title">
-                    {selectedDeployment.appName}
-                  </div>
-                  <div className="git-section-head__meta">
-                    {formatRepositoryLabel(selectedDeployment.repositoryUrl)}
-                  </div>
+          <div className="unifi-card git-detail-info">
+            <div className="git-section-head">
+              <div>
+                <div className="git-section-head__title">
+                  {selectedDeployment.appName}
                 </div>
+                <div className="git-section-head__meta">
+                  {formatRepositoryLabel(selectedDeployment.repositoryUrl)}
+                </div>
+              </div>
 
-                <span
-                  className={`git-status git-status--${selectedDeployment.status}`}
+              <span
+                className={`git-status git-status--${selectedDeployment.status}`}
+              >
+                {formatDeploymentStatus(selectedDeployment.status)}
+              </span>
+            </div>
+
+            <div className="git-active-card__meta-grid">
+              <div className="git-active-card__meta-item">
+                <span className="git-active-card__meta-label">Domain</span>
+                <a
+                  href={formatDeploymentHref(selectedDeployment, baseDomain)}
+                  rel="noreferrer"
+                  target="_blank"
                 >
-                  {formatDeploymentStatus(selectedDeployment.status)}
+                  {formatDeploymentDomain(selectedDeployment, baseDomain)}
+                </a>
+              </div>
+              <div className="git-active-card__meta-item">
+                <span className="git-active-card__meta-label">Branch</span>
+                <span>{selectedDeployment.branch ?? "default"}</span>
+              </div>
+              <div className="git-active-card__meta-item">
+                <span className="git-active-card__meta-label">Access</span>
+                <span>
+                  {selectedDeployment.tokenStored
+                    ? "Git token saved"
+                    : "Public clone only"}
                 </span>
               </div>
+            </div>
 
-              <div className="git-active-card__meta-grid">
-                <div className="git-active-card__meta-item">
-                  <span className="git-active-card__meta-label">Domain</span>
-                  <a
-                    href={formatDeploymentHref(selectedDeployment, baseDomain)}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {formatDeploymentDomain(selectedDeployment, baseDomain)}
-                  </a>
+            <p className="git-active-card__summary">
+              {selectedDeployment.lastOperationSummary ??
+                "No deployment summary captured yet."}
+            </p>
+
+            <div className="git-line__actions git-line__actions--left">
+              <form action={redeployDeploymentAction}>
+                <input
+                  name="deploymentId"
+                  type="hidden"
+                  value={selectedDeployment.id}
+                />
+                <SubmitButton
+                  idleLabel="Redeploy"
+                  pendingLabel="Redeploying..."
+                  size="small"
+                  variant="secondary"
+                />
+              </form>
+
+              <form action={fetchDeploymentFromGitAction}>
+                <input
+                  name="deploymentId"
+                  type="hidden"
+                  value={selectedDeployment.id}
+                />
+                <SubmitButton
+                  idleLabel="Fetch from Git"
+                  pendingLabel="Fetching..."
+                  size="small"
+                  variant="secondary"
+                />
+              </form>
+
+              <form action={stopDeploymentAction}>
+                <input
+                  name="deploymentId"
+                  type="hidden"
+                  value={selectedDeployment.id}
+                />
+                <SubmitButton
+                  idleLabel="Stop"
+                  pendingLabel="Stopping..."
+                  size="small"
+                  variant="secondary"
+                />
+              </form>
+
+              <button
+                className="button button--secondary button--small"
+                onClick={() => {
+                  setPendingDeleteDeploymentId(null);
+                  setEditingDeploymentId((current) =>
+                    current === selectedDeployment.id
+                      ? null
+                      : selectedDeployment.id,
+                  );
+                }}
+                type="button"
+              >
+                Edit
+              </button>
+
+              <button
+                className="button button--danger button--small"
+                onClick={() => {
+                  setEditingDeploymentId((current) =>
+                    current === selectedDeployment.id ? null : current,
+                  );
+                  setPendingDeleteDeploymentId((current) =>
+                    current === selectedDeployment.id
+                      ? null
+                      : selectedDeployment.id,
+                  );
+                }}
+                type="button"
+              >
+                Delete
+              </button>
+
+              <button
+                className="button button--secondary button--small"
+                onClick={() => onToggleLogs?.(selectedDeployment.id)}
+                type="button"
+              >
+                <Icon name="syslog" className="git-detail__logs-icon" />
+                Logs
+              </button>
+            </div>
+
+            {pendingDeleteDeploymentId === selectedDeployment.id ? (
+              <div className="git-delete-confirm" role="alert">
+                <div className="git-delete-confirm__copy">
+                  Delete <strong>{selectedDeployment.appName}</strong> and
+                  remove its deployment workspace?
                 </div>
-                <div className="git-active-card__meta-item">
-                  <span className="git-active-card__meta-label">Branch</span>
-                  <span>{selectedDeployment.branch ?? "default"}</span>
-                </div>
-                <div className="git-active-card__meta-item">
-                  <span className="git-active-card__meta-label">Access</span>
-                  <span>
-                    {selectedDeployment.tokenStored
-                      ? "Git token saved"
-                      : "Public clone only"}
-                  </span>
-                </div>
-              </div>
 
-              <p className="git-active-card__summary">
-                {selectedDeployment.lastOperationSummary ??
-                  "No deployment summary captured yet."}
-              </p>
-
-              <div className="git-line__actions git-line__actions--left">
-                <form action={redeployDeploymentAction}>
-                  <input
-                    name="deploymentId"
-                    type="hidden"
-                    value={selectedDeployment.id}
-                  />
-                  <SubmitButton
-                    idleLabel="Redeploy"
-                    pendingLabel="Redeploying..."
-                    size="small"
-                    variant="secondary"
-                  />
-                </form>
-
-                <form action={fetchDeploymentFromGitAction}>
-                  <input
-                    name="deploymentId"
-                    type="hidden"
-                    value={selectedDeployment.id}
-                  />
-                  <SubmitButton
-                    idleLabel="Fetch from Git"
-                    pendingLabel="Fetching..."
-                    size="small"
-                    variant="secondary"
-                  />
-                </form>
-
-                <form action={stopDeploymentAction}>
-                  <input
-                    name="deploymentId"
-                    type="hidden"
-                    value={selectedDeployment.id}
-                  />
-                  <SubmitButton
-                    idleLabel="Stop"
-                    pendingLabel="Stopping..."
-                    size="small"
-                    variant="secondary"
-                  />
-                </form>
-
-                <button
-                  className="button button--secondary button--small"
-                  onClick={() => {
-                    setPendingDeleteDeploymentId(null);
-                    setEditingDeploymentId((current) =>
-                      current === selectedDeployment.id
-                        ? null
-                        : selectedDeployment.id,
-                    );
-                  }}
-                  type="button"
-                >
-                  Edit
-                </button>
-
-                <button
-                  className="button button--danger button--small"
-                  onClick={() => {
-                    setEditingDeploymentId((current) =>
-                      current === selectedDeployment.id ? null : current,
-                    );
-                    setPendingDeleteDeploymentId((current) =>
-                      current === selectedDeployment.id
-                        ? null
-                        : selectedDeployment.id,
-                    );
-                  }}
-                  type="button"
-                >
-                  Delete
-                </button>
-
-                <button
-                  className="button button--secondary button--small git-detail__logs-toggle"
-                  onClick={() => setLogsExpanded((current) => !current)}
-                  type="button"
-                >
-                  <Icon
-                    name={logsExpanded ? "chevron-right" : "chevron-left"}
-                    className="git-detail__logs-toggle-icon"
-                  />
-                  {logsExpanded ? "Hide logs" : "Show logs"}
-                </button>
-              </div>
-
-              {pendingDeleteDeploymentId === selectedDeployment.id ? (
-                <div className="git-delete-confirm" role="alert">
-                  <div className="git-delete-confirm__copy">
-                    Delete <strong>{selectedDeployment.appName}</strong> and
-                    remove its deployment workspace?
-                  </div>
-
-                  <div className="git-delete-confirm__actions">
-                    <form action={removeDeploymentAction}>
-                      <input
-                        name="deploymentId"
-                        type="hidden"
-                        value={selectedDeployment.id}
-                      />
-                      <SubmitButton
-                        idleLabel="Confirm Delete"
-                        pendingLabel="Deleting..."
-                        size="small"
-                        variant="danger"
-                      />
-                    </form>
-
-                    <button
-                      className="button button--secondary button--small"
-                      onClick={() => setPendingDeleteDeploymentId(null)}
-                      type="button"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              {editingDeploymentId === selectedDeployment.id ? (
-                <form action={updateDeploymentAction} className="git-edit-form">
-                  <input
-                    name="deploymentId"
-                    type="hidden"
-                    value={selectedDeployment.id}
-                  />
-
-                  <label
-                    className="field field--compact"
-                    htmlFor={`appName-${selectedDeployment.id}`}
-                  >
-                    <span className="field__label">Name</span>
+                <div className="git-delete-confirm__actions">
+                  <form action={removeDeploymentAction}>
                     <input
-                      defaultValue={selectedDeployment.appName}
-                      id={`appName-${selectedDeployment.id}`}
-                      name="appName"
+                      name="deploymentId"
+                      type="hidden"
+                      value={selectedDeployment.id}
+                    />
+                    <SubmitButton
+                      idleLabel="Confirm Delete"
+                      pendingLabel="Deleting..."
+                      size="small"
+                      variant="danger"
+                    />
+                  </form>
+
+                  <button
+                    className="button button--secondary button--small"
+                    onClick={() => setPendingDeleteDeploymentId(null)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {editingDeploymentId === selectedDeployment.id ? (
+              <form action={updateDeploymentAction} className="git-edit-form">
+                <input
+                  name="deploymentId"
+                  type="hidden"
+                  value={selectedDeployment.id}
+                />
+
+                <label
+                  className="field field--compact"
+                  htmlFor={`appName-${selectedDeployment.id}`}
+                >
+                  <span className="field__label">Name</span>
+                  <input
+                    defaultValue={selectedDeployment.appName}
+                    id={`appName-${selectedDeployment.id}`}
+                    name="appName"
+                    required
+                    type="text"
+                  />
+                </label>
+
+                <label
+                  className="field field--compact"
+                  htmlFor={`subdomain-${selectedDeployment.id}`}
+                >
+                  <span className="field__label">Url</span>
+                  <div className="field-combo">
+                    <input
+                      defaultValue={selectedDeployment.subdomain}
+                      id={`subdomain-${selectedDeployment.id}`}
+                      name="subdomain"
                       required
                       type="text"
                     />
-                  </label>
-
-                  <label
-                    className="field field--compact"
-                    htmlFor={`subdomain-${selectedDeployment.id}`}
-                  >
-                    <span className="field__label">Url</span>
-                    <div className="field-combo">
-                      <input
-                        defaultValue={selectedDeployment.subdomain}
-                        id={`subdomain-${selectedDeployment.id}`}
-                        name="subdomain"
-                        required
-                        type="text"
-                      />
-                      <span className="field-combo__suffix">.{baseDomain}</span>
-                    </div>
-                  </label>
-
-                  <label
-                    className="field field--compact"
-                    htmlFor={`port-${selectedDeployment.id}`}
-                  >
-                    <span className="field__label">Port</span>
-                    <input
-                      defaultValue={String(selectedDeployment.port)}
-                      id={`port-${selectedDeployment.id}`}
-                      max="65535"
-                      min="1"
-                      name="port"
-                      required
-                      type="number"
-                    />
-                  </label>
-
-                  <label
-                    className="field field--compact git-edit-form__textarea"
-                    htmlFor={`envVariables-${selectedDeployment.id}`}
-                  >
-                    <span className="field__label">Variables</span>
-                    <textarea
-                      defaultValue={selectedDeployment.envVariables ?? ""}
-                      id={`envVariables-${selectedDeployment.id}`}
-                      name="envVariables"
-                      rows={4}
-                    />
-                  </label>
-
-                  <div className="git-edit-form__actions">
-                    <SubmitButton
-                      idleLabel="Save"
-                      pendingLabel="Saving..."
-                      size="small"
-                      variant="primary"
-                    />
-                    <button
-                      className="button button--secondary button--small"
-                      onClick={() => setEditingDeploymentId(null)}
-                      type="button"
-                    >
-                      Cancel
-                    </button>
+                    <span className="field-combo__suffix">.{baseDomain}</span>
                   </div>
-                </form>
-              ) : null}
-            </div>
+                </label>
 
-            <aside
-              className="unifi-card git-detail-logs"
-              aria-label="Deployment logs"
-            >
-              <div className="git-section-head git-section-head--logs">
-                <div>
-                  <div className="git-section-head__title">Deployment logs</div>
-                </div>
-
-                <button
-                  className="button button--secondary button--small"
-                  onClick={() => setLogRefreshKey((current) => current + 1)}
-                  type="button"
+                <label
+                  className="field field--compact"
+                  htmlFor={`port-${selectedDeployment.id}`}
                 >
-                  Refresh
-                </button>
-              </div>
+                  <span className="field__label">Port</span>
+                  <input
+                    defaultValue={String(selectedDeployment.port)}
+                    id={`port-${selectedDeployment.id}`}
+                    max="65535"
+                    min="1"
+                    name="port"
+                    required
+                    type="number"
+                  />
+                </label>
 
-              <div className="git-log-tabs" aria-label="Log types">
-                <button
-                  className={`git-log-tab ${
-                    activeLogTab === "build" ? "git-log-tab--active" : ""
-                  }`}
-                  onClick={() => setActiveLogTab("build")}
-                  type="button"
+                <label
+                  className="field field--compact git-edit-form__textarea"
+                  htmlFor={`envVariables-${selectedDeployment.id}`}
                 >
-                  Build log
-                </button>
-                <button
-                  className={`git-log-tab ${
-                    activeLogTab === "container" ? "git-log-tab--active" : ""
-                  }`}
-                  onClick={() => setActiveLogTab("container")}
-                  type="button"
-                >
-                  Container log
-                </button>
-              </div>
+                  <span className="field__label">Variables</span>
+                  <textarea
+                    defaultValue={selectedDeployment.envVariables ?? ""}
+                    id={`envVariables-${selectedDeployment.id}`}
+                    name="envVariables"
+                    rows={4}
+                  />
+                </label>
 
-              <div className="git-log-sidebar__meta">
-                <div>
-                  <span className="git-log-sidebar__meta-label">App</span>
-                  <strong>{selectedDeployment.appName}</strong>
+                <div className="git-edit-form__actions">
+                  <SubmitButton
+                    idleLabel="Save"
+                    pendingLabel="Saving..."
+                    size="small"
+                    variant="primary"
+                  />
+                  <button
+                    className="button button--secondary button--small"
+                    onClick={() => setEditingDeploymentId(null)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <div>
-                  <span className="git-log-sidebar__meta-label">Updated</span>
-                  <strong>
-                    {formatDeploymentTime(
-                      logState.payload?.updatedAt ??
-                        selectedDeployment.updatedAt,
-                    )}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="git-log-sidebar__summary">
-                {logState.error ??
-                  logState.payload?.summary ??
-                  "Select a deployment to load logs."}
-              </div>
-
-              {logState.isLoading ? (
-                <div className="git-log-sidebar__empty">Loading logs...</div>
-              ) : (
-                <pre className="git-log-output">
-                  {logState.payload?.output ??
-                    "No logs available for this deployment yet."}
-                </pre>
-              )}
-            </aside>
+              </form>
+            ) : null}
           </div>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+type GitLogPanelProps = {
+  deploymentId: string | null;
+  deployments: DashboardDeployment[];
+};
+
+export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
+  const [activeLogTab, setActiveLogTab] = useState<LogTab>("build");
+  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  const [logState, setLogState] = useState<{
+    isLoading: boolean;
+    error: string | null;
+    payload: DeploymentLogPayload | null;
+  }>({
+    isLoading: false,
+    error: null,
+    payload: null,
+  });
+
+  const deployment = deployments.find((d) => d.id === deploymentId) ?? null;
+
+  useEffect(() => {
+    setActiveLogTab("build");
+  }, [deploymentId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!deploymentId) {
+      setLogState({ isLoading: false, error: null, payload: null });
+      return;
+    }
+
+    const loadLogs = async () => {
+      setLogState((current) => ({
+        ...current,
+        isLoading: true,
+        error: null,
+      }));
+
+      try {
+        const response = await fetch(
+          `/api/deployments/${deploymentId}/logs?type=${activeLogTab}`,
+          { cache: "no-store" },
+        );
+        const payload = (await response.json()) as
+          | DeploymentLogPayload
+          | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in payload && payload.error
+              ? payload.error
+              : "Unable to load deployment logs.",
+          );
+        }
+
+        if (cancelled) return;
+
+        setLogState({
+          isLoading: false,
+          error: null,
+          payload: payload as DeploymentLogPayload,
+        });
+      } catch (error) {
+        if (cancelled) return;
+
+        setLogState({
+          isLoading: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unable to load deployment logs.",
+          payload: null,
+        });
+      }
+    };
+
+    void loadLogs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [deploymentId, activeLogTab, logRefreshKey]);
+
+  return (
+    <div className="git-log-panel">
+      <div className="git-section-head git-section-head--logs">
+        <div>
+          <div className="git-section-head__title">Deployment logs</div>
+        </div>
+
+        <button
+          className="button button--secondary button--small"
+          onClick={() => setLogRefreshKey((current) => current + 1)}
+          type="button"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div className="git-log-tabs" aria-label="Log types">
+        <button
+          className={`git-log-tab ${activeLogTab === "build" ? "git-log-tab--active" : ""}`}
+          onClick={() => setActiveLogTab("build")}
+          type="button"
+        >
+          Build log
+        </button>
+        <button
+          className={`git-log-tab ${activeLogTab === "container" ? "git-log-tab--active" : ""}`}
+          onClick={() => setActiveLogTab("container")}
+          type="button"
+        >
+          Container log
+        </button>
+      </div>
+
+      {deployment ? (
+        <>
+          <div className="git-log-sidebar__meta">
+            <div>
+              <span className="git-log-sidebar__meta-label">App</span>
+              <strong>{deployment.appName}</strong>
+            </div>
+            <div>
+              <span className="git-log-sidebar__meta-label">Updated</span>
+              <strong>
+                {formatDeploymentTime(
+                  logState.payload?.updatedAt ?? deployment.updatedAt,
+                )}
+              </strong>
+            </div>
+          </div>
+
+          <div className="git-log-sidebar__summary">
+            {logState.error ??
+              logState.payload?.summary ??
+              "Select a deployment to load logs."}
+          </div>
+
+          {logState.isLoading ? (
+            <div className="git-log-sidebar__empty">Loading logs...</div>
+          ) : (
+            <pre className="git-log-output">
+              {logState.payload?.output ??
+                "No logs available for this deployment yet."}
+            </pre>
+          )}
+        </>
+      ) : (
+        <div className="git-log-sidebar__empty">
+          Select a deployment to view logs.
+        </div>
+      )}
     </div>
   );
 }

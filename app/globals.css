@@ -34,6 +34,7 @@
   --topbar-h: 48px;
   --rail-w: 52px;
   --panel-w: 300px;
+  --panel-right-w: 340px;
   --font:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 }
@@ -515,6 +516,22 @@ a:focus-visible {
   grid-template-columns: var(--rail-w) 22px 1fr;
 }
 
+.body--right-open {
+  grid-template-columns: var(--rail-w) var(--panel-w) 1fr var(--panel-right-w);
+}
+
+.body--right-collapsed {
+  grid-template-columns: var(--rail-w) var(--panel-w) 1fr 22px;
+}
+
+.body--panel-collapsed.body--right-open {
+  grid-template-columns: var(--rail-w) 22px 1fr var(--panel-right-w);
+}
+
+.body--panel-collapsed.body--right-collapsed {
+  grid-template-columns: var(--rail-w) 22px 1fr 22px;
+}
+
 /* ── Sidebar Rail ── */
 .rail {
   display: flex;
@@ -674,6 +691,84 @@ a:focus-visible {
 
 .panel--collapsed .panel__collapse {
   right: -11px;
+}
+
+/* ── Right Panel ── */
+.panel-right {
+  position: relative;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow: visible;
+  -ms-overflow-style: none;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  z-index: 2;
+  transition:
+    padding 180ms ease,
+    border-color 180ms ease;
+}
+
+.panel-right::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.panel-right--collapsed {
+  padding: 0;
+  overflow: visible;
+  border-left-color: transparent;
+}
+
+.panel-right__content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -ms-overflow-style: none;
+}
+
+.panel-right__content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.panel-right__collapse {
+  position: absolute;
+  top: 18px;
+  left: -11px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: none;
+  color: var(--text-secondary);
+  z-index: 12;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.panel-right__collapse:hover {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+  transform: translateX(1px);
+}
+
+.panel-right__collapse .icon {
+  width: 8px;
+  height: 8px;
 }
 
 /* Device header */
@@ -1051,11 +1146,11 @@ a:focus-visible {
 }
 
 .throughput-compact__item--down {
-  color: #4abfff;
+  color: #50a14f;
 }
 
 .throughput-compact__item--up {
-  color: #1f66c1;
+  color: #8b5cf6;
 }
 
 .throughput-compact__label {
@@ -1397,6 +1492,11 @@ a:focus-visible {
   border-radius: 0;
   overflow: visible;
   background: transparent;
+}
+
+.mini-network-chart {
+  margin-top: 6px;
+  width: 100%;
 }
 
 .panel-sparkline__topline,
@@ -2446,6 +2546,10 @@ a:focus-visible {
   }
 
   .panel {
+    display: none;
+  }
+
+  .panel-right {
     display: none;
   }
 
@@ -3802,7 +3906,7 @@ a:focus-visible {
   display: grid;
   grid-template-columns:
     60px minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 0.8fr)
-    minmax(0, 0.8fr);
+    minmax(0, 0.8fr) 40px;
   gap: 8px;
   padding: 6px 10px;
   font-size: 10px;
@@ -3817,7 +3921,7 @@ a:focus-visible {
   display: grid;
   grid-template-columns:
     60px minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 0.8fr)
-    minmax(0, 0.8fr);
+    minmax(0, 0.8fr) 40px;
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -3838,6 +3942,34 @@ a:focus-visible {
 
 .git-apps-table__row:hover {
   background: #f8fafc;
+}
+
+.git-apps-table__logs-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+  cursor: pointer;
+}
+
+.git-apps-table__logs-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.git-apps-table__logs-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.git-detail__logs-icon {
+  width: 13px;
+  height: 13px;
 }
 
 .git-apps-table__row--active {
@@ -3920,48 +4052,10 @@ a:focus-visible {
   height: 14px;
 }
 
-.git-detail-shell {
-  display: grid;
-  grid-template-columns: 1fr 0fr;
-  gap: 12px;
-  align-items: start;
-  transition: grid-template-columns 220ms ease;
-}
-
-.git-detail-shell--logs-open {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
-}
-
 .git-detail-info {
   display: grid;
   gap: 10px;
   padding: 12px;
-}
-
-.git-detail-logs {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  min-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
-
-.git-detail-shell--logs-open .git-detail-logs {
-  opacity: 1;
-}
-
-.git-detail__logs-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: auto;
-}
-
-.git-detail__logs-toggle-icon {
-  width: 12px;
-  height: 12px;
 }
 
 .git-draft {
@@ -4064,6 +4158,12 @@ a:focus-visible {
 
 .git-section-head--logs {
   margin-bottom: 0;
+}
+
+.git-log-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .git-log-tabs {
@@ -4211,8 +4311,6 @@ a:focus-visible {
 }
 
 @media (max-width: 900px) {
-  .git-detail-shell,
-  .git-detail-shell--logs-open,
   .git-form__grid,
   .git-active-card__meta-grid,
   .git-log-sidebar__meta,
@@ -4224,7 +4322,7 @@ a:focus-visible {
 
   .git-apps-table__header,
   .git-apps-table__row {
-    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr) 32px;
   }
 
   .git-apps-table__branch,
@@ -4239,8 +4337,7 @@ a:focus-visible {
 
   .git-compose-card,
   .git-apps-table-card,
-  .git-detail-info,
-  .git-detail-logs {
+  .git-detail-info {
     padding: 10px;
   }
 
