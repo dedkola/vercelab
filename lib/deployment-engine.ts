@@ -12,6 +12,7 @@ import {
   createDeploymentRecord,
   createOperation,
   deleteDeploymentRecord,
+  getLatestDeploymentOperation,
   getStoredDeploymentById,
   readDeploymentSecretToken,
   updateDeploymentRecord,
@@ -564,6 +565,21 @@ async function runComposeCommand(
   );
 }
 
+async function readComposeLogs(
+  deployment: StoredDeployment,
+  runtimeFiles: RuntimeFiles,
+) {
+  const serviceName = runtimeFiles.serviceName ?? deployment.serviceName;
+
+  return await runComposeCommand(deployment, runtimeFiles, [
+    "logs",
+    "--tail",
+    "200",
+    "--no-color",
+    ...(serviceName ? [serviceName] : []),
+  ]);
+}
+
 async function executeLifecycleOperation(
   deploymentId: string,
   operationType: OperationType,
@@ -802,4 +818,69 @@ export async function removeDeploymentById(deploymentId: string) {
       throw error;
     }
   });
+}
+
+export function readDeploymentBuildLog(deploymentId: string) {
+  const deployment = getStoredDeploymentById(deploymentId);
+  const operation = getLatestDeploymentOperation(deploymentId);
+
+  return {
+    type: "build" as const,
+    deploymentId,
+    appName: deployment.appName,
+    summary:
+      operation?.summary ??
+      deployment.lastOutput ??
+      "No build log captured yet.",
+    output:
+      operation?.output ??
+      deployment.lastOutput ??
+      "No build log captured yet.",
+    status: operation?.status ?? "success",
+    updatedAt: operation?.updatedAt ?? deployment.updatedAt,
+  };
+}
+
+export async function readDeploymentContainerLog(deploymentId: string) {
+  const deployment = getStoredDeploymentById(deploymentId);
+
+  if (!(await pathExists(deployment.workspacePath))) {
+    return {
+      type: "container" as const,
+      deploymentId,
+      appName: deployment.appName,
+      summary: "Workspace is missing, so container logs are unavailable.",
+      output: "Workspace is missing, so container logs are unavailable.",
+      status: deployment.status,
+      updatedAt: deployment.updatedAt,
+    };
+  }
+
+  try {
+    const runtimeFiles = await detectRuntimeFiles(deployment);
+    const output = await readComposeLogs(deployment, runtimeFiles);
+
+    return {
+      type: "container" as const,
+      deploymentId,
+      appName: deployment.appName,
+      summary: `Container output for ${deployment.appName}`,
+      output: truncateOutput(output) ?? "Container log is empty.",
+      status: deployment.status,
+      updatedAt: deployment.updatedAt,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to read container logs.";
+
+    return {
+      type: "container" as const,
+      deploymentId,
+      appName: deployment.appName,
+      summary: message,
+      output: message,
+      status: deployment.status,
+      updatedAt: deployment.updatedAt,
+    };
+  }
 }

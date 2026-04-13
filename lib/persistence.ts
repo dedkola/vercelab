@@ -44,6 +44,7 @@ export type StoredDeployment = {
 
 export type DashboardDeployment = {
   id: string;
+  repositoryName: string;
   repositoryUrl: string;
   branch: string | null;
   appName: string;
@@ -57,7 +58,18 @@ export type DashboardDeployment = {
   lastOutput: string | null;
   lastOperationSummary: string | null;
   updatedAt: string;
+  deployedAt: string | null;
   tokenStored: boolean;
+};
+
+export type DeploymentOperationLog = {
+  id: string;
+  operationType: OperationType;
+  status: OperationStatus;
+  summary: string | null;
+  output: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type DashboardTrendPoint = {
@@ -126,6 +138,7 @@ type StoredDeploymentRow = {
 
 type DashboardDeploymentRow = {
   id: string;
+  repository_name: string;
   repository_url: string;
   branch: string | null;
   app_name: string;
@@ -139,7 +152,18 @@ type DashboardDeploymentRow = {
   last_output: string | null;
   last_operation_summary: string | null;
   updated_at: string;
+  deployed_at: string | null;
   token_stored: number;
+};
+
+type DeploymentOperationRow = {
+  id: string;
+  operation_type: OperationType;
+  status: OperationStatus;
+  summary: string | null;
+  output: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type DashboardActivityRow = {
@@ -350,6 +374,7 @@ export function listDashboardData(): DashboardData {
       `
         SELECT
           d.id,
+          r.name AS repository_name,
           r.repository_url,
           r.branch,
           d.app_name,
@@ -362,6 +387,7 @@ export function listDashboardData(): DashboardData {
           d.project_name,
           d.last_output,
           d.updated_at,
+          d.deployed_at,
           CASE WHEN r.encrypted_token IS NULL THEN 0 ELSE 1 END AS token_stored,
           (
             SELECT summary
@@ -457,6 +483,7 @@ export function listDashboardData(): DashboardData {
   return {
     deployments: rows.map((row) => ({
       id: row.id,
+      repositoryName: row.repository_name,
       repositoryUrl: row.repository_url,
       branch: row.branch,
       appName: row.app_name,
@@ -470,6 +497,7 @@ export function listDashboardData(): DashboardData {
       lastOutput: row.last_output,
       lastOperationSummary: row.last_operation_summary,
       updatedAt: row.updated_at,
+      deployedAt: row.deployed_at,
       tokenStored: row.token_stored === 1,
     })),
     stats: {
@@ -636,6 +664,44 @@ export function getStoredDeploymentById(
 
 export function readDeploymentSecretToken(deploymentId: string): string | null {
   return decryptSecret(getStoredDeploymentById(deploymentId).encryptedToken);
+}
+
+export function getLatestDeploymentOperation(
+  deploymentId: string,
+): DeploymentOperationLog | null {
+  const db = getDatabase();
+  const row = db
+    .prepare(
+      `
+        SELECT
+          id,
+          operation_type,
+          status,
+          summary,
+          output,
+          created_at,
+          updated_at
+        FROM operations
+        WHERE deployment_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+    )
+    .get(deploymentId) as DeploymentOperationRow | undefined;
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    operationType: row.operation_type,
+    status: row.status,
+    summary: row.summary,
+    output: row.output,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 type DeploymentUpdate = Partial<{

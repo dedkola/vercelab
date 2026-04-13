@@ -10,7 +10,8 @@ import {
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { Icon, type IconName } from "@/components/dashboard-kit";
-import { GitDeploymentPage } from "@/components/git-deployment-page";
+import { GitDeploymentPage } from "./git-deployment-page";
+import type { GitHubRepository } from "@/lib/github";
 import type { DashboardData } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
@@ -765,6 +766,19 @@ export default function MetricsDashboard({
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [githubToken, setGithubToken] = useState("");
+  const [gitRepositories, setGitRepositories] = useState<GitHubRepository[]>(
+    [],
+  );
+  const [gitRepositoriesError, setGitRepositoriesError] = useState<
+    string | null
+  >(null);
+  const [isLoadingGitRepositories, setIsLoadingGitRepositories] =
+    useState(false);
+  const [selectedGitRepositoryId, setSelectedGitRepositoryId] = useState("");
+  const [repositoryDraft, setRepositoryDraft] =
+    useState<GitHubRepository | null>(null);
+  const [repositoryDraftSignal, setRepositoryDraftSignal] = useState(0);
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -784,6 +798,81 @@ export default function MetricsDashboard({
       setErrorMessage(message);
     });
   });
+
+  async function loadGitRepositories() {
+    const token = githubToken.trim();
+
+    if (token.length < 20) {
+      setGitRepositoriesError(
+        "Add a valid GitHub token before loading repositories.",
+      );
+      return;
+    }
+
+    setIsLoadingGitRepositories(true);
+    setGitRepositoriesError(null);
+
+    try {
+      const response = await fetch("/api/github/repos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const payload = (await response.json()) as {
+        repositories?: GitHubRepository[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to load repositories.");
+      }
+
+      const repositories = payload.repositories ?? [];
+
+      setGitRepositories(repositories);
+      setSelectedGitRepositoryId((current) => {
+        if (
+          repositories.some((repository) => String(repository.id) === current)
+        ) {
+          return current;
+        }
+
+        return repositories[0] ? String(repositories[0].id) : "";
+      });
+      setGitRepositoriesError(
+        repositories.length === 0
+          ? "This token did not return any repositories."
+          : null,
+      );
+    } catch (error) {
+      setGitRepositories([]);
+      setSelectedGitRepositoryId("");
+      setGitRepositoriesError(
+        error instanceof Error ? error.message : "Unable to load repositories.",
+      );
+    } finally {
+      setIsLoadingGitRepositories(false);
+    }
+  }
+
+  const selectedGitRepository =
+    gitRepositories.find(
+      (repository) => String(repository.id) === selectedGitRepositoryId,
+    ) ?? null;
+
+  function queueSelectedRepository() {
+    if (!selectedGitRepository) {
+      setGitRepositoriesError("Choose a repository before adding it.");
+      return;
+    }
+
+    setRepositoryDraft(selectedGitRepository);
+    setRepositoryDraftSignal((current) => current + 1);
+    setGitRepositoriesError(null);
+  }
 
   useEffect(() => {
     setActiveSection(initialSection);
@@ -831,7 +920,7 @@ export default function MetricsDashboard({
     };
   }, []);
 
-  const handleSectionChange = useEffectEvent((section: DashboardSection) => {
+  function handleSectionChange(section: DashboardSection) {
     setActiveSection(section);
 
     const params = new URLSearchParams(searchParams.toString());
@@ -846,7 +935,7 @@ export default function MetricsDashboard({
     const nextUrl = query ? `${pathname}?${query}` : pathname;
 
     window.history.pushState(null, "", nextUrl);
-  });
+  }
 
   const totalRate = deferredSnapshot
     ? deferredSnapshot.network.rxBytesPerSecond +
@@ -1149,24 +1238,98 @@ export default function MetricsDashboard({
               ) : (
                 <div className="git-panel">
                   <div className="git-panel__eyebrow">Git</div>
-                  <div className="git-panel__title">
-                    Deploy from repositories
-                  </div>
-                  <p className="git-panel__copy">
-                    Open the Git deployment page, add repository details, and
-                    let Vercelab create repeatable container deployments behind
-                    Traefik.
-                  </p>
+                  <div className="git-panel__title">Repository access</div>
 
-                  <div className="action-buttons">
-                    <button
-                      className="action-btn action-btn--active"
-                      type="button"
-                    >
-                      <Icon name="cloud" />
-                      Add Git Repo
-                    </button>
-                  </div>
+                  <form
+                    className="git-panel__form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void loadGitRepositories();
+                    }}
+                  >
+                    <label className="field" htmlFor="githubToken">
+                      <span className="field__label">GitHub token</span>
+                      <input
+                        autoComplete="off"
+                        id="githubToken"
+                        onChange={(event) => setGithubToken(event.target.value)}
+                        placeholder="ghp_..."
+                        type="password"
+                        value={githubToken}
+                      />
+                    </label>
+
+                    <div className="git-panel__actions">
+                      <button
+                        className="button button--primary"
+                        disabled={isLoadingGitRepositories}
+                        type="submit"
+                      >
+                        {isLoadingGitRepositories ? "Loading..." : "Load repos"}
+                      </button>
+                    </div>
+                  </form>
+
+                  <label className="field" htmlFor="githubRepository">
+                    <span className="field__label">Repository</span>
+                    <div className="git-panel__repo-row">
+                      <select
+                        className="git-panel__select"
+                        id="githubRepository"
+                        onChange={(event) =>
+                          setSelectedGitRepositoryId(event.target.value)
+                        }
+                        value={selectedGitRepositoryId}
+                      >
+                        <option value="">
+                          {gitRepositories.length > 0
+                            ? "Choose a repository"
+                            : "Load repositories first"}
+                        </option>
+                        {gitRepositories.map((repository) => (
+                          <option
+                            key={repository.id}
+                            value={String(repository.id)}
+                          >
+                            {repository.fullName}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        className="button button--secondary"
+                        disabled={!selectedGitRepository}
+                        onClick={() => {
+                          queueSelectedRepository();
+                        }}
+                        type="button"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </label>
+
+                  {selectedGitRepository ? (
+                    <div className="git-panel__repo-card">
+                      <div className="git-panel__repo-name">
+                        {selectedGitRepository.fullName}
+                      </div>
+                      <div className="git-panel__repo-meta">
+                        <span>{selectedGitRepository.visibility}</span>
+                        <span>{selectedGitRepository.defaultBranch}</span>
+                      </div>
+                      <p className="git-panel__repo-copy">
+                        {selectedGitRepository.description ??
+                          "This repository is ready to seed a deployment draft."}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {gitRepositoriesError ? (
+                    <div className="git-panel__notice git-panel__notice--error">
+                      {gitRepositoriesError}
+                    </div>
+                  ) : null}
 
                   <div className="git-panel__meta-grid">
                     <div className="git-panel__meta-card">
@@ -1177,16 +1340,18 @@ export default function MetricsDashboard({
                     </div>
                     <div className="git-panel__meta-card">
                       <span className="git-panel__meta-label">
+                        Loaded repos
+                      </span>
+                      <span className="git-panel__meta-value">
+                        {gitRepositories.length}
+                      </span>
+                    </div>
+                    <div className="git-panel__meta-card">
+                      <span className="git-panel__meta-label">
                         Saved deployments
                       </span>
                       <span className="git-panel__meta-value">
                         {dashboardData.stats.totalDeployments}
-                      </span>
-                    </div>
-                    <div className="git-panel__meta-card">
-                      <span className="git-panel__meta-label">Running now</span>
-                      <span className="git-panel__meta-value">
-                        {dashboardData.stats.runningDeployments}
                       </span>
                     </div>
                   </div>
@@ -1434,6 +1599,9 @@ export default function MetricsDashboard({
               baseDomain={baseDomain}
               dashboardData={dashboardData}
               flashMessage={flashMessage}
+              githubToken={githubToken}
+              repositoryDraft={repositoryDraft}
+              repositoryDraftSignal={repositoryDraftSignal}
             />
           )}
         </main>
