@@ -173,6 +173,31 @@ function formatRate(value: number) {
   return `${formatBytes(value)}/s`;
 }
 
+function formatBitRateParts(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return {
+      amount: "0",
+      unit: "bps",
+    };
+  }
+
+  const units = ["bps", "Kbps", "Mbps", "Gbps", "Tbps"];
+  let rate = value * 8;
+  let unitIndex = 0;
+
+  while (rate >= 1000 && unitIndex < units.length - 1) {
+    rate /= 1000;
+    unitIndex += 1;
+  }
+
+  const precision = unitIndex === 0 ? 0 : rate >= 100 ? 0 : rate >= 10 ? 1 : 2;
+
+  return {
+    amount: rate.toFixed(precision),
+    unit: units[unitIndex],
+  };
+}
+
 function formatPercent(value: number) {
   return `${value.toFixed(value >= 100 ? 0 : 1)}%`;
 }
@@ -575,82 +600,118 @@ function MiniSparkline({ history }: { history: HistoryPoint[] }) {
     chartHeight - (clamp(outboundLast, 0, maxValue) / maxValue) * chartHeight;
   const horizontalGuides = [0, 0.5, 1];
   const verticalGuides = [0.25, 0.5, 0.75];
+  const peakDisplay = formatBitRateParts(maxValue);
 
   return (
     <div className="panel-sparkline">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        aria-hidden="true"
-        preserveAspectRatio="none"
-      >
-        {horizontalGuides.map((position) => {
-          const y = insetY + chartHeight * position;
-          return (
-            <line
-              key={`h-${position}`}
-              className="panel-sparkline__grid"
-              x1={insetX}
-              y1={y}
-              x2={width - insetX}
-              y2={y}
-            />
-          );
-        })}
+      <div className="panel-sparkline__topline">
+        <span className="panel-sparkline__label">Traffic history</span>
+        <span className="panel-sparkline__value">
+          Peak {peakDisplay.amount} {peakDisplay.unit}
+        </span>
+      </div>
 
-        {verticalGuides.map((position) => {
-          const x = insetX + chartWidth * position;
-          return (
-            <line
-              key={`v-${position}`}
-              className="panel-sparkline__grid panel-sparkline__grid--vertical"
-              x1={x}
-              y1={insetY}
-              x2={x}
-              y2={height - insetY}
-            />
-          );
-        })}
+      <div className="panel-sparkline__shell">
+        <span className="panel-sparkline__axis panel-sparkline__axis--top">
+          {peakDisplay.amount} {peakDisplay.unit}
+        </span>
+        <span className="panel-sparkline__axis panel-sparkline__axis--bottom">
+          0 bps
+        </span>
 
-        <g transform={`translate(${insetX} ${insetY})`}>
-          {inboundArea ? (
-            <path
-              className="panel-sparkline__area panel-sparkline__area--down"
-              d={inboundArea}
-            />
-          ) : null}
-          {outboundArea ? (
-            <path
-              className="panel-sparkline__area panel-sparkline__area--up"
-              d={outboundArea}
-            />
-          ) : null}
-          {inboundPath ? (
-            <path
-              className="panel-sparkline__line panel-sparkline__line--down"
-              d={inboundPath}
-            />
-          ) : null}
-          {outboundPath ? (
-            <path
-              className="panel-sparkline__line panel-sparkline__line--up"
-              d={outboundPath}
-            />
-          ) : null}
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          aria-hidden="true"
+          preserveAspectRatio="none"
+        >
+          {horizontalGuides.map((position) => {
+            const y = insetY + chartHeight * position;
+            return (
+              <line
+                key={`h-${position}`}
+                className="panel-sparkline__grid"
+                x1={insetX}
+                y1={y}
+                x2={width - insetX}
+                y2={y}
+              />
+            );
+          })}
 
-          <circle
-            className="panel-sparkline__point panel-sparkline__point--down"
-            cx={lastX}
-            cy={inboundLastY}
-            r="3.5"
-          />
-          <circle
-            className="panel-sparkline__point panel-sparkline__point--up"
-            cx={lastX}
-            cy={outboundLastY}
-            r="3.5"
-          />
-        </g>
-      </svg>
+          {verticalGuides.map((position) => {
+            const x = insetX + chartWidth * position;
+            return (
+              <line
+                key={`v-${position}`}
+                className="panel-sparkline__grid panel-sparkline__grid--vertical"
+                x1={x}
+                y1={insetY}
+                x2={x}
+                y2={height - insetY}
+              />
+            );
+          })}
+
+          <g transform={`translate(${insetX} ${insetY})`}>
+            {inboundArea ? (
+              <path
+                className="panel-sparkline__area panel-sparkline__area--down"
+                d={inboundArea}
+              />
+            ) : null}
+            {outboundArea ? (
+              <path
+                className="panel-sparkline__area panel-sparkline__area--up"
+                d={outboundArea}
+              />
+            ) : null}
+            {inboundPath ? (
+              <path
+                className="panel-sparkline__line panel-sparkline__line--down"
+                d={inboundPath}
+              />
+            ) : null}
+            {outboundPath ? (
+              <path
+                className="panel-sparkline__line panel-sparkline__line--up"
+                d={outboundPath}
+              />
+            ) : null}
+
+            <circle
+              className="panel-sparkline__point panel-sparkline__point--down"
+              cx={lastX}
+              cy={inboundLastY}
+              r="3.5"
+            />
+            <circle
+              className="panel-sparkline__point panel-sparkline__point--up"
+              cx={lastX}
+              cy={outboundLastY}
+              r="3.5"
+            />
+          </g>
+        </svg>
+
+        <div className="panel-sparkline__scanline" aria-hidden="true" />
+      </div>
+
+      <div className="panel-sparkline__footer">
+        <span className="panel-sparkline__legend-item">
+          <span className="panel-sparkline__legend-dot panel-sparkline__legend-dot--down" />
+          WAN Rx
+        </span>
+        <span className="panel-sparkline__legend-item">
+          <span className="panel-sparkline__legend-dot panel-sparkline__legend-dot--up" />
+          WAN Tx
+        </span>
+        <span className="panel-sparkline__stamp">
+          Last{" "}
+          {Math.max(inbound.length, outbound.length) *
+            (POLL_INTERVAL_MS / 1000)}
+          s
+        </span>
+      </div>
     </div>
   );
 }
@@ -755,6 +816,10 @@ export default function MetricsDashboard() {
   const timestampLabel = deferredSnapshot
     ? formatClock(deferredSnapshot.timestamp)
     : "--:--";
+  const downloadRate = deferredSnapshot?.network.rxBytesPerSecond ?? 0;
+  const uploadRate = deferredSnapshot?.network.txBytesPerSecond ?? 0;
+  const downloadRateDisplay = formatBitRateParts(downloadRate);
+  const uploadRateDisplay = formatBitRateParts(uploadRate);
 
   return (
     <section className="shell" aria-label="UniFi styled dashboard">
@@ -861,33 +926,32 @@ export default function MetricsDashboard() {
               <hr className="panel__hr" />
 
               <section className="throughput-card" aria-label="Throughput">
-                <div className="throughput-card__header">
-                  <span className="throughput-card__title">Throughput</span>
-                  <span className="throughput-card__status">Live</span>
-                </div>
-
-                <div className="throughput-row">
-                  <div className="throughput-stat throughput-stat--down">
-                    <span className="throughput-stat__label">
+                <div className="throughput-compact">
+                  <div className="throughput-compact__item throughput-compact__item--down">
+                    <span className="throughput-compact__label">
                       <Icon name="arrow-down" />
-                      Download
                     </span>
-                    <span className="throughput-stat__value">
-                      {deferredSnapshot
-                        ? formatRate(deferredSnapshot.network.rxBytesPerSecond)
-                        : "91.5 Kbps"}
+                    <span className="throughput-compact__value">
+                      <span className="throughput-compact__value-main">
+                        {downloadRateDisplay.amount}
+                      </span>
+                      <span className="throughput-compact__value-unit">
+                        {downloadRateDisplay.unit}
+                      </span>
                     </span>
                   </div>
 
-                  <div className="throughput-stat throughput-stat--up">
-                    <span className="throughput-stat__label">
+                  <div className="throughput-compact__item throughput-compact__item--up">
+                    <span className="throughput-compact__label">
                       <Icon name="arrow-up" />
-                      Upload
                     </span>
-                    <span className="throughput-stat__value">
-                      {deferredSnapshot
-                        ? formatRate(deferredSnapshot.network.txBytesPerSecond)
-                        : "51.2 Kbps"}
+                    <span className="throughput-compact__value">
+                      <span className="throughput-compact__value-main">
+                        {uploadRateDisplay.amount}
+                      </span>
+                      <span className="throughput-compact__value-unit">
+                        {uploadRateDisplay.unit}
+                      </span>
                     </span>
                   </div>
                 </div>
