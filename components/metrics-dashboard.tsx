@@ -650,10 +650,8 @@ function MiniNetworkChart({ history }: { history: HistoryPoint[] }) {
           dataKeys={["download", "upload"]}
           timeKey="time"
           theme="pearl"
-          unit="Mbps"
           showArea
           fillOpacity={0.5}
-          seriesLabels={{ download: "WAN Rx", upload: "WAN Tx" }}
           width={width}
           height={160}
           style={{ background: "transparent" }}

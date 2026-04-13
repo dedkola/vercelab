@@ -1499,6 +1499,10 @@ a:focus-visible {
   width: 100%;
 }
 
+.mini-network-chart > div > div:first-child {
+  display: none !important;
+}
+
 .panel-sparkline__topline,
 .panel-sparkline__footer {
   display: flex;
