@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-const githubUrlPattern =
-  /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?$/;
+const repositoryUrlPattern = /^https:\/\/[^\s/]+\/.+/;
 const slugPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const serviceNamePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
@@ -18,7 +17,7 @@ export const createDeploymentSchema = z.object({
   repositoryUrl: z
     .string()
     .trim()
-    .regex(githubUrlPattern, "Use an HTTPS GitHub repository URL."),
+    .regex(repositoryUrlPattern, "Use an HTTPS git repository URL."),
   githubToken: z.preprocess(
     normalizeOptionalString,
     z.string().min(20, "GitHub token looks too short.").optional(),
@@ -46,7 +45,10 @@ export const createDeploymentSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(slugPattern, "Subdomain must be lowercase letters, numbers, or dashes."),
+    .regex(
+      slugPattern,
+      "Subdomain must be lowercase letters, numbers, or dashes.",
+    ),
   port: z.coerce
     .number()
     .int()

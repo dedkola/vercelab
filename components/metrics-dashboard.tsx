@@ -7,15 +7,35 @@ import {
   useEffectEvent,
   useState,
 } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Icon, type IconName } from "@/components/dashboard-kit";
+import { GitDeploymentPage } from "@/components/git-deployment-page";
+import type { DashboardData } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
 const POLL_INTERVAL_MS = 5000;
 const HISTORY_LIMIT = 48;
 
-const RAIL_PRIMARY: Array<{ icon: IconName; active?: boolean }> = [
-  { icon: "network", active: true },
+type DashboardSection = "overview" | "git";
+
+type MetricsDashboardProps = {
+  baseDomain: string;
+  dashboardData: DashboardData;
+  flashMessage: {
+    message: string;
+    status: "success" | "error";
+  } | null;
+  initialSection: DashboardSection;
+};
+
+const RAIL_PRIMARY: Array<{
+  icon: IconName;
+  label?: string;
+  section?: DashboardSection;
+}> = [
+  { icon: "network", label: "Overview", section: "overview" },
+  { icon: "cloud", label: "Git", section: "git" },
   { icon: "topology" },
   { icon: "dashboard" },
   { icon: "ports" },
@@ -40,41 +60,46 @@ const WIFI_SPEED_ROWS = [
 const TRAFFIC_ROWS = [
   {
     name: "DelugeTorrent",
-    dot: "#1846b3",
     badge: "D",
+    color: "#1846b3",
     down: "1.61 GB",
+    toneClass: "torrent",
     up: "57.3 GB",
     traffic: "58.9 GB",
   },
   {
     name: "BitTorrent Series",
-    dot: "#2d6cf7",
     badge: "BT",
+    color: "#2d6cf7",
     down: "1.00 GB",
+    toneClass: "series",
     up: "22.4 GB",
     traffic: "23.4 GB",
   },
   {
     name: "SSL/TLS",
-    dot: "#48b8ea",
     badge: "S",
+    color: "#48b8ea",
     down: "4.92 GB",
+    toneClass: "ssl",
     up: "84.2 MB",
     traffic: "5.01 GB",
   },
   {
     name: "YouTube",
-    dot: "#40c463",
     badge: "YT",
+    color: "#40c463",
     down: "3.34 GB",
+    toneClass: "youtube",
     up: "20.5 MB",
     traffic: "3.36 GB",
   },
   {
     name: "Web Streaming",
-    dot: "#bddb32",
     badge: "WS",
+    color: "#bddb32",
     down: "2.92 GB",
+    toneClass: "streaming",
     up: "14.4 MB",
     traffic: "2.94 GB",
   },
@@ -85,49 +110,61 @@ const CONNECTION_ROWS = [
     label: "WiFi 6",
     band: "5 GHz",
     activity: 0.86,
+    activityWidthClass: "connections-bar__fill--86",
+    color: "#6a35db",
     experience: "Excellent",
     connections: 5,
-    dot: "#6a35db",
+    toneClass: "violet",
   },
   {
     label: "WiFi 5",
     band: "5 GHz",
     activity: 0.19,
+    activityWidthClass: "connections-bar__fill--19",
+    color: "#1d74f4",
     experience: "Excellent",
     connections: 1,
-    dot: "#1d74f4",
+    toneClass: "blue",
   },
   {
     label: "WiFi 6",
     band: "6 GHz",
     activity: 0.04,
+    activityWidthClass: "connections-bar__fill--4",
+    color: "#1746af",
     experience: "Excellent",
     connections: 2,
-    dot: "#1746af",
+    toneClass: "navy",
   },
   {
     label: "WiFi 4",
     band: "2.4 GHz",
     activity: 0.06,
+    activityWidthClass: "connections-bar__fill--6",
+    color: "#4ec0f0",
     experience: "Excellent",
     connections: 3,
-    dot: "#4ec0f0",
+    toneClass: "cyan",
   },
   {
     label: "WiFi 4",
     band: "5 GHz",
     activity: 0.03,
+    activityWidthClass: "connections-bar__fill--6",
+    color: "#5a93f3",
     experience: "Excellent",
     connections: 2,
-    dot: "#5a93f3",
+    toneClass: "sky",
   },
   {
     label: "WiFi 6",
     band: "2.4 GHz",
     activity: 0.02,
+    activityWidthClass: "connections-bar__fill--6",
+    color: "#245cc7",
     experience: "Excellent",
     connections: 1,
-    dot: "#245cc7",
+    toneClass: "indigo",
   },
 ];
 
@@ -716,11 +753,20 @@ function MiniSparkline({ history }: { history: HistoryPoint[] }) {
   );
 }
 
-export default function MetricsDashboard() {
+export default function MetricsDashboard({
+  baseDomain,
+  dashboardData,
+  flashMessage,
+  initialSection,
+}: MetricsDashboardProps) {
+  const [activeSection, setActiveSection] =
+    useState<DashboardSection>(initialSection);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const deferredSnapshot = useDeferredValue(snapshot);
   const deferredHistory = useDeferredValue(history);
@@ -738,6 +784,10 @@ export default function MetricsDashboard() {
       setErrorMessage(message);
     });
   });
+
+  useEffect(() => {
+    setActiveSection(initialSection);
+  }, [initialSection]);
 
   useEffect(() => {
     let active = true;
@@ -781,6 +831,23 @@ export default function MetricsDashboard() {
     };
   }, []);
 
+  const handleSectionChange = useEffectEvent((section: DashboardSection) => {
+    setActiveSection(section);
+
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (section === "git") {
+      params.set("section", "git");
+    } else {
+      params.delete("section");
+    }
+
+    const query = params.toString();
+    const nextUrl = query ? `${pathname}?${query}` : pathname;
+
+    window.history.pushState(null, "", nextUrl);
+  });
+
   const totalRate = deferredSnapshot
     ? deferredSnapshot.network.rxBytesPerSecond +
       deferredSnapshot.network.txBytesPerSecond
@@ -795,12 +862,12 @@ export default function MetricsDashboard() {
     const totalNumeric = 58.9 + 23.4 + 5.01 + 3.36 + 2.94 + 2.66;
 
     return {
-      color: row.dot,
+      color: row.color,
       ratio: numericValue / totalNumeric,
     };
   });
   const connectionSegments = CONNECTION_ROWS.map((row) => ({
-    color: row.dot,
+    color: row.color,
     ratio: row.connections / 14,
   }));
   const panelMeta = deferredSnapshot
@@ -820,6 +887,10 @@ export default function MetricsDashboard() {
   const uploadRate = deferredSnapshot?.network.txBytesPerSecond ?? 0;
   const downloadRateDisplay = formatBitRateParts(downloadRate);
   const uploadRateDisplay = formatBitRateParts(uploadRate);
+  const isOverviewSection = activeSection === "overview";
+  const activeRailEntry =
+    RAIL_PRIMARY.find((entry) => entry.section === activeSection) ??
+    RAIL_PRIMARY[0];
 
   return (
     <section className="shell" aria-label="UniFi styled dashboard">
@@ -831,12 +902,12 @@ export default function MetricsDashboard() {
           </button>
 
           <span className="app-pill">
-            <Icon name="network" />
-            Network
+            <Icon name={activeRailEntry.icon} />
+            {activeRailEntry.label ?? "Overview"}
           </span>
         </div>
 
-        <div className="topbar__center">UniFi</div>
+        <div className="topbar__center">Vercelab</div>
 
         <div className="topbar__right">
           <button className="topbar-btn" type="button" aria-label="Theme">
@@ -855,10 +926,21 @@ export default function MetricsDashboard() {
           <div className="rail__group">
             {RAIL_PRIMARY.map((entry) => (
               <button
-                className={`rail__link ${entry.active ? "rail__link--active" : ""}`}
+                aria-label={entry.label ?? entry.icon}
+                className={`rail__link ${
+                  entry.section === activeSection ? "rail__link--active" : ""
+                } ${entry.section ? "" : "rail__link--muted"}`}
                 key={entry.icon}
+                onClick={
+                  entry.section
+                    ? () => {
+                        if (entry.section) {
+                          handleSectionChange(entry.section);
+                        }
+                      }
+                    : undefined
+                }
                 type="button"
-                aria-label={entry.icon}
               >
                 <Icon name={entry.icon} />
               </button>
@@ -884,7 +966,9 @@ export default function MetricsDashboard() {
 
         <aside
           className={`panel ${isPanelCollapsed ? "panel--collapsed" : ""}`}
-          aria-label="Gateway details"
+          aria-label={
+            isOverviewSection ? "Gateway details" : "Git deployment sidebar"
+          }
           id="gateway-panel"
         >
           <button
@@ -893,8 +977,8 @@ export default function MetricsDashboard() {
             aria-controls="gateway-panel"
             aria-label={
               isPanelCollapsed
-                ? "Show gateway details panel"
-                : "Hide gateway details panel"
+                ? `Show ${isOverviewSection ? "gateway details" : "Git tools"} panel`
+                : `Hide ${isOverviewSection ? "gateway details" : "Git tools"} panel`
             }
             onClick={() => setIsPanelCollapsed((current) => !current)}
           >
@@ -903,384 +987,455 @@ export default function MetricsDashboard() {
 
           {!isPanelCollapsed ? (
             <div className="panel__content" id="gateway-panel-content">
-              <div className="info-row">
-                <span className="info-row__label">Gateway IP</span>
-                <span className="info-row__value">192.168.0.1</span>
-              </div>
-              <div className="info-row">
-                <span className="info-row__label">System Uptime</span>
-                <span className="info-row__value">3w 2d 13h 37m</span>
-              </div>
+              {isOverviewSection ? (
+                <>
+                  <div className="info-row">
+                    <span className="info-row__label">Gateway IP</span>
+                    <span className="info-row__value">192.168.0.1</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-row__label">System Uptime</span>
+                    <span className="info-row__value">3w 2d 13h 37m</span>
+                  </div>
 
-              <div className="version-bar">
-                <span className="version-item">
-                  Network 10.2.105
-                  <Icon name="copy" />
-                </span>
-                <span className="version-item">
-                  UniFi OS 5.0.16
-                  <Icon name="copy" />
-                </span>
-              </div>
-
-              <hr className="panel__hr" />
-
-              <section className="throughput-card" aria-label="Throughput">
-                <div className="throughput-compact">
-                  <div className="throughput-compact__item throughput-compact__item--down">
-                    <span className="throughput-compact__label">
-                      <Icon name="arrow-down" />
+                  <div className="version-bar">
+                    <span className="version-item">
+                      Network 10.2.105
+                      <Icon name="copy" />
                     </span>
-                    <span className="throughput-compact__value">
-                      <span className="throughput-compact__value-main">
-                        {downloadRateDisplay.amount}
-                      </span>
-                      <span className="throughput-compact__value-unit">
-                        {downloadRateDisplay.unit}
-                      </span>
+                    <span className="version-item">
+                      UniFi OS 5.0.16
+                      <Icon name="copy" />
                     </span>
                   </div>
 
-                  <div className="throughput-compact__item throughput-compact__item--up">
-                    <span className="throughput-compact__label">
-                      <Icon name="arrow-up" />
-                    </span>
-                    <span className="throughput-compact__value">
-                      <span className="throughput-compact__value-main">
-                        {uploadRateDisplay.amount}
-                      </span>
-                      <span className="throughput-compact__value-unit">
-                        {uploadRateDisplay.unit}
-                      </span>
-                    </span>
-                  </div>
-                </div>
+                  <hr className="panel__hr" />
 
-                <MiniSparkline history={deferredHistory} />
-              </section>
+                  <section className="throughput-card" aria-label="Throughput">
+                    <div className="throughput-compact">
+                      <div className="throughput-compact__item throughput-compact__item--down">
+                        <span className="throughput-compact__label">
+                          <Icon name="arrow-down" />
+                        </span>
+                        <span className="throughput-compact__value">
+                          <span className="throughput-compact__value-main">
+                            {downloadRateDisplay.amount}
+                          </span>
+                          <span className="throughput-compact__value-unit">
+                            {downloadRateDisplay.unit}
+                          </span>
+                        </span>
+                      </div>
 
-              <div className="action-buttons">
-                <button className="action-btn" type="button">
-                  <Icon name="speed-test" />
-                  Placeholder 1
-                </button>
-              </div>
+                      <div className="throughput-compact__item throughput-compact__item--up">
+                        <span className="throughput-compact__label">
+                          <Icon name="arrow-up" />
+                        </span>
+                        <span className="throughput-compact__value">
+                          <span className="throughput-compact__value-main">
+                            {uploadRateDisplay.amount}
+                          </span>
+                          <span className="throughput-compact__value-unit">
+                            {uploadRateDisplay.unit}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
 
-              <section className="panel__section">
-                <div className="panel-card">
-                  <div className="panel-card__header">
-                    <span className="panel-card__title">
-                      Default WiFi Speeds
-                    </span>
-                    <button className="panel-card__action" type="button">
-                      Max. Speed
-                      <Icon name="chevron-right" />
+                    <MiniSparkline history={deferredHistory} />
+                  </section>
+
+                  <div className="action-buttons">
+                    <button className="action-btn" type="button">
+                      <Icon name="speed-test" />
+                      Placeholder 1
                     </button>
                   </div>
 
-                  <div className="channel-grid">
-                    <div className="channel-grid__label">
-                      Channel Widths (MHz)
-                    </div>
-                    {WIFI_SPEED_ROWS.map((row) => (
-                      <div className="channel-row" key={row.band}>
-                        <span className="channel-row__band">{row.band}</span>
-                        {row.values.map((value) => (
-                          <span
-                            className={`channel-row__val ${
-                              value === "80" || value === "320"
-                                ? "channel-row__val--active"
-                                : value === "DFS"
-                                  ? "channel-row__val--label"
-                                  : ""
-                            }`}
-                            key={`${row.band}-${value}`}
-                          >
-                            {value}
-                          </span>
+                  <section className="panel__section">
+                    <div className="panel-card">
+                      <div className="panel-card__header">
+                        <span className="panel-card__title">
+                          Default WiFi Speeds
+                        </span>
+                        <button className="panel-card__action" type="button">
+                          Max. Speed
+                          <Icon name="chevron-right" />
+                        </button>
+                      </div>
+
+                      <div className="channel-grid">
+                        <div className="channel-grid__label">
+                          Channel Widths (MHz)
+                        </div>
+                        {WIFI_SPEED_ROWS.map((row) => (
+                          <div className="channel-row" key={row.band}>
+                            <span className="channel-row__band">
+                              {row.band}
+                            </span>
+                            {row.values.map((value) => (
+                              <span
+                                className={`channel-row__val ${
+                                  value === "80" || value === "320"
+                                    ? "channel-row__val--active"
+                                    : value === "DFS"
+                                      ? "channel-row__val--label"
+                                      : ""
+                                }`}
+                                key={`${row.band}-${value}`}
+                              >
+                                {value}
+                              </span>
+                            ))}
+                          </div>
                         ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
+                    </div>
+                  </section>
 
-              <section className="panel__section">
-                <div className="panel-card">
-                  <div className="panel-card__header">
-                    <span className="panel-card__title">
-                      Critical Traffic Prioritization
-                    </span>
-                    <button className="panel-card__action" type="button">
-                      Configure
+                  <section className="panel__section">
+                    <div className="panel-card">
+                      <div className="panel-card__header">
+                        <span className="panel-card__title">
+                          Critical Traffic Prioritization
+                        </span>
+                        <button className="panel-card__action" type="button">
+                          Configure
+                        </button>
+                      </div>
+
+                      <div className="category-icons">
+                        {[
+                          "syslog",
+                          "shield",
+                          "notifications",
+                          "theme",
+                          "layout-grid",
+                          "monitor",
+                        ].map((icon) => (
+                          <div className="category-icon" key={icon}>
+                            <Icon name={icon as IconName} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="cyber-card">
+                    <div className="cyber-card__header">
+                      <Icon name="shield" />
+                      <div className="cyber-card__title">
+                        CyberSecure Enhanced
+                      </div>
+                      <button className="cyber-card__action" type="button">
+                        Activate
+                      </button>
+                    </div>
+
+                    <ul className="cyber-card__list">
+                      <li>Up to 55K signatures updated real-time.</li>
+                      <li>100+ content filters.</li>
+                    </ul>
+
+                    <div className="cyber-card__footer">
+                      Powered by proofpoint and cloudflare
+                    </div>
+                  </div>
+
+                  <button className="widgets-btn" type="button">
+                    Dashboard Widgets
+                  </button>
+                </>
+              ) : (
+                <div className="git-panel">
+                  <div className="git-panel__eyebrow">Git</div>
+                  <div className="git-panel__title">
+                    Deploy from repositories
+                  </div>
+                  <p className="git-panel__copy">
+                    Open the Git deployment page, add repository details, and
+                    let Vercelab create repeatable container deployments behind
+                    Traefik.
+                  </p>
+
+                  <div className="action-buttons">
+                    <button
+                      className="action-btn action-btn--active"
+                      type="button"
+                    >
+                      <Icon name="cloud" />
+                      Add Git Repo
                     </button>
                   </div>
 
-                  <div className="category-icons">
-                    {[
-                      "syslog",
-                      "shield",
-                      "notifications",
-                      "theme",
-                      "layout-grid",
-                      "monitor",
-                    ].map((icon) => (
-                      <div className="category-icon" key={icon}>
-                        <Icon name={icon as IconName} />
-                      </div>
-                    ))}
+                  <div className="git-panel__meta-grid">
+                    <div className="git-panel__meta-card">
+                      <span className="git-panel__meta-label">Base domain</span>
+                      <span className="git-panel__meta-value">
+                        {baseDomain}
+                      </span>
+                    </div>
+                    <div className="git-panel__meta-card">
+                      <span className="git-panel__meta-label">
+                        Saved deployments
+                      </span>
+                      <span className="git-panel__meta-value">
+                        {dashboardData.stats.totalDeployments}
+                      </span>
+                    </div>
+                    <div className="git-panel__meta-card">
+                      <span className="git-panel__meta-label">Running now</span>
+                      <span className="git-panel__meta-value">
+                        {dashboardData.stats.runningDeployments}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </section>
-
-              <div className="cyber-card">
-                <div className="cyber-card__header">
-                  <Icon name="shield" />
-                  <div className="cyber-card__title">CyberSecure Enhanced</div>
-                  <button className="cyber-card__action" type="button">
-                    Activate
-                  </button>
-                </div>
-
-                <ul className="cyber-card__list">
-                  <li>Up to 55K signatures updated real-time.</li>
-                  <li>100+ content filters.</li>
-                </ul>
-
-                <div className="cyber-card__footer">
-                  Powered by proofpoint and cloudflare
-                </div>
-              </div>
-
-              <button className="widgets-btn" type="button">
-                Dashboard Widgets
-              </button>
+              )}
             </div>
           ) : null}
         </aside>
 
         <main className="main">
-          <div className="main__header">
-            <div className="header-tabs">
-              <button className="header-tab header-tab--active" type="button">
-                Internet
-              </button>
-              <button className="header-tab" type="button">
-                WiFi
-              </button>
-            </div>
+          {isOverviewSection ? (
+            <>
+              <div className="main__header">
+                <div className="header-tabs">
+                  <button
+                    className="header-tab header-tab--active"
+                    type="button"
+                  >
+                    Internet
+                  </button>
+                  <button className="header-tab" type="button">
+                    WiFi
+                  </button>
+                </div>
 
-            <button className="header-dropdown" type="button">
-              All WANs
-              <Icon name="chevron-down" />
-            </button>
-
-            <div className="main__header-spacer" />
-
-            <button className="header-dropdown" type="button">
-              <span className="header-check__dot header-check__dot--violet" />
-              Internet Activity
-              <Icon name="chevron-down" />
-            </button>
-
-            <button className="header-check" type="button">
-              <span className="header-check__box header-check__box--checked">
-                <Icon name="check" />
-              </span>
-              <span className="header-check__dot header-check__dot--amber" />
-              Avg. Latency
-            </button>
-
-            <button className="header-check" type="button">
-              <span className="header-check__box header-check__box--checked">
-                <Icon name="check" />
-              </span>
-              <span className="header-check__dot header-check__dot--red" />
-              Packet Loss
-            </button>
-
-            <button className="header-check" type="button">
-              <span className="header-check__box" />
-              <span className="header-check__dot header-check__dot--gray" />
-              Connections
-            </button>
-
-            <div className="time-selector">
-              {["1h", "1D", "1W", "1M"].map((entry) => (
-                <button
-                  className={`time-btn ${entry === "1D" ? "time-btn--active" : ""}`}
-                  key={entry}
-                  type="button"
-                >
-                  {entry}
+                <button className="header-dropdown" type="button">
+                  All WANs
+                  <Icon name="chevron-down" />
                 </button>
-              ))}
-            </div>
-          </div>
 
-          <section className="chart-area">
-            <MainTrafficChart
-              history={deferredHistory}
-              currentNetworkIn={deferredSnapshot?.network.rxBytesPerSecond ?? 0}
-              currentNetworkOut={
-                deferredSnapshot?.network.txBytesPerSecond ?? 0
-              }
-            />
-          </section>
+                <div className="main__header-spacer" />
 
-          <div className="scrubber">
-            <Icon className="icon scrubber__globe" name="globe" />
-            <div className="scrubber__bar">
-              <div className="scrubber__fill" />
-            </div>
-            <Icon className="icon scrubber__chevron" name="chevron-right" />
-          </div>
+                <button className="header-dropdown" type="button">
+                  <span className="header-check__dot header-check__dot--violet" />
+                  Internet Activity
+                  <Icon name="chevron-down" />
+                </button>
 
-          <section className="dashboard-overview">
-            <div className="dashboard-overview__main">
-              <div className="overview-grid">
-                <article className="unifi-card unifi-card--traffic">
-                  <div className="overview-card__header">
-                    <div>
-                      <div className="overview-card__title">Traffic</div>
-                      <div className="overview-card__meta">{statusMessage}</div>
-                    </div>
-                    <div className="overview-card__stamp">{timestampLabel}</div>
-                  </div>
+                <button className="header-check" type="button">
+                  <span className="header-check__box header-check__box--checked">
+                    <Icon name="check" />
+                  </span>
+                  <span className="header-check__dot header-check__dot--amber" />
+                  Avg. Latency
+                </button>
 
-                  <div className="traffic">
-                    <TrafficDonut
-                      segments={donutSegments}
-                      centerValue="102 GB"
-                      label="Total Traffic"
-                    />
+                <button className="header-check" type="button">
+                  <span className="header-check__box header-check__box--checked">
+                    <Icon name="check" />
+                  </span>
+                  <span className="header-check__dot header-check__dot--red" />
+                  Packet Loss
+                </button>
 
-                    <table className="traffic-table">
-                      <thead>
-                        <tr>
-                          <th>Application</th>
-                          <th>Down</th>
-                          <th>Up</th>
-                          <th>Traffic</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {TRAFFIC_ROWS.map((row) => (
-                          <tr key={row.name}>
-                            <td>
-                              <div className="traffic-app">
-                                <span
-                                  className="traffic-app__dot"
-                                  style={{ backgroundColor: row.dot }}
-                                />
-                                <span className="traffic-app__icon">
-                                  {row.badge}
-                                </span>
-                                {row.name}
-                              </div>
-                            </td>
-                            <td>{row.down}</td>
-                            <td>{row.up}</td>
-                            <td>{row.traffic}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </article>
+                <button className="header-check" type="button">
+                  <span className="header-check__box" />
+                  <span className="header-check__dot header-check__dot--gray" />
+                  Connections
+                </button>
 
-                <article className="unifi-card unifi-card--connections">
-                  <div className="overview-card__header">
-                    <div>
-                      <div className="overview-card__title">Connections</div>
-                      <div className="overview-card__meta">{uplinkLabel}</div>
-                    </div>
-                    <div className="overview-card__stamp">{panelMeta}</div>
-                  </div>
+                <div className="time-selector">
+                  {["1h", "1D", "1W", "1M"].map((entry) => (
+                    <button
+                      className={`time-btn ${entry === "1D" ? "time-btn--active" : ""}`}
+                      key={entry}
+                      type="button"
+                    >
+                      {entry}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                  <div className="connections-card">
-                    <TrafficDonut
-                      segments={connectionSegments}
-                      centerValue="14"
-                      label="Total Connections"
-                    />
+              <section className="chart-area">
+                <MainTrafficChart
+                  history={deferredHistory}
+                  currentNetworkIn={
+                    deferredSnapshot?.network.rxBytesPerSecond ?? 0
+                  }
+                  currentNetworkOut={
+                    deferredSnapshot?.network.txBytesPerSecond ?? 0
+                  }
+                />
+              </section>
 
-                    <div className="connections-table">
-                      <div className="connections-table__head">
-                        <span>Type</span>
-                        <span>Activity</span>
-                        <span>Experience</span>
-                        <span>Connections</span>
-                      </div>
+              <div className="scrubber">
+                <Icon className="icon scrubber__globe" name="globe" />
+                <div className="scrubber__bar">
+                  <div className="scrubber__fill" />
+                </div>
+                <Icon className="icon scrubber__chevron" name="chevron-right" />
+              </div>
 
-                      {CONNECTION_ROWS.map((row) => (
-                        <div
-                          className="connections-table__row"
-                          key={`${row.label}-${row.band}`}
-                        >
-                          <div className="connections-type">
-                            <span
-                              className="connections-type__dot"
-                              style={{ backgroundColor: row.dot }}
-                            />
-                            <span>{row.label}</span>
-                            <span className="connections-type__band">
-                              {row.band}
-                            </span>
-                          </div>
-
-                          <div className="connections-bar">
-                            <span
-                              className="connections-bar__fill"
-                              style={{
-                                width: `${Math.max(row.activity * 100, 6)}%`,
-                              }}
-                            />
-                          </div>
-
-                          <div className="connections-table__excellent">
-                            {row.experience}
-                          </div>
-                          <div className="connections-table__count">
-                            {row.connections}
+              <section className="dashboard-overview">
+                <div className="dashboard-overview__main">
+                  <div className="overview-grid">
+                    <article className="unifi-card unifi-card--traffic">
+                      <div className="overview-card__header">
+                        <div>
+                          <div className="overview-card__title">Traffic</div>
+                          <div className="overview-card__meta">
+                            {statusMessage}
                           </div>
                         </div>
-                      ))}
+                        <div className="overview-card__stamp">
+                          {timestampLabel}
+                        </div>
+                      </div>
+
+                      <div className="traffic">
+                        <TrafficDonut
+                          segments={donutSegments}
+                          centerValue="102 GB"
+                          label="Total Traffic"
+                        />
+
+                        <table className="traffic-table">
+                          <thead>
+                            <tr>
+                              <th>Application</th>
+                              <th>Down</th>
+                              <th>Up</th>
+                              <th>Traffic</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {TRAFFIC_ROWS.map((row) => (
+                              <tr key={row.name}>
+                                <td>
+                                  <div className="traffic-app">
+                                    <span
+                                      className={`traffic-app__dot traffic-app__dot--${row.toneClass}`}
+                                    />
+                                    <span className="traffic-app__icon">
+                                      {row.badge}
+                                    </span>
+                                    {row.name}
+                                  </div>
+                                </td>
+                                <td>{row.down}</td>
+                                <td>{row.up}</td>
+                                <td>{row.traffic}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </article>
+
+                    <article className="unifi-card unifi-card--connections">
+                      <div className="overview-card__header">
+                        <div>
+                          <div className="overview-card__title">
+                            Connections
+                          </div>
+                          <div className="overview-card__meta">
+                            {uplinkLabel}
+                          </div>
+                        </div>
+                        <div className="overview-card__stamp">{panelMeta}</div>
+                      </div>
+
+                      <div className="connections-card">
+                        <TrafficDonut
+                          segments={connectionSegments}
+                          centerValue="14"
+                          label="Total Connections"
+                        />
+
+                        <div className="connections-table">
+                          <div className="connections-table__head">
+                            <span>Type</span>
+                            <span>Activity</span>
+                            <span>Experience</span>
+                            <span>Connections</span>
+                          </div>
+
+                          {CONNECTION_ROWS.map((row) => (
+                            <div
+                              className="connections-table__row"
+                              key={`${row.label}-${row.band}`}
+                            >
+                              <div className="connections-type">
+                                <span
+                                  className={`connections-type__dot connections-type__dot--${row.toneClass}`}
+                                />
+                                <span>{row.label}</span>
+                                <span className="connections-type__band">
+                                  {row.band}
+                                </span>
+                              </div>
+
+                              <div className="connections-bar">
+                                <span
+                                  className={`connections-bar__fill ${row.activityWidthClass}`}
+                                />
+                              </div>
+
+                              <div className="connections-table__excellent">
+                                {row.experience}
+                              </div>
+                              <div className="connections-table__count">
+                                {row.connections}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+
+                <div className="dashboard-overview__side">
+                  <div className="unifi-card side-note">
+                    <div className="overview-card__title">Gateway Summary</div>
+                    <div className="side-note__value">
+                      {deferredSnapshot ? formatRate(totalRate) : "0 B/s"}
+                    </div>
+                    <div className="side-note__meta">
+                      {topContainers.length > 0
+                        ? `Top container ${topContainers[0].name}`
+                        : "Container telemetry will appear here"}
+                    </div>
+                    <div className="side-note__list">
+                      {topContainers.length > 0 ? (
+                        topContainers.map((container) => (
+                          <div className="side-note__row" key={container.name}>
+                            <span>{container.name}</span>
+                            <span>{formatPercent(container.cpuPercent)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="side-note__row">
+                          <span>Metrics feed</span>
+                          <span>Online</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </article>
-              </div>
-            </div>
-
-            <div className="dashboard-overview__side">
-              <div className="unifi-card side-note">
-                <div className="overview-card__title">Gateway Summary</div>
-                <div className="side-note__value">
-                  {deferredSnapshot ? formatRate(totalRate) : "0 B/s"}
                 </div>
-                <div className="side-note__meta">
-                  {topContainers.length > 0
-                    ? `Top container ${topContainers[0].name}`
-                    : "Container telemetry will appear here"}
-                </div>
-                <div className="side-note__list">
-                  {topContainers.length > 0 ? (
-                    topContainers.map((container) => (
-                      <div className="side-note__row" key={container.name}>
-                        <span>{container.name}</span>
-                        <span>{formatPercent(container.cpuPercent)}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="side-note__row">
-                      <span>Metrics feed</span>
-                      <span>Online</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
+              </section>
+            </>
+          ) : (
+            <GitDeploymentPage
+              baseDomain={baseDomain}
+              dashboardData={dashboardData}
+              flashMessage={flashMessage}
+            />
+          )}
         </main>
       </div>
     </section>

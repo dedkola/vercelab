@@ -56,13 +56,52 @@ function extractComposeNetworks(serviceConfig: unknown): string[] {
   return ["default"];
 }
 
-function normalizeStringInput(value: FormDataEntryValue | string | null | undefined) {
+function normalizeStringInput(
+  value: FormDataEntryValue | string | null | undefined,
+) {
   if (typeof value !== "string") {
     return undefined;
   }
 
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeDomainInput(value: string) {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length === 0) {
+    throw new Error("Domain is required.");
+  }
+
+  const candidate = /^https?:\/\//i.test(trimmedValue)
+    ? trimmedValue
+    : `https://${trimmedValue}`;
+
+  let hostname: string;
+
+  try {
+    hostname = new URL(candidate).hostname.toLowerCase();
+  } catch {
+    throw new Error("Enter a valid domain or subdomain.");
+  }
+
+  const baseDomain = getAppConfig().baseDomain.toLowerCase();
+  const normalizedHost = hostname.replace(/\.$/, "");
+
+  if (normalizedHost === baseDomain) {
+    throw new Error(`Domain must include a subdomain before ${baseDomain}.`);
+  }
+
+  if (normalizedHost.endsWith(`.${baseDomain}`)) {
+    return normalizedHost.slice(0, -(baseDomain.length + 1));
+  }
+
+  if (normalizedHost.includes(".")) {
+    throw new Error(`Domain must stay under ${baseDomain}.`);
+  }
+
+  return normalizedHost;
 }
 
 function truncateOutput(value: string | null): string | null {
@@ -84,7 +123,11 @@ function buildGitCloneUrl(repositoryUrl: string, token: string | null) {
   return parsed.toString();
 }
 
-async function runCommand(command: string, args: string[], options: CommandOptions = {}) {
+async function runCommand(
+  command: string,
+  args: string[],
+  options: CommandOptions = {},
+) {
   return await new Promise<string>((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
@@ -148,7 +191,10 @@ async function withDeploymentLock<T>(task: () => Promise<T>) {
 
   try {
     handle = await open(lockPath, "wx");
-    await handle.writeFile(`${process.pid}\n${new Date().toISOString()}\n`, "utf8");
+    await handle.writeFile(
+      `${process.pid}\n${new Date().toISOString()}\n`,
+      "utf8",
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       throw new Error("Another deployment operation is already running.");
@@ -180,7 +226,9 @@ async function removeWorkspace(workspacePath: string) {
   const appsRoot = path.resolve(getAppConfig().paths.appsDir);
 
   if (!resolvedWorkspace.startsWith(appsRoot)) {
-    throw new Error("Refusing to remove a workspace outside the Vercelab apps directory.");
+    throw new Error(
+      "Refusing to remove a workspace outside the Vercelab apps directory.",
+    );
   }
 
   await fs.rm(resolvedWorkspace, { recursive: true, force: true });
@@ -210,7 +258,9 @@ async function cloneRepository(deployment: StoredDeployment) {
   return await runCommand("git", args);
 }
 
-async function detectRuntimeFiles(deployment: StoredDeployment): Promise<RuntimeFiles> {
+async function detectRuntimeFiles(
+  deployment: StoredDeployment,
+): Promise<RuntimeFiles> {
   const composeCandidates = [
     "docker-compose.yml",
     "docker-compose.yaml",
@@ -224,7 +274,9 @@ async function detectRuntimeFiles(deployment: StoredDeployment): Promise<Runtime
     if (await pathExists(composePath)) {
       const { parse } = await import("yaml");
       const source = await fs.readFile(composePath, "utf8");
-      const parsed = parse(source) as { services?: Record<string, unknown> } | null;
+      const parsed = parse(source) as {
+        services?: Record<string, unknown>;
+      } | null;
       const serviceNames = Object.keys(parsed?.services ?? {});
 
       if (serviceNames.length === 0) {
@@ -362,7 +414,13 @@ async function runComposeCommand(
 ) {
   return await runCommand(
     "docker",
-    ["compose", "-p", deployment.projectName, ...runtimeFiles.fileArgs, ...args],
+    [
+      "compose",
+      "-p",
+      deployment.projectName,
+      ...runtimeFiles.fileArgs,
+      ...args,
+    ],
     {
       cwd: deployment.workspacePath,
     },
@@ -408,7 +466,9 @@ async function executeLifecycleOperation(
           status: statusOnSuccess,
           lastOutput: output,
           deployedAt:
-            operationType === "stop" ? deployment.deployedAt : new Date().toISOString(),
+            operationType === "stop"
+              ? deployment.deployedAt
+              : new Date().toISOString(),
         });
       }
 
@@ -418,7 +478,9 @@ async function executeLifecycleOperation(
       };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Unexpected deployment failure.";
+        error instanceof Error
+          ? error.message
+          : "Unexpected deployment failure.";
 
       completeOperation(operationId, "failed", message, message);
       updateDeploymentRecord(deploymentId, {
@@ -436,7 +498,7 @@ export async function createAndDeployFromForm(input: {
   branch: FormDataEntryValue | string | null;
   serviceName: FormDataEntryValue | string | null;
   appName: string;
-  subdomain: string;
+  domain: string;
   port: string;
 }) {
   const parsed = createDeploymentSchema.parse({
@@ -445,7 +507,7 @@ export async function createAndDeployFromForm(input: {
     branch: normalizeStringInput(input.branch),
     serviceName: normalizeStringInput(input.serviceName),
     appName: input.appName,
-    subdomain: input.subdomain,
+    subdomain: normalizeDomainInput(input.domain),
     port: input.port,
   });
 
@@ -482,7 +544,11 @@ export async function redeployDeploymentById(
         "--build",
       ]);
 
-      return truncateOutput([cloneOutput, composeOutput].filter(Boolean).join("\n\n")) ?? "";
+      return (
+        truncateOutput(
+          [cloneOutput, composeOutput].filter(Boolean).join("\n\n"),
+        ) ?? ""
+      );
     },
     "running",
   );
@@ -538,7 +604,10 @@ export async function removeDeploymentById(deploymentId: string) {
             "--remove-orphans",
           ]);
         } catch (error) {
-          output = error instanceof Error ? error.message : "Failed during compose shutdown.";
+          output =
+            error instanceof Error
+              ? error.message
+              : "Failed during compose shutdown.";
         }
       }
 

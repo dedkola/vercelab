@@ -19,8 +19,18 @@ function getRequiredFormValue(formData: FormData, name: string): string {
   return value;
 }
 
-function formatRedirectUrl(status: "success" | "error", message: string): string {
-  return `/?status=${status}&message=${encodeURIComponent(message)}`;
+function formatRedirectUrl(
+  status: "success" | "error",
+  message: string,
+  section: "overview" | "git" = "overview",
+): string {
+  const params = new URLSearchParams({
+    message,
+    section,
+    status,
+  });
+
+  return `/?${params.toString()}`;
 }
 
 function getActionErrorMessage(error: unknown): string {
@@ -41,15 +51,16 @@ export async function createDeploymentAction(formData: FormData) {
       branch: formData.get("branch"),
       serviceName: formData.get("serviceName"),
       appName: getRequiredFormValue(formData, "appName"),
-      subdomain: getRequiredFormValue(formData, "subdomain"),
+      domain: getRequiredFormValue(formData, "domain"),
       port: getRequiredFormValue(formData, "port"),
     });
     url = formatRedirectUrl(
       "success",
       `Deployment live at https://${deployment.domain}`,
+      "git",
     );
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error));
+    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
   }
 
   redirect(url);
@@ -64,9 +75,10 @@ export async function redeployDeploymentAction(formData: FormData) {
     url = formatRedirectUrl(
       "success",
       `Redeployed ${result.appName} to https://${result.domain}`,
+      "git",
     );
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error));
+    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
   }
 
   redirect(url);
@@ -78,9 +90,9 @@ export async function stopDeploymentAction(formData: FormData) {
 
   try {
     const result = await stopDeploymentById(deploymentId);
-    url = formatRedirectUrl("success", `Stopped ${result.appName}.`);
+    url = formatRedirectUrl("success", `Stopped ${result.appName}.`, "git");
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error));
+    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
   }
 
   redirect(url);
@@ -92,9 +104,9 @@ export async function removeDeploymentAction(formData: FormData) {
 
   try {
     const result = await removeDeploymentById(deploymentId);
-    url = formatRedirectUrl("success", `Removed ${result.appName}.`);
+    url = formatRedirectUrl("success", `Removed ${result.appName}.`, "git");
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error));
+    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
   }
 
   redirect(url);
