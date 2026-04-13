@@ -1515,6 +1515,10 @@ a:focus-visible {
   width: 100%;
 }
 
+.mini-network-chart > div {
+  height: auto !important;
+}
+
 .mini-network-chart > div > div:first-child {
   display: none !important;
 }
