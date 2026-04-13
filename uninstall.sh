@@ -17,6 +17,12 @@ VERCELAB_PROXY_NETWORK="vercelab_proxy"
 SUDO=()
 DOCKER_CMD=()
 
+C_RESET=""
+C_BOLD=""
+C_CYAN=""
+C_GREEN=""
+C_YELLOW=""
+
 log() {
   printf '[vercelab] %s\n' "$*"
 }
@@ -32,6 +38,16 @@ fail() {
 
 command_exists() {
   command -v "$1" >/dev/null 2>&1
+}
+
+init_colors() {
+  if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]; then
+    C_RESET=$'\033[0m'
+    C_BOLD=$'\033[1m'
+    C_CYAN=$'\033[36m'
+    C_GREEN=$'\033[32m'
+    C_YELLOW=$'\033[33m'
+  fi
 }
 
 run_privileged() {
@@ -157,15 +173,15 @@ print_uninstall_review() {
   fi
 
   printf '\n'
-  printf '============================================================\n'
-  printf '                  Vercelab Uninstall Review                 \n'
-  printf '============================================================\n'
-  printf ' Purge runtime state : %s\n' "$PURGE_RUNTIME_STATE"
-  printf ' Purge images        : %s\n' "$PURGE_IMAGES"
-  printf ' Env file            : %s\n' "$ENV_FILE"
-  printf ' Host root           : %s\n' "$VERCELAB_HOST_ROOT"
-  printf ' Proxy network       : %s\n' "$VERCELAB_PROXY_NETWORK"
-  printf '============================================================\n'
+  printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
+  printf '%b                  Vercelab Uninstall Review                 %b\n' "$C_BOLD" "$C_RESET"
+  printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
+  printf ' %bPurge runtime state%b : %s\n' "$C_YELLOW" "$C_RESET" "$PURGE_RUNTIME_STATE"
+  printf ' %bPurge images%b        : %s\n' "$C_YELLOW" "$C_RESET" "$PURGE_IMAGES"
+  printf ' %bEnv file%b            : %s\n' "$C_YELLOW" "$C_RESET" "$ENV_FILE"
+  printf ' %bHost root%b           : %s\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_HOST_ROOT"
+  printf ' %bProxy network%b       : %s\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_PROXY_NETWORK"
+  printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
   printf '\n'
 }
 
@@ -378,36 +394,37 @@ remove_docker_resources() {
 
 print_summary() {
   printf '\n'
-  printf '============================================================\n'
-  printf '                 Vercelab Uninstall Complete                \n'
-  printf '============================================================\n'
+  printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
+  printf '%b                 Vercelab Uninstall Complete                %b\n' "$C_BOLD" "$C_RESET"
+  printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
 
   if [[ "$DOCKER_CLEANUP_SKIPPED" == true ]]; then
-    printf ' Docker cleanup      : skipped (daemon unavailable)\n'
+    printf ' %bDocker cleanup%b      : skipped (daemon unavailable)\n' "$C_YELLOW" "$C_RESET"
   else
-    printf ' Docker cleanup      : done\n'
+    printf ' %bDocker cleanup%b      : done\n' "$C_YELLOW" "$C_RESET"
   fi
 
   if [[ "$PURGE_RUNTIME_STATE" == true ]]; then
-    printf ' Runtime state       : purged\n'
+    printf ' %bRuntime state%b       : purged\n' "$C_YELLOW" "$C_RESET"
   else
-    printf ' Runtime state       : preserved\n'
+    printf ' %bRuntime state%b       : preserved\n' "$C_YELLOW" "$C_RESET"
     printf '   - %s\n' "$ENV_FILE"
     printf '   - %s\n' "$VERCELAB_HOST_ROOT"
   fi
 
   if [[ "$PURGE_IMAGES" == true ]]; then
-    printf ' Images              : purged when possible\n'
+    printf ' %bImages%b              : purged when possible\n' "$C_YELLOW" "$C_RESET"
   else
-    printf ' Images              : preserved\n'
+    printf ' %bImages%b              : preserved\n' "$C_YELLOW" "$C_RESET"
   fi
 
   printf '\n'
-  printf ' Host tooling kept   : Docker Engine, Compose plugin, Node.js, pnpm\n'
-  printf '============================================================\n'
+  printf ' %bHost tooling kept%b   : Docker Engine, Compose plugin, Node.js, pnpm\n' "$C_YELLOW" "$C_RESET"
+  printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
 }
 
 main() {
+  init_colors
   parse_args "$@"
   ensure_sudo_if_available
   load_configuration

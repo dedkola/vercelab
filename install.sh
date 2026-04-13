@@ -19,6 +19,12 @@ CONTROL_PLANE_HOSTNAME=""
 SUDO=()
 DOCKER_CMD=()
 
+C_RESET=""
+C_BOLD=""
+C_CYAN=""
+C_GREEN=""
+C_YELLOW=""
+
 log() {
   printf '[vercelab] %s\n' "$*"
 }
@@ -34,6 +40,16 @@ run_privileged() {
 
 command_exists() {
   command -v "$1" >/dev/null 2>&1
+}
+
+init_colors() {
+  if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-}" != "dumb" ]]; then
+    C_RESET=$'\033[0m'
+    C_BOLD=$'\033[1m'
+    C_CYAN=$'\033[36m'
+    C_GREEN=$'\033[32m'
+    C_YELLOW=$'\033[33m'
+  fi
 }
 
 read_env_value() {
@@ -587,21 +603,21 @@ start_stack() {
 print_configuration_review() {
   log "Configuration review"
   printf '\n'
-  printf '============================================================\n'
-  printf '                    Vercelab Setup Review                   \n'
-  printf '============================================================\n'
-  printf ' Runtime\n'
+  printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
+  printf '%b                    Vercelab Setup Review                   %b\n' "$C_BOLD" "$C_RESET"
+  printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
+  printf '%b Runtime%b\n' "$C_YELLOW" "$C_RESET"
   printf '   NODE_ENV                 : %s\n' "$NODE_ENV"
   printf '   HOSTNAME                 : %s\n' "$CONTROL_PLANE_HOSTNAME"
   printf '   PORT                     : %s\n' "$PORT"
   printf '\n'
-  printf ' Domains & Routing\n'
+  printf '%b Domains & Routing%b\n' "$C_YELLOW" "$C_RESET"
   printf '   VERCELAB_BASE_DOMAIN     : %s\n' "$VERCELAB_BASE_DOMAIN"
   printf '   VERCELAB_ADMIN_HOST      : %s\n' "$VERCELAB_ADMIN_HOST"
   printf '   VERCELAB_PROXY_NETWORK   : %s\n' "$VERCELAB_PROXY_NETWORK"
   printf '   VERCELAB_PROXY_ENTRYPOINT: %s\n' "$VERCELAB_PROXY_ENTRYPOINT"
   printf '\n'
-  printf ' Paths\n'
+  printf '%b Paths%b\n' "$C_YELLOW" "$C_RESET"
   printf '   VERCELAB_HOST_ROOT       : %s\n' "$VERCELAB_HOST_ROOT"
   printf '   VERCELAB_DATA_ROOT       : %s\n' "$VERCELAB_DATA_ROOT"
   printf '   VERCELAB_APPS_DIR        : %s\n' "$VERCELAB_APPS_DIR"
@@ -610,10 +626,10 @@ print_configuration_review() {
   printf '   VERCELAB_DATABASE_PATH   : %s\n' "$VERCELAB_DATABASE_PATH"
   printf '   VERCELAB_DOCKER_SOCKET   : %s\n' "$VERCELAB_DOCKER_SOCKET_PATH"
   printf '\n'
-  printf ' Security\n'
+  printf '%b Security%b\n' "$C_YELLOW" "$C_RESET"
   printf '   VERCELAB_ENCRYPTION_SECRET: %s\n' "$(mask_secret "$VERCELAB_ENCRYPTION_SECRET")"
   printf '   VERCELAB_GITHUB_TOKEN     : %s\n' "$(mask_secret "$VERCELAB_GITHUB_TOKEN")"
-  printf '============================================================\n'
+  printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
   printf '\n'
 
   confirm_configuration
@@ -625,25 +641,26 @@ print_summary() {
   local wildcard_example_url="https://demo.$VERCELAB_BASE_DOMAIN"
 
   printf '\n'
-  printf '============================================================\n'
-  printf '                    Vercelab Setup Complete                 \n'
-  printf '============================================================\n'
-  printf ' Dashboard   : %s\n' "$dashboard_url"
-  printf ' Health API  : %s\n' "$health_url"
-  printf ' App Example : %s\n' "$wildcard_example_url"
+  printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
+  printf '%b                    Vercelab Setup Complete                 %b\n' "$C_BOLD" "$C_RESET"
+  printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
+  printf ' %bDashboard%b   : %s\n' "$C_YELLOW" "$C_RESET" "$dashboard_url"
+  printf ' %bHealth API%b  : %s\n' "$C_YELLOW" "$C_RESET" "$health_url"
+  printf ' %bApp Example%b : %s\n' "$C_YELLOW" "$C_RESET" "$wildcard_example_url"
   printf '\n'
-  printf ' Host Root   : %s\n' "$VERCELAB_HOST_ROOT"
-  printf ' Env File    : %s\n' "$ENV_FILE"
-  printf ' TLS Cert    : %s/wildcard.crt\n' "$VERCELAB_TRAEFIK_CERTS_DIR"
+  printf ' %bHost Root%b   : %s\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_HOST_ROOT"
+  printf ' %bEnv File%b    : %s\n' "$C_YELLOW" "$C_RESET" "$ENV_FILE"
+  printf ' %bTLS Cert%b    : %s/wildcard.crt\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_TRAEFIK_CERTS_DIR"
   printf '\n'
-  printf ' Next:\n'
+  printf ' %bNext%b:\n' "$C_YELLOW" "$C_RESET"
   printf '  1) Import wildcard.crt into your browser/system trust store.\n'
   printf '  2) Open Dashboard URL above.\n'
   printf '  3) Check Health API if dashboard is unreachable.\n'
-  printf '============================================================\n'
+  printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
 }
 
 main() {
+  init_colors
   ensure_sudo
   ensure_supported_os
   ensure_repo_layout
