@@ -371,12 +371,6 @@ export function GitDeploymentPage({
       <section className="git-hero unifi-card">
         <div>
           <div className="git-hero__eyebrow">Git deployment page</div>
-          <h1 className="git-hero__title">Deploy selected repositories.</h1>
-          <p className="git-hero__copy">
-            Use the Git sidebar to load your repositories by token, seed a
-            deployment draft, and inspect each app from build output to
-            container runtime logs.
-          </p>
         </div>
 
         <div className="git-hero__stats">
@@ -410,17 +404,6 @@ export function GitDeploymentPage({
             className="unifi-card git-compose-card"
             aria-label="Deployment draft"
           >
-            <div className="git-section-head">
-              <div>
-                <div className="git-section-head__title">Deploy repository</div>
-                <div className="git-section-head__meta">
-                  A selected repository becomes a deployment draft here. Review
-                  the app name, branch, subdomain, and port before creating the
-                  deployment.
-                </div>
-              </div>
-            </div>
-
             {repositoryDraft ? (
               <form
                 className="git-form git-form--draft"
@@ -596,10 +579,6 @@ export function GitDeploymentPage({
                 <div className="git-empty-state__title">
                   Select a repository from the sidebar
                 </div>
-                <p className="git-empty-state__copy">
-                  Load repositories with your GitHub token, choose one from the
-                  dropdown, and press Add to seed the deployment form here.
-                </p>
               </div>
             )}
           </section>
@@ -612,10 +591,6 @@ export function GitDeploymentPage({
               <div className="git-section-head">
                 <div>
                   <div className="git-section-head__title">Deployed apps</div>
-                  <div className="git-section-head__meta">
-                    Select an app to inspect its settings and switch the right
-                    sidebar between build and container logs.
-                  </div>
                 </div>
                 <div className="git-list-card__count">
                   {deployments.length} total
@@ -686,10 +661,6 @@ export function GitDeploymentPage({
                   <div className="git-empty-state__title">
                     No deployments yet
                   </div>
-                  <p className="git-empty-state__copy">
-                    Once you deploy a selected repository, it will show up here
-                    as an app card with build and container logs.
-                  </p>
                 </div>
               )}
             </section>
@@ -961,10 +932,6 @@ export function GitDeploymentPage({
               ) : (
                 <div className="git-empty-state">
                   <div className="git-empty-state__title">No app selected</div>
-                  <p className="git-empty-state__copy">
-                    Deploy a repository or select an existing app card to manage
-                    it here.
-                  </p>
                 </div>
               )}
             </section>
@@ -978,10 +945,6 @@ export function GitDeploymentPage({
           <div className="git-section-head git-section-head--logs">
             <div>
               <div className="git-section-head__title">Deployment logs</div>
-              <div className="git-section-head__meta">
-                Build logs come from the latest deployment operation. Container
-                logs read the active runtime output for the selected app.
-              </div>
             </div>
 
             <button

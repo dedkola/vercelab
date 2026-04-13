@@ -29,6 +29,7 @@ type MetricsDashboardProps = {
     message: string;
     status: "success" | "error";
   } | null;
+  initialGithubToken: string;
   initialSection: DashboardSection;
 };
 
@@ -760,6 +761,7 @@ export default function MetricsDashboard({
   baseDomain,
   dashboardData,
   flashMessage,
+  initialGithubToken,
   initialSection,
 }: MetricsDashboardProps) {
   const [activeSection, setActiveSection] =
@@ -768,7 +770,7 @@ export default function MetricsDashboard({
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [githubToken, setGithubToken] = useState("");
+  const [githubToken, setGithubToken] = useState(initialGithubToken);
   const [gitRepositories, setGitRepositories] = useState<GitHubRepository[]>(
     [],
   );
@@ -1018,7 +1020,10 @@ export default function MetricsDashboard({
     RAIL_PRIMARY[0];
 
   return (
-    <section className="shell shell--compact" aria-label="UniFi styled dashboard">
+    <section
+      className="shell shell--compact"
+      aria-label="UniFi styled dashboard"
+    >
       <header className="topbar">
         <div className="topbar__left">
           <button className="site-switch" type="button">
@@ -1431,31 +1436,6 @@ export default function MetricsDashboard({
                       {gitRepositoriesError}
                     </div>
                   ) : null}
-
-                  <div className="git-panel__meta-grid">
-                    <div className="git-panel__meta-card">
-                      <span className="git-panel__meta-label">Base domain</span>
-                      <span className="git-panel__meta-value">
-                        {baseDomain}
-                      </span>
-                    </div>
-                    <div className="git-panel__meta-card">
-                      <span className="git-panel__meta-label">
-                        Loaded repos
-                      </span>
-                      <span className="git-panel__meta-value">
-                        {gitRepositories.length}
-                      </span>
-                    </div>
-                    <div className="git-panel__meta-card">
-                      <span className="git-panel__meta-label">
-                        Saved deployments
-                      </span>
-                      <span className="git-panel__meta-value">
-                        {dashboardData.stats.totalDeployments}
-                      </span>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>

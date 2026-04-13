@@ -41,6 +41,7 @@ const envSchema = z.object({
     .string()
     .min(16)
     .default("change-this-vercelab-secret"),
+  VERCELAB_GITHUB_TOKEN: z.string().trim().optional(),
 });
 
 export type AppConfig = ReturnType<typeof buildConfig>;
@@ -82,6 +83,7 @@ function buildConfig() {
     },
     security: {
       encryptionSecret: parsed.VERCELAB_ENCRYPTION_SECRET,
+      githubToken: parsed.VERCELAB_GITHUB_TOKEN ?? null,
     },
     paths: {
       rootDir: projectRoot,

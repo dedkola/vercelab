@@ -60,6 +60,27 @@ prompt_with_default() {
   printf '%s' "${input:-$default_value}"
 }
 
+prompt_optional_secret() {
+  local prompt="$1"
+  local existing_value="$2"
+  local input=""
+
+  if [[ ! -t 0 ]]; then
+    printf '%s' "$existing_value"
+    return
+  fi
+
+  if [[ -n "$existing_value" ]]; then
+    read -r -s -p "$prompt [already set, press Enter to keep]: " input || true
+    printf '\n' >&2
+    printf '%s' "${input:-$existing_value}"
+  else
+    read -r -s -p "$prompt [press Enter to skip]: " input || true
+    printf '\n' >&2
+    printf '%s' "$input"
+  fi
+}
+
 ensure_sudo() {
   if [[ ${EUID} -eq 0 ]]; then
     return
@@ -332,7 +353,7 @@ ensure_path_inside_root() {
 }
 
 gather_configuration() {
-  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_database_path existing_postgres_url existing_secret default_base_domain
+  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_database_path existing_postgres_url existing_secret existing_github_token default_base_domain
 
   existing_node_env="$(read_env_value NODE_ENV)"
   existing_runtime_host="$(read_env_value HOSTNAME)"
@@ -354,6 +375,7 @@ gather_configuration() {
   existing_database_path="$(read_env_value VERCELAB_DATABASE_PATH)"
   existing_postgres_url="$(read_env_value VERCELAB_POSTGRES_URL)"
   existing_secret="$(read_env_value VERCELAB_ENCRYPTION_SECRET)"
+  existing_github_token="$(read_env_value VERCELAB_GITHUB_TOKEN)"
 
   default_base_domain="$(detect_default_base_domain)"
 
@@ -415,6 +437,8 @@ gather_configuration() {
   if [[ -z "$VERCELAB_ENCRYPTION_SECRET" ]]; then
     VERCELAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)"
   fi
+
+  VERCELAB_GITHUB_TOKEN="${VERCELAB_GITHUB_TOKEN:-$(prompt_optional_secret "GitHub personal access token (repo scope)" "$existing_github_token")}"
 }
 
 prepare_host_directories() {
@@ -505,6 +529,7 @@ VERCELAB_DATABASE_PROVIDER=$VERCELAB_DATABASE_PROVIDER
 VERCELAB_POSTGRES_URL=$VERCELAB_POSTGRES_URL
 
 VERCELAB_ENCRYPTION_SECRET=$VERCELAB_ENCRYPTION_SECRET
+VERCELAB_GITHUB_TOKEN=$VERCELAB_GITHUB_TOKEN
 EOF
 
   chmod 600 "$ENV_FILE"
