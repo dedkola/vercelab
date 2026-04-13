@@ -40,7 +40,8 @@ export type IconName =
   | "chat"
   | "film"
   | "cloud"
-  | "headphones";
+  | "headphones"
+  | "x-close";
 
 type IconProps = {
   name: IconName;
@@ -354,6 +355,13 @@ export function Icon({ name, className = "icon", title }: IconProps) {
             <path d="M3 14v-2a9 9 0 0 1 18 0v2" {...s} />
             <rect x="3" y="14" width="4" height="5" rx="1" {...s} />
             <rect x="17" y="14" width="4" height="5" rx="1" {...s} />
+          </>
+        );
+      case "x-close":
+        return (
+          <>
+            <line x1="18" y1="6" x2="6" y2="18" {...s} />
+            <line x1="6" y1="6" x2="18" y2="18" {...s} />
           </>
         );
       default:
