@@ -916,6 +916,16 @@ export default function MetricsDashboard({
     setActiveSection(initialSection);
   }, [initialSection]);
 
+  const autoLoadGitRepositories = useEffectEvent(() => {
+    if (initialGithubToken.trim().length >= 20) {
+      void loadGitRepositories();
+    }
+  });
+
+  useEffect(() => {
+    autoLoadGitRepositories();
+  }, []);
+
   useEffect(() => {
     let active = true;
 
