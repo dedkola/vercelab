@@ -3534,10 +3534,166 @@ a:focus-visible {
   display: flex;
 }
 
+.git-panel__load-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease,
+    opacity 150ms ease;
+}
+
+.git-panel__load-button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+  background: #f8fafd;
+}
+
+.git-panel__load-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+#githubToken:focus-visible {
+  outline: none;
+}
+
 .git-panel__repo-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+}
+
+.git-panel__dropdown {
+  position: relative;
+}
+
+.git-panel__dropdown-trigger {
+  width: 100%;
+  min-height: 38px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.git-panel__dropdown-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+}
+
+.git-panel__dropdown-trigger[aria-expanded="true"] {
+  border-color: rgba(111, 64, 231, 0.34);
+  box-shadow:
+    0 0 0 3px rgba(111, 64, 231, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.git-panel__dropdown-trigger[aria-expanded="true"] .icon {
+  transform: rotate(180deg);
+}
+
+.git-panel__dropdown-trigger .icon {
+  flex-shrink: 0;
+  transition: transform 180ms ease;
+}
+
+.git-panel__dropdown-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.git-panel__dropdown-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
+.git-panel__dropdown-title,
+.git-panel__dropdown-option-name {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-panel__dropdown-meta,
+.git-panel__dropdown-option-meta {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-panel__dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 15;
+  display: grid;
+  gap: 4px;
+  max-height: 320px;
+  padding: 8px;
+  overflow-y: auto;
+  border: 1px solid rgba(207, 216, 229, 0.92);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, #f7f9fc 100%);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.14),
+    0 2px 6px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(14px);
+}
+
+.git-panel__dropdown-option {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-align: left;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.git-panel__dropdown-option:hover {
+  background: rgba(111, 64, 231, 0.08);
+}
+
+.git-panel__dropdown-option--selected {
+  background:
+    linear-gradient(180deg, rgba(178, 110, 255, 0.14) 0%, rgba(111, 64, 231, 0.08) 100%);
+}
+
+.git-panel__dropdown-option:active {
+  transform: translateY(1px);
+}
+
+.git-panel__dropdown-empty {
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .git-panel__repo-card {

@@ -4,5 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["better-sqlite3"],
 };
-
+module.exports = {
+  allowedDevOrigins: ["10.10.0.86"],
+};
 export default nextConfig;

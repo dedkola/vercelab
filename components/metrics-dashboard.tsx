@@ -5,6 +5,8 @@ import {
   useDeferredValue,
   useEffect,
   useEffectEvent,
+  useId,
+  useRef,
   useState,
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -776,11 +778,14 @@ export default function MetricsDashboard({
   const [isLoadingGitRepositories, setIsLoadingGitRepositories] =
     useState(false);
   const [selectedGitRepositoryId, setSelectedGitRepositoryId] = useState("");
+  const [isGitRepositoryMenuOpen, setIsGitRepositoryMenuOpen] = useState(false);
   const [repositoryDraft, setRepositoryDraft] =
     useState<GitHubRepository | null>(null);
   const [repositoryDraftSignal, setRepositoryDraftSignal] = useState(0);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const gitRepositoryMenuId = useId();
+  const gitRepositoryMenuRef = useRef<HTMLDivElement | null>(null);
 
   const deferredSnapshot = useDeferredValue(snapshot);
   const deferredHistory = useDeferredValue(history);
@@ -810,6 +815,7 @@ export default function MetricsDashboard({
     }
 
     setIsLoadingGitRepositories(true);
+    setIsGitRepositoryMenuOpen(false);
     setGitRepositoriesError(null);
 
     try {
@@ -871,8 +877,38 @@ export default function MetricsDashboard({
 
     setRepositoryDraft(selectedGitRepository);
     setRepositoryDraftSignal((current) => current + 1);
+    setIsGitRepositoryMenuOpen(false);
     setGitRepositoriesError(null);
   }
+
+  useEffect(() => {
+    if (!isGitRepositoryMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        gitRepositoryMenuRef.current &&
+        !gitRepositoryMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsGitRepositoryMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsGitRepositoryMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isGitRepositoryMenuOpen]);
 
   useEffect(() => {
     setActiveSection(initialSection);
@@ -1261,7 +1297,7 @@ export default function MetricsDashboard({
 
                     <div className="git-panel__actions">
                       <button
-                        className="button button--primary"
+                        className="git-panel__load-button"
                         disabled={isLoadingGitRepositories}
                         type="submit"
                       >
@@ -1270,31 +1306,96 @@ export default function MetricsDashboard({
                     </div>
                   </form>
 
-                  <label className="field" htmlFor="githubRepository">
+                  <div className="field">
                     <span className="field__label">Repository</span>
                     <div className="git-panel__repo-row">
-                      <select
-                        className="git-panel__select"
-                        id="githubRepository"
-                        onChange={(event) =>
-                          setSelectedGitRepositoryId(event.target.value)
-                        }
-                        value={selectedGitRepositoryId}
+                      <div
+                        className="git-panel__dropdown"
+                        ref={gitRepositoryMenuRef}
                       >
-                        <option value="">
-                          {gitRepositories.length > 0
-                            ? "Choose a repository"
-                            : "Load repositories first"}
-                        </option>
-                        {gitRepositories.map((repository) => (
-                          <option
-                            key={repository.id}
-                            value={String(repository.id)}
+                        <button
+                          aria-controls={gitRepositoryMenuId}
+                          aria-expanded={isGitRepositoryMenuOpen}
+                          className="header-dropdown git-panel__dropdown-trigger"
+                          disabled={
+                            isLoadingGitRepositories ||
+                            gitRepositories.length === 0
+                          }
+                          onClick={() =>
+                            setIsGitRepositoryMenuOpen((current) => !current)
+                          }
+                          type="button"
+                        >
+                          <span className="git-panel__dropdown-value">
+                            <span className="git-panel__dropdown-copy">
+                              <span className="git-panel__dropdown-title">
+                                {selectedGitRepository?.fullName ??
+                                  (gitRepositories.length > 0
+                                    ? "Choose a repository"
+                                    : isLoadingGitRepositories
+                                      ? "Loading repositories..."
+                                      : "Load repositories first")}
+                              </span>
+                              <span className="git-panel__dropdown-meta">
+                                {selectedGitRepository
+                                  ? `${selectedGitRepository.visibility} branch ${selectedGitRepository.defaultBranch}`
+                                  : gitRepositories.length > 0
+                                    ? `${gitRepositories.length} repositories ready`
+                                    : "Use your token to load repositories"}
+                              </span>
+                            </span>
+                          </span>
+                          <Icon name="chevron-down" />
+                        </button>
+
+                        {isGitRepositoryMenuOpen ? (
+                          <div
+                            className="git-panel__dropdown-menu"
+                            id={gitRepositoryMenuId}
+                            role="listbox"
                           >
-                            {repository.fullName}
-                          </option>
-                        ))}
-                      </select>
+                            {gitRepositories.length > 0 ? (
+                              gitRepositories.map((repository) => {
+                                const isSelected =
+                                  String(repository.id) ===
+                                  selectedGitRepositoryId;
+
+                                return (
+                                  <button
+                                    aria-selected={isSelected}
+                                    className={`git-panel__dropdown-option ${
+                                      isSelected
+                                        ? "git-panel__dropdown-option--selected"
+                                        : ""
+                                    }`}
+                                    key={repository.id}
+                                    onClick={() => {
+                                      setSelectedGitRepositoryId(
+                                        String(repository.id),
+                                      );
+                                      setIsGitRepositoryMenuOpen(false);
+                                    }}
+                                    role="option"
+                                    type="button"
+                                  >
+                                    <span className="git-panel__dropdown-option-name">
+                                      {repository.fullName}
+                                    </span>
+                                    <span className="git-panel__dropdown-option-meta">
+                                      {repository.visibility} branch{" "}
+                                      {repository.defaultBranch}
+                                    </span>
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="git-panel__dropdown-empty">
+                                Load repositories to start a deployment draft.
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
 
                       <button
                         className="button button--secondary"
@@ -1307,7 +1408,7 @@ export default function MetricsDashboard({
                         Add
                       </button>
                     </div>
-                  </label>
+                  </div>
 
                   {selectedGitRepository ? (
                     <div className="git-panel__repo-card">
