@@ -25,7 +25,7 @@ import {
 
 type CommandOptions = {
   cwd?: string;
-  env?: NodeJS.ProcessEnv;
+  env?: Partial<NodeJS.ProcessEnv>;
 };
 
 type RuntimeFiles = {
