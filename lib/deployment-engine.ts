@@ -35,6 +35,46 @@ type RuntimeFiles = {
   fileArgs: string[];
 };
 
+function parseDeploymentEnvVariables(
+  rawValue: string | null,
+): Record<string, string> {
+  if (!rawValue) {
+    return {};
+  }
+
+  const parsed: Record<string, string> = {};
+  const lines = rawValue.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+
+    if (separatorIndex < 1) {
+      throw new Error(
+        `Invalid environment variable line \"${trimmed}\". Use KEY=VALUE format.`,
+      );
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const value = trimmed.slice(separatorIndex + 1);
+
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(
+        `Invalid environment variable key \"${key}\". Use letters, numbers, and underscores only.`,
+      );
+    }
+
+    parsed[key] = value;
+  }
+
+  return parsed;
+}
+
 function extractComposeNetworks(serviceConfig: unknown): string[] {
   if (!serviceConfig || typeof serviceConfig !== "object") {
     return ["default"];
@@ -113,6 +153,27 @@ function truncateOutput(value: string | null): string | null {
   }
 
   return value.slice(-12000);
+}
+
+function normalizeDeploymentErrorMessage(message: string) {
+  const trimmed = message.trim();
+
+  if (/please add your mongo uri to \.env/i.test(trimmed)) {
+    return [
+      "Build failed: the app requires a Mongo URI during next build.",
+      "Set the required database environment variable in that repository's Docker build flow (for example via Dockerfile ARG/ENV or compose build args), then redeploy.",
+      "Tip: avoid throwing on missing env at module import time; validate inside the request handler so the build can complete.",
+    ].join(" ");
+  }
+
+  if (/failed to collect page data/i.test(trimmed) && /\.env/i.test(trimmed)) {
+    return [
+      "Build failed while collecting Next.js route data because required environment variables were missing during build.",
+      "Provide build-time env values in the app repository's Docker setup and redeploy.",
+    ].join(" ");
+  }
+
+  return trimmed;
 }
 
 function buildGitCloneUrl(repositoryUrl: string, token: string | null) {
@@ -278,11 +339,21 @@ async function deployWorkspace(
     serviceName: runtimeFiles.serviceName,
   });
 
-  const composeOutput = await runComposeCommand(deployment, runtimeFiles, [
-    "up",
-    "-d",
-    "--build",
-  ]);
+  let composeOutput = "";
+
+  try {
+    composeOutput = await runComposeCommand(deployment, runtimeFiles, [
+      "up",
+      "-d",
+      "--build",
+    ]);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(normalizeDeploymentErrorMessage(error.message));
+    }
+
+    throw error;
+  }
 
   return (
     truncateOutput([cloneOutput, composeOutput].filter(Boolean).join("\n\n")) ??
@@ -293,6 +364,10 @@ async function deployWorkspace(
 async function detectRuntimeFiles(
   deployment: StoredDeployment,
 ): Promise<RuntimeFiles> {
+  const deploymentEnvironment = parseDeploymentEnvVariables(
+    deployment.envVariables,
+  );
+  const hasEnvironmentValues = Object.keys(deploymentEnvironment).length > 0;
   const composeCandidates = [
     "docker-compose.yml",
     "docker-compose.yaml",
@@ -332,6 +407,10 @@ async function detectRuntimeFiles(
       }
 
       const selectedServiceConfig = parsed?.services?.[selectedService];
+      const selectedServiceHasBuild =
+        selectedServiceConfig &&
+        typeof selectedServiceConfig === "object" &&
+        Object.hasOwn(selectedServiceConfig, "build");
       const networks = Array.from(
         new Set([
           ...extractComposeNetworks(selectedServiceConfig),
@@ -347,23 +426,35 @@ async function detectRuntimeFiles(
         ".vercelab.override.compose.yml",
       );
 
+      const serviceOverride: Record<string, unknown> = {
+        networks,
+        labels: {
+          "traefik.enable": "true",
+          "traefik.docker.network": getAppConfig().proxy.network,
+          [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(
+            deployment.subdomain,
+          )}\`)`,
+          [`traefik.http.routers.${routerName}.entrypoints`]:
+            getAppConfig().proxy.entrypoint,
+          [`traefik.http.routers.${routerName}.tls`]: "true",
+          [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
+            String(deployment.port),
+        },
+      };
+
+      if (hasEnvironmentValues) {
+        serviceOverride.environment = deploymentEnvironment;
+
+        if (selectedServiceHasBuild) {
+          serviceOverride.build = {
+            args: deploymentEnvironment,
+          };
+        }
+      }
+
       const override = {
         services: {
-          [selectedService]: {
-            networks,
-            labels: {
-              "traefik.enable": "true",
-              "traefik.docker.network": getAppConfig().proxy.network,
-              [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(
-                deployment.subdomain,
-              )}\`)`,
-              [`traefik.http.routers.${routerName}.entrypoints`]:
-                getAppConfig().proxy.entrypoint,
-              [`traefik.http.routers.${routerName}.tls`]: "true",
-              [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
-                String(deployment.port),
-            },
-          },
+          [selectedService]: serviceOverride,
         },
         networks: {
           [getAppConfig().proxy.network]: {
@@ -404,7 +495,17 @@ async function detectRuntimeFiles(
       app: {
         build: {
           context: ".",
+          ...(hasEnvironmentValues
+            ? {
+                args: deploymentEnvironment,
+              }
+            : {}),
         },
+        ...(hasEnvironmentValues
+          ? {
+              environment: deploymentEnvironment,
+            }
+          : {}),
         restart: "unless-stopped",
         networks: [getAppConfig().proxy.network],
         labels: {
@@ -536,6 +637,7 @@ export async function createAndDeployFromForm(input: {
   appName: string;
   subdomain: string;
   port: string;
+  envVariables: FormDataEntryValue | string | null;
 }) {
   const parsed = createDeploymentSchema.parse({
     repositoryUrl: input.repositoryUrl,
@@ -545,6 +647,7 @@ export async function createAndDeployFromForm(input: {
     appName: input.appName,
     subdomain: normalizeDomainInput(input.subdomain),
     port: input.port,
+    envVariables: normalizeStringInput(input.envVariables),
   });
 
   const { deploymentId, domain } = createDeploymentRecord(parsed);
@@ -584,12 +687,14 @@ export async function updateDeploymentSettingsById(input: {
   appName: string;
   subdomain: string;
   port: string;
+  envVariables: FormDataEntryValue | string | null;
 }) {
   const parsed = updateDeploymentSettingsSchema.parse({
     deploymentId: input.deploymentId,
     appName: input.appName,
     subdomain: normalizeDomainInput(input.subdomain),
     port: input.port,
+    envVariables: normalizeStringInput(input.envVariables),
   });
 
   try {
@@ -597,6 +702,7 @@ export async function updateDeploymentSettingsById(input: {
       appName: parsed.appName,
       subdomain: parsed.subdomain,
       port: parsed.port,
+      envVariables: parsed.envVariables ?? null,
     });
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) {

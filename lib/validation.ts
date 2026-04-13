@@ -54,6 +54,13 @@ export const createDeploymentSchema = z.object({
     .int()
     .min(1, "Port must be between 1 and 65535.")
     .max(65535, "Port must be between 1 and 65535."),
+  envVariables: z.preprocess(
+    normalizeOptionalString,
+    z
+      .string()
+      .max(12000, "Environment variables payload is too large.")
+      .optional(),
+  ),
 });
 
 export const deploymentActionSchema = z.object({
@@ -79,6 +86,13 @@ export const updateDeploymentSettingsSchema = deploymentActionSchema.extend({
     .int()
     .min(1, "Port must be between 1 and 65535.")
     .max(65535, "Port must be between 1 and 65535."),
+  envVariables: z.preprocess(
+    normalizeOptionalString,
+    z
+      .string()
+      .max(12000, "Environment variables payload is too large.")
+      .optional(),
+  ),
 });
 
 export type CreateDeploymentInput = z.infer<typeof createDeploymentSchema>;

@@ -229,6 +229,22 @@ export function GitDeploymentPage({
               />
             </label>
 
+            <label className="field" htmlFor="envVariables">
+              <span className="field__label">Variables</span>
+              <textarea
+                id="envVariables"
+                name="envVariables"
+                placeholder={
+                  "MONGO_URI=mongodb://user:pass@host/db\nNEXTAUTH_SECRET=..."
+                }
+                rows={5}
+              />
+              <span className="field__hint">
+                Optional. One variable per line in KEY=VALUE format. These are
+                passed to container environment and Docker build args.
+              </span>
+            </label>
+
             <div className="git-form__actions">
               <p className="git-form__note">
                 When all fields are filled, Vercelab creates the deployment and
@@ -451,6 +467,19 @@ export function GitDeploymentPage({
                           name="port"
                           required
                           type="number"
+                        />
+                      </label>
+
+                      <label
+                        className="field field--compact"
+                        htmlFor={`envVariables-${deployment.id}`}
+                      >
+                        <span className="field__label">Variables</span>
+                        <textarea
+                          defaultValue={deployment.envVariables ?? ""}
+                          id={`envVariables-${deployment.id}`}
+                          name="envVariables"
+                          rows={4}
                         />
                       </label>
 

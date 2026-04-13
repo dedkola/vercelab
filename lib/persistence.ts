@@ -29,6 +29,7 @@ export type StoredDeployment = {
   appSlug: string;
   subdomain: string;
   port: number;
+  envVariables: string | null;
   serviceName: string | null;
   status: DeploymentStatus;
   composeMode: DeploymentMode;
@@ -48,6 +49,7 @@ export type DashboardDeployment = {
   appName: string;
   subdomain: string;
   port: number;
+  envVariables: string | null;
   serviceName: string | null;
   status: DeploymentStatus;
   composeMode: DeploymentMode;
@@ -109,6 +111,7 @@ type StoredDeploymentRow = {
   app_slug: string;
   subdomain: string;
   port: number;
+  env_variables: string | null;
   service_name: string | null;
   status: DeploymentStatus;
   compose_mode: DeploymentMode;
@@ -128,6 +131,7 @@ type DashboardDeploymentRow = {
   app_name: string;
   subdomain: string;
   port: number;
+  env_variables: string | null;
   service_name: string | null;
   status: DeploymentStatus;
   compose_mode: DeploymentMode;
@@ -184,6 +188,7 @@ function mapStoredDeployment(row: StoredDeploymentRow): StoredDeployment {
     appSlug: row.app_slug,
     subdomain: row.subdomain,
     port: row.port,
+    envVariables: row.env_variables,
     serviceName: row.service_name,
     status: row.status,
     composeMode: row.compose_mode,
@@ -283,6 +288,7 @@ function initDatabase(db: DatabaseHandle) {
       app_slug TEXT NOT NULL,
       subdomain TEXT NOT NULL UNIQUE,
       port INTEGER NOT NULL,
+      env_variables TEXT,
       service_name TEXT,
       status TEXT NOT NULL,
       compose_mode TEXT,
@@ -310,6 +316,17 @@ function initDatabase(db: DatabaseHandle) {
     CREATE INDEX IF NOT EXISTS idx_operations_deployment_id ON operations(deployment_id);
     CREATE INDEX IF NOT EXISTS idx_operations_created_at ON operations(created_at DESC);
   `);
+
+  const deploymentColumns = db
+    .prepare("PRAGMA table_info(deployments)")
+    .all() as Array<{ name: string }>;
+  const hasEnvVariablesColumn = deploymentColumns.some(
+    (column) => column.name === "env_variables",
+  );
+
+  if (!hasEnvVariablesColumn) {
+    db.exec("ALTER TABLE deployments ADD COLUMN env_variables TEXT");
+  }
 }
 
 export function getDatabaseHealth() {
@@ -338,6 +355,7 @@ export function listDashboardData(): DashboardData {
           d.app_name,
           d.subdomain,
           d.port,
+          d.env_variables,
           d.service_name,
           d.status,
           d.compose_mode,
@@ -444,6 +462,7 @@ export function listDashboardData(): DashboardData {
       appName: row.app_name,
       subdomain: row.subdomain,
       port: row.port,
+      envVariables: row.env_variables,
       serviceName: row.service_name,
       status: row.status,
       composeMode: row.compose_mode,
@@ -519,6 +538,7 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
           app_slug,
           subdomain,
           port,
+          env_variables,
           service_name,
           status,
           compose_mode,
@@ -538,6 +558,7 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
       appSlug,
       input.subdomain,
       input.port,
+      input.envVariables ?? null,
       input.serviceName ?? null,
       "deploying",
       null,
@@ -588,6 +609,7 @@ export function getStoredDeploymentById(
           d.app_slug,
           d.subdomain,
           d.port,
+          d.env_variables,
           d.service_name,
           d.status,
           d.compose_mode,
@@ -621,6 +643,7 @@ type DeploymentUpdate = Partial<{
   appSlug: string;
   subdomain: string;
   port: number;
+  envVariables: string | null;
   serviceName: string | null;
   status: DeploymentStatus;
   composeMode: DeploymentMode;
@@ -649,6 +672,7 @@ export function updateDeploymentRecord(
     appSlug: "app_slug",
     subdomain: "subdomain",
     port: "port",
+    envVariables: "env_variables",
     serviceName: "service_name",
     status: "status",
     composeMode: "compose_mode",

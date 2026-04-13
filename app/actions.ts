@@ -55,6 +55,7 @@ export async function createDeploymentAction(formData: FormData) {
       appName: getRequiredFormValue(formData, "appName"),
       subdomain: getRequiredFormValue(formData, "subdomain"),
       port: getRequiredFormValue(formData, "port"),
+      envVariables: formData.get("envVariables"),
     });
     url = formatRedirectUrl(
       "success",
@@ -141,6 +142,7 @@ export async function updateDeploymentAction(formData: FormData) {
       appName: getRequiredFormValue(formData, "appName"),
       subdomain: getRequiredFormValue(formData, "subdomain"),
       port: getRequiredFormValue(formData, "port"),
+      envVariables: formData.get("envVariables"),
     });
     url = formatRedirectUrl(
       "success",
