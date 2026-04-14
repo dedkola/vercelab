@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@derpdaderp/chartkit": "^0.4.1",
+    "echarts": "^6.0.0",
     "next": "16.2.3",
     "pg": "^8.16.3",
     "react": "19.2.4",
