@@ -632,6 +632,48 @@ start_stack() {
   )
 }
 
+ensure_influx_bootstrap() {
+  local generated_token=""
+  local influx_host="http://127.0.0.1:8181"
+  local retention_period="${VERCELAB_INFLUXDB_RETENTION_DAYS}d"
+  local database_list_json=""
+
+  log "Ensuring InfluxDB token and metrics database are ready."
+
+  if [[ -z "$VERCELAB_INFLUXDB_TOKEN" ]]; then
+    generated_token="$(
+      cd "$REPO_ROOT"
+      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc 'influxdb3 create token --admin' \
+        | sed -n 's/^Token:[[:space:]]*//p' \
+        | head -n 1
+    )"
+
+    [[ -n "$generated_token" ]] || fail "Unable to create an InfluxDB admin token."
+
+    VERCELAB_INFLUXDB_TOKEN="$generated_token"
+    write_env_file
+
+    log "Generated VERCELAB_INFLUXDB_TOKEN and persisted it to .env"
+
+    (
+      cd "$REPO_ROOT"
+      "${DOCKER_CMD[@]}" compose up -d --no-deps control-plane
+    )
+  fi
+
+  database_list_json="$(
+    cd "$REPO_ROOT"
+    "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 show databases --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --format json" 2>/dev/null || true
+  )"
+
+  if ! grep -Fq "\"name\":\"$VERCELAB_INFLUXDB_DATABASE\"" <<<"$database_list_json"; then
+    (
+      cd "$REPO_ROOT"
+      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 create database --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --retention-period '$retention_period' '$VERCELAB_INFLUXDB_DATABASE'"
+    ) || fail "Unable to create InfluxDB database $VERCELAB_INFLUXDB_DATABASE."
+  fi
+}
+
 print_configuration_review() {
   log "Configuration review"
   printf '\n'
@@ -719,6 +761,7 @@ main() {
   write_tls_config
   ensure_certificate
   start_stack
+  ensure_influx_bootstrap
   print_summary
 }
 

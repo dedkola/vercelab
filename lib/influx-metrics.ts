@@ -76,7 +76,7 @@ async function runInfluxV1Query(query: string) {
   };
 
   if (config.metrics.influxToken) {
-    headers.Authorization = `Token ${config.metrics.influxToken}`;
+    headers.Authorization = `Bearer ${config.metrics.influxToken}`;
   }
 
   const response = await fetch(queryUrl, {

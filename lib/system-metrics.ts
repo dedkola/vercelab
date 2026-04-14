@@ -109,7 +109,7 @@ async function writeSnapshotToInflux(snapshot: MetricsSnapshot) {
   };
 
   if (config.metrics.influxToken) {
-    headers.Authorization = `Token ${config.metrics.influxToken}`;
+    headers.Authorization = `Bearer ${config.metrics.influxToken}`;
   }
 
   const response = await fetch(writeUrl, {
