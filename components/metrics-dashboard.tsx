@@ -45,20 +45,6 @@ const RAIL_PRIMARY: Array<{
 }> = [
   { icon: "network", label: "Overview", section: "overview" },
   { icon: "cloud", label: "Git", section: "git" },
-  { icon: "topology" },
-  { icon: "dashboard" },
-  { icon: "ports" },
-  { icon: "clients" },
-  { icon: "airview" },
-  { icon: "alarm" },
-];
-
-const RAIL_SECONDARY: IconName[] = [
-  "settings",
-  "syslog",
-  "integrations",
-  "theme",
-  "innerspace",
 ];
 
 const TRAFFIC_ROWS = [
@@ -1028,22 +1014,6 @@ export default function MetricsDashboard({
                 type="button"
               >
                 <Icon name={entry.icon} />
-              </button>
-            ))}
-          </div>
-
-          <div className="rail__spacer" />
-          <div className="rail__sep" />
-
-          <div className="rail__group">
-            {RAIL_SECONDARY.map((entry) => (
-              <button
-                className="rail__link"
-                key={entry}
-                type="button"
-                aria-label={entry}
-              >
-                <Icon name={entry} />
               </button>
             ))}
           </div>
