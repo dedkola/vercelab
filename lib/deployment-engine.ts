@@ -427,8 +427,14 @@ async function detectRuntimeFiles(
         ".vercelab.override.compose.yml",
       );
 
+      const proxyEnvironment: Record<string, string> = {
+        HOSTNAME: "0.0.0.0",
+        ...deploymentEnvironment,
+      };
+
       const serviceOverride: Record<string, unknown> = {
         networks,
+        environment: proxyEnvironment,
         labels: {
           "traefik.enable": "true",
           "traefik.docker.network": getAppConfig().proxy.network,
@@ -443,14 +449,10 @@ async function detectRuntimeFiles(
         },
       };
 
-      if (hasEnvironmentValues) {
-        serviceOverride.environment = deploymentEnvironment;
-
-        if (selectedServiceHasBuild) {
-          serviceOverride.build = {
-            args: deploymentEnvironment,
-          };
-        }
+      if (hasEnvironmentValues && selectedServiceHasBuild) {
+        serviceOverride.build = {
+          args: deploymentEnvironment,
+        };
       }
 
       const override = {
@@ -491,6 +493,11 @@ async function detectRuntimeFiles(
     deployment.workspacePath,
     ".vercelab.generated.compose.yml",
   );
+  const proxyEnvironment: Record<string, string> = {
+    HOSTNAME: "0.0.0.0",
+    ...deploymentEnvironment,
+  };
+
   const generatedCompose = {
     services: {
       app: {
@@ -502,11 +509,7 @@ async function detectRuntimeFiles(
               }
             : {}),
         },
-        ...(hasEnvironmentValues
-          ? {
-              environment: deploymentEnvironment,
-            }
-          : {}),
+        environment: proxyEnvironment,
         restart: "unless-stopped",
         networks: [getAppConfig().proxy.network],
         labels: {
