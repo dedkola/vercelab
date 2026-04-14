@@ -130,16 +130,6 @@ export default function SidebarChartsPage() {
       tooltip: {
         trigger: "axis",
       },
-      legend: {
-        top: 0,
-        right: 0,
-        itemWidth: 10,
-        itemHeight: 10,
-        textStyle: {
-          color: "#636e7b",
-          fontSize: 11,
-        },
-      },
       xAxis: {
         type: "category",
         boundaryGap: false,
@@ -163,7 +153,7 @@ export default function SidebarChartsPage() {
         },
         axisLabel: {
           color: "#98a2b3",
-          formatter: (value: number) => `${(value / 1024).toFixed(0)} KB/s`,
+          formatter: (value: number) => `${((value * 8) / 1_000_000).toFixed(1)} Mbps`,
           fontSize: 10,
         },
       },
@@ -393,29 +383,18 @@ export default function SidebarChartsPage() {
             <section className="sidebar-chart-card" aria-label="Network chart">
               <div className="sidebar-chart-card__title-row">
                 <h3>Network</h3>
-                <span className="sidebar-chart-card__meta">
-                  Download / Upload
-                </span>
               </div>
               <div ref={networkRef} className="sidebar-chart-card__plot" />
             </section>
 
             <section className="sidebar-chart-card" aria-label="CPU chart">
               <div className="sidebar-chart-card__title-row">
-                <h3>CPU</h3>
-                <span className="sidebar-chart-card__meta">
-                  Gradient Y-axis line
-                </span>
               </div>
               <div ref={cpuRef} className="sidebar-chart-card__plot" />
             </section>
 
             <section className="sidebar-chart-card" aria-label="Memory chart">
               <div className="sidebar-chart-card__title-row">
-                <h3>Memory</h3>
-                <span className="sidebar-chart-card__meta">
-                  Pie with padAngle
-                </span>
               </div>
               <div
                 ref={memoryRef}

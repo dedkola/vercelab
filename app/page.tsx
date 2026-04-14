@@ -2,6 +2,8 @@ import MetricsDashboard from "@/components/metrics-dashboard";
 import { getAppConfig } from "@/lib/app-config";
 import { listDashboardData, type DashboardData } from "@/lib/persistence";
 
+export const dynamic = "force-dynamic";
+
 type HomeProps = {
   searchParams: Promise<{
     message?: string | string[];
