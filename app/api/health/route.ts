@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const config = getAppConfig();
-  const database = getDatabaseHealth();
+  const database = await getDatabaseHealth();
   const platform = await getPlatformHealth();
 
   return Response.json(

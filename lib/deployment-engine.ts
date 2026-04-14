@@ -309,7 +309,7 @@ async function cloneRepository(deployment: StoredDeployment) {
 
   const cloneUrl = buildGitCloneUrl(
     deployment.repositoryUrl,
-    readDeploymentSecretToken(deployment.id),
+    await readDeploymentSecretToken(deployment.id),
   );
 
   const args = ["clone", "--depth", "1"];
@@ -334,7 +334,7 @@ async function deployWorkspace(
   const cloneOutput = shouldClone ? await cloneRepository(deployment) : "";
   const runtimeFiles = await detectRuntimeFiles(deployment);
 
-  updateDeploymentRecord(deployment.id, {
+  await updateDeploymentRecord(deployment.id, {
     composeMode: runtimeFiles.composeMode,
     composeFile: runtimeFiles.composeFile,
     serviceName: runtimeFiles.serviceName,
@@ -587,14 +587,14 @@ async function executeLifecycleOperation(
   statusOnSuccess: StoredDeployment["status"],
 ) {
   return await withDeploymentLock(async () => {
-    const deployment = getStoredDeploymentById(deploymentId);
-    const operationId = createOperation(
+    const deployment = await getStoredDeploymentById(deploymentId);
+    const operationId = await createOperation(
       deploymentId,
       operationType,
       `${operationType} started for ${deployment.appName}`,
     );
 
-    updateDeploymentRecord(deploymentId, {
+    await updateDeploymentRecord(deploymentId, {
       status:
         operationType === "remove"
           ? "removing"
@@ -612,10 +612,10 @@ async function executeLifecycleOperation(
             ? `Removed ${deployment.appName}.`
             : `Deployment is live at https://${getDefaultDomain(deployment.subdomain)}.`;
 
-      completeOperation(operationId, "success", summary, output);
+      await completeOperation(operationId, "success", summary, output);
 
       if (operationType !== "remove") {
-        updateDeploymentRecord(deploymentId, {
+        await updateDeploymentRecord(deploymentId, {
           status: statusOnSuccess,
           lastOutput: output,
           deployedAt:
@@ -635,8 +635,8 @@ async function executeLifecycleOperation(
           ? error.message
           : "Unexpected deployment failure.";
 
-      completeOperation(operationId, "failed", message, message);
-      updateDeploymentRecord(deploymentId, {
+      await completeOperation(operationId, "failed", message, message);
+      await updateDeploymentRecord(deploymentId, {
         status: operationType === "stop" ? "failed" : "failed",
         lastOutput: message,
       });
@@ -666,7 +666,7 @@ export async function createAndDeployFromForm(input: {
     envVariables: normalizeStringInput(input.envVariables),
   });
 
-  const { deploymentId, domain } = createDeploymentRecord(parsed);
+  const { deploymentId, domain } = await createDeploymentRecord(parsed);
   await fetchDeploymentFromGitById(deploymentId, "deploy");
 
   return {
@@ -714,7 +714,7 @@ export async function updateDeploymentSettingsById(input: {
   });
 
   try {
-    updateDeploymentRecord(parsed.deploymentId, {
+    await updateDeploymentRecord(parsed.deploymentId, {
       appName: parsed.appName,
       subdomain: parsed.subdomain,
       port: parsed.port,
@@ -753,7 +753,7 @@ export async function stopDeploymentById(deploymentId: string) {
         "--remove-orphans",
       ]);
 
-      updateDeploymentRecord(deployment.id, {
+      await updateDeploymentRecord(deployment.id, {
         status: "stopped",
         lastOutput: output,
       });
@@ -766,14 +766,14 @@ export async function stopDeploymentById(deploymentId: string) {
 
 export async function removeDeploymentById(deploymentId: string) {
   return await withDeploymentLock(async () => {
-    const deployment = getStoredDeploymentById(deploymentId);
-    const operationId = createOperation(
+    const deployment = await getStoredDeploymentById(deploymentId);
+    const operationId = await createOperation(
       deploymentId,
       "remove",
       `remove started for ${deployment.appName}`,
     );
 
-    updateDeploymentRecord(deploymentId, {
+    await updateDeploymentRecord(deploymentId, {
       status: "removing",
     });
 
@@ -796,13 +796,13 @@ export async function removeDeploymentById(deploymentId: string) {
       }
 
       await removeWorkspace(deployment.workspacePath);
-      completeOperation(
+      await completeOperation(
         operationId,
         "success",
         `Removed ${deployment.appName}.`,
         truncateOutput(output),
       );
-      deleteDeploymentRecord(deploymentId);
+      await deleteDeploymentRecord(deploymentId);
 
       return {
         appName: deployment.appName,
@@ -810,8 +810,8 @@ export async function removeDeploymentById(deploymentId: string) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unexpected removal failure.";
-      completeOperation(operationId, "failed", message, message);
-      updateDeploymentRecord(deploymentId, {
+      await completeOperation(operationId, "failed", message, message);
+      await updateDeploymentRecord(deploymentId, {
         status: "failed",
         lastOutput: message,
       });
@@ -820,9 +820,9 @@ export async function removeDeploymentById(deploymentId: string) {
   });
 }
 
-export function readDeploymentBuildLog(deploymentId: string) {
-  const deployment = getStoredDeploymentById(deploymentId);
-  const operation = getLatestDeploymentOperation(deploymentId);
+export async function readDeploymentBuildLog(deploymentId: string) {
+  const deployment = await getStoredDeploymentById(deploymentId);
+  const operation = await getLatestDeploymentOperation(deploymentId);
 
   return {
     type: "build" as const,
@@ -842,7 +842,7 @@ export function readDeploymentBuildLog(deploymentId: string) {
 }
 
 export async function readDeploymentContainerLog(deploymentId: string) {
-  const deployment = getStoredDeploymentById(deploymentId);
+  const deployment = await getStoredDeploymentById(deploymentId);
 
   if (!(await pathExists(deployment.workspacePath))) {
     return {

@@ -8,8 +8,11 @@ readonly ENV_FILE="$REPO_ROOT/.env"
 
 PURGE_RUNTIME_STATE=false
 PURGE_IMAGES=false
+PURGE_ALL=false
 ASSUME_YES=false
 DOCKER_CLEANUP_SKIPPED=false
+HOST_TOOLING_CLEANUP_SKIPPED=false
+HOST_TOOLING_CLEANUP_DONE=false
 
 VERCELAB_HOST_ROOT="/opt/vercelab"
 VERCELAB_PROXY_NETWORK="vercelab_proxy"
@@ -116,18 +119,19 @@ resolve_docker_command() {
 
 print_usage() {
   cat <<'EOF'
-Usage: ./uninstall.sh [--purge] [--purge-images] [--yes]
+Usage: ./uninstall.sh [--purge] [--purge-images] [--all] [--yes]
 
 Stops and removes the Vercelab control plane plus managed deployment containers.
 
 Options:
   --purge         Remove the generated .env file, Vercelab host data, and Vercelab Docker volumes.
   --purge-images  Remove Docker images labeled for Vercelab compose projects.
+  --all           Do everything from --purge --purge-images and also remove host tooling installed by install.sh (Docker Engine/Compose plugins, Node.js, pnpm) plus local node_modules/.next.
   --yes           Skip the interactive confirmation prompt.
   --help          Show this help text.
 
 Notes:
-  - Docker Engine, the Docker Compose plugin, Node.js, and pnpm are left installed on the host.
+  - --all is destructive and removes host tooling used outside this project.
   - Without --purge, the generated .env file, database, certificates, cloned apps, and Docker volumes are preserved.
 EOF
 }
@@ -139,6 +143,11 @@ parse_args() {
         PURGE_RUNTIME_STATE=true
         ;;
       --purge-images)
+        PURGE_IMAGES=true
+        ;;
+      --all)
+        PURGE_ALL=true
+        PURGE_RUNTIME_STATE=true
         PURGE_IMAGES=true
         ;;
       --yes)
@@ -178,6 +187,7 @@ print_uninstall_review() {
   printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
   printf ' %bPurge runtime state%b : %s\n' "$C_YELLOW" "$C_RESET" "$PURGE_RUNTIME_STATE"
   printf ' %bPurge images%b        : %s\n' "$C_YELLOW" "$C_RESET" "$PURGE_IMAGES"
+  printf ' %bPurge all tooling%b   : %s\n' "$C_YELLOW" "$C_RESET" "$PURGE_ALL"
   printf ' %bEnv file%b            : %s\n' "$C_YELLOW" "$C_RESET" "$ENV_FILE"
   printf ' %bHost root%b           : %s\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_HOST_ROOT"
   printf ' %bProxy network%b       : %s\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_PROXY_NETWORK"
@@ -204,6 +214,10 @@ confirm_uninstall() {
 
   if [[ "$PURGE_IMAGES" == true ]]; then
     log "It will also remove Docker images labeled for Vercelab compose projects."
+  fi
+
+  if [[ "$PURGE_ALL" == true ]]; then
+    log "It will also remove host tooling installed by install.sh (Docker Engine/Compose, Node.js, pnpm) and local build artifacts (node_modules/.next)."
   fi
 
   printf 'Continue? [y/N]: '
@@ -361,6 +375,62 @@ remove_runtime_state() {
   fi
 }
 
+remove_repo_tooling_artifacts() {
+  local target=""
+
+  for target in "$REPO_ROOT/node_modules" "$REPO_ROOT/.next"; do
+    if [[ -e "$target" ]]; then
+      log "Removing local tooling artifact $target"
+      run_privileged rm -rf -- "$target"
+    fi
+  done
+}
+
+remove_host_tooling() {
+  if [[ "$PURGE_ALL" != true ]]; then
+    return
+  fi
+
+  if (( ${#SUDO[@]} == 0 )) && [[ ${EUID} -ne 0 ]]; then
+    warn "--all requested but sudo is unavailable. Host package cleanup skipped."
+    HOST_TOOLING_CLEANUP_SKIPPED=true
+    remove_repo_tooling_artifacts
+    return
+  fi
+
+  log "Removing host tooling installed by install.sh"
+
+  remove_repo_tooling_artifacts
+
+  if command_exists npm; then
+    run_privileged npm uninstall -g pnpm >/dev/null 2>&1 || true
+  fi
+
+  if command_exists corepack; then
+    run_privileged corepack disable >/dev/null 2>&1 || true
+  fi
+
+  run_privileged apt-mark unhold docker-ce docker-ce-cli >/dev/null 2>&1 || true
+
+  run_privileged apt-get remove -y --purge \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin \
+    nodejs >/dev/null 2>&1 || true
+
+  run_privileged apt-get autoremove -y >/dev/null 2>&1 || true
+
+  run_privileged rm -f /etc/apt/sources.list.d/docker.list >/dev/null 2>&1 || true
+  run_privileged rm -f /etc/apt/sources.list.d/nodesource.list >/dev/null 2>&1 || true
+  run_privileged rm -f /etc/apt/keyrings/docker.asc >/dev/null 2>&1 || true
+  run_privileged rm -f /etc/apt/keyrings/nodesource.gpg >/dev/null 2>&1 || true
+  run_privileged apt-get update >/dev/null 2>&1 || true
+
+  HOST_TOOLING_CLEANUP_DONE=true
+}
+
 remove_docker_resources() {
   local projects=()
   local project=""
@@ -419,7 +489,15 @@ print_summary() {
   fi
 
   printf '\n'
-  printf ' %bHost tooling kept%b   : Docker Engine, Compose plugin, Node.js, pnpm\n' "$C_YELLOW" "$C_RESET"
+
+  if [[ "$PURGE_ALL" != true ]]; then
+    printf ' %bHost tooling kept%b   : Docker Engine, Compose plugin, Node.js, pnpm\n' "$C_YELLOW" "$C_RESET"
+  elif [[ "$HOST_TOOLING_CLEANUP_DONE" == true ]]; then
+    printf ' %bHost tooling%b        : removed (Docker Engine/Compose, Node.js, pnpm, local node_modules/.next)\n' "$C_YELLOW" "$C_RESET"
+  else
+    printf ' %bHost tooling%b        : cleanup skipped or partial (check warnings above)\n' "$C_YELLOW" "$C_RESET"
+  fi
+
   printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
 }
 
@@ -432,6 +510,7 @@ main() {
   confirm_uninstall
   remove_docker_resources
   remove_runtime_state
+  remove_host_tooling
   print_summary
 }
 

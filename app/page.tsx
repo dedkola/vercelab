@@ -16,6 +16,7 @@ function getSearchParamValue(value: string | string[] | undefined) {
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
+  const dashboardData = await listDashboardData();
   const activeSection =
     getSearchParamValue(params.section) === "git" ? "git" : "overview";
   const status = getSearchParamValue(params.status);
@@ -24,7 +25,7 @@ export default async function Home({ searchParams }: HomeProps) {
   return (
     <MetricsDashboard
       baseDomain={getAppConfig().baseDomain}
-      dashboardData={listDashboardData()}
+      dashboardData={dashboardData}
       flashMessage={
         status === "success" || status === "error"
           ? {

@@ -63,6 +63,66 @@ let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
 let lastCpuCounters: SampleState<CpuCounters> | null = null;
 let lastNetworkCounters: SampleState<InterfaceCounters[]> | null = null;
 
+function escapeLineProtocol(value: string) {
+  return value.replace(/([ ,=])/g, "\\$1");
+}
+
+function encodeLineProtocol(snapshot: MetricsSnapshot) {
+  const timestampMs = Date.parse(snapshot.timestamp);
+  const safeTimestamp = Number.isFinite(timestampMs) ? timestampMs : Date.now();
+  const hostTag = escapeLineProtocol(snapshot.hostIp || "unknown");
+  const lines: string[] = [
+    `host_metrics,host=${hostTag} cpu_percent=${snapshot.system.cpuPercent},memory_percent=${snapshot.system.memoryPercent},memory_used_bytes=${snapshot.system.memoryUsedBytes},memory_total_bytes=${snapshot.system.memoryTotalBytes},load_1=${snapshot.system.loadAverage[0]},load_5=${snapshot.system.loadAverage[1]},load_15=${snapshot.system.loadAverage[2]},network_rx_bps=${snapshot.network.rxBytesPerSecond},network_tx_bps=${snapshot.network.txBytesPerSecond} ${safeTimestamp}`,
+    `container_metrics,host=${hostTag},scope=aggregate running=${snapshot.containers.running}i,cpu_percent=${snapshot.containers.cpuPercent},memory_percent=${snapshot.containers.memoryPercent},memory_used_bytes=${snapshot.containers.memoryUsedBytes} ${safeTimestamp}`,
+  ];
+
+  for (const iface of snapshot.network.interfaces) {
+    const ifaceTag = escapeLineProtocol(iface.name);
+    lines.push(
+      `network_interface,host=${hostTag},interface=${ifaceTag} rx_bps=${iface.rxBytesPerSecond},tx_bps=${iface.txBytesPerSecond} ${safeTimestamp}`,
+    );
+  }
+
+  for (const container of snapshot.containers.top) {
+    const containerTag = escapeLineProtocol(container.name);
+    lines.push(
+      `container_metrics,host=${hostTag},scope=top,container=${containerTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes} ${safeTimestamp}`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
+async function writeSnapshotToInflux(snapshot: MetricsSnapshot) {
+  const config = getAppConfig();
+
+  if (!config.metrics.influxUrl || !config.metrics.influxDatabase) {
+    return;
+  }
+
+  const writeUrl = new URL("/write", config.metrics.influxUrl);
+  writeUrl.searchParams.set("db", config.metrics.influxDatabase);
+  writeUrl.searchParams.set("precision", "ms");
+
+  const headers: Record<string, string> = {
+    "Content-Type": "text/plain; charset=utf-8",
+  };
+
+  if (config.metrics.influxToken) {
+    headers.Authorization = `Token ${config.metrics.influxToken}`;
+  }
+
+  const response = await fetch(writeUrl, {
+    method: "POST",
+    headers,
+    body: encodeLineProtocol(snapshot),
+  });
+
+  if (!response.ok) {
+    throw new Error(`InfluxDB write failed with ${response.status}.`);
+  }
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -621,6 +681,15 @@ export async function getMetricsSnapshot() {
     capturedAt: now,
     value: snapshot,
   };
+
+  void writeSnapshotToInflux(snapshot).catch((error) => {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to write metrics to InfluxDB.";
+
+    console.error(`[metrics] ${message}`);
+  });
 
   return snapshot;
 }
