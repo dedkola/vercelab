@@ -1,0 +1,58 @@
+{
+  "name": "Vercelab Dev",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspaces/vercelab",
+
+  "features": {},
+
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js Dev Server",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "postCreateCommand": "pnpm install --frozen-lockfile",
+  "postStartCommand": "git config --global --add safe.directory /workspaces/vercelab",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "prisma.prisma"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ]
+      }
+    }
+  },
+
+  "remoteUser": "node",
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    "VERCELAB_UI_DEV_MODE": "true",
+    "VERCELAB_DATABASE_PROVIDER": "postgres",
+    "VERCELAB_POSTGRES_USER": "vercelab",
+    "VERCELAB_POSTGRES_PASSWORD": "vercelab",
+    "VERCELAB_POSTGRES_DB": "vercelab",
+    "VERCELAB_POSTGRES_URL": "postgresql://vercelab:vercelab@postgres:5432/vercelab",
+    "VERCELAB_INFLUXDB_URL": "http://influxdb:8181",
+    "VERCELAB_INFLUXDB_DATABASE": "vercelab_metrics",
+    "VERCELAB_BASE_DOMAIN": "localhost",
+    "VERCELAB_PROXY_NETWORK": "vercelab_proxy",
+    "VERCELAB_ENCRYPTION_SECRET": "devcontainer-local-secret-change-me"
+  }
+}

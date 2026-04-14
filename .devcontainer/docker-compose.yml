@@ -1,0 +1,78 @@
+name: vercelab-devcontainer
+
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspaces/vercelab:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: sleep infinity
+    environment:
+      NODE_ENV: development
+      VERCELAB_UI_DEV_MODE: "true"
+      VERCELAB_DATABASE_PROVIDER: postgres
+      VERCELAB_POSTGRES_USER: vercelab
+      VERCELAB_POSTGRES_PASSWORD: vercelab
+      VERCELAB_POSTGRES_DB: vercelab
+      VERCELAB_POSTGRES_URL: postgresql://vercelab:vercelab@postgres:5432/vercelab
+      VERCELAB_INFLUXDB_URL: http://influxdb:8181
+      VERCELAB_INFLUXDB_DATABASE: vercelab_metrics
+      VERCELAB_BASE_DOMAIN: localhost
+      VERCELAB_PROXY_NETWORK: vercelab_proxy
+      VERCELAB_ENCRYPTION_SECRET: devcontainer-local-secret-change-me
+    networks:
+      - devnet
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vercelab
+      POSTGRES_PASSWORD: vercelab
+      POSTGRES_DB: vercelab
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vercelab -d vercelab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - devnet
+
+  influxdb:
+    image: influxdb:3-core
+    restart: unless-stopped
+    command:
+      - influxdb3
+      - serve
+      - --node-id=vercelab-node
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3/data
+      - --admin-token-recovery-http-bind=127.0.0.1:8182
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x influxdb3 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - influxdb-data:/var/lib/influxdb3/data
+    networks:
+      - devnet
+
+networks:
+  devnet:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  influxdb-data:
