@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import Database from "better-sqlite3";
+import { Pool, type PoolClient } from "pg";
 
 import { getAppConfig } from "@/lib/app-config";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
@@ -15,8 +15,6 @@ export type DeploymentStatus =
 export type DeploymentMode = "dockerfile" | "compose" | null;
 export type OperationType = "deploy" | "redeploy" | "stop" | "remove";
 export type OperationStatus = "pending" | "success" | "failed";
-
-type DatabaseHandle = Database.Database;
 
 export type StoredDeployment = {
   id: string;
@@ -153,7 +151,7 @@ type DashboardDeploymentRow = {
   last_operation_summary: string | null;
   updated_at: string;
   deployed_at: string | null;
-  token_stored: number;
+  token_stored: boolean;
 };
 
 type DeploymentOperationRow = {
@@ -180,7 +178,8 @@ type DashboardTrendRow = {
   created_at: string;
 };
 
-let database: DatabaseHandle | undefined;
+let pool: Pool | undefined;
+let initPromise: Promise<void> | undefined;
 const trendLabelFormatter = new Intl.DateTimeFormat("en", { weekday: "short" });
 
 function toSlug(value: string): string {
@@ -198,6 +197,15 @@ function serializeOutput(value: string | null): string | null {
   }
 
   return value.slice(-12000);
+}
+
+function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
 }
 
 function mapStoredDeployment(row: StoredDeploymentRow): StoredDeployment {
@@ -274,173 +282,195 @@ function buildTrendPoints(
   }));
 }
 
-function getDatabase(): DatabaseHandle {
-  const config = getAppConfig();
-
-  if (config.database.provider !== "sqlite") {
-    throw new Error(
-      "Postgres provider is planned but not implemented yet. Use SQLite for this MVP build.",
-    );
+function getPool() {
+  if (!pool) {
+    const config = getAppConfig();
+    pool = new Pool({
+      connectionString: config.database.postgresUrl,
+      max: 20,
+    });
   }
 
-  if (!database) {
-    database = new Database(config.database.sqlitePath);
-    database.pragma("journal_mode = WAL");
-    database.pragma("foreign_keys = ON");
-    initDatabase(database);
-  }
-
-  return database;
+  return pool;
 }
 
-function initDatabase(db: DatabaseHandle) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS repositories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      repository_url TEXT NOT NULL,
-      encrypted_token TEXT,
-      branch TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
+async function initDatabase() {
+  if (!initPromise) {
+    initPromise = (async () => {
+      const client = await getPool().connect();
 
-    CREATE TABLE IF NOT EXISTS deployments (
-      id TEXT PRIMARY KEY,
-      repository_id TEXT NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
-      app_name TEXT NOT NULL,
-      app_slug TEXT NOT NULL,
-      subdomain TEXT NOT NULL UNIQUE,
-      port INTEGER NOT NULL,
-      env_variables TEXT,
-      service_name TEXT,
-      status TEXT NOT NULL,
-      compose_mode TEXT,
-      compose_file TEXT,
-      project_name TEXT NOT NULL UNIQUE,
-      workspace_path TEXT NOT NULL,
-      last_output TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      deployed_at TEXT
-    );
+      try {
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS repositories (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            repository_url TEXT NOT NULL,
+            encrypted_token TEXT,
+            branch TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
 
-    CREATE TABLE IF NOT EXISTS operations (
-      id TEXT PRIMARY KEY,
-      deployment_id TEXT NOT NULL REFERENCES deployments(id) ON DELETE CASCADE,
-      operation_type TEXT NOT NULL,
-      status TEXT NOT NULL,
-      summary TEXT,
-      output TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
+          CREATE TABLE IF NOT EXISTS deployments (
+            id TEXT PRIMARY KEY,
+            repository_id TEXT NOT NULL REFERENCES repositories(id) ON DELETE CASCADE,
+            app_name TEXT NOT NULL,
+            app_slug TEXT NOT NULL,
+            subdomain TEXT NOT NULL UNIQUE,
+            port INTEGER NOT NULL,
+            env_variables TEXT,
+            service_name TEXT,
+            status TEXT NOT NULL,
+            compose_mode TEXT,
+            compose_file TEXT,
+            project_name TEXT NOT NULL UNIQUE,
+            workspace_path TEXT NOT NULL,
+            last_output TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deployed_at TEXT
+          );
 
-    CREATE INDEX IF NOT EXISTS idx_deployments_repository_id ON deployments(repository_id);
-    CREATE INDEX IF NOT EXISTS idx_operations_deployment_id ON operations(deployment_id);
-    CREATE INDEX IF NOT EXISTS idx_operations_created_at ON operations(created_at DESC);
-  `);
+          CREATE TABLE IF NOT EXISTS operations (
+            id TEXT PRIMARY KEY,
+            deployment_id TEXT NOT NULL REFERENCES deployments(id) ON DELETE CASCADE,
+            operation_type TEXT NOT NULL,
+            status TEXT NOT NULL,
+            summary TEXT,
+            output TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
 
-  const deploymentColumns = db
-    .prepare("PRAGMA table_info(deployments)")
-    .all() as Array<{ name: string }>;
-  const hasEnvVariablesColumn = deploymentColumns.some(
-    (column) => column.name === "env_variables",
+          CREATE INDEX IF NOT EXISTS idx_deployments_repository_id ON deployments(repository_id);
+          CREATE INDEX IF NOT EXISTS idx_operations_deployment_id ON operations(deployment_id);
+          CREATE INDEX IF NOT EXISTS idx_operations_created_at ON operations(created_at DESC);
+        `);
+      } finally {
+        client.release();
+      }
+    })();
+  }
+
+  await initPromise;
+}
+
+async function queryRows<T>(
+  statement: string,
+  values: unknown[] = [],
+  client?: PoolClient,
+): Promise<T[]> {
+  await initDatabase();
+  const result = client
+    ? await client.query(statement, values)
+    : await getPool().query(statement, values);
+
+  return result.rows as T[];
+}
+
+async function withTransaction<T>(task: (client: PoolClient) => Promise<T>) {
+  await initDatabase();
+  const client = await getPool().connect();
+
+  try {
+    await client.query("BEGIN");
+    const result = await task(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getDatabaseHealth() {
+  const config = getAppConfig();
+  await initDatabase();
+  const rows = await queryRows<{ version: string }>(
+    "SELECT version() AS version",
   );
-
-  if (!hasEnvVariablesColumn) {
-    db.exec("ALTER TABLE deployments ADD COLUMN env_variables TEXT");
-  }
-}
-
-export function getDatabaseHealth() {
-  const config = getAppConfig();
-  const db = getDatabase();
-  const result = db.prepare("SELECT sqlite_version() AS version").get() as {
-    version: string;
-  };
 
   return {
     provider: config.database.provider,
-    sqlitePath: config.database.sqlitePath,
-    version: result.version,
+    postgresUrl: config.database.postgresUrl,
+    version: rows[0]?.version ?? "unknown",
   };
 }
 
-export function listDashboardData(): DashboardData {
-  const db = getDatabase();
-  const rows = db
-    .prepare(
-      `
-        SELECT
-          d.id,
-          r.name AS repository_name,
-          r.repository_url,
-          r.branch,
-          d.app_name,
-          d.subdomain,
-          d.port,
-          d.env_variables,
-          d.service_name,
-          d.status,
-          d.compose_mode,
-          d.project_name,
-          d.last_output,
-          d.updated_at,
-          d.deployed_at,
-          CASE WHEN r.encrypted_token IS NULL THEN 0 ELSE 1 END AS token_stored,
-          (
-            SELECT summary
-            FROM operations o
-            WHERE o.deployment_id = d.id
-            ORDER BY o.created_at DESC
-            LIMIT 1
-          ) AS last_operation_summary
-        FROM deployments d
-        INNER JOIN repositories r ON r.id = d.repository_id
-        ORDER BY d.updated_at DESC
-      `,
-    )
-    .all() as DashboardDeploymentRow[];
+export async function listDashboardData(): Promise<DashboardData> {
+  const rows = await queryRows<DashboardDeploymentRow>(
+    `
+      SELECT
+        d.id,
+        r.name AS repository_name,
+        r.repository_url,
+        r.branch,
+        d.app_name,
+        d.subdomain,
+        d.port,
+        d.env_variables,
+        d.service_name,
+        d.status,
+        d.compose_mode,
+        d.project_name,
+        d.last_output,
+        d.updated_at,
+        d.deployed_at,
+        (r.encrypted_token IS NOT NULL) AS token_stored,
+        (
+          SELECT summary
+          FROM operations o
+          WHERE o.deployment_id = d.id
+          ORDER BY o.created_at DESC
+          LIMIT 1
+        ) AS last_operation_summary
+      FROM deployments d
+      INNER JOIN repositories r ON r.id = d.repository_id
+      ORDER BY d.updated_at DESC
+    `,
+  );
 
-  const activityRows = db
-    .prepare(
-      `
-        SELECT
-          o.id,
-          d.app_name,
-          o.operation_type,
-          o.status,
-          o.summary,
-          o.created_at
-        FROM operations o
-        INNER JOIN deployments d ON d.id = o.deployment_id
-        ORDER BY o.created_at DESC
-        LIMIT 7
-      `,
-    )
-    .all() as DashboardActivityRow[];
+  const activityRows = await queryRows<DashboardActivityRow>(
+    `
+      SELECT
+        o.id,
+        d.app_name,
+        o.operation_type,
+        o.status,
+        o.summary,
+        o.created_at
+      FROM operations o
+      INNER JOIN deployments d ON d.id = o.deployment_id
+      ORDER BY o.created_at DESC
+      LIMIT 7
+    `,
+  );
 
   const sinceDate = new Date();
   sinceDate.setHours(0, 0, 0, 0);
   sinceDate.setDate(sinceDate.getDate() - 7);
 
-  const trendRows = db
-    .prepare(
-      `
-        SELECT
-          status,
-          created_at
-        FROM operations
-        WHERE created_at >= ?
-        ORDER BY created_at ASC
-      `,
-    )
-    .all(sinceDate.toISOString()) as DashboardTrendRow[];
+  const trendRows = await queryRows<DashboardTrendRow>(
+    `
+      SELECT
+        status,
+        created_at
+      FROM operations
+      WHERE created_at >= $1
+      ORDER BY created_at ASC
+    `,
+    [sinceDate.toISOString()],
+  );
 
-  const repositoryCount = db
-    .prepare("SELECT COUNT(*) AS count FROM repositories")
-    .get() as { count: number };
+  const repositoryCountRows = await queryRows<{ count: string }>(
+    "SELECT COUNT(*) AS count FROM repositories",
+  );
+  const repositoryCount = Number.parseInt(
+    repositoryCountRows[0]?.count ?? "0",
+    10,
+  );
 
   const stats = rows.reduce(
     (accumulator, deployment) => {
@@ -498,13 +528,13 @@ export function listDashboardData(): DashboardData {
       lastOperationSummary: row.last_operation_summary,
       updatedAt: row.updated_at,
       deployedAt: row.deployed_at,
-      tokenStored: row.token_stored === 1,
+      tokenStored: row.token_stored,
     })),
     stats: {
       totalDeployments: stats.totalDeployments,
       runningDeployments: stats.runningDeployments,
       failedDeployments: stats.failedDeployments,
-      totalRepositories: repositoryCount.count,
+      totalRepositories: Number.isFinite(repositoryCount) ? repositoryCount : 0,
     },
     trends: buildTrendPoints(trendRows),
     recentActivity: activityRows.map((row) => ({
@@ -520,8 +550,7 @@ export function listDashboardData(): DashboardData {
   };
 }
 
-export function createDeploymentRecord(input: CreateDeploymentInput) {
-  const db = getDatabase();
+export async function createDeploymentRecord(input: CreateDeploymentInput) {
   const now = new Date().toISOString();
   const repositoryId = crypto.randomUUID();
   const deploymentId = crypto.randomUUID();
@@ -534,76 +563,78 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
   const workspacePath = path.join(getAppConfig().paths.appsDir, deploymentId);
   const projectName = `vercelab-${appSlug}-${deploymentId.slice(0, 8)}`;
 
-  const transaction = db.transaction(() => {
-    db.prepare(
-      `
-        INSERT INTO repositories (
-          id,
-          name,
-          repository_url,
-          encrypted_token,
-          branch,
-          created_at,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
-    ).run(
-      repositoryId,
-      repoName,
-      input.repositoryUrl,
-      input.githubToken ? encryptSecret(input.githubToken) : null,
-      input.branch ?? null,
-      now,
-      now,
-    );
-
-    db.prepare(
-      `
-        INSERT INTO deployments (
-          id,
-          repository_id,
-          app_name,
-          app_slug,
-          subdomain,
-          port,
-          env_variables,
-          service_name,
-          status,
-          compose_mode,
-          compose_file,
-          project_name,
-          workspace_path,
-          last_output,
-          created_at,
-          updated_at,
-          deployed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-    ).run(
-      deploymentId,
-      repositoryId,
-      input.appName,
-      appSlug,
-      input.subdomain,
-      input.port,
-      input.envVariables ?? null,
-      input.serviceName ?? null,
-      "deploying",
-      null,
-      null,
-      projectName,
-      workspacePath,
-      null,
-      now,
-      now,
-      null,
-    );
-  });
-
   try {
-    transaction();
+    await withTransaction(async (client) => {
+      await queryRows(
+        `
+          INSERT INTO repositories (
+            id,
+            name,
+            repository_url,
+            encrypted_token,
+            branch,
+            created_at,
+            updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          repositoryId,
+          repoName,
+          input.repositoryUrl,
+          input.githubToken ? encryptSecret(input.githubToken) : null,
+          input.branch ?? null,
+          now,
+          now,
+        ],
+        client,
+      );
+
+      await queryRows(
+        `
+          INSERT INTO deployments (
+            id,
+            repository_id,
+            app_name,
+            app_slug,
+            subdomain,
+            port,
+            env_variables,
+            service_name,
+            status,
+            compose_mode,
+            compose_file,
+            project_name,
+            workspace_path,
+            last_output,
+            created_at,
+            updated_at,
+            deployed_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        `,
+        [
+          deploymentId,
+          repositoryId,
+          input.appName,
+          appSlug,
+          input.subdomain,
+          input.port,
+          input.envVariables ?? null,
+          input.serviceName ?? null,
+          "deploying",
+          null,
+          null,
+          projectName,
+          workspacePath,
+          null,
+          now,
+          now,
+          null,
+        ],
+        client,
+      );
+    });
   } catch (error) {
-    if (error instanceof Error && error.message.includes("UNIQUE")) {
+    if (isUniqueViolation(error)) {
       throw new Error(
         "That subdomain is already reserved by another deployment.",
       );
@@ -619,41 +650,41 @@ export function createDeploymentRecord(input: CreateDeploymentInput) {
   };
 }
 
-export function getStoredDeploymentById(
+export async function getStoredDeploymentById(
   deploymentId: string,
-): StoredDeployment {
-  const db = getDatabase();
-  const row = db
-    .prepare(
-      `
-        SELECT
-          d.id,
-          d.repository_id,
-          r.name AS repository_name,
-          r.repository_url,
-          r.encrypted_token,
-          r.branch,
-          d.app_name,
-          d.app_slug,
-          d.subdomain,
-          d.port,
-          d.env_variables,
-          d.service_name,
-          d.status,
-          d.compose_mode,
-          d.compose_file,
-          d.project_name,
-          d.workspace_path,
-          d.last_output,
-          d.created_at,
-          d.updated_at,
-          d.deployed_at
-        FROM deployments d
-        INNER JOIN repositories r ON r.id = d.repository_id
-        WHERE d.id = ?
-      `,
-    )
-    .get(deploymentId) as StoredDeploymentRow | undefined;
+): Promise<StoredDeployment> {
+  const rows = await queryRows<StoredDeploymentRow>(
+    `
+      SELECT
+        d.id,
+        d.repository_id,
+        r.name AS repository_name,
+        r.repository_url,
+        r.encrypted_token,
+        r.branch,
+        d.app_name,
+        d.app_slug,
+        d.subdomain,
+        d.port,
+        d.env_variables,
+        d.service_name,
+        d.status,
+        d.compose_mode,
+        d.compose_file,
+        d.project_name,
+        d.workspace_path,
+        d.last_output,
+        d.created_at,
+        d.updated_at,
+        d.deployed_at
+      FROM deployments d
+      INNER JOIN repositories r ON r.id = d.repository_id
+      WHERE d.id = $1
+    `,
+    [deploymentId],
+  );
+
+  const row = rows[0];
 
   if (!row) {
     throw new Error("Deployment not found.");
@@ -662,32 +693,36 @@ export function getStoredDeploymentById(
   return mapStoredDeployment(row);
 }
 
-export function readDeploymentSecretToken(deploymentId: string): string | null {
-  return decryptSecret(getStoredDeploymentById(deploymentId).encryptedToken);
+export async function readDeploymentSecretToken(
+  deploymentId: string,
+): Promise<string | null> {
+  return decryptSecret(
+    (await getStoredDeploymentById(deploymentId)).encryptedToken,
+  );
 }
 
-export function getLatestDeploymentOperation(
+export async function getLatestDeploymentOperation(
   deploymentId: string,
-): DeploymentOperationLog | null {
-  const db = getDatabase();
-  const row = db
-    .prepare(
-      `
-        SELECT
-          id,
-          operation_type,
-          status,
-          summary,
-          output,
-          created_at,
-          updated_at
-        FROM operations
-        WHERE deployment_id = ?
-        ORDER BY created_at DESC
-        LIMIT 1
-      `,
-    )
-    .get(deploymentId) as DeploymentOperationRow | undefined;
+): Promise<DeploymentOperationLog | null> {
+  const rows = await queryRows<DeploymentOperationRow>(
+    `
+      SELECT
+        id,
+        operation_type,
+        status,
+        summary,
+        output,
+        created_at,
+        updated_at
+      FROM operations
+      WHERE deployment_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,
+    [deploymentId],
+  );
+
+  const row = rows[0];
 
   if (!row) {
     return null;
@@ -720,11 +755,10 @@ type DeploymentUpdate = Partial<{
   deployedAt: string | null;
 }>;
 
-export function updateDeploymentRecord(
+export async function updateDeploymentRecord(
   deploymentId: string,
   update: DeploymentUpdate,
 ) {
-  const db = getDatabase();
   const entries = Object.entries(update).filter(
     ([, value]) => value !== undefined,
   );
@@ -749,35 +783,32 @@ export function updateDeploymentRecord(
     deployedAt: "deployed_at",
   };
 
-  const statement = entries
-    .map(([key]) => `${columnMap[key]} = @${key}`)
-    .concat("updated_at = @updatedAt")
-    .join(", ");
+  const values = entries.map(([key, value]) =>
+    key === "lastOutput" ? serializeOutput(value as string | null) : value,
+  );
+  const assignments = entries.map(
+    ([key], index) => `${columnMap[key]} = $${index + 1}`,
+  );
 
-  db.prepare(
-    `UPDATE deployments SET ${statement} WHERE id = @deploymentId`,
-  ).run({
-    deploymentId,
-    updatedAt: new Date().toISOString(),
-    ...Object.fromEntries(
-      entries.map(([key, value]) => [
-        key,
-        key === "lastOutput" ? serializeOutput(value as string | null) : value,
-      ]),
-    ),
-  });
+  values.push(new Date().toISOString());
+  assignments.push(`updated_at = $${values.length}`);
+  values.push(deploymentId);
+
+  await queryRows(
+    `UPDATE deployments SET ${assignments.join(", ")} WHERE id = $${values.length}`,
+    values,
+  );
 }
 
-export function createOperation(
+export async function createOperation(
   deploymentId: string,
   operationType: OperationType,
   summary: string,
 ) {
-  const db = getDatabase();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(
+  await queryRows(
     `
       INSERT INTO operations (
         id,
@@ -788,50 +819,66 @@ export function createOperation(
         output,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `,
-  ).run(id, deploymentId, operationType, "pending", summary, null, now, now);
+    [id, deploymentId, operationType, "pending", summary, null, now, now],
+  );
 
   return id;
 }
 
-export function completeOperation(
+export async function completeOperation(
   operationId: string,
   status: OperationStatus,
   summary: string,
   output: string | null,
 ) {
-  const db = getDatabase();
   const now = new Date().toISOString();
 
-  db.prepare(
+  await queryRows(
     `
       UPDATE operations
-      SET status = ?, summary = ?, output = ?, updated_at = ?
-      WHERE id = ?
+      SET status = $1, summary = $2, output = $3, updated_at = $4
+      WHERE id = $5
     `,
-  ).run(status, summary, serializeOutput(output), now, operationId);
+    [status, summary, serializeOutput(output), now, operationId],
+  );
 }
 
-export function deleteDeploymentRecord(deploymentId: string) {
-  const db = getDatabase();
-  const deployment = getStoredDeploymentById(deploymentId);
+export async function deleteDeploymentRecord(deploymentId: string) {
+  await withTransaction(async (client) => {
+    const deploymentRows = await queryRows<{ repository_id: string }>(
+      "SELECT repository_id FROM deployments WHERE id = $1",
+      [deploymentId],
+      client,
+    );
 
-  const transaction = db.transaction(() => {
-    db.prepare("DELETE FROM deployments WHERE id = ?").run(deploymentId);
+    const deployment = deploymentRows[0];
 
-    const remaining = db
-      .prepare(
-        "SELECT COUNT(*) AS count FROM deployments WHERE repository_id = ?",
-      )
-      .get(deployment.repositoryId) as { count: number };
+    if (!deployment) {
+      throw new Error("Deployment not found.");
+    }
 
-    if (remaining.count === 0) {
-      db.prepare("DELETE FROM repositories WHERE id = ?").run(
-        deployment.repositoryId,
+    await queryRows(
+      "DELETE FROM deployments WHERE id = $1",
+      [deploymentId],
+      client,
+    );
+
+    const remainingRows = await queryRows<{ count: string }>(
+      "SELECT COUNT(*) AS count FROM deployments WHERE repository_id = $1",
+      [deployment.repository_id],
+      client,
+    );
+
+    const remaining = Number.parseInt(remainingRows[0]?.count ?? "0", 10);
+
+    if (remaining === 0) {
+      await queryRows(
+        "DELETE FROM repositories WHERE id = $1",
+        [deployment.repository_id],
+        client,
       );
     }
   });
-
-  transaction();
 }

@@ -1,6 +1,48 @@
 name: vercelab
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${VERCELAB_POSTGRES_USER:-vercelab}
+      POSTGRES_PASSWORD: ${VERCELAB_POSTGRES_PASSWORD:-vercelab}
+      POSTGRES_DB: ${VERCELAB_POSTGRES_DB:-vercelab}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${VERCELAB_POSTGRES_USER:-vercelab} -d ${VERCELAB_POSTGRES_DB:-vercelab}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - ${VERCELAB_POSTGRES_DATA_DIR:-/opt/vercelab/data/postgres}:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  influxdb:
+    image: influxdb:3-core
+    restart: unless-stopped
+    command:
+      - influxdb3
+      - serve
+      - --node-id=vercelab-node
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3/data
+    healthcheck:
+      test: [CMD, influxdb3, show, databases]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - ${VERCELAB_INFLUXDB_DATA_DIR:-/opt/vercelab/data/influxdb}:/var/lib/influxdb3/data
+    networks:
+      - proxy
+
   traefik:
     image: traefik:v3.0
     restart: unless-stopped
@@ -42,9 +84,22 @@ services:
       VERCELAB_APPS_DIR: ${VERCELAB_APPS_DIR:-/opt/vercelab/data/apps}
       VERCELAB_LOGS_DIR: ${VERCELAB_LOGS_DIR:-/opt/vercelab/data/logs}
       VERCELAB_LOCKS_DIR: ${VERCELAB_LOCKS_DIR:-/opt/vercelab/data/locks}
-      VERCELAB_DATABASE_PATH: ${VERCELAB_DATABASE_PATH:-/opt/vercelab/data/db/vercelab.sqlite}
+      VERCELAB_DATABASE_PROVIDER: ${VERCELAB_DATABASE_PROVIDER:-postgres}
+      VERCELAB_POSTGRES_URL: ${VERCELAB_POSTGRES_URL:-postgres://vercelab:vercelab@postgres:5432/vercelab}
+      VERCELAB_POSTGRES_USER: ${VERCELAB_POSTGRES_USER:-vercelab}
+      VERCELAB_POSTGRES_PASSWORD: ${VERCELAB_POSTGRES_PASSWORD:-vercelab}
+      VERCELAB_POSTGRES_DB: ${VERCELAB_POSTGRES_DB:-vercelab}
+      VERCELAB_INFLUXDB_URL: ${VERCELAB_INFLUXDB_URL:-http://influxdb:8181}
+      VERCELAB_INFLUXDB_DATABASE: ${VERCELAB_INFLUXDB_DATABASE:-vercelab_metrics}
+      VERCELAB_INFLUXDB_TOKEN: ${VERCELAB_INFLUXDB_TOKEN:-}
+      VERCELAB_INFLUXDB_RETENTION_DAYS: ${VERCELAB_INFLUXDB_RETENTION_DAYS:-90}
       VERCELAB_DOCKER_SOCKET_PATH: ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
       VERCELAB_HOST_PROC_PATH: ${VERCELAB_HOST_PROC_PATH:-/host/proc}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
     healthcheck:
       test:
         [

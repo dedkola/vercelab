@@ -405,7 +405,7 @@ ensure_path_inside_root() {
 }
 
 gather_configuration() {
-  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_database_path existing_postgres_url existing_secret existing_github_token default_base_domain
+  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_secret existing_github_token default_base_domain
 
   existing_node_env="$(read_env_value NODE_ENV)"
   existing_runtime_host="$(read_env_value HOSTNAME)"
@@ -424,8 +424,16 @@ gather_configuration() {
   existing_logs_dir="$(read_env_value VERCELAB_LOGS_DIR)"
   existing_locks_dir="$(read_env_value VERCELAB_LOCKS_DIR)"
   existing_database_provider="$(read_env_value VERCELAB_DATABASE_PROVIDER)"
-  existing_database_path="$(read_env_value VERCELAB_DATABASE_PATH)"
   existing_postgres_url="$(read_env_value VERCELAB_POSTGRES_URL)"
+  existing_postgres_user="$(read_env_value VERCELAB_POSTGRES_USER)"
+  existing_postgres_password="$(read_env_value VERCELAB_POSTGRES_PASSWORD)"
+  existing_postgres_db="$(read_env_value VERCELAB_POSTGRES_DB)"
+  existing_postgres_data_dir="$(read_env_value VERCELAB_POSTGRES_DATA_DIR)"
+  existing_influx_url="$(read_env_value VERCELAB_INFLUXDB_URL)"
+  existing_influx_database="$(read_env_value VERCELAB_INFLUXDB_DATABASE)"
+  existing_influx_token="$(read_env_value VERCELAB_INFLUXDB_TOKEN)"
+  existing_influx_retention_days="$(read_env_value VERCELAB_INFLUXDB_RETENTION_DAYS)"
+  existing_influx_data_dir="$(read_env_value VERCELAB_INFLUXDB_DATA_DIR)"
   existing_secret="$(read_env_value VERCELAB_ENCRYPTION_SECRET)"
   existing_github_token="$(read_env_value VERCELAB_GITHUB_TOKEN)"
 
@@ -450,13 +458,21 @@ gather_configuration() {
   VERCELAB_APPS_DIR="${VERCELAB_APPS_DIR:-${existing_apps_dir:-${VERCELAB_DATA_ROOT}/apps}}"
   VERCELAB_LOGS_DIR="${VERCELAB_LOGS_DIR:-${existing_logs_dir:-${VERCELAB_DATA_ROOT}/logs}}"
   VERCELAB_LOCKS_DIR="${VERCELAB_LOCKS_DIR:-${existing_locks_dir:-${VERCELAB_DATA_ROOT}/locks}}"
-  VERCELAB_DATABASE_PATH="${VERCELAB_DATABASE_PATH:-${existing_database_path:-${VERCELAB_DATA_ROOT}/db/vercelab.sqlite}}"
+  VERCELAB_POSTGRES_DATA_DIR="${VERCELAB_POSTGRES_DATA_DIR:-${existing_postgres_data_dir:-${VERCELAB_DATA_ROOT}/postgres}}"
+  VERCELAB_INFLUXDB_DATA_DIR="${VERCELAB_INFLUXDB_DATA_DIR:-${existing_influx_data_dir:-${VERCELAB_DATA_ROOT}/influxdb}}"
 
   VERCELAB_PROXY_NETWORK="${VERCELAB_PROXY_NETWORK:-${existing_proxy_network:-vercelab_proxy}}"
   VERCELAB_PROXY_ENTRYPOINT="${VERCELAB_PROXY_ENTRYPOINT:-${existing_proxy_entrypoint:-websecure}}"
   VERCELAB_DOCKER_SOCKET_PATH="${VERCELAB_DOCKER_SOCKET_PATH:-${existing_socket:-/var/run/docker.sock}}"
-  VERCELAB_DATABASE_PROVIDER="${VERCELAB_DATABASE_PROVIDER:-${existing_database_provider:-sqlite}}"
-  VERCELAB_POSTGRES_URL="${VERCELAB_POSTGRES_URL:-${existing_postgres_url:-}}"
+  VERCELAB_DATABASE_PROVIDER="${VERCELAB_DATABASE_PROVIDER:-${existing_database_provider:-postgres}}"
+  VERCELAB_POSTGRES_USER="${VERCELAB_POSTGRES_USER:-${existing_postgres_user:-vercelab}}"
+  VERCELAB_POSTGRES_PASSWORD="${VERCELAB_POSTGRES_PASSWORD:-${existing_postgres_password:-$(openssl rand -hex 16)}}"
+  VERCELAB_POSTGRES_DB="${VERCELAB_POSTGRES_DB:-${existing_postgres_db:-vercelab}}"
+  VERCELAB_POSTGRES_URL="${VERCELAB_POSTGRES_URL:-${existing_postgres_url:-postgres://${VERCELAB_POSTGRES_USER}:${VERCELAB_POSTGRES_PASSWORD}@postgres:5432/${VERCELAB_POSTGRES_DB}}}"
+  VERCELAB_INFLUXDB_URL="${VERCELAB_INFLUXDB_URL:-${existing_influx_url:-http://influxdb:8181}}"
+  VERCELAB_INFLUXDB_DATABASE="${VERCELAB_INFLUXDB_DATABASE:-${existing_influx_database:-vercelab_metrics}}"
+  VERCELAB_INFLUXDB_TOKEN="${VERCELAB_INFLUXDB_TOKEN:-${existing_influx_token:-}}"
+  VERCELAB_INFLUXDB_RETENTION_DAYS="${VERCELAB_INFLUXDB_RETENTION_DAYS:-${existing_influx_retention_days:-90}}"
   VERCELAB_ENCRYPTION_SECRET="${VERCELAB_ENCRYPTION_SECRET:-${existing_secret:-}}"
 
   validate_domain "$VERCELAB_BASE_DOMAIN" "VERCELAB_BASE_DOMAIN"
@@ -468,11 +484,12 @@ gather_configuration() {
   validate_absolute_path "$VERCELAB_APPS_DIR" "VERCELAB_APPS_DIR"
   validate_absolute_path "$VERCELAB_LOGS_DIR" "VERCELAB_LOGS_DIR"
   validate_absolute_path "$VERCELAB_LOCKS_DIR" "VERCELAB_LOCKS_DIR"
-  validate_absolute_path "$VERCELAB_DATABASE_PATH" "VERCELAB_DATABASE_PATH"
+  validate_absolute_path "$VERCELAB_POSTGRES_DATA_DIR" "VERCELAB_POSTGRES_DATA_DIR"
+  validate_absolute_path "$VERCELAB_INFLUXDB_DATA_DIR" "VERCELAB_INFLUXDB_DATA_DIR"
   validate_absolute_path "$VERCELAB_DOCKER_SOCKET_PATH" "VERCELAB_DOCKER_SOCKET_PATH"
 
   [[ "$VERCELAB_ADMIN_HOST" == "$VERCELAB_BASE_DOMAIN" || "$VERCELAB_ADMIN_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] || fail "VERCELAB_ADMIN_HOST must be inside VERCELAB_BASE_DOMAIN."
-  [[ "$VERCELAB_DATABASE_PROVIDER" == "sqlite" || "$VERCELAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCELAB_DATABASE_PROVIDER must be sqlite or postgres."
+  [[ "$VERCELAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCELAB_DATABASE_PROVIDER must be postgres."
 
   ensure_path_inside_root "$VERCELAB_DATA_ROOT" "VERCELAB_DATA_ROOT"
   ensure_path_inside_root "$VERCELAB_TRAEFIK_DYNAMIC_DIR" "VERCELAB_TRAEFIK_DYNAMIC_DIR"
@@ -480,10 +497,11 @@ gather_configuration() {
   ensure_path_inside_root "$VERCELAB_APPS_DIR" "VERCELAB_APPS_DIR"
   ensure_path_inside_root "$VERCELAB_LOGS_DIR" "VERCELAB_LOGS_DIR"
   ensure_path_inside_root "$VERCELAB_LOCKS_DIR" "VERCELAB_LOCKS_DIR"
-  ensure_path_inside_root "$VERCELAB_DATABASE_PATH" "VERCELAB_DATABASE_PATH"
+  ensure_path_inside_root "$VERCELAB_POSTGRES_DATA_DIR" "VERCELAB_POSTGRES_DATA_DIR"
+  ensure_path_inside_root "$VERCELAB_INFLUXDB_DATA_DIR" "VERCELAB_INFLUXDB_DATA_DIR"
 
-  if [[ "$VERCELAB_DATABASE_PROVIDER" == "postgres" && -z "$VERCELAB_POSTGRES_URL" ]]; then
-    fail "Set VERCELAB_POSTGRES_URL when using the postgres provider."
+  if [[ -z "$VERCELAB_POSTGRES_URL" ]]; then
+    fail "Set VERCELAB_POSTGRES_URL for the postgres provider."
   fi
 
   if [[ -z "$VERCELAB_ENCRYPTION_SECRET" ]]; then
@@ -506,7 +524,8 @@ prepare_host_directories() {
     "$VERCELAB_APPS_DIR" \
     "$VERCELAB_LOGS_DIR" \
     "$VERCELAB_LOCKS_DIR" \
-    "$(dirname "$VERCELAB_DATABASE_PATH")"
+    "$VERCELAB_POSTGRES_DATA_DIR" \
+    "$VERCELAB_INFLUXDB_DATA_DIR"
 }
 
 validate_docker_socket() {
@@ -579,11 +598,20 @@ VERCELAB_TRAEFIK_CERTS_DIR=$VERCELAB_TRAEFIK_CERTS_DIR
 VERCELAB_APPS_DIR=$VERCELAB_APPS_DIR
 VERCELAB_LOGS_DIR=$VERCELAB_LOGS_DIR
 VERCELAB_LOCKS_DIR=$VERCELAB_LOCKS_DIR
-VERCELAB_DATABASE_PATH=$VERCELAB_DATABASE_PATH
+VERCELAB_POSTGRES_DATA_DIR=$VERCELAB_POSTGRES_DATA_DIR
+VERCELAB_INFLUXDB_DATA_DIR=$VERCELAB_INFLUXDB_DATA_DIR
 VERCELAB_DOCKER_SOCKET_PATH=$VERCELAB_DOCKER_SOCKET_PATH
 
 VERCELAB_DATABASE_PROVIDER=$VERCELAB_DATABASE_PROVIDER
 VERCELAB_POSTGRES_URL=$VERCELAB_POSTGRES_URL
+VERCELAB_POSTGRES_USER=$VERCELAB_POSTGRES_USER
+VERCELAB_POSTGRES_PASSWORD=$VERCELAB_POSTGRES_PASSWORD
+VERCELAB_POSTGRES_DB=$VERCELAB_POSTGRES_DB
+
+VERCELAB_INFLUXDB_URL=$VERCELAB_INFLUXDB_URL
+VERCELAB_INFLUXDB_DATABASE=$VERCELAB_INFLUXDB_DATABASE
+VERCELAB_INFLUXDB_TOKEN=$VERCELAB_INFLUXDB_TOKEN
+VERCELAB_INFLUXDB_RETENTION_DAYS=$VERCELAB_INFLUXDB_RETENTION_DAYS
 
 VERCELAB_ENCRYPTION_SECRET=$VERCELAB_ENCRYPTION_SECRET
 VERCELAB_GITHUB_TOKEN=$VERCELAB_GITHUB_TOKEN
@@ -623,11 +651,21 @@ print_configuration_review() {
   printf '   VERCELAB_APPS_DIR        : %s\n' "$VERCELAB_APPS_DIR"
   printf '   VERCELAB_LOGS_DIR        : %s\n' "$VERCELAB_LOGS_DIR"
   printf '   VERCELAB_LOCKS_DIR       : %s\n' "$VERCELAB_LOCKS_DIR"
-  printf '   VERCELAB_DATABASE_PATH   : %s\n' "$VERCELAB_DATABASE_PATH"
+  printf '   VERCELAB_POSTGRES_DATA_DIR: %s\n' "$VERCELAB_POSTGRES_DATA_DIR"
+  printf '   VERCELAB_INFLUXDB_DATA_DIR: %s\n' "$VERCELAB_INFLUXDB_DATA_DIR"
   printf '   VERCELAB_DOCKER_SOCKET   : %s\n' "$VERCELAB_DOCKER_SOCKET_PATH"
+  printf '\n'
+  printf '%b Databases%b\n' "$C_YELLOW" "$C_RESET"
+  printf '   VERCELAB_DATABASE_PROVIDER: %s\n' "$VERCELAB_DATABASE_PROVIDER"
+  printf '   VERCELAB_POSTGRES_URL     : %s\n' "$VERCELAB_POSTGRES_URL"
+  printf '   VERCELAB_INFLUXDB_URL     : %s\n' "$VERCELAB_INFLUXDB_URL"
+  printf '   VERCELAB_INFLUXDB_DATABASE: %s\n' "$VERCELAB_INFLUXDB_DATABASE"
+  printf '   VERCELAB_INFLUXDB_RET_DAYS: %s\n' "$VERCELAB_INFLUXDB_RETENTION_DAYS"
   printf '\n'
   printf '%b Security%b\n' "$C_YELLOW" "$C_RESET"
   printf '   VERCELAB_ENCRYPTION_SECRET: %s\n' "$(mask_secret "$VERCELAB_ENCRYPTION_SECRET")"
+  printf '   VERCELAB_POSTGRES_PASSWORD: %s\n' "$(mask_secret "$VERCELAB_POSTGRES_PASSWORD")"
+  printf '   VERCELAB_INFLUXDB_TOKEN   : %s\n' "$(mask_secret "$VERCELAB_INFLUXDB_TOKEN")"
   printf '   VERCELAB_GITHUB_TOKEN     : %s\n' "$(mask_secret "$VERCELAB_GITHUB_TOKEN")"
   printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
   printf '\n'

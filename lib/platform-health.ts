@@ -135,7 +135,6 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
       config.paths.appsDir,
       config.paths.logsDir,
       config.paths.locksDir,
-      path.dirname(config.database.sqlitePath),
     ];
     const aligned = managedPaths.every((managedPath) =>
       isWithinRoot(managedPath, config.paths.hostRoot!),
@@ -156,11 +155,18 @@ export async function getPlatformHealth(): Promise<PlatformHealth> {
     await checkWritablePath("Apps directory", config.paths.appsDir),
     await checkWritablePath("Logs directory", config.paths.logsDir),
     await checkWritablePath("Locks directory", config.paths.locksDir),
-    await checkWritablePath(
-      "Database directory",
-      path.dirname(config.database.sqlitePath),
-    ),
   );
+
+  checks.push({
+    id: "postgres-url",
+    label: "Postgres connection URL",
+    ok: config.database.postgresUrl.trim().length > 0,
+    severity: runtimeSeverity,
+    message:
+      config.database.postgresUrl.trim().length > 0
+        ? "Postgres connection URL is configured."
+        : "VERCELAB_POSTGRES_URL is not configured.",
+  });
 
   try {
     const socketStats = await stat(config.runtime.dockerSocketPath);

@@ -7,9 +7,28 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
-  VERCELAB_DATABASE_PROVIDER: z.enum(["sqlite", "postgres"]).default("sqlite"),
-  VERCELAB_DATABASE_PATH: z.string().optional(),
-  VERCELAB_POSTGRES_URL: z.string().optional(),
+  VERCELAB_DATABASE_PROVIDER: z.enum(["postgres"]).default("postgres"),
+  VERCELAB_POSTGRES_URL: z.string().trim().min(1),
+  VERCELAB_POSTGRES_USER: z.string().trim().min(1).default("vercelab"),
+  VERCELAB_POSTGRES_PASSWORD: z.string().trim().min(1).default("vercelab"),
+  VERCELAB_POSTGRES_DB: z.string().trim().min(1).default("vercelab"),
+  VERCELAB_INFLUXDB_URL: z
+    .string()
+    .trim()
+    .min(1)
+    .default("http://influxdb:8181"),
+  VERCELAB_INFLUXDB_DATABASE: z
+    .string()
+    .trim()
+    .min(1)
+    .default("vercelab_metrics"),
+  VERCELAB_INFLUXDB_TOKEN: z.string().trim().optional(),
+  VERCELAB_INFLUXDB_RETENTION_DAYS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(3650)
+    .default(90),
   VERCELAB_HOST_ROOT: z
     .string()
     .trim()
@@ -56,13 +75,9 @@ function buildConfig() {
   const appsDir = parsed.VERCELAB_APPS_DIR ?? path.join(dataDir, "apps");
   const logsDir = parsed.VERCELAB_LOGS_DIR ?? path.join(dataDir, "logs");
   const locksDir = parsed.VERCELAB_LOCKS_DIR ?? path.join(dataDir, "locks");
-  const sqlitePath =
-    parsed.VERCELAB_DATABASE_PATH ?? path.join(dataDir, "vercelab.sqlite");
-
   mkdirSync(appsDir, { recursive: true });
   mkdirSync(logsDir, { recursive: true });
   mkdirSync(locksDir, { recursive: true });
-  mkdirSync(path.dirname(sqlitePath), { recursive: true });
 
   return {
     env: parsed.NODE_ENV,
@@ -78,8 +93,16 @@ function buildConfig() {
     },
     database: {
       provider: parsed.VERCELAB_DATABASE_PROVIDER,
-      sqlitePath,
       postgresUrl: parsed.VERCELAB_POSTGRES_URL,
+      postgresUser: parsed.VERCELAB_POSTGRES_USER,
+      postgresPassword: parsed.VERCELAB_POSTGRES_PASSWORD,
+      postgresDatabase: parsed.VERCELAB_POSTGRES_DB,
+    },
+    metrics: {
+      influxUrl: parsed.VERCELAB_INFLUXDB_URL,
+      influxDatabase: parsed.VERCELAB_INFLUXDB_DATABASE,
+      influxToken: parsed.VERCELAB_INFLUXDB_TOKEN ?? null,
+      retentionDays: parsed.VERCELAB_INFLUXDB_RETENTION_DAYS,
     },
     security: {
       encryptionSecret: parsed.VERCELAB_ENCRYPTION_SECRET,

@@ -32,7 +32,7 @@ export async function GET(
     const payload =
       logType === "container"
         ? await readDeploymentContainerLog(deploymentId)
-        : readDeploymentBuildLog(deploymentId);
+        : await readDeploymentBuildLog(deploymentId);
 
     return Response.json(payload);
   } catch (error) {
