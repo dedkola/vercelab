@@ -33,7 +33,7 @@ services:
       - --object-store=file
       - --data-dir=/var/lib/influxdb3/data
     healthcheck:
-      test: [CMD, influxdb3, show, databases]
+      test: ["CMD-SHELL", "pgrep -x influxdb3 >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -526,6 +526,10 @@ prepare_host_directories() {
     "$VERCELAB_LOCKS_DIR" \
     "$VERCELAB_POSTGRES_DATA_DIR" \
     "$VERCELAB_INFLUXDB_DATA_DIR"
+
+  # InfluxDB 3 runs as uid/gid 1500 in the official image.
+  # Pre-setting ownership avoids permission errors on first boot.
+  run_privileged chown -R 1500:1500 "$VERCELAB_INFLUXDB_DATA_DIR"
 }
 
 validate_docker_socket() {
