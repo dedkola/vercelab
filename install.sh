@@ -635,20 +635,31 @@ start_stack() {
 ensure_influx_bootstrap() {
   local generated_token=""
   local influx_host="http://127.0.0.1:8181"
+  local influx_recovery_host="http://127.0.0.1:8182"
   local retention_period="${VERCELAB_INFLUXDB_RETENTION_DAYS}d"
   local database_list_json=""
+  local token_command_output=""
 
   log "Ensuring InfluxDB token and metrics database are ready."
 
   if [[ -z "$VERCELAB_INFLUXDB_TOKEN" ]]; then
-    generated_token="$(
+    token_command_output="$(
       cd "$REPO_ROOT"
-      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc 'influxdb3 create token --admin' \
-        | sed -n 's/^Token:[[:space:]]*//p' \
-        | head -n 1
+      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc 'influxdb3 create token --admin --format text 2>&1' || true
     )"
 
-    [[ -n "$generated_token" ]] || fail "Unable to create an InfluxDB admin token."
+    generated_token="$(grep -Eo 'apiv3_[A-Za-z0-9_-]+' <<<"$token_command_output" | head -n 1 || true)"
+
+    if [[ -z "$generated_token" ]] && grep -q 'token name already exists' <<<"$token_command_output"; then
+      token_command_output="$(
+        cd "$REPO_ROOT"
+        "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "printf 'yes\\n' | influxdb3 create token --admin --regenerate --host '$influx_recovery_host' --format text 2>&1" || true
+      )"
+
+      generated_token="$(grep -Eo 'apiv3_[A-Za-z0-9_-]+' <<<"$token_command_output" | head -n 1 || true)"
+    fi
+
+    [[ -n "$generated_token" ]] || fail "Unable to create or recover an InfluxDB admin token. Output: $token_command_output"
 
     VERCELAB_INFLUXDB_TOKEN="$generated_token"
     write_env_file
@@ -663,8 +674,38 @@ ensure_influx_bootstrap() {
 
   database_list_json="$(
     cd "$REPO_ROOT"
-    "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 show databases --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --format json" 2>/dev/null || true
+    "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 show databases --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --format json" 2>&1 || true
   )"
+
+  if grep -Eqi '401|not authenticated' <<<"$database_list_json"; then
+    log "Configured Influx token is invalid; regenerating admin token."
+
+    token_command_output="$(
+      cd "$REPO_ROOT"
+      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "printf 'yes\\n' | influxdb3 create token --admin --regenerate --host '$influx_recovery_host' --format text 2>&1" || true
+    )"
+
+    generated_token="$(grep -Eo 'apiv3_[A-Za-z0-9_-]+' <<<"$token_command_output" | head -n 1 || true)"
+
+    [[ -n "$generated_token" ]] || fail "Unable to regenerate InfluxDB admin token. Output: $token_command_output"
+
+    VERCELAB_INFLUXDB_TOKEN="$generated_token"
+    write_env_file
+
+    (
+      cd "$REPO_ROOT"
+      "${DOCKER_CMD[@]}" compose up -d --no-deps control-plane
+    )
+
+    database_list_json="$(
+      cd "$REPO_ROOT"
+      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 show databases --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --format json" 2>&1 || true
+    )"
+  fi
+
+  if grep -Eqi '401|not authenticated' <<<"$database_list_json"; then
+    fail "Unable to authenticate to InfluxDB with the configured admin token."
+  fi
 
   if ! grep -Fq "\"name\":\"$VERCELAB_INFLUXDB_DATABASE\"" <<<"$database_list_json"; then
     (
