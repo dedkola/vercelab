@@ -14,6 +14,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { StackedArea, themes, useContainerWidth } from "@derpdaderp/chartkit";
 
 import { Icon, type IconName } from "@/components/dashboard-kit";
+import { SidebarMetricCharts } from "@/components/sidebar-metric-charts";
 import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
 import type { GitHubRepository } from "@/lib/github";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
@@ -1046,6 +1047,12 @@ export default function MetricsDashboard({
 
                     <MiniNetworkChart history={deferredHistory} />
                   </section>
+
+                  <SidebarMetricCharts
+                    className="sidebar-chart-stack--embedded"
+                    history={deferredHistory}
+                    snapshot={deferredSnapshot}
+                  />
                 </>
               ) : (
                 <div className="git-panel">
