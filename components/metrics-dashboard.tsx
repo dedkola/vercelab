@@ -16,6 +16,7 @@ import { StackedArea, themes, useContainerWidth } from "@derpdaderp/chartkit";
 import { Icon, type IconName } from "@/components/dashboard-kit";
 import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
 import type { GitHubRepository } from "@/lib/github";
+import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import type { DashboardData } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
@@ -250,40 +251,6 @@ function formatMegabitsPerSecond(value: number) {
   return mbps.toFixed(1);
 }
 
-function buildSeedSeries(latestValue: number, length: number) {
-  const seed = Math.max(latestValue, 0);
-
-  if (length <= 0) {
-    return [];
-  }
-
-  return Array.from({ length }, (_, index) => {
-    const ratio = length === 1 ? 1 : (index + 1) / length;
-    return seed * ratio;
-  });
-}
-
-function appendHistory(history: HistoryPoint[], snapshot: MetricsSnapshot) {
-  if (history.at(-1)?.timestamp === snapshot.timestamp) {
-    return history;
-  }
-
-  return [
-    ...history,
-    {
-      timestamp: snapshot.timestamp,
-      cpu: snapshot.system.cpuPercent,
-      memory: snapshot.system.memoryPercent,
-      networkIn: snapshot.network.rxBytesPerSecond,
-      networkOut: snapshot.network.txBytesPerSecond,
-      networkTotal:
-        snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond,
-      containersCpu: snapshot.containers.cpuPercent,
-      containersMemory: snapshot.containers.memoryPercent,
-    },
-  ].slice(-HISTORY_LIMIT);
-}
-
 function buildPath(
   values: number[],
   width: number,
@@ -427,33 +394,23 @@ function TrafficDonut({
 
 function MainTrafficChart({
   history,
-  currentNetworkIn,
-  currentNetworkOut,
 }: {
   history: HistoryPoint[];
-  currentNetworkIn: number;
-  currentNetworkOut: number;
 }) {
   const width = 1160;
   const height = 262;
   const lineInset = 56;
   const graphWidth = width - lineInset * 2;
   const graphHeight = height - 38;
-  const inbound = history.length
-    ? history.map((entry) => entry.networkIn)
-    : buildSeedSeries(currentNetworkIn, 8);
-  const outbound = history.length
-    ? history.map((entry) => entry.networkOut)
-    : buildSeedSeries(currentNetworkOut, 8);
-  const total = history.length
-    ? history.map((entry) => entry.networkTotal)
-    : buildSeedSeries(currentNetworkIn + currentNetworkOut, 8);
+  const inbound = history.map((entry) => entry.networkIn);
+  const outbound = history.map((entry) => entry.networkOut);
+  const total = history.map((entry) => entry.networkTotal);
   const latency = history.map(
     (entry) => 1 + entry.cpu / 14 + entry.memory / 35,
   );
   const networkPeak = getNiceMaxValue(
     [...total, ...inbound, ...outbound],
-    Math.max(16_000, currentNetworkIn + currentNetworkOut),
+    16_000,
   );
   const latencyPeak = 120;
   const xTicks = buildAxisTicks(history, 7);
@@ -597,21 +554,6 @@ function MainTrafficChart({
   );
 }
 
-const FALLBACK_NETWORK_DATA = [
-  { time: "0s", download: 0.11, upload: 0.49 },
-  { time: "5s", download: 0.11, upload: 0.49 },
-  { time: "10s", download: 0.1, upload: 0.49 },
-  { time: "15s", download: 0.1, upload: 0.13 },
-  { time: "20s", download: 0.1, upload: 0.11 },
-  { time: "25s", download: 0.09, upload: 0.41 },
-  { time: "30s", download: 0.09, upload: 0.1 },
-  { time: "35s", download: 0.1, upload: 0.15 },
-  { time: "40s", download: 0.08, upload: 0.08 },
-  { time: "45s", download: 0.1, upload: 0.3 },
-  { time: "50s", download: 0.08, upload: 0.09 },
-  { time: "55s", download: 0.09, upload: 0.5 },
-];
-
 function MiniNetworkChart({ history }: { history: HistoryPoint[] }) {
   const { ref, width } = useContainerWidth<HTMLDivElement>();
   const series = history.slice(-24);
@@ -621,7 +563,7 @@ function MiniNetworkChart({ history }: { history: HistoryPoint[] }) {
         download: parseFloat(((entry.networkIn * 8) / 1_000_000).toFixed(2)),
         upload: parseFloat(((entry.networkOut * 8) / 1_000_000).toFixed(2)),
       }))
-    : FALLBACK_NETWORK_DATA;
+    : [];
 
   return (
     <div className="mini-network-chart" ref={ref}>
@@ -679,13 +621,15 @@ export default function MetricsDashboard({
   const deferredSnapshot = useDeferredValue(snapshot);
   const deferredHistory = useDeferredValue(history);
 
-  const commitSnapshot = useEffectEvent((nextSnapshot: MetricsSnapshot) => {
+  const commitSnapshot = useEffectEvent(
+    (nextSnapshot: MetricsSnapshot, nextHistory: MetricsHistoryPoint[]) => {
     startTransition(() => {
       setSnapshot(nextSnapshot);
-      setHistory((previous) => appendHistory(previous, nextSnapshot));
+      setHistory(nextHistory.slice(-HISTORY_LIMIT));
       setErrorMessage(null);
     });
-  });
+    },
+  );
 
   const commitError = useEffectEvent((message: string) => {
     startTransition(() => {
@@ -826,13 +770,16 @@ export default function MetricsDashboard({
           throw new Error(`Metrics request failed with ${response.status}.`);
         }
 
-        const nextSnapshot = (await response.json()) as MetricsSnapshot;
+        const payload = (await response.json()) as {
+          snapshot: MetricsSnapshot;
+          history: MetricsHistoryPoint[];
+        };
 
         if (!active) {
           return;
         }
 
-        commitSnapshot(nextSnapshot);
+        commitSnapshot(payload.snapshot, payload.history ?? []);
       } catch (error) {
         if (!active) {
           return;
@@ -1272,12 +1219,6 @@ export default function MetricsDashboard({
               <section className="chart-area">
                 <MainTrafficChart
                   history={deferredHistory}
-                  currentNetworkIn={
-                    deferredSnapshot?.network.rxBytesPerSecond ?? 0
-                  }
-                  currentNetworkOut={
-                    deferredSnapshot?.network.txBytesPerSecond ?? 0
-                  }
                 />
               </section>
 
