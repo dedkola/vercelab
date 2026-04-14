@@ -7,8 +7,9 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  VERCELAB_UI_DEV_MODE: z.coerce.boolean().default(false),
   VERCELAB_DATABASE_PROVIDER: z.enum(["postgres"]).default("postgres"),
-  VERCELAB_POSTGRES_URL: z.string().trim().min(1),
+  VERCELAB_POSTGRES_URL: z.string().trim().optional(),
   VERCELAB_POSTGRES_USER: z.string().trim().min(1).default("vercelab"),
   VERCELAB_POSTGRES_PASSWORD: z.string().trim().min(1).default("vercelab"),
   VERCELAB_POSTGRES_DB: z.string().trim().min(1).default("vercelab"),
@@ -67,17 +68,66 @@ export type AppConfig = ReturnType<typeof buildConfig>;
 
 let cachedConfig: AppConfig | undefined;
 
+function resolveManagedDir(options: {
+  configuredDir: string;
+  fallbackDir: string;
+  uiDevMode: boolean;
+  label: string;
+}) {
+  const { configuredDir, fallbackDir, uiDevMode, label } = options;
+
+  try {
+    mkdirSync(configuredDir, { recursive: true });
+    return configuredDir;
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? (error as { code?: string }).code
+        : undefined;
+
+    if (!uiDevMode || (code !== "EACCES" && code !== "EPERM")) {
+      throw error;
+    }
+
+    mkdirSync(fallbackDir, { recursive: true });
+    console.warn(
+      `[ui-dev-mode] Falling back ${label} directory to ${fallbackDir} because ${configuredDir} is not writable.`,
+    );
+    return fallbackDir;
+  }
+}
+
 function buildConfig() {
   const parsed = envSchema.parse(process.env);
+  const postgresUrl = parsed.VERCELAB_POSTGRES_URL?.trim() ?? "";
+
+  if (!parsed.VERCELAB_UI_DEV_MODE && postgresUrl.length === 0) {
+    throw new Error(
+      "VERCELAB_POSTGRES_URL is required unless VERCELAB_UI_DEV_MODE=true.",
+    );
+  }
+
   const projectRoot = /* turbopackIgnore: true */ process.cwd();
   const hostRoot = parsed.VERCELAB_HOST_ROOT;
   const dataDir = path.join(projectRoot, "data");
-  const appsDir = parsed.VERCELAB_APPS_DIR ?? path.join(dataDir, "apps");
-  const logsDir = parsed.VERCELAB_LOGS_DIR ?? path.join(dataDir, "logs");
-  const locksDir = parsed.VERCELAB_LOCKS_DIR ?? path.join(dataDir, "locks");
-  mkdirSync(appsDir, { recursive: true });
-  mkdirSync(logsDir, { recursive: true });
-  mkdirSync(locksDir, { recursive: true });
+  const appsDir = resolveManagedDir({
+    configuredDir: parsed.VERCELAB_APPS_DIR ?? path.join(dataDir, "apps"),
+    fallbackDir: path.join(dataDir, "apps"),
+    uiDevMode: parsed.VERCELAB_UI_DEV_MODE,
+    label: "apps",
+  });
+  const logsDir = resolveManagedDir({
+    configuredDir: parsed.VERCELAB_LOGS_DIR ?? path.join(dataDir, "logs"),
+    fallbackDir: path.join(dataDir, "logs"),
+    uiDevMode: parsed.VERCELAB_UI_DEV_MODE,
+    label: "logs",
+  });
+  const locksDir = resolveManagedDir({
+    configuredDir: parsed.VERCELAB_LOCKS_DIR ?? path.join(dataDir, "locks"),
+    fallbackDir: path.join(dataDir, "locks"),
+    uiDevMode: parsed.VERCELAB_UI_DEV_MODE,
+    label: "locks",
+  });
 
   return {
     env: parsed.NODE_ENV,
@@ -90,10 +140,11 @@ function buildConfig() {
       dockerSocketPath:
         parsed.VERCELAB_DOCKER_SOCKET_PATH ?? "/var/run/docker.sock",
       hostProcPath: parsed.VERCELAB_HOST_PROC_PATH ?? "/host/proc",
+      uiDevMode: parsed.VERCELAB_UI_DEV_MODE,
     },
     database: {
       provider: parsed.VERCELAB_DATABASE_PROVIDER,
-      postgresUrl: parsed.VERCELAB_POSTGRES_URL,
+      postgresUrl,
       postgresUser: parsed.VERCELAB_POSTGRES_USER,
       postgresPassword: parsed.VERCELAB_POSTGRES_PASSWORD,
       postgresDatabase: parsed.VERCELAB_POSTGRES_DB,
