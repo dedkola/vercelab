@@ -1,6 +1,6 @@
 import MetricsDashboard from "@/components/metrics-dashboard";
 import { getAppConfig } from "@/lib/app-config";
-import { listDashboardData, type DashboardData } from "@/lib/persistence";
+import { listDashboardData } from "@/lib/persistence";
 
 export const dynamic = "force-dynamic";
 
@@ -16,36 +16,9 @@ function getSearchParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function getEmptyDashboardData(): DashboardData {
-  return {
-    deployments: [],
-    stats: {
-      totalDeployments: 0,
-      runningDeployments: 0,
-      failedDeployments: 0,
-      totalRepositories: 0,
-    },
-    trends: [],
-    recentActivity: [],
-    statusDistribution: [],
-    modeDistribution: [],
-  };
-}
-
 export default async function Home({ searchParams }: HomeProps) {
-  const config = getAppConfig();
   const params = await searchParams;
-  const dashboardData = await listDashboardData().catch((error) => {
-    if (!config.runtime.uiDevMode) {
-      throw error;
-    }
-
-    const message =
-      error instanceof Error ? error.message : "Unknown database error.";
-
-    console.warn(`[ui-dev-mode] Using empty dashboard data: ${message}`);
-    return getEmptyDashboardData();
-  });
+  const dashboardData = await listDashboardData();
   const activeSection =
     getSearchParamValue(params.section) === "git" ? "git" : "overview";
   const status = getSearchParamValue(params.status);
@@ -53,7 +26,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <MetricsDashboard
-      baseDomain={config.baseDomain}
+      baseDomain={getAppConfig().baseDomain}
       dashboardData={dashboardData}
       flashMessage={
         status === "success" || status === "error"
@@ -63,7 +36,7 @@ export default async function Home({ searchParams }: HomeProps) {
             }
           : null
       }
-      initialGithubToken={config.security.githubToken ?? ""}
+      initialGithubToken={getAppConfig().security.githubToken ?? ""}
       initialSection={activeSection}
     />
   );
