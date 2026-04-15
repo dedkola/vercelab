@@ -12,7 +12,15 @@ import {
 } from "@/app/actions";
 import { Icon } from "@/components/dashboard-kit";
 import { SubmitButton } from "@/components/submit-button";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +29,9 @@ import {
   InputGroupSuffix,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GitHubRepository } from "@/lib/github";
 import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
 
@@ -108,6 +119,42 @@ function formatDeploymentStatus(status: DashboardDeployment["status"]) {
   }
 }
 
+function formatStatusDotColor(status: DashboardDeployment["status"]) {
+  switch (status) {
+    case "deploying":
+      return "bg-blue-500";
+    case "running":
+      return "bg-green-500";
+    case "failed":
+      return "bg-red-500";
+    case "stopped":
+      return "bg-zinc-400";
+    case "removing":
+      return "bg-orange-500";
+    default:
+      return "bg-zinc-300";
+  }
+}
+
+function formatStatusBadgeVariant(
+  status: DashboardDeployment["status"],
+): "default" | "success" | "destructive" | "warning" | "info" {
+  switch (status) {
+    case "deploying":
+      return "info";
+    case "running":
+      return "success";
+    case "failed":
+      return "destructive";
+    case "stopped":
+      return "default";
+    case "removing":
+      return "warning";
+    default:
+      return "default";
+  }
+}
+
 function formatDeploymentTime(updatedAt: string) {
   return deploymentTimeFormatter.format(new Date(updatedAt));
 }
@@ -128,7 +175,7 @@ function renderMessageWithLink(message: string) {
     <>
       {message.slice(0, start)}
       <a
-        className="flash-banner__link"
+        className="font-medium underline"
         href={normalizedUrl}
         rel="noreferrer"
         target="_blank"
@@ -332,31 +379,36 @@ export function GitDeploymentPage({
   }
 
   return (
-    <div className="git-page">
-      <section className="git-hero unifi-card">
-        <div>
-          <div className="git-hero__eyebrow">Git deployment page</div>
-        </div>
-
-        <div className="git-hero__stats">
-          <div className="git-stat">
-            <span className="git-stat__label">Deployments</span>
-            <span className="git-stat__value">{stats.totalDeployments}</span>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardDescription>Git deployment page</CardDescription>
+        </CardHeader>
+        <CardContent className="flex gap-6">
+          <div className="text-center">
+            <span className="block text-xs text-zinc-500">Deployments</span>
+            <span className="text-lg font-semibold text-zinc-900">
+              {stats.totalDeployments}
+            </span>
           </div>
-          <div className="git-stat">
-            <span className="git-stat__label">Running</span>
-            <span className="git-stat__value">{stats.runningDeployments}</span>
+          <div className="text-center">
+            <span className="block text-xs text-zinc-500">Running</span>
+            <span className="text-lg font-semibold text-zinc-900">
+              {stats.runningDeployments}
+            </span>
           </div>
-          <div className="git-stat">
-            <span className="git-stat__label">Repositories</span>
-            <span className="git-stat__value">{stats.totalRepositories}</span>
+          <div className="text-center">
+            <span className="block text-xs text-zinc-500">Repositories</span>
+            <span className="text-lg font-semibold text-zinc-900">
+              {stats.totalRepositories}
+            </span>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       {activeBanner?.message ? (
         <div
-          className={`flash-banner flash-banner--${activeBanner.status}`}
+          className={`rounded-md border px-3 py-2 text-sm ${activeBanner.status === "success" ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800"}`}
           role="status"
         >
           {renderMessageWithLink(activeBanner.message)}
@@ -364,26 +416,20 @@ export function GitDeploymentPage({
       ) : null}
 
       {showForm ? (
-        <section
-          className="unifi-card git-compose-card"
-          aria-label="Deployment draft"
-        >
+        <Card className="relative p-4" aria-label="Deployment draft">
           <Button
-            className="git-compose-card__close"
+            className="absolute right-2 top-2"
             onClick={() => setShowForm(false)}
             type="button"
             aria-label="Close form"
             variant="ghost"
             size="icon"
           >
-            <Icon name="x-close" className="git-compose-card__close-icon" />
+            <Icon name="x-close" className="h-3.5 w-3.5" />
           </Button>
 
           {repositoryDraft ? (
-            <form
-              className="git-form git-form--draft"
-              onSubmit={handleCreateDeployment}
-            >
+            <form className="space-y-4" onSubmit={handleCreateDeployment}>
               <input
                 name="githubToken"
                 type="hidden"
@@ -395,13 +441,15 @@ export function GitDeploymentPage({
                 value={draftState.repositoryUrl}
               />
 
-              <div className="git-draft">
+              <div className="space-y-1 mb-4">
                 <div>
-                  <div className="git-draft__label">Selected repository</div>
-                  <div className="git-draft__name">
+                  <div className="text-xs text-zinc-500">
+                    Selected repository
+                  </div>
+                  <div className="text-sm font-medium text-zinc-900">
                     {repositoryDraft.fullName}
                   </div>
-                  <div className="git-draft__meta">
+                  <div className="flex gap-2 text-xs text-zinc-400">
                     <span>{repositoryDraft.visibility}</span>
                     <span>{repositoryDraft.defaultBranch}</span>
                     <span>
@@ -411,7 +459,7 @@ export function GitDeploymentPage({
                 </div>
 
                 <a
-                  className="git-draft__link"
+                  className="text-xs text-zinc-500 hover:underline"
                   href={draftState.repositoryUrl}
                   rel="noreferrer"
                   target="_blank"
@@ -420,7 +468,7 @@ export function GitDeploymentPage({
                 </a>
               </div>
 
-              <div className="git-form__grid flex flex-wrap items-end gap-3">
+              <div className="flex flex-wrap items-end gap-3">
                 <div className="grid min-w-40 flex-1 gap-2">
                   <Label htmlFor="branch">Branch</Label>
                   <Input
@@ -537,8 +585,8 @@ export function GitDeploymentPage({
                 </span>
               </div>
 
-              <div className="git-form__actions git-form__actions--inline flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-xs text-(--text-secondary)">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 text-xs text-zinc-500">
                   <Checkbox
                     checked={storeTokenWithDeployment}
                     disabled={!githubToken.trim()}
@@ -548,7 +596,7 @@ export function GitDeploymentPage({
                   />
                   Store Git token with deployment
                 </label>
-                <p className="git-form__note">
+                <p className="text-xs text-zinc-500">
                   Vercelab clones the selected repository, builds the app, and
                   exposes it at .{baseDomain}.
                 </p>
@@ -564,32 +612,25 @@ export function GitDeploymentPage({
               </div>
             </form>
           ) : (
-            <div className="git-empty-state git-empty-state--draft">
-              <div className="git-empty-state__title">
+            <div className="py-6 text-center">
+              <div className="text-sm text-zinc-500">
                 Select a repository from the sidebar
               </div>
             </div>
           )}
-        </section>
+        </Card>
       ) : null}
 
       {view === "list" ? (
-        <section
-          className="unifi-card git-apps-table-card"
-          aria-label="Deployed applications"
-        >
-          <div className="git-section-head">
-            <div>
-              <div className="git-section-head__title">Deployed apps</div>
-            </div>
-            <div className="git-list-card__count">
-              {deployments.length} total
-            </div>
-          </div>
+        <Card aria-label="Deployed applications">
+          <CardHeader className="flex-row items-center justify-between border-b border-zinc-100">
+            <CardTitle>Deployed apps</CardTitle>
+            <CardDescription>{deployments.length} total</CardDescription>
+          </CardHeader>
 
           {deployments.length > 0 ? (
-            <div className="git-apps-table">
-              <div className="git-apps-table__header">
+            <CardContent className="p-0">
+              <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] gap-2 border-b border-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-500">
                 <span>Status</span>
                 <span>App name</span>
                 <span>Domain</span>
@@ -599,35 +640,33 @@ export function GitDeploymentPage({
               </div>
               {deployments.map((deployment) => (
                 <button
-                  className={`git-apps-table__row ${
-                    deployment.id === selectedDeploymentId
-                      ? "git-apps-table__row--active"
-                      : ""
+                  className={`grid grid-cols-[auto_1fr_1fr_auto_auto_auto] items-center gap-2 border-b border-zinc-50 px-3 py-2 text-left text-sm hover:bg-zinc-50 last:border-0 ${
+                    deployment.id === selectedDeploymentId ? "bg-zinc-50" : ""
                   }`}
                   key={deployment.id}
                   onClick={() => handleSelectDeployment(deployment.id)}
                   type="button"
                 >
                   <span
-                    className={`git-apps-table__status-dot git-apps-table__status-dot--${deployment.status}`}
+                    className={`h-2 w-2 rounded-full ${formatStatusDotColor(deployment.status)}`}
                     title={formatDeploymentStatus(deployment.status)}
                   />
-                  <span className="git-apps-table__name">
+                  <span className="truncate font-medium text-zinc-900">
                     {deployment.appName}
                   </span>
-                  <span className="git-apps-table__domain">
+                  <span className="truncate text-zinc-500">
                     {formatDeploymentDomain(deployment, baseDomain)}
                   </span>
-                  <span className="git-apps-table__branch">
+                  <span className="text-xs text-zinc-500">
                     {deployment.branch ?? "default"}
                   </span>
-                  <span className="git-apps-table__time">
+                  <span className="text-xs text-zinc-400">
                     {formatDeploymentTime(
                       deployment.deployedAt ?? deployment.updatedAt,
                     )}
                   </span>
                   <span
-                    className="git-apps-table__logs-btn"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-zinc-100"
                     role="button"
                     tabIndex={0}
                     aria-label={`View logs for ${deployment.appName}`}
@@ -643,67 +682,68 @@ export function GitDeploymentPage({
                       }
                     }}
                   >
-                    <Icon name="syslog" className="git-apps-table__logs-icon" />
+                    <Icon name="syslog" className="h-3.5 w-3.5 text-zinc-400" />
                   </span>
                 </button>
               ))}
-            </div>
+            </CardContent>
           ) : (
-            <div className="git-empty-state">
-              <div className="git-empty-state__title">No deployments yet</div>
-            </div>
+            <CardContent className="py-8 text-center">
+              <div className="text-sm text-zinc-500">No deployments yet</div>
+            </CardContent>
           )}
-        </section>
+        </Card>
       ) : null}
 
       {view === "detail" && selectedDeployment ? (
-        <section className="git-detail" aria-label="Deployment detail">
+        <section className="space-y-4" aria-label="Deployment detail">
           <Button
-            className="git-detail__back"
+            className="gap-1"
             onClick={handleBackToList}
             type="button"
             variant="secondary"
             size="sm"
           >
-            <Icon name="chevron-left" className="git-detail__back-icon" />
+            <Icon name="chevron-left" className="h-3.5 w-3.5" />
             Back to deployments
           </Button>
 
-          <div className="unifi-card git-detail-info">
-            <div className="git-section-head">
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
               <div>
-                <div className="git-section-head__title">
-                  {selectedDeployment.appName}
-                </div>
-                <div className="git-section-head__meta">
+                <CardTitle>{selectedDeployment.appName}</CardTitle>
+                <CardDescription>
                   {formatRepositoryLabel(selectedDeployment.repositoryUrl)}
-                </div>
+                </CardDescription>
               </div>
 
-              <span
-                className={`git-status git-status--${selectedDeployment.status}`}
+              <Badge
+                variant={formatStatusBadgeVariant(selectedDeployment.status)}
               >
                 {formatDeploymentStatus(selectedDeployment.status)}
-              </span>
+              </Badge>
             </div>
 
-            <div className="git-active-card__meta-grid">
-              <div className="git-active-card__meta-item">
-                <span className="git-active-card__meta-label">Domain</span>
+            <Separator />
+
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="block text-xs text-zinc-500">Domain</span>
                 <a
                   href={formatDeploymentHref(selectedDeployment, baseDomain)}
                   rel="noreferrer"
                   target="_blank"
+                  className="text-zinc-900 hover:underline"
                 >
                   {formatDeploymentDomain(selectedDeployment, baseDomain)}
                 </a>
               </div>
-              <div className="git-active-card__meta-item">
-                <span className="git-active-card__meta-label">Branch</span>
+              <div>
+                <span className="block text-xs text-zinc-500">Branch</span>
                 <span>{selectedDeployment.branch ?? "default"}</span>
               </div>
-              <div className="git-active-card__meta-item">
-                <span className="git-active-card__meta-label">Access</span>
+              <div>
+                <span className="block text-xs text-zinc-500">Access</span>
                 <span>
                   {selectedDeployment.tokenStored
                     ? "Git token saved"
@@ -712,12 +752,12 @@ export function GitDeploymentPage({
               </div>
             </div>
 
-            <p className="git-active-card__summary">
+            <p className="text-xs text-zinc-500">
               {selectedDeployment.lastOperationSummary ??
                 "No deployment summary captured yet."}
             </p>
 
-            <div className="git-line__actions git-line__actions--left">
+            <div className="flex flex-wrap gap-2">
               <form action={redeployDeploymentAction}>
                 <input
                   name="deploymentId"
@@ -805,19 +845,22 @@ export function GitDeploymentPage({
                 variant="secondary"
                 size="sm"
               >
-                <Icon name="syslog" className="git-detail__logs-icon" />
+                <Icon name="syslog" className="h-3.5 w-3.5" />
                 Logs
               </Button>
             </div>
 
             {pendingDeleteDeploymentId === selectedDeployment.id ? (
-              <div className="git-delete-confirm" role="alert">
-                <div className="git-delete-confirm__copy">
+              <div
+                className="rounded-md border border-red-200 bg-red-50 p-3"
+                role="alert"
+              >
+                <div className="text-sm text-red-800">
                   Delete <strong>{selectedDeployment.appName}</strong> and
                   remove its deployment workspace?
                 </div>
 
-                <div className="git-delete-confirm__actions">
+                <div className="mt-2 flex gap-2">
                   <form action={removeDeploymentAction}>
                     <input
                       name="deploymentId"
@@ -847,7 +890,7 @@ export function GitDeploymentPage({
             ) : null}
 
             {editingDeploymentId === selectedDeployment.id ? (
-              <form action={updateDeploymentAction} className="git-edit-form">
+              <form action={updateDeploymentAction} className="space-y-3">
                 <input
                   name="deploymentId"
                   type="hidden"
@@ -896,7 +939,7 @@ export function GitDeploymentPage({
                   />
                 </div>
 
-                <div className="grid gap-2 git-edit-form__textarea">
+                <div className="grid gap-2">
                   <Label htmlFor={`envVariables-${selectedDeployment.id}`}>
                     Variables
                   </Label>
@@ -909,7 +952,7 @@ export function GitDeploymentPage({
                   />
                 </div>
 
-                <div className="git-edit-form__actions">
+                <div className="flex gap-2">
                   <SubmitButton
                     idleLabel="Save"
                     pendingLabel="Saving..."
@@ -929,7 +972,7 @@ export function GitDeploymentPage({
                 </div>
               </form>
             ) : null}
-          </div>
+          </Card>
         </section>
       ) : null}
     </div>
@@ -1021,11 +1064,9 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
   }, [deploymentId, activeLogTab, logRefreshKey]);
 
   return (
-    <div className="git-log-panel">
-      <div className="git-section-head git-section-head--logs">
-        <div>
-          <div className="git-section-head__title">Deployment logs</div>
-        </div>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-zinc-100 px-3 py-2">
+        <CardTitle>Deployment logs</CardTitle>
 
         <Button
           onClick={() => setLogRefreshKey((current) => current + 1)}
@@ -1038,38 +1079,33 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
         </Button>
       </div>
 
-      <div className="git-log-tabs" aria-label="Log types">
-        <Button
-          className={`git-log-tab ${activeLogTab === "build" ? "git-log-tab--active" : ""}`}
-          onClick={() => setActiveLogTab("build")}
-          type="button"
-          variant={activeLogTab === "build" ? "default" : "secondary"}
-          size="sm"
+      <div className="px-3 py-2">
+        <Tabs
+          value={activeLogTab}
+          onValueChange={(value) => setActiveLogTab(value as LogTab)}
         >
-          <Icon name="bars" className="h-3.5 w-3.5" />
-          Build log
-        </Button>
-        <Button
-          className={`git-log-tab ${activeLogTab === "container" ? "git-log-tab--active" : ""}`}
-          onClick={() => setActiveLogTab("container")}
-          type="button"
-          variant={activeLogTab === "container" ? "default" : "secondary"}
-          size="sm"
-        >
-          <Icon name="monitor" className="h-3.5 w-3.5" />
-          Container log
-        </Button>
+          <TabsList>
+            <TabsTrigger value="build">
+              <Icon name="bars" className="h-3.5 w-3.5" />
+              Build log
+            </TabsTrigger>
+            <TabsTrigger value="container">
+              <Icon name="monitor" className="h-3.5 w-3.5" />
+              Container log
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {deployment ? (
         <>
-          <div className="git-log-sidebar__meta">
+          <div className="space-y-1 px-3 py-2 text-xs">
             <div>
-              <span className="git-log-sidebar__meta-label">App</span>
+              <span className="text-zinc-400">App</span>{" "}
               <strong>{deployment.appName}</strong>
             </div>
             <div>
-              <span className="git-log-sidebar__meta-label">Updated</span>
+              <span className="text-zinc-400">Updated</span>{" "}
               <strong>
                 {formatDeploymentTime(
                   logState.payload?.updatedAt ?? deployment.updatedAt,
@@ -1078,23 +1114,27 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
             </div>
           </div>
 
-          <div className="git-log-sidebar__summary">
+          <CardDescription className="px-3">
             {logState.error ??
               logState.payload?.summary ??
               "Select a deployment to load logs."}
-          </div>
+          </CardDescription>
 
           {logState.isLoading ? (
-            <div className="git-log-sidebar__empty">Loading logs...</div>
+            <div className="p-3 text-center text-xs text-zinc-400">
+              Loading logs...
+            </div>
           ) : (
-            <pre className="git-log-output">
-              {logState.payload?.output ??
-                "No logs available for this deployment yet."}
-            </pre>
+            <ScrollArea className="mx-3 mt-2 flex-1 rounded-md bg-zinc-950">
+              <pre className="whitespace-pre-wrap p-3 font-mono text-xs text-zinc-300">
+                {logState.payload?.output ??
+                  "No logs available for this deployment yet."}
+              </pre>
+            </ScrollArea>
           )}
         </>
       ) : (
-        <div className="git-log-sidebar__empty">
+        <div className="p-3 text-center text-xs text-zinc-400">
           Select a deployment to view logs.
         </div>
       )}

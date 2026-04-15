@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import * as echarts from "echarts";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
@@ -123,7 +124,8 @@ export function SidebarMetricCharts({
       },
       tooltip: {
         trigger: "axis",
-        formatter: (params) => formatNetworkTooltip(params as NetworkTooltipParam[]),
+        formatter: (params) =>
+          formatNetworkTooltip(params as NetworkTooltipParam[]),
       },
       xAxis: {
         type: "category",
@@ -198,7 +200,8 @@ export function SidebarMetricCharts({
       },
       tooltip: {
         trigger: "axis",
-        formatter: (params) => formatCpuTooltip(params as NetworkTooltipParam[]),
+        formatter: (params) =>
+          formatCpuTooltip(params as NetworkTooltipParam[]),
       },
       xAxis: {
         type: "category",
@@ -318,34 +321,43 @@ export function SidebarMetricCharts({
   useChart(memoryRef, memoryOption);
 
   const classes = className
-    ? `sidebar-chart-stack ${className}`
-    : "sidebar-chart-stack";
+    ? `flex flex-col gap-3 p-3 ${className}`
+    : "flex flex-col gap-3 p-3";
 
   return (
     <div className={classes}>
-      <section className="sidebar-chart-card" aria-label="Network chart">
-        <div className="sidebar-chart-card__title-row">
-          <h3>Network</h3>
-        </div>
-        <div ref={networkRef} className="sidebar-chart-card__plot" />
-      </section>
+      <Card aria-label="Network chart">
+        <CardHeader className="py-1.5">
+          <CardTitle className="text-xs font-medium text-zinc-700">
+            Network
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div ref={networkRef} className="h-32" />
+        </CardContent>
+      </Card>
 
-      <section className="sidebar-chart-card" aria-label="CPU chart">
-        <div className="sidebar-chart-card__title-row">
-          <h3>CPU</h3>
-        </div>
-        <div ref={cpuRef} className="sidebar-chart-card__plot" />
-      </section>
+      <Card aria-label="CPU chart">
+        <CardHeader className="py-1.5">
+          <CardTitle className="text-xs font-medium text-zinc-700">
+            CPU
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div ref={cpuRef} className="h-32" />
+        </CardContent>
+      </Card>
 
-      <section className="sidebar-chart-card" aria-label="Memory chart">
-        <div className="sidebar-chart-card__title-row">
-          <h3>Memory</h3>
-        </div>
-        <div
-          ref={memoryRef}
-          className="sidebar-chart-card__plot sidebar-chart-card__plot--pie"
-        />
-      </section>
+      <Card aria-label="Memory chart">
+        <CardHeader className="py-1.5">
+          <CardTitle className="text-xs font-medium text-zinc-700">
+            Memory
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div ref={memoryRef} className="h-40" />
+        </CardContent>
+      </Card>
     </div>
   );
 }

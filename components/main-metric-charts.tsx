@@ -9,6 +9,7 @@ import {
 } from "react";
 import * as echarts from "echarts";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 
 const DOWNLOAD_COLOR = "#1f7aff";
@@ -109,12 +110,14 @@ function useChart(
 
 function MainChartCard({ title, children }: MainChartCardProps) {
   return (
-    <section className="main-metric-chart-card" aria-label={`${title} chart`}>
-      <div className="main-metric-chart-card__title-row">
-        <h3>{title}</h3>
-      </div>
-      {children}
-    </section>
+    <Card aria-label={`${title} chart`}>
+      <CardHeader className="py-1.5">
+        <CardTitle className="text-xs font-medium text-zinc-700">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -213,7 +216,7 @@ export function MainNetworkChart({
 
   return (
     <MainChartCard title="Network">
-      <div ref={networkRef} className="main-metric-chart-card__plot" />
+      <div ref={networkRef} className="h-48" />
     </MainChartCard>
   );
 }
@@ -304,7 +307,7 @@ export function MainCpuChart({ history }: { history: MetricsHistoryPoint[] }) {
 
   return (
     <MainChartCard title="CPU">
-      <div ref={cpuRef} className="main-metric-chart-card__plot" />
+      <div ref={cpuRef} className="h-48" />
     </MainChartCard>
   );
 }
@@ -398,7 +401,7 @@ export function MainMemoryChart({
 
   return (
     <MainChartCard title="Memory">
-      <div ref={memoryRef} className="main-metric-chart-card__plot" />
+      <div ref={memoryRef} className="h-48" />
     </MainChartCard>
   );
 }

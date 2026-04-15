@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 
 import { Icon } from "@/components/dashboard-kit";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type DashboardRightSidebarProps = {
   isCollapsed: boolean;
@@ -17,22 +19,29 @@ export function DashboardRightSidebar({
 }: DashboardRightSidebarProps) {
   return (
     <aside
-      className={`panel-right ${isCollapsed ? "panel-right--collapsed" : ""}`}
+      className={`shrink-0 border-l border-zinc-200 transition-all ${isCollapsed ? "w-0 overflow-hidden border-0" : "w-72"}`}
       aria-label="Deployment logs sidebar"
       id="logs-panel"
     >
-      <button
-        className="panel-right__collapse"
-        type="button"
-        aria-controls="logs-panel"
-        aria-label={isCollapsed ? "Show logs panel" : "Hide logs panel"}
-        onClick={onToggleAction}
-      >
-        <Icon name={isCollapsed ? "chevron-left" : "chevron-right"} />
-      </button>
+      <div className="flex items-center justify-start px-1 py-1">
+        <Button
+          type="button"
+          aria-controls="logs-panel"
+          aria-label={isCollapsed ? "Show logs panel" : "Hide logs panel"}
+          onClick={onToggleAction}
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+        >
+          <Icon
+            name={isCollapsed ? "chevron-left" : "chevron-right"}
+            className="h-3.5 w-3.5"
+          />
+        </Button>
+      </div>
 
       {!isCollapsed ? (
-        <div className="panel-right__content">{children}</div>
+        <ScrollArea className="h-[calc(100%-2rem)]">{children}</ScrollArea>
       ) : null}
     </aside>
   );

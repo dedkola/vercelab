@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Vercelab",
-  description: "Internal homelab deployment control plane for Docker and Traefik.",
+  description:
+    "Internal homelab deployment control plane for Docker and Traefik.",
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="h-screen overflow-hidden bg-white text-sm text-zinc-900">
+        {children}
+      </body>
     </html>
   );
 }

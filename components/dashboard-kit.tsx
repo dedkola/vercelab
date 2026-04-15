@@ -49,7 +49,7 @@ type IconProps = {
   title?: string;
 };
 
-export function Icon({ name, className = "icon", title }: IconProps) {
+export function Icon({ name, className = "h-4 w-4", title }: IconProps) {
   const s = {
     fill: "none",
     stroke: "currentColor",

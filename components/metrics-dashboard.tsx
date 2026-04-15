@@ -20,7 +20,7 @@ import { DashboardHeader } from "@/components/shell/dashboard-header";
 import { DashboardLeftSidebar } from "@/components/shell/dashboard-left-sidebar";
 import { DashboardRightSidebar } from "@/components/shell/dashboard-right-sidebar";
 import { SidebarMetricCharts } from "@/components/sidebar-metric-charts";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import type { DashboardData } from "@/lib/persistence";
@@ -240,10 +240,7 @@ export default function MetricsDashboard({
   const activeRailEntry = SECTION_META[activeSection];
 
   return (
-    <section
-      className="shell shell--compact"
-      aria-label="UniFi styled dashboard"
-    >
+    <section className="flex h-screen flex-col" aria-label="Dashboard">
       <DashboardHeader
         activeIcon={activeRailEntry.icon}
         activeLabel={activeRailEntry.label}
@@ -264,9 +261,7 @@ export default function MetricsDashboard({
         }
       />
 
-      <div
-        className={`body ${isPanelCollapsed ? "body--panel-collapsed" : ""} ${isGitSection ? (isRightPanelCollapsed ? "body--right-collapsed" : "body--right-open") : ""}`}
-      >
+      <div className="flex flex-1 overflow-hidden">
         <DashboardLeftSidebar
           activeSection={activeSection}
           isPanelCollapsed={isPanelCollapsed}
@@ -275,54 +270,43 @@ export default function MetricsDashboard({
           onTogglePanelAction={() => setIsPanelCollapsed((current) => !current)}
         >
           <SidebarMetricCharts
-            className="sidebar-chart-stack--embedded"
             history={deferredSidebarHistory}
             snapshot={deferredSidebarSnapshot}
           />
         </DashboardLeftSidebar>
 
-        <main className="main">
+        <main className="flex-1 overflow-auto p-4">
           {isOverviewSection ? (
-            <>
-              <section className="chart-area">
-                <div
-                  className="main-chart-toolbar"
-                  role="toolbar"
-                  aria-label="Main charts range selector"
+            <section className="space-y-4">
+              <div
+                className="flex items-center justify-between"
+                role="toolbar"
+                aria-label="Main charts range selector"
+              >
+                <div className="text-xs font-medium text-zinc-700">
+                  Main graphs
+                </div>
+                <Tabs
+                  value={overviewRange}
+                  onValueChange={(value) =>
+                    setOverviewRange(value as MainChartRange)
+                  }
                 >
-                  <div className="main-chart-toolbar__label">Main graphs</div>
-                  <div
-                    className="inline-flex items-center -space-x-px rounded-md shadow-sm rtl:space-x-reverse"
-                    role="radiogroup"
-                    aria-label="Metrics range"
-                  >
+                  <TabsList>
                     {MAIN_RANGE_OPTIONS.map((option) => (
-                      <Button
-                        key={option.value}
-                        type="button"
-                        size="sm"
-                        variant={
-                          overviewRange === option.value
-                            ? "secondary"
-                            : "default"
-                        }
-                        className="rounded-none shadow-none first:rounded-s-md last:rounded-e-md focus-visible:z-10"
-                        role="radio"
-                        aria-checked={overviewRange === option.value}
-                        onClick={() => setOverviewRange(option.value)}
-                      >
+                      <TabsTrigger key={option.value} value={option.value}>
                         {option.label}
-                      </Button>
+                      </TabsTrigger>
                     ))}
-                  </div>
-                </div>
-                <div className="main-chart-grid">
-                  <MainNetworkChart history={deferredMainHistory} />
-                  <MainCpuChart history={deferredMainHistory} />
-                  <MainMemoryChart history={deferredMainHistory} />
-                </div>
-              </section>
-            </>
+                  </TabsList>
+                </Tabs>
+              </div>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <MainNetworkChart history={deferredMainHistory} />
+                <MainCpuChart history={deferredMainHistory} />
+                <MainMemoryChart history={deferredMainHistory} />
+              </div>
+            </section>
           ) : (
             <GitDeploymentPage
               baseDomain={baseDomain}

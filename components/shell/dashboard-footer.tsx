@@ -10,9 +10,12 @@ export function DashboardFooter({
   updatedAtLabel,
 }: DashboardFooterProps) {
   return (
-    <footer className="shell-footer" aria-label="Dashboard footer">
-      <span className="shell-footer__section">Section: {activeSection}</span>
-      <span className="shell-footer__updated">Updated: {updatedAtLabel}</span>
+    <footer
+      className="flex h-7 shrink-0 items-center justify-between border-t border-zinc-200 px-3 text-xs text-zinc-500"
+      aria-label="Dashboard footer"
+    >
+      <span>Section: {activeSection}</span>
+      <span>Updated: {updatedAtLabel}</span>
     </footer>
   );
 }
