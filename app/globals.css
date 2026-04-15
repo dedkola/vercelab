@@ -146,7 +146,8 @@ a:focus-visible {
 
 .shell--compact .site-switch,
 .shell--compact .app-pill {
-  padding: 4px 8px;
+  height: 28px;
+  padding: 0 8px;
   font-size: 12px;
 }
 
@@ -264,10 +265,11 @@ a:focus-visible {
 .site-switch {
   display: inline-flex;
   align-items: center;
+  height: 32px;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   background: #fff;
   transition:
     background 150ms,
@@ -297,13 +299,14 @@ a:focus-visible {
 .app-pill {
   display: inline-flex;
   align-items: center;
+  height: 32px;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   background: #fff;
   color: #18181b;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   transition:
     background 150ms,
@@ -327,7 +330,7 @@ a:focus-visible {
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: #fff;
   color: var(--text-secondary);
   transition:
@@ -341,8 +344,8 @@ a:focus-visible {
 }
 
 .topbar-btn .icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .topbar-avatar {
@@ -365,8 +368,8 @@ a:focus-visible {
 }
 
 .topbar-avatar .icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 /* ── Body Grid ── */
@@ -437,8 +440,8 @@ a:focus-visible {
 
 .rail__link {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   border: 1px solid transparent;
@@ -473,8 +476,8 @@ a:focus-visible {
 }
 
 .rail__link .icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 /* ── Left Panel ── */
