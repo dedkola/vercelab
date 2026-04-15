@@ -28,25 +28,7 @@ export function DashboardRightSidebar({
   onToggleAction,
   children,
 }: DashboardRightSidebarProps) {
-  const [panelWidth, setPanelWidth] = useState(() => {
-    if (typeof window === "undefined") {
-      return DEFAULT_WIDTH_PX;
-    }
-
-    const storedWidth = window.localStorage.getItem(STORAGE_KEY);
-
-    if (!storedWidth) {
-      return DEFAULT_WIDTH_PX;
-    }
-
-    const parsedWidth = Number.parseInt(storedWidth, 10);
-
-    if (!Number.isFinite(parsedWidth)) {
-      return DEFAULT_WIDTH_PX;
-    }
-
-    return Math.min(MAX_WIDTH_PX, Math.max(MIN_WIDTH_PX, parsedWidth));
-  });
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH_PX);
   const dragStateRef = useRef<{
     isDragging: boolean;
     startWidth: number;
@@ -56,6 +38,23 @@ export function DashboardRightSidebar({
     startWidth: DEFAULT_WIDTH_PX,
     startX: 0,
   });
+
+  useEffect(() => {
+    const storedWidth = window.localStorage.getItem(STORAGE_KEY);
+
+    if (!storedWidth) {
+      return;
+    }
+
+    const parsedWidth = Number.parseInt(storedWidth, 10);
+
+    if (!Number.isFinite(parsedWidth)) {
+      return;
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPanelWidth(Math.min(MAX_WIDTH_PX, Math.max(MIN_WIDTH_PX, parsedWidth)));
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(Math.round(panelWidth)));

@@ -45,28 +45,7 @@ export function DashboardLeftSidebar({
   onTogglePanelAction,
   children,
 }: DashboardLeftSidebarProps) {
-  const [panelWidth, setPanelWidth] = useState(() => {
-    if (typeof window === "undefined") {
-      return DEFAULT_PANEL_WIDTH_PX;
-    }
-
-    const storedWidth = window.localStorage.getItem(STORAGE_KEY);
-
-    if (!storedWidth) {
-      return DEFAULT_PANEL_WIDTH_PX;
-    }
-
-    const parsedWidth = Number.parseInt(storedWidth, 10);
-
-    if (!Number.isFinite(parsedWidth)) {
-      return DEFAULT_PANEL_WIDTH_PX;
-    }
-
-    return Math.min(
-      MAX_PANEL_WIDTH_PX,
-      Math.max(MIN_PANEL_WIDTH_PX, parsedWidth),
-    );
-  });
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH_PX);
   const dragStateRef = useRef<{
     isDragging: boolean;
     startWidth: number;
@@ -76,6 +55,25 @@ export function DashboardLeftSidebar({
     startWidth: DEFAULT_PANEL_WIDTH_PX,
     startX: 0,
   });
+
+  useEffect(() => {
+    const storedWidth = window.localStorage.getItem(STORAGE_KEY);
+
+    if (!storedWidth) {
+      return;
+    }
+
+    const parsedWidth = Number.parseInt(storedWidth, 10);
+
+    if (!Number.isFinite(parsedWidth)) {
+      return;
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPanelWidth(
+      Math.min(MAX_PANEL_WIDTH_PX, Math.max(MIN_PANEL_WIDTH_PX, parsedWidth)),
+    );
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(Math.round(panelWidth)));
@@ -200,7 +198,7 @@ export function DashboardLeftSidebar({
           </div>
 
           <ScrollArea
-            className="h-[calc(100%-2rem)] min-w-0"
+            className="h-[calc(100%-2rem)] min-w-0 [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!w-full [&>[data-radix-scroll-area-viewport]>div]:min-w-0"
             id="gateway-panel-content"
           >
             {children}
