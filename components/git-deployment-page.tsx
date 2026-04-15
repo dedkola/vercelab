@@ -12,6 +12,15 @@ import {
 } from "@/app/actions";
 import { Icon } from "@/components/dashboard-kit";
 import { SubmitButton } from "@/components/submit-button";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupSuffix,
+} from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
 import type { GitHubRepository } from "@/lib/github";
 import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
 
@@ -23,8 +32,8 @@ type GitDeploymentPageProps = {
     status: "success" | "error";
   } | null;
   githubToken: string;
-  onDeploymentSelect?: (id: string | null) => void;
-  onToggleLogs?: (id: string) => void;
+  onDeploymentSelectAction?: (id: string | null) => void;
+  onToggleLogsAction?: (id: string) => void;
   repositoryDraft: GitHubRepository | null;
   repositoryDraftSignal: number;
 };
@@ -177,8 +186,8 @@ export function GitDeploymentPage({
   dashboardData,
   flashMessage,
   githubToken,
-  onDeploymentSelect,
-  onToggleLogs,
+  onDeploymentSelectAction,
+  onToggleLogsAction,
   repositoryDraft,
   repositoryDraftSignal,
 }: GitDeploymentPageProps) {
@@ -200,6 +209,9 @@ export function GitDeploymentPage({
   const [localBanner, setLocalBanner] =
     useState<GitDeploymentPageProps["flashMessage"]>(null);
   const [isCreatingDeployment, setIsCreatingDeployment] = useState(false);
+  const [storeTokenWithDeployment, setStoreTokenWithDeployment] = useState(
+    Boolean(githubToken.trim()),
+  );
   const [selectedDeploymentId, setSelectedDeploymentId] = useState<
     string | null
   >(null);
@@ -218,9 +230,10 @@ export function GitDeploymentPage({
     }
 
     setDraftState(buildDraftState(repositoryDraft));
+    setStoreTokenWithDeployment(Boolean(githubToken.trim()));
     setLocalBanner(null);
     setShowForm(true);
-  }, [repositoryDraft, repositoryDraftSignal]);
+  }, [githubToken, repositoryDraft, repositoryDraftSignal]);
 
   useEffect(() => {
     if (deployments.length === 0) {
@@ -282,7 +295,7 @@ export function GitDeploymentPage({
 
       setPreferredDeploymentId(payload.deploymentId);
       setSelectedDeploymentId(payload.deploymentId);
-      onDeploymentSelect?.(payload.deploymentId);
+      onDeploymentSelectAction?.(payload.deploymentId);
       setView("detail");
       setLocalBanner({
         status: "success",
@@ -307,7 +320,7 @@ export function GitDeploymentPage({
     setEditingDeploymentId(null);
     setPendingDeleteDeploymentId(null);
     setView("detail");
-    onDeploymentSelect?.(deploymentId);
+    onDeploymentSelectAction?.(deploymentId);
   }
 
   function handleBackToList() {
@@ -315,7 +328,7 @@ export function GitDeploymentPage({
     setSelectedDeploymentId(null);
     setEditingDeploymentId(null);
     setPendingDeleteDeploymentId(null);
-    onDeploymentSelect?.(null);
+    onDeploymentSelectAction?.(null);
   }
 
   return (
@@ -355,21 +368,27 @@ export function GitDeploymentPage({
           className="unifi-card git-compose-card"
           aria-label="Deployment draft"
         >
-          <button
+          <Button
             className="git-compose-card__close"
             onClick={() => setShowForm(false)}
             type="button"
             aria-label="Close form"
+            variant="ghost"
+            size="icon"
           >
             <Icon name="x-close" className="git-compose-card__close-icon" />
-          </button>
+          </Button>
 
           {repositoryDraft ? (
             <form
               className="git-form git-form--draft"
               onSubmit={handleCreateDeployment}
             >
-              <input name="githubToken" type="hidden" value={githubToken} />
+              <input
+                name="githubToken"
+                type="hidden"
+                value={storeTokenWithDeployment ? githubToken : ""}
+              />
               <input
                 name="repositoryUrl"
                 type="hidden"
@@ -401,10 +420,10 @@ export function GitDeploymentPage({
                 </a>
               </div>
 
-              <div className="git-form__grid">
-                <label className="field" htmlFor="branch">
-                  <span className="field__label">Branch</span>
-                  <input
+              <div className="git-form__grid flex flex-wrap items-end gap-3">
+                <div className="field min-w-40 flex-1">
+                  <Label htmlFor="branch">Branch</Label>
+                  <Input
                     id="branch"
                     name="branch"
                     onChange={(event) =>
@@ -417,11 +436,11 @@ export function GitDeploymentPage({
                     type="text"
                     value={draftState.branch}
                   />
-                </label>
+                </div>
 
-                <label className="field" htmlFor="appName">
-                  <span className="field__label">App name</span>
-                  <input
+                <div className="field min-w-45 flex-1">
+                  <Label htmlFor="appName">App name</Label>
+                  <Input
                     id="appName"
                     name="appName"
                     onChange={(event) =>
@@ -434,12 +453,12 @@ export function GitDeploymentPage({
                     type="text"
                     value={draftState.appName}
                   />
-                </label>
+                </div>
 
-                <label className="field" htmlFor="subdomain">
-                  <span className="field__label">Wildcard domain</span>
-                  <div className="field-combo">
-                    <input
+                <div className="field min-w-55 flex-[1.4]">
+                  <Label htmlFor="subdomain">Wildcard domain</Label>
+                  <InputGroup>
+                    <InputGroupInput
                       id="subdomain"
                       name="subdomain"
                       onChange={(event) =>
@@ -452,13 +471,13 @@ export function GitDeploymentPage({
                       type="text"
                       value={draftState.subdomain}
                     />
-                    <span className="field-combo__suffix">.{baseDomain}</span>
-                  </div>
-                </label>
+                    <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                  </InputGroup>
+                </div>
 
-                <label className="field" htmlFor="port">
-                  <span className="field__label">Port</span>
-                  <input
+                <div className="field w-27.5">
+                  <Label htmlFor="port">Port</Label>
+                  <Input
                     id="port"
                     max="65535"
                     min="1"
@@ -473,11 +492,11 @@ export function GitDeploymentPage({
                     type="number"
                     value={draftState.port}
                   />
-                </label>
+                </div>
 
-                <label className="field" htmlFor="serviceName">
-                  <span className="field__label">Service name</span>
-                  <input
+                <div className="field min-w-55 flex-1">
+                  <Label htmlFor="serviceName">Service name</Label>
+                  <Input
                     id="serviceName"
                     name="serviceName"
                     onChange={(event) =>
@@ -490,12 +509,13 @@ export function GitDeploymentPage({
                     type="text"
                     value={draftState.serviceName}
                   />
-                </label>
+                </div>
               </div>
 
-              <label className="field" htmlFor="envVariables">
-                <span className="field__label">Variables</span>
+              <div className="field">
+                <Label htmlFor="envVariables">Variables</Label>
                 <textarea
+                  className="min-h-27 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text) shadow-sm placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
                   id="envVariables"
                   name="envVariables"
                   onChange={(event) =>
@@ -515,20 +535,32 @@ export function GitDeploymentPage({
                   repository is private, keep the token in the Git sidebar so it
                   can be stored with the deployment.
                 </span>
-              </label>
+              </div>
 
-              <div className="git-form__actions git-form__actions--inline">
+              <div className="git-form__actions git-form__actions--inline flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 text-xs text-(--text-secondary)">
+                  <Checkbox
+                    checked={storeTokenWithDeployment}
+                    disabled={!githubToken.trim()}
+                    onCheckedChange={(checked) =>
+                      setStoreTokenWithDeployment(checked === true)
+                    }
+                  />
+                  Store Git token with deployment
+                </label>
                 <p className="git-form__note">
                   Vercelab clones the selected repository, builds the app, and
                   exposes it at .{baseDomain}.
                 </p>
-                <button
-                  className="button button--primary"
+                <Button
                   disabled={isCreatingDeployment}
+                  size="sm"
                   type="submit"
+                  variant="default"
                 >
+                  <Icon name="cloud" className="h-3.5 w-3.5" />
                   {isCreatingDeployment ? "Deploying..." : "Create deployment"}
-                </button>
+                </Button>
               </div>
             </form>
           ) : (
@@ -601,13 +633,13 @@ export function GitDeploymentPage({
                     aria-label={`View logs for ${deployment.appName}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onToggleLogs?.(deployment.id);
+                      onToggleLogsAction?.(deployment.id);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.stopPropagation();
                         e.preventDefault();
-                        onToggleLogs?.(deployment.id);
+                        onToggleLogsAction?.(deployment.id);
                       }
                     }}
                   >
@@ -626,14 +658,16 @@ export function GitDeploymentPage({
 
       {view === "detail" && selectedDeployment ? (
         <section className="git-detail" aria-label="Deployment detail">
-          <button
+          <Button
             className="git-detail__back"
             onClick={handleBackToList}
             type="button"
+            variant="secondary"
+            size="sm"
           >
             <Icon name="chevron-left" className="git-detail__back-icon" />
             Back to deployments
-          </button>
+          </Button>
 
           <div className="unifi-card git-detail-info">
             <div className="git-section-head">
@@ -695,6 +729,7 @@ export function GitDeploymentPage({
                   pendingLabel="Redeploying..."
                   size="small"
                   variant="secondary"
+                  iconName="cloud"
                 />
               </form>
 
@@ -709,6 +744,7 @@ export function GitDeploymentPage({
                   pendingLabel="Fetching..."
                   size="small"
                   variant="secondary"
+                  iconName="arrow-down"
                 />
               </form>
 
@@ -723,11 +759,11 @@ export function GitDeploymentPage({
                   pendingLabel="Stopping..."
                   size="small"
                   variant="secondary"
+                  iconName="x-close"
                 />
               </form>
 
-              <button
-                className="button button--secondary button--small"
+              <Button
                 onClick={() => {
                   setPendingDeleteDeploymentId(null);
                   setEditingDeploymentId((current) =>
@@ -737,12 +773,14 @@ export function GitDeploymentPage({
                   );
                 }}
                 type="button"
+                variant="secondary"
+                size="sm"
               >
+                <Icon name="settings" className="h-3.5 w-3.5" />
                 Edit
-              </button>
+              </Button>
 
-              <button
-                className="button button--danger button--small"
+              <Button
                 onClick={() => {
                   setEditingDeploymentId((current) =>
                     current === selectedDeployment.id ? null : current,
@@ -754,18 +792,22 @@ export function GitDeploymentPage({
                   );
                 }}
                 type="button"
+                variant="danger"
+                size="sm"
               >
+                <Icon name="x-close" className="h-3.5 w-3.5" />
                 Delete
-              </button>
+              </Button>
 
-              <button
-                className="button button--secondary button--small"
-                onClick={() => onToggleLogs?.(selectedDeployment.id)}
+              <Button
+                onClick={() => onToggleLogsAction?.(selectedDeployment.id)}
                 type="button"
+                variant="secondary"
+                size="sm"
               >
                 <Icon name="syslog" className="git-detail__logs-icon" />
                 Logs
-              </button>
+              </Button>
             </div>
 
             {pendingDeleteDeploymentId === selectedDeployment.id ? (
@@ -787,16 +829,19 @@ export function GitDeploymentPage({
                       pendingLabel="Deleting..."
                       size="small"
                       variant="danger"
+                      iconName="x-close"
                     />
                   </form>
 
-                  <button
-                    className="button button--secondary button--small"
+                  <Button
                     onClick={() => setPendingDeleteDeploymentId(null)}
                     type="button"
+                    variant="secondary"
+                    size="sm"
                   >
+                    <Icon name="chevron-left" className="h-3.5 w-3.5" />
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}
@@ -809,43 +854,38 @@ export function GitDeploymentPage({
                   value={selectedDeployment.id}
                 />
 
-                <label
-                  className="field field--compact"
-                  htmlFor={`appName-${selectedDeployment.id}`}
-                >
-                  <span className="field__label">Name</span>
-                  <input
+                <div className="field field--compact">
+                  <Label htmlFor={`appName-${selectedDeployment.id}`}>
+                    Name
+                  </Label>
+                  <Input
                     defaultValue={selectedDeployment.appName}
                     id={`appName-${selectedDeployment.id}`}
                     name="appName"
                     required
                     type="text"
                   />
-                </label>
+                </div>
 
-                <label
-                  className="field field--compact"
-                  htmlFor={`subdomain-${selectedDeployment.id}`}
-                >
-                  <span className="field__label">Url</span>
-                  <div className="field-combo">
-                    <input
+                <div className="field field--compact">
+                  <Label htmlFor={`subdomain-${selectedDeployment.id}`}>
+                    Url
+                  </Label>
+                  <InputGroup>
+                    <InputGroupInput
                       defaultValue={selectedDeployment.subdomain}
                       id={`subdomain-${selectedDeployment.id}`}
                       name="subdomain"
                       required
                       type="text"
                     />
-                    <span className="field-combo__suffix">.{baseDomain}</span>
-                  </div>
-                </label>
+                    <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                  </InputGroup>
+                </div>
 
-                <label
-                  className="field field--compact"
-                  htmlFor={`port-${selectedDeployment.id}`}
-                >
-                  <span className="field__label">Port</span>
-                  <input
+                <div className="field field--compact">
+                  <Label htmlFor={`port-${selectedDeployment.id}`}>Port</Label>
+                  <Input
                     defaultValue={String(selectedDeployment.port)}
                     id={`port-${selectedDeployment.id}`}
                     max="65535"
@@ -854,20 +894,20 @@ export function GitDeploymentPage({
                     required
                     type="number"
                   />
-                </label>
+                </div>
 
-                <label
-                  className="field field--compact git-edit-form__textarea"
-                  htmlFor={`envVariables-${selectedDeployment.id}`}
-                >
-                  <span className="field__label">Variables</span>
+                <div className="field field--compact git-edit-form__textarea">
+                  <Label htmlFor={`envVariables-${selectedDeployment.id}`}>
+                    Variables
+                  </Label>
                   <textarea
+                    className="min-h-24 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text) shadow-sm placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
                     defaultValue={selectedDeployment.envVariables ?? ""}
                     id={`envVariables-${selectedDeployment.id}`}
                     name="envVariables"
                     rows={4}
                   />
-                </label>
+                </div>
 
                 <div className="git-edit-form__actions">
                   <SubmitButton
@@ -875,14 +915,17 @@ export function GitDeploymentPage({
                     pendingLabel="Saving..."
                     size="small"
                     variant="primary"
+                    iconName="check"
                   />
-                  <button
-                    className="button button--secondary button--small"
+                  <Button
                     onClick={() => setEditingDeploymentId(null)}
                     type="button"
+                    variant="secondary"
+                    size="sm"
                   >
+                    <Icon name="chevron-left" className="h-3.5 w-3.5" />
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </form>
             ) : null}
@@ -984,30 +1027,38 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
           <div className="git-section-head__title">Deployment logs</div>
         </div>
 
-        <button
-          className="button button--secondary button--small"
+        <Button
           onClick={() => setLogRefreshKey((current) => current + 1)}
           type="button"
+          variant="secondary"
+          size="sm"
         >
+          <Icon name="arrow-down" className="h-3.5 w-3.5" />
           Refresh
-        </button>
+        </Button>
       </div>
 
       <div className="git-log-tabs" aria-label="Log types">
-        <button
+        <Button
           className={`git-log-tab ${activeLogTab === "build" ? "git-log-tab--active" : ""}`}
           onClick={() => setActiveLogTab("build")}
           type="button"
+          variant={activeLogTab === "build" ? "default" : "secondary"}
+          size="sm"
         >
+          <Icon name="bars" className="h-3.5 w-3.5" />
           Build log
-        </button>
-        <button
+        </Button>
+        <Button
           className={`git-log-tab ${activeLogTab === "container" ? "git-log-tab--active" : ""}`}
           onClick={() => setActiveLogTab("container")}
           type="button"
+          variant={activeLogTab === "container" ? "default" : "secondary"}
+          size="sm"
         >
+          <Icon name="monitor" className="h-3.5 w-3.5" />
           Container log
-        </button>
+        </Button>
       </div>
 
       {deployment ? (

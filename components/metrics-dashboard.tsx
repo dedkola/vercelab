@@ -5,8 +5,6 @@ import {
   useDeferredValue,
   useEffect,
   useEffectEvent,
-  useId,
-  useRef,
   useState,
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -15,6 +13,10 @@ import { StackedArea, themes, useContainerWidth } from "@derpdaderp/chartkit";
 
 import { Icon, type IconName } from "@/components/dashboard-kit";
 import { SidebarMetricCharts } from "@/components/sidebar-metric-charts";
+import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
 import type { GitHubRepository } from "@/lib/github";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
@@ -393,11 +395,7 @@ function TrafficDonut({
   );
 }
 
-function MainTrafficChart({
-  history,
-}: {
-  history: HistoryPoint[];
-}) {
+function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
   const width = 1160;
   const height = 262;
   const lineInset = 56;
@@ -610,25 +608,22 @@ export default function MetricsDashboard({
   const [isLoadingGitRepositories, setIsLoadingGitRepositories] =
     useState(false);
   const [selectedGitRepositoryId, setSelectedGitRepositoryId] = useState("");
-  const [isGitRepositoryMenuOpen, setIsGitRepositoryMenuOpen] = useState(false);
   const [repositoryDraft, setRepositoryDraft] =
     useState<GitHubRepository | null>(null);
   const [repositoryDraftSignal, setRepositoryDraftSignal] = useState(0);
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const gitRepositoryMenuId = useId();
-  const gitRepositoryMenuRef = useRef<HTMLDivElement | null>(null);
 
   const deferredSnapshot = useDeferredValue(snapshot);
   const deferredHistory = useDeferredValue(history);
 
   const commitSnapshot = useEffectEvent(
     (nextSnapshot: MetricsSnapshot, nextHistory: MetricsHistoryPoint[]) => {
-    startTransition(() => {
-      setSnapshot(nextSnapshot);
-      setHistory(nextHistory.slice(-HISTORY_LIMIT));
-      setErrorMessage(null);
-    });
+      startTransition(() => {
+        setSnapshot(nextSnapshot);
+        setHistory(nextHistory.slice(-HISTORY_LIMIT));
+        setErrorMessage(null);
+      });
     },
   );
 
@@ -649,7 +644,6 @@ export default function MetricsDashboard({
     }
 
     setIsLoadingGitRepositories(true);
-    setIsGitRepositoryMenuOpen(false);
     setGitRepositoriesError(null);
 
     try {
@@ -711,38 +705,8 @@ export default function MetricsDashboard({
 
     setRepositoryDraft(selectedGitRepository);
     setRepositoryDraftSignal((current) => current + 1);
-    setIsGitRepositoryMenuOpen(false);
     setGitRepositoriesError(null);
   }
-
-  useEffect(() => {
-    if (!isGitRepositoryMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (
-        gitRepositoryMenuRef.current &&
-        !gitRepositoryMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsGitRepositoryMenuOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsGitRepositoryMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isGitRepositoryMenuOpen]);
 
   useEffect(() => {
     setActiveSection(initialSection);
@@ -1066,9 +1030,9 @@ export default function MetricsDashboard({
                       void loadGitRepositories();
                     }}
                   >
-                    <label className="field" htmlFor="githubToken">
-                      <span className="field__label">GitHub token</span>
-                      <input
+                    <div className="field">
+                      <Label htmlFor="githubToken">GitHub token</Label>
+                      <Input
                         autoComplete="off"
                         id="githubToken"
                         onChange={(event) => setGithubToken(event.target.value)}
@@ -1076,120 +1040,62 @@ export default function MetricsDashboard({
                         type="password"
                         value={githubToken}
                       />
-                    </label>
+                    </div>
 
                     <div className="git-panel__actions">
-                      <button
+                      <Button
                         className="git-panel__load-button"
                         disabled={isLoadingGitRepositories}
                         type="submit"
+                        variant="secondary"
+                        size="sm"
                       >
+                        <Icon name="search" className="h-3.5 w-3.5" />
                         {isLoadingGitRepositories ? "Loading..." : "Load repos"}
-                      </button>
+                      </Button>
                     </div>
                   </form>
 
                   <div className="field">
-                    <span className="field__label">Repository</span>
+                    <Label>Repository</Label>
                     <div className="git-panel__repo-row">
-                      <div
-                        className="git-panel__dropdown"
-                        ref={gitRepositoryMenuRef}
-                      >
-                        <button
-                          aria-controls={gitRepositoryMenuId}
-                          aria-expanded={isGitRepositoryMenuOpen}
-                          className="header-dropdown git-panel__dropdown-trigger"
+                      <div className="git-panel__dropdown">
+                        <Combobox
                           disabled={
                             isLoadingGitRepositories ||
                             gitRepositories.length === 0
                           }
-                          onClick={() =>
-                            setIsGitRepositoryMenuOpen((current) => !current)
+                          emptyText="No repository found."
+                          onValueChangeAction={setSelectedGitRepositoryId}
+                          options={gitRepositories.map((repository) => ({
+                            value: String(repository.id),
+                            label: repository.fullName,
+                            description: `${repository.visibility} branch ${repository.defaultBranch}`,
+                          }))}
+                          placeholder={
+                            gitRepositories.length > 0
+                              ? "Choose a repository"
+                              : isLoadingGitRepositories
+                                ? "Loading repositories..."
+                                : "Load repositories first"
                           }
-                          type="button"
-                        >
-                          <span className="git-panel__dropdown-value">
-                            <span className="git-panel__dropdown-copy">
-                              <span className="git-panel__dropdown-title">
-                                {selectedGitRepository?.fullName ??
-                                  (gitRepositories.length > 0
-                                    ? "Choose a repository"
-                                    : isLoadingGitRepositories
-                                      ? "Loading repositories..."
-                                      : "Load repositories first")}
-                              </span>
-                              <span className="git-panel__dropdown-meta">
-                                {selectedGitRepository
-                                  ? `${selectedGitRepository.visibility} branch ${selectedGitRepository.defaultBranch}`
-                                  : gitRepositories.length > 0
-                                    ? `${gitRepositories.length} repositories ready`
-                                    : "Use your token to load repositories"}
-                              </span>
-                            </span>
-                          </span>
-                          <Icon name="chevron-down" />
-                        </button>
-
-                        {isGitRepositoryMenuOpen ? (
-                          <div
-                            className="git-panel__dropdown-menu"
-                            id={gitRepositoryMenuId}
-                            role="listbox"
-                          >
-                            {gitRepositories.length > 0 ? (
-                              gitRepositories.map((repository) => {
-                                const isSelected =
-                                  String(repository.id) ===
-                                  selectedGitRepositoryId;
-
-                                return (
-                                  <button
-                                    aria-selected={isSelected}
-                                    className={`git-panel__dropdown-option ${
-                                      isSelected
-                                        ? "git-panel__dropdown-option--selected"
-                                        : ""
-                                    }`}
-                                    key={repository.id}
-                                    onClick={() => {
-                                      setSelectedGitRepositoryId(
-                                        String(repository.id),
-                                      );
-                                      setIsGitRepositoryMenuOpen(false);
-                                    }}
-                                    role="option"
-                                    type="button"
-                                  >
-                                    <span className="git-panel__dropdown-option-name">
-                                      {repository.fullName}
-                                    </span>
-                                    <span className="git-panel__dropdown-option-meta">
-                                      {repository.visibility} branch{" "}
-                                      {repository.defaultBranch}
-                                    </span>
-                                  </button>
-                                );
-                              })
-                            ) : (
-                              <div className="git-panel__dropdown-empty">
-                                Load repositories to start a deployment draft.
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
+                          searchPlaceholder="Search repositories..."
+                          value={selectedGitRepositoryId}
+                        />
                       </div>
 
-                      <button
-                        className="button button--secondary"
+                      <Button
                         disabled={!selectedGitRepository}
                         onClick={() => {
                           queueSelectedRepository();
                         }}
                         type="button"
+                        variant="secondary"
+                        size="sm"
                       >
+                        <Icon name="check" className="h-3.5 w-3.5" />
                         Add
-                      </button>
+                      </Button>
                     </div>
                   </div>
 
@@ -1224,9 +1130,7 @@ export default function MetricsDashboard({
           {isOverviewSection ? (
             <>
               <section className="chart-area">
-                <MainTrafficChart
-                  history={deferredHistory}
-                />
+                <MainTrafficChart history={deferredHistory} />
               </section>
 
               <section className="dashboard-overview">
@@ -1384,8 +1288,8 @@ export default function MetricsDashboard({
               dashboardData={dashboardData}
               flashMessage={flashMessage}
               githubToken={githubToken}
-              onDeploymentSelect={(id) => setLogDeploymentId(id)}
-              onToggleLogs={(id) => {
+              onDeploymentSelectAction={(id) => setLogDeploymentId(id)}
+              onToggleLogsAction={(id) => {
                 setLogDeploymentId(id);
                 setIsRightPanelCollapsed(false);
               }}
