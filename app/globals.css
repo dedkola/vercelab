@@ -266,12 +266,17 @@ a:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
-  transition: background 150ms;
+  background: #fff;
+  transition:
+    background 150ms,
+    border-color 150ms;
 }
 
 .site-switch:hover {
-  background: var(--border-light);
+  background: #fafafa;
+  border-color: #d4d4d8;
 }
 
 .site-switch__dot {
@@ -294,12 +299,20 @@ a:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: #fff;
+  color: #18181b;
   font-size: 13px;
   font-weight: 600;
-  transition: background 150ms;
+  transition:
+    background 150ms,
+    border-color 150ms;
+}
+
+.app-pill:hover {
+  background: #fafafa;
+  border-color: #d4d4d8;
 }
 
 .app-pill .icon {
@@ -313,13 +326,18 @@ a:focus-visible {
   height: 32px;
   display: grid;
   place-items: center;
+  border: 1px solid var(--border);
   border-radius: 50%;
+  background: #fff;
   color: var(--text-secondary);
-  transition: background 150ms;
+  transition:
+    background 150ms,
+    border-color 150ms;
 }
 
 .topbar-btn:hover {
-  background: var(--border-light);
+  background: #fafafa;
+  border-color: #d4d4d8;
 }
 
 .topbar-btn .icon {
@@ -330,16 +348,20 @@ a:focus-visible {
 .topbar-avatar {
   width: 32px;
   height: 32px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--border);
+  background: #fff;
   display: grid;
   place-items: center;
   color: var(--text-muted);
-  transition: background 150ms;
+  transition:
+    background 150ms,
+    border-color 150ms;
 }
 
 .topbar-avatar:hover {
-  background: #dde1e6;
+  background: #fafafa;
+  border-color: #d4d4d8;
 }
 
 .topbar-avatar .icon {
@@ -419,21 +441,26 @@ a:focus-visible {
   height: 36px;
   display: grid;
   place-items: center;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
+  background: #fff;
   color: var(--text-muted);
   transition:
     background 150ms,
-    color 150ms;
+    color 150ms,
+    border-color 150ms;
 }
 
 .rail__link:hover {
-  background: var(--border-light);
+  background: #fafafa;
+  border-color: #d4d4d8;
   color: var(--text-secondary);
 }
 
 .rail__link--active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: #f4f4f5;
+  border-color: #d4d4d8;
+  color: #18181b;
 }
 
 .rail__link--muted {
