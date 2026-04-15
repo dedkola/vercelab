@@ -1210,10 +1210,12 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
   const [logRefreshKey, setLogRefreshKey] = useState(0);
   const [logState, setLogState] = useState<{
     isLoading: boolean;
+    isRefreshing: boolean;
     error: string | null;
     payload: DeploymentLogPayload | null;
   }>({
     isLoading: false,
+    isRefreshing: false,
     error: null,
     payload: null,
   });
@@ -1225,17 +1227,36 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
   }, [deploymentId]);
 
   useEffect(() => {
+    if (!deploymentId) {
+      setLogState({
+        isLoading: false,
+        isRefreshing: false,
+        error: null,
+        payload: null,
+      });
+      return;
+    }
+
+    setLogState({
+      isLoading: true,
+      isRefreshing: false,
+      error: null,
+      payload: null,
+    });
+  }, [activeLogTab, deploymentId]);
+
+  useEffect(() => {
     let cancelled = false;
 
     if (!deploymentId) {
-      setLogState({ isLoading: false, error: null, payload: null });
       return;
     }
 
     const loadLogs = async () => {
       setLogState((current) => ({
         ...current,
-        isLoading: true,
+        isLoading: current.payload === null,
+        isRefreshing: current.payload !== null,
         error: null,
       }));
 
@@ -1262,6 +1283,7 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
 
         setLogState({
           isLoading: false,
+          isRefreshing: false,
           error: null,
           payload: payload as DeploymentLogPayload,
         });
@@ -1270,14 +1292,15 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
           return;
         }
 
-        setLogState({
+        setLogState((current) => ({
+          ...current,
           isLoading: false,
+          isRefreshing: false,
           error:
             error instanceof Error
               ? error.message
               : "Unable to load deployment logs.",
-          payload: null,
-        });
+        }));
       }
     };
 
@@ -1307,15 +1330,21 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
       <div className="flex items-center justify-between border-b px-3 py-2">
         <CardTitle>Deployment logs</CardTitle>
 
-        <Button
-          onClick={() => setLogRefreshKey((current) => current + 1)}
-          type="button"
-          variant="secondary"
-          size="sm"
-        >
-          <Icon name="arrow-down" className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {logState.isRefreshing ? (
+            <span className="text-xs text-muted-foreground">Refreshing...</span>
+          ) : null}
+
+          <Button
+            onClick={() => setLogRefreshKey((current) => current + 1)}
+            type="button"
+            variant="secondary"
+            size="sm"
+          >
+            <Icon name="arrow-down" className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="px-3 py-2">
