@@ -318,8 +318,6 @@ export default function MetricsDashboard({
                 setLogDeploymentId(id);
                 setIsRightPanelCollapsed(false);
               }}
-              repositoryDraft={null}
-              repositoryDraftSignal={0}
             />
           )}
         </main>

@@ -125,3 +125,15 @@ export function getAppConfig(): AppConfig {
 
   return cachedConfig;
 }
+
+export function invalidateAppConfig() {
+  cachedConfig = undefined;
+}
+
+export function updateProcessEnvValue(
+  name: keyof NodeJS.ProcessEnv,
+  value: string,
+) {
+  process.env[name] = value;
+  invalidateAppConfig();
+}

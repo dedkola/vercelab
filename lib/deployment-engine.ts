@@ -188,6 +188,16 @@ function buildGitCloneUrl(repositoryUrl: string, token: string | null) {
   return parsed.toString();
 }
 
+async function resolveDeploymentGitToken(deploymentId: string) {
+  const storedToken = await readDeploymentSecretToken(deploymentId);
+
+  if (storedToken) {
+    return storedToken;
+  }
+
+  return getAppConfig().security.githubToken;
+}
+
 async function runCommand(
   command: string,
   args: string[],
@@ -309,7 +319,7 @@ async function cloneRepository(deployment: StoredDeployment) {
 
   const cloneUrl = buildGitCloneUrl(
     deployment.repositoryUrl,
-    await readDeploymentSecretToken(deployment.id),
+    await resolveDeploymentGitToken(deployment.id),
   );
 
   const args = ["clone", "--depth", "1"];

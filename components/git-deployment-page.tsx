@@ -21,7 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -45,8 +45,6 @@ type GitDeploymentPageProps = {
   githubToken: string;
   onDeploymentSelectAction?: (id: string | null) => void;
   onToggleLogsAction?: (id: string) => void;
-  repositoryDraft: GitHubRepository | null;
-  repositoryDraftSignal: number;
 };
 
 type DraftFormState = {
@@ -71,13 +69,23 @@ type DeploymentLogPayload = {
 
 type LogTab = "build" | "container";
 
-type PageView = "list" | "detail";
+type RepositoryState = {
+  error: string | null;
+  hasLoaded: boolean;
+  isLoading: boolean;
+  repositories: GitHubRepository[];
+  tokenConfigured: boolean;
+};
 
 const deploymentTimeFormatter = new Intl.DateTimeFormat("en", {
   day: "numeric",
   hour: "2-digit",
   minute: "2-digit",
   month: "short",
+});
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
 });
 
 function formatRepositoryLabel(repositoryUrl: string) {
@@ -159,6 +167,60 @@ function formatDeploymentTime(updatedAt: string) {
   return deploymentTimeFormatter.format(new Date(updatedAt));
 }
 
+function formatRelativeTime(value: string | null) {
+  if (!value) {
+    return "--";
+  }
+
+  const deltaSeconds = Math.round(
+    (new Date(value).getTime() - Date.now()) / 1000,
+  );
+  const absoluteSeconds = Math.abs(deltaSeconds);
+
+  if (absoluteSeconds < 60) {
+    return relativeTimeFormatter.format(deltaSeconds, "second");
+  }
+
+  const deltaMinutes = Math.round(deltaSeconds / 60);
+
+  if (Math.abs(deltaMinutes) < 60) {
+    return relativeTimeFormatter.format(deltaMinutes, "minute");
+  }
+
+  const deltaHours = Math.round(deltaMinutes / 60);
+
+  if (Math.abs(deltaHours) < 24) {
+    return relativeTimeFormatter.format(deltaHours, "hour");
+  }
+
+  const deltaDays = Math.round(deltaHours / 24);
+
+  if (Math.abs(deltaDays) < 30) {
+    return relativeTimeFormatter.format(deltaDays, "day");
+  }
+
+  const deltaMonths = Math.round(deltaDays / 30);
+
+  if (Math.abs(deltaMonths) < 12) {
+    return relativeTimeFormatter.format(deltaMonths, "month");
+  }
+
+  const deltaYears = Math.round(deltaMonths / 12);
+  return relativeTimeFormatter.format(deltaYears, "year");
+}
+
+function formatUptimeLabel(deployment: DashboardDeployment) {
+  if (deployment.status !== "running") {
+    return "Inactive";
+  }
+
+  if (!deployment.deployedAt) {
+    return "Active";
+  }
+
+  return `Up ${formatRelativeTime(deployment.deployedAt)}`;
+}
+
 function renderMessageWithLink(message: string) {
   const match = message.match(/https?:\/\/\S+/i);
 
@@ -204,19 +266,36 @@ function toAppName(value: string) {
     .join(" ");
 }
 
-function buildDraftState(repository: GitHubRepository | null): DraftFormState {
-  if (!repository) {
-    return {
-      repositoryUrl: "",
-      branch: "main",
-      appName: "",
-      subdomain: "",
-      port: "3000",
-      serviceName: "",
-      envVariables: "",
-    };
+function getRepositoryNameFromUrl(repositoryUrl: string) {
+  try {
+    const pathname = new URL(repositoryUrl).pathname;
+    return (
+      pathname
+        .split("/")
+        .filter(Boolean)
+        .pop()
+        ?.replace(/\.git$/i, "") ?? "app"
+    );
+  } catch {
+    return "app";
   }
+}
 
+function getEmptyDraftState(): DraftFormState {
+  return {
+    repositoryUrl: "",
+    branch: "main",
+    appName: "",
+    subdomain: "",
+    port: "3000",
+    serviceName: "",
+    envVariables: "",
+  };
+}
+
+function buildDraftStateFromRepository(
+  repository: GitHubRepository,
+): DraftFormState {
   return {
     repositoryUrl: repository.cloneUrl,
     branch: repository.defaultBranch,
@@ -228,6 +307,64 @@ function buildDraftState(repository: GitHubRepository | null): DraftFormState {
   };
 }
 
+function buildDraftStateFromCustomUrl(repositoryUrl: string): DraftFormState {
+  const repositoryName = getRepositoryNameFromUrl(repositoryUrl);
+
+  return {
+    repositoryUrl,
+    branch: "main",
+    appName: toAppName(repositoryName),
+    subdomain: toSlug(repositoryName),
+    port: "3000",
+    serviceName: "",
+    envVariables: "",
+  };
+}
+
+function normalizeGitHubRepositoryUrl(value: string) {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.length === 0) {
+    throw new Error("Enter a GitHub repository URL.");
+  }
+
+  let parsed: URL;
+
+  try {
+    parsed = new URL(trimmedValue);
+  } catch {
+    throw new Error("Enter a valid GitHub repository URL.");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("Use an HTTPS GitHub repository URL.");
+  }
+
+  if (parsed.hostname !== "github.com") {
+    throw new Error("Use a github.com repository URL.");
+  }
+
+  const segments = parsed.pathname.split("/").filter(Boolean);
+
+  if (segments.length < 2) {
+    throw new Error("GitHub URL must include both owner and repository name.");
+  }
+
+  parsed.pathname = `/${segments[0]}/${segments[1]}`;
+  parsed.search = "";
+  parsed.hash = "";
+
+  return parsed.toString();
+}
+
+function buildRepositoryOptions(repositories: GitHubRepository[]) {
+  return repositories.map((repository) => ({
+    value: String(repository.id),
+    label: repository.fullName,
+    description: `${repository.visibility} · ${repository.defaultBranch}`,
+  }));
+}
+
 export function GitDeploymentPage({
   baseDomain,
   dashboardData,
@@ -235,59 +372,58 @@ export function GitDeploymentPage({
   githubToken,
   onDeploymentSelectAction,
   onToggleLogsAction,
-  repositoryDraft,
-  repositoryDraftSignal,
 }: GitDeploymentPageProps) {
   const router = useRouter();
   const { deployments, stats } = dashboardData;
 
-  const [view, setView] = useState<PageView>("list");
-  const [showForm, setShowForm] = useState(false);
-
-  const [editingDeploymentId, setEditingDeploymentId] = useState<string | null>(
-    null,
-  );
-  const [pendingDeleteDeploymentId, setPendingDeleteDeploymentId] = useState<
+  const [expandedDeploymentId, setExpandedDeploymentId] = useState<
     string | null
   >(null);
-  const [draftState, setDraftState] = useState<DraftFormState>(() =>
-    buildDraftState(repositoryDraft),
-  );
-  const [localBanner, setLocalBanner] =
-    useState<GitDeploymentPageProps["flashMessage"]>(null);
-  const [isCreatingDeployment, setIsCreatingDeployment] = useState(false);
-  const [storeTokenWithDeployment, setStoreTokenWithDeployment] = useState(
-    Boolean(githubToken.trim()),
-  );
   const [selectedDeploymentId, setSelectedDeploymentId] = useState<
     string | null
   >(null);
   const [preferredDeploymentId, setPreferredDeploymentId] = useState<
     string | null
   >(null);
+  const [editingDeploymentId, setEditingDeploymentId] = useState<string | null>(
+    null,
+  );
+  const [pendingDeleteDeploymentId, setPendingDeleteDeploymentId] = useState<
+    string | null
+  >(null);
+  const [showAddPanel, setShowAddPanel] = useState(false);
+  const [draftState, setDraftState] =
+    useState<DraftFormState>(getEmptyDraftState);
+  const [selectedRepositoryId, setSelectedRepositoryId] = useState("");
+  const [customRepositoryUrl, setCustomRepositoryUrl] = useState("");
+  const [githubTokenValue, setGithubTokenValue] = useState(githubToken);
+  const [tokenDraft, setTokenDraft] = useState(githubToken);
+  const [isCreatingDeployment, setIsCreatingDeployment] = useState(false);
+  const [isUpdatingToken, setIsUpdatingToken] = useState(false);
+  const [localBanner, setLocalBanner] =
+    useState<GitDeploymentPageProps["flashMessage"]>(null);
+  const [repositoryState, setRepositoryState] = useState<RepositoryState>({
+    error: null,
+    hasLoaded: false,
+    isLoading: false,
+    repositories: [],
+    tokenConfigured: Boolean(githubToken.trim()),
+  });
 
   const activeBanner = localBanner ?? flashMessage;
   const selectedDeployment =
     deployments.find((deployment) => deployment.id === selectedDeploymentId) ??
     null;
-
-  useEffect(() => {
-    if (!repositoryDraft) {
-      return;
-    }
-
-    setDraftState(buildDraftState(repositoryDraft));
-    setStoreTokenWithDeployment(Boolean(githubToken.trim()));
-    setLocalBanner(null);
-    setShowForm(true);
-  }, [githubToken, repositoryDraft, repositoryDraftSignal]);
+  const selectedRepository =
+    repositoryState.repositories.find(
+      (repository) => String(repository.id) === selectedRepositoryId,
+    ) ?? null;
 
   useEffect(() => {
     if (deployments.length === 0) {
-      if (view === "detail") {
-        setView("list");
-      }
+      setExpandedDeploymentId(null);
       setSelectedDeploymentId(null);
+      onDeploymentSelectAction?.(null);
       return;
     }
 
@@ -295,12 +431,14 @@ export function GitDeploymentPage({
       preferredDeploymentId &&
       deployments.some((deployment) => deployment.id === preferredDeploymentId)
     ) {
+      setExpandedDeploymentId(preferredDeploymentId);
       setSelectedDeploymentId(preferredDeploymentId);
+      onDeploymentSelectAction?.(preferredDeploymentId);
       setPreferredDeploymentId(null);
       return;
     }
 
-    setSelectedDeploymentId((current) => {
+    setExpandedDeploymentId((current) => {
       if (
         current &&
         deployments.some((deployment) => deployment.id === current)
@@ -310,8 +448,177 @@ export function GitDeploymentPage({
 
       return null;
     });
+
+    setSelectedDeploymentId((current) => {
+      if (
+        current &&
+        deployments.some((deployment) => deployment.id === current)
+      ) {
+        return current;
+      }
+
+      onDeploymentSelectAction?.(null);
+      return null;
+    });
+  }, [deployments, onDeploymentSelectAction, preferredDeploymentId]);
+
+  useEffect(() => {
+    if (
+      !showAddPanel ||
+      repositoryState.isLoading ||
+      repositoryState.hasLoaded
+    ) {
+      return;
+    }
+
+    if (!githubTokenValue.trim()) {
+      setRepositoryState({
+        error: "Set a GitHub token to load repositories.",
+        hasLoaded: true,
+        isLoading: false,
+        repositories: [],
+        tokenConfigured: false,
+      });
+      return;
+    }
+
+    void loadRepositories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deployments, preferredDeploymentId]);
+  }, [
+    githubTokenValue,
+    repositoryState.hasLoaded,
+    repositoryState.isLoading,
+    showAddPanel,
+  ]);
+
+  async function loadRepositories() {
+    setRepositoryState((current) => ({
+      ...current,
+      error: null,
+      hasLoaded: true,
+      isLoading: true,
+    }));
+
+    try {
+      const response = await fetch("/api/github/repos", {
+        cache: "no-store",
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        repositories?: GitHubRepository[];
+        tokenConfigured?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error ?? "Unable to load repositories from GitHub.",
+        );
+      }
+
+      setRepositoryState({
+        error: null,
+        hasLoaded: true,
+        isLoading: false,
+        repositories: payload.repositories ?? [],
+        tokenConfigured: Boolean(payload.tokenConfigured),
+      });
+    } catch (error) {
+      setRepositoryState({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to load repositories from GitHub.",
+        hasLoaded: true,
+        isLoading: false,
+        repositories: [],
+        tokenConfigured: Boolean(githubTokenValue.trim()),
+      });
+    }
+  }
+
+  function applyRepositorySelection(repositoryId: string) {
+    const repository = repositoryState.repositories.find(
+      (entry) => String(entry.id) === repositoryId,
+    );
+
+    if (!repository) {
+      return;
+    }
+
+    setSelectedRepositoryId(repositoryId);
+    setCustomRepositoryUrl("");
+    setDraftState(buildDraftStateFromRepository(repository));
+    setLocalBanner(null);
+  }
+
+  function handleUseCustomRepository() {
+    try {
+      const repositoryUrl = normalizeGitHubRepositoryUrl(customRepositoryUrl);
+      setSelectedRepositoryId("");
+      setDraftState(buildDraftStateFromCustomUrl(repositoryUrl));
+      setLocalBanner(null);
+    } catch (error) {
+      setLocalBanner({
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to use that GitHub repository URL.",
+      });
+    }
+  }
+
+  async function handleUpdateToken() {
+    setIsUpdatingToken(true);
+    setLocalBanner(null);
+
+    try {
+      const response = await fetch("/api/github/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: tokenDraft,
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        repositories?: GitHubRepository[];
+        tokenConfigured?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to update the GitHub token.");
+      }
+
+      setGithubTokenValue(tokenDraft.trim());
+      setRepositoryState({
+        error: null,
+        hasLoaded: true,
+        isLoading: false,
+        repositories: payload.repositories ?? [],
+        tokenConfigured: true,
+      });
+      setLocalBanner({
+        status: "success",
+        message: `GitHub token updated. ${(payload.repositories ?? []).length} repositories are available.`,
+      });
+      setShowAddPanel(true);
+      router.refresh();
+    } catch (error) {
+      setLocalBanner({
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to update the GitHub token.",
+      });
+    } finally {
+      setIsUpdatingToken(false);
+    }
+  }
 
   async function handleCreateDeployment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -341,9 +648,10 @@ export function GitDeploymentPage({
       }
 
       setPreferredDeploymentId(payload.deploymentId);
+      setExpandedDeploymentId(payload.deploymentId);
       setSelectedDeploymentId(payload.deploymentId);
       onDeploymentSelectAction?.(payload.deploymentId);
-      setView("detail");
+      setShowAddPanel(false);
       setLocalBanner({
         status: "success",
         message: `Deployment live at https://${payload.domain}`,
@@ -362,52 +670,380 @@ export function GitDeploymentPage({
     }
   }
 
-  function handleSelectDeployment(deploymentId: string) {
+  function handleDeploymentToggle(deploymentId: string) {
+    const isSameDeployment = expandedDeploymentId === deploymentId;
+
+    if (isSameDeployment) {
+      setExpandedDeploymentId(null);
+      setSelectedDeploymentId(null);
+      setEditingDeploymentId(null);
+      setPendingDeleteDeploymentId(null);
+      onDeploymentSelectAction?.(null);
+      return;
+    }
+
+    setExpandedDeploymentId(deploymentId);
     setSelectedDeploymentId(deploymentId);
     setEditingDeploymentId(null);
     setPendingDeleteDeploymentId(null);
-    setView("detail");
     onDeploymentSelectAction?.(deploymentId);
-  }
-
-  function handleBackToList() {
-    setView("list");
-    setSelectedDeploymentId(null);
-    setEditingDeploymentId(null);
-    setPendingDeleteDeploymentId(null);
-    onDeploymentSelectAction?.(null);
   }
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardDescription>Git deployment page</CardDescription>
+        <CardHeader className="gap-3 border-b">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle>Git apps</CardTitle>
+              <CardDescription>
+                Add from your GitHub account or a custom GitHub repository URL,
+                then manage deployed apps inline.
+              </CardDescription>
+            </div>
+
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="toolbar"
+              aria-label="Git actions"
+            >
+              <Button
+                onClick={() => {
+                  const nextValue = !showAddPanel;
+
+                  setShowAddPanel(nextValue);
+
+                  if (nextValue) {
+                    setRepositoryState((current) => ({
+                      ...current,
+                      hasLoaded: false,
+                    }));
+                  }
+
+                  if (!nextValue && !draftState.repositoryUrl) {
+                    setDraftState(getEmptyDraftState());
+                  }
+                }}
+                type="button"
+                variant="secondary"
+              >
+                <Icon name="cloud" className="h-3.5 w-3.5" />
+                {showAddPanel ? "Close add app" : "Add app"}
+              </Button>
+              <Badge variant="default">{stats.totalDeployments} apps</Badge>
+              <Badge variant="success">
+                {stats.runningDeployments} running
+              </Badge>
+              <Badge variant="destructive">
+                {stats.failedDeployments} failed
+              </Badge>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="flex gap-6">
-          <div className="text-center">
-            <span className="block text-xs text-muted-foreground">
-              Deployments
-            </span>
-            <span className="text-lg font-semibold text-foreground">
-              {stats.totalDeployments}
-            </span>
-          </div>
-          <div className="text-center">
-            <span className="block text-xs text-muted-foreground">Running</span>
-            <span className="text-lg font-semibold text-foreground">
-              {stats.runningDeployments}
-            </span>
-          </div>
-          <div className="text-center">
-            <span className="block text-xs text-muted-foreground">
-              Repositories
-            </span>
-            <span className="text-lg font-semibold text-foreground">
-              {stats.totalRepositories}
-            </span>
-          </div>
-        </CardContent>
+
+        {showAddPanel ? (
+          <CardContent className="space-y-4 p-4">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Add app
+                  </div>
+                  <Label htmlFor="repository-picker">GitHub repositories</Label>
+                  <div id="repository-picker">
+                    <Combobox
+                      disabled={
+                        !repositoryState.tokenConfigured ||
+                        repositoryState.isLoading
+                      }
+                      emptyText={
+                        repositoryState.isLoading
+                          ? "Loading repositories..."
+                          : "No repositories available"
+                      }
+                      onValueChangeAction={applyRepositorySelection}
+                      options={buildRepositoryOptions(
+                        repositoryState.repositories,
+                      )}
+                      placeholder={
+                        repositoryState.tokenConfigured
+                          ? "Choose a repository"
+                          : "Update the token to load repositories"
+                      }
+                      searchPlaceholder="Search repositories"
+                      value={selectedRepositoryId}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>
+                      {selectedRepository
+                        ? `${selectedRepository.visibility} repo · updated ${formatRelativeTime(selectedRepository.updatedAt)}`
+                        : (repositoryState.error ??
+                          "Uses the GitHub token configured for Vercelab.")}
+                    </span>
+                    <Button
+                      disabled={
+                        !githubTokenValue.trim() || repositoryState.isLoading
+                      }
+                      onClick={() => void loadRepositories()}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Icon name="arrow-down" className="h-3.5 w-3.5" />
+                      Reload repos
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Update token
+                  </div>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="min-w-60 flex-1 space-y-2">
+                      <Label htmlFor="github-token">GitHub token</Label>
+                      <Input
+                        id="github-token"
+                        onChange={(event) => setTokenDraft(event.target.value)}
+                        placeholder="ghp_..."
+                        type="password"
+                        value={tokenDraft}
+                      />
+                    </div>
+                    <Button
+                      disabled={
+                        isUpdatingToken || tokenDraft.trim().length < 20
+                      }
+                      onClick={() => void handleUpdateToken()}
+                      type="button"
+                      variant="secondary"
+                    >
+                      <Icon name="check" className="h-3.5 w-3.5" />
+                      {isUpdatingToken ? "Updating..." : "Update token"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    The token is validated, saved into the workspace env file,
+                    and applied to the running app immediately.
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Add from GitHub URL
+                  </div>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="min-w-60 flex-1 space-y-2">
+                      <Label htmlFor="custom-repository-url">
+                        Custom repository URL
+                      </Label>
+                      <Input
+                        id="custom-repository-url"
+                        onChange={(event) =>
+                          setCustomRepositoryUrl(event.target.value)
+                        }
+                        placeholder="https://github.com/owner/repository"
+                        type="url"
+                        value={customRepositoryUrl}
+                      />
+                    </div>
+                    <Button
+                      disabled={customRepositoryUrl.trim().length === 0}
+                      onClick={handleUseCustomRepository}
+                      type="button"
+                      variant="secondary"
+                    >
+                      <Icon name="globe" className="h-3.5 w-3.5" />
+                      Use URL
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Private custom repositories use the global GitHub token from
+                    the env file by default.
+                  </p>
+                </div>
+              </div>
+
+              <Card className="border-dashed">
+                <CardHeader>
+                  <CardTitle className="text-sm">App draft</CardTitle>
+                  <CardDescription>
+                    Select a repository or use a custom URL, then adjust the app
+                    settings before deploying.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {draftState.repositoryUrl ? (
+                    <form
+                      className="space-y-4"
+                      onSubmit={handleCreateDeployment}
+                    >
+                      <input name="githubToken" type="hidden" value="" />
+                      <input
+                        name="repositoryUrl"
+                        type="hidden"
+                        value={draftState.repositoryUrl}
+                      />
+
+                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                        <div className="text-xs text-muted-foreground">
+                          Repository
+                        </div>
+                        <div className="font-medium text-foreground">
+                          {selectedRepository?.fullName ??
+                            formatRepositoryLabel(draftState.repositoryUrl)}
+                        </div>
+                        <a
+                          className="text-xs text-muted-foreground hover:underline"
+                          href={draftState.repositoryUrl}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          {draftState.repositoryUrl}
+                        </a>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="branch">Branch</Label>
+                          <Input
+                            id="branch"
+                            name="branch"
+                            onChange={(event) =>
+                              setDraftState((current) => ({
+                                ...current,
+                                branch: event.target.value,
+                              }))
+                            }
+                            required
+                            type="text"
+                            value={draftState.branch}
+                          />
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor="appName">App name</Label>
+                          <Input
+                            id="appName"
+                            name="appName"
+                            onChange={(event) =>
+                              setDraftState((current) => ({
+                                ...current,
+                                appName: event.target.value,
+                              }))
+                            }
+                            required
+                            type="text"
+                            value={draftState.appName}
+                          />
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor="subdomain">URL</Label>
+                          <InputGroup>
+                            <InputGroupInput
+                              id="subdomain"
+                              name="subdomain"
+                              onChange={(event) =>
+                                setDraftState((current) => ({
+                                  ...current,
+                                  subdomain: event.target.value,
+                                }))
+                              }
+                              required
+                              type="text"
+                              value={draftState.subdomain}
+                            />
+                            <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                          </InputGroup>
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor="port">Port</Label>
+                          <Input
+                            id="port"
+                            max="65535"
+                            min="1"
+                            name="port"
+                            onChange={(event) =>
+                              setDraftState((current) => ({
+                                ...current,
+                                port: event.target.value,
+                              }))
+                            }
+                            required
+                            type="number"
+                            value={draftState.port}
+                          />
+                        </div>
+
+                        <div className="grid gap-2 md:col-span-2">
+                          <Label htmlFor="serviceName">Service name</Label>
+                          <Input
+                            id="serviceName"
+                            name="serviceName"
+                            onChange={(event) =>
+                              setDraftState((current) => ({
+                                ...current,
+                                serviceName: event.target.value,
+                              }))
+                            }
+                            placeholder="Optional for multi-service compose repositories"
+                            type="text"
+                            value={draftState.serviceName}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="envVariables">
+                          Environment variables
+                        </Label>
+                        <textarea
+                          className="min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+                          id="envVariables"
+                          name="envVariables"
+                          onChange={(event) =>
+                            setDraftState((current) => ({
+                              ...current,
+                              envVariables: event.target.value,
+                            }))
+                          }
+                          placeholder={
+                            "DATABASE_URL=postgres://...\nNEXTAUTH_SECRET=..."
+                          }
+                          rows={5}
+                          value={draftState.envVariables}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          Deploys use the configured GitHub token when the app
+                          repository needs authenticated clone access.
+                        </p>
+                        <Button disabled={isCreatingDeployment} type="submit">
+                          <Icon name="cloud" className="h-3.5 w-3.5" />
+                          {isCreatingDeployment ? "Deploying..." : "Deploy app"}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex min-h-72 items-center justify-center text-center text-sm text-muted-foreground">
+                      Select a GitHub repository or use a custom GitHub URL to
+                      start an app draft.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        ) : null}
       </Card>
 
       {activeBanner?.message ? (
@@ -419,576 +1055,460 @@ export function GitDeploymentPage({
         </div>
       ) : null}
 
-      {showForm ? (
-        <Card className="relative p-4" aria-label="Deployment draft">
-          <Button
-            className="absolute right-2 top-2"
-            onClick={() => setShowForm(false)}
-            type="button"
-            aria-label="Close form"
-            variant="ghost"
-            size="icon"
-          >
-            <Icon name="x-close" className="h-3.5 w-3.5" />
-          </Button>
+      <Card aria-label="Installed applications">
+        <CardHeader className="border-b">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <CardTitle>Installed apps</CardTitle>
+              <CardDescription>
+                Click a row to expand it. The selected app also drives the log
+                panel on the right.
+              </CardDescription>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {deployments.length} total deployments
+            </div>
+          </div>
+        </CardHeader>
 
-          {repositoryDraft ? (
-            <form className="space-y-4" onSubmit={handleCreateDeployment}>
-              <input
-                name="githubToken"
-                type="hidden"
-                value={storeTokenWithDeployment ? githubToken : ""}
-              />
-              <input
-                name="repositoryUrl"
-                type="hidden"
-                value={draftState.repositoryUrl}
-              />
+        {deployments.length > 0 ? (
+          <CardContent className="p-0">
+            <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] gap-3 border-b px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <span>App</span>
+              <span>Repository</span>
+              <span>URL</span>
+              <span>Status</span>
+              <span>Uptime</span>
+              <span>Logs</span>
+            </div>
 
-              <div className="space-y-1 mb-4">
-                <div>
-                  <div className="text-xs text-muted-foreground">
-                    Selected repository
-                  </div>
-                  <div className="text-sm font-medium text-foreground">
-                    {repositoryDraft.fullName}
-                  </div>
-                  <div className="flex gap-2 text-xs text-muted-foreground/70">
-                    <span>{repositoryDraft.visibility}</span>
-                    <span>{repositoryDraft.defaultBranch}</span>
-                    <span>
-                      Updated {formatDeploymentTime(repositoryDraft.updatedAt)}
+            {deployments.map((deployment) => {
+              const isExpanded = expandedDeploymentId === deployment.id;
+              const isEditing = editingDeploymentId === deployment.id;
+              const isPendingDelete =
+                pendingDeleteDeploymentId === deployment.id;
+
+              return (
+                <div className="border-b last:border-0" key={deployment.id}>
+                  <button
+                    className={`grid w-full grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-accent/60 ${isExpanded ? "bg-accent/40" : "bg-background"}`}
+                    onClick={() => handleDeploymentToggle(deployment.id)}
+                    type="button"
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${formatStatusDotColor(deployment.status)}`}
+                        title={formatDeploymentStatus(deployment.status)}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-foreground">
+                          {deployment.appName}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {deployment.branch ?? "default branch"}
+                        </span>
+                      </span>
                     </span>
-                  </div>
+
+                    <span className="truncate text-muted-foreground">
+                      {formatRepositoryLabel(deployment.repositoryUrl)}
+                    </span>
+
+                    <span className="truncate text-muted-foreground">
+                      {formatDeploymentDomain(deployment, baseDomain)}
+                    </span>
+
+                    <span>
+                      <Badge
+                        variant={formatStatusBadgeVariant(deployment.status)}
+                      >
+                        {formatDeploymentStatus(deployment.status)}
+                      </Badge>
+                    </span>
+
+                    <span className="text-xs text-muted-foreground">
+                      {formatUptimeLabel(deployment)}
+                    </span>
+
+                    <span className="flex justify-end">
+                      <span
+                        className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-accent"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open logs for ${deployment.appName}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedDeploymentId(deployment.id);
+                          setSelectedDeploymentId(deployment.id);
+                          onToggleLogsAction?.(deployment.id);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setExpandedDeploymentId(deployment.id);
+                            setSelectedDeploymentId(deployment.id);
+                            onToggleLogsAction?.(deployment.id);
+                          }
+                        }}
+                      >
+                        <Icon
+                          name="syslog"
+                          className="h-3.5 w-3.5 text-muted-foreground"
+                        />
+                      </span>
+                    </span>
+                  </button>
+
+                  {isExpanded ? (
+                    <div className="space-y-4 bg-muted/20 px-4 py-4">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Name
+                            </div>
+                            <div className="mt-1 text-sm font-medium text-foreground">
+                              {deployment.appName}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Repository
+                            </div>
+                            <a
+                              className="mt-1 block truncate text-sm text-foreground hover:underline"
+                              href={deployment.repositoryUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              {formatRepositoryLabel(deployment.repositoryUrl)}
+                            </a>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              URL
+                            </div>
+                            <a
+                              className="mt-1 block truncate text-sm text-foreground hover:underline"
+                              href={formatDeploymentHref(
+                                deployment,
+                                baseDomain,
+                              )}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              {formatDeploymentDomain(deployment, baseDomain)}
+                            </a>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Branch
+                            </div>
+                            <div className="mt-1 text-sm text-foreground">
+                              {deployment.branch ?? "default"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Active
+                            </div>
+                            <div className="mt-1 text-sm text-foreground">
+                              {deployment.status === "running" ? "Yes" : "No"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Updated
+                            </div>
+                            <div className="mt-1 text-sm text-foreground">
+                              {formatDeploymentTime(deployment.updatedAt)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Uptime
+                            </div>
+                            <div className="mt-1 text-sm text-foreground">
+                              {formatUptimeLabel(deployment)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Port
+                            </div>
+                            <div className="mt-1 text-sm text-foreground">
+                              {deployment.port}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                              Git auth
+                            </div>
+                            <div className="mt-1 text-sm text-foreground">
+                              {deployment.tokenStored
+                                ? "Stored with app"
+                                : githubTokenValue.trim()
+                                  ? "Global token fallback"
+                                  : "Public clone only"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-md border bg-background p-3 text-sm">
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Latest deployment summary
+                          </div>
+                          <p className="mt-2 text-sm text-foreground">
+                            {deployment.lastOperationSummary ??
+                              "No deployment summary captured yet."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <form action={redeployDeploymentAction}>
+                          <input
+                            name="deploymentId"
+                            type="hidden"
+                            value={deployment.id}
+                          />
+                          <SubmitButton
+                            iconName="cloud"
+                            idleLabel="Restart"
+                            pendingLabel="Restarting..."
+                            size="small"
+                            variant="secondary"
+                          />
+                        </form>
+
+                        <form action={fetchDeploymentFromGitAction}>
+                          <input
+                            name="deploymentId"
+                            type="hidden"
+                            value={deployment.id}
+                          />
+                          <SubmitButton
+                            iconName="arrow-down"
+                            idleLabel="Fetch latest"
+                            pendingLabel="Fetching..."
+                            size="small"
+                            variant="secondary"
+                          />
+                        </form>
+
+                        <form action={stopDeploymentAction}>
+                          <input
+                            name="deploymentId"
+                            type="hidden"
+                            value={deployment.id}
+                          />
+                          <SubmitButton
+                            iconName="x-close"
+                            idleLabel="Stop"
+                            pendingLabel="Stopping..."
+                            size="small"
+                            variant="secondary"
+                          />
+                        </form>
+
+                        <Button
+                          onClick={() => {
+                            setPendingDeleteDeploymentId(null);
+                            setEditingDeploymentId((current) =>
+                              current === deployment.id ? null : deployment.id,
+                            );
+                          }}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <Icon name="settings" className="h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+
+                        <Button
+                          onClick={() => {
+                            setEditingDeploymentId((current) =>
+                              current === deployment.id ? null : current,
+                            );
+                            setPendingDeleteDeploymentId((current) =>
+                              current === deployment.id ? null : deployment.id,
+                            );
+                          }}
+                          type="button"
+                          variant="danger"
+                        >
+                          <Icon name="x-close" className="h-3.5 w-3.5" />
+                          Delete
+                        </Button>
+
+                        <Button
+                          onClick={() => onToggleLogsAction?.(deployment.id)}
+                          type="button"
+                          variant="secondary"
+                        >
+                          <Icon name="syslog" className="h-3.5 w-3.5" />
+                          Logs
+                        </Button>
+                      </div>
+
+                      {isPendingDelete ? (
+                        <div
+                          className="rounded-md border border-red-200 bg-red-50 p-3"
+                          role="alert"
+                        >
+                          <div className="text-sm text-red-800">
+                            Delete <strong>{deployment.appName}</strong> and
+                            remove its deployment workspace?
+                          </div>
+
+                          <div className="mt-2 flex gap-2">
+                            <form action={removeDeploymentAction}>
+                              <input
+                                name="deploymentId"
+                                type="hidden"
+                                value={deployment.id}
+                              />
+                              <SubmitButton
+                                iconName="x-close"
+                                idleLabel="Confirm delete"
+                                pendingLabel="Deleting..."
+                                size="small"
+                                variant="danger"
+                              />
+                            </form>
+
+                            <Button
+                              onClick={() => setPendingDeleteDeploymentId(null)}
+                              type="button"
+                              variant="secondary"
+                            >
+                              <Icon
+                                name="chevron-left"
+                                className="h-3.5 w-3.5"
+                              />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {isEditing ? (
+                        <form
+                          action={updateDeploymentAction}
+                          className="space-y-3"
+                        >
+                          <input
+                            name="deploymentId"
+                            type="hidden"
+                            value={deployment.id}
+                          />
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="grid gap-2">
+                              <Label htmlFor={`appName-${deployment.id}`}>
+                                Name
+                              </Label>
+                              <Input
+                                defaultValue={deployment.appName}
+                                id={`appName-${deployment.id}`}
+                                name="appName"
+                                required
+                                type="text"
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor={`subdomain-${deployment.id}`}>
+                                URL
+                              </Label>
+                              <InputGroup>
+                                <InputGroupInput
+                                  defaultValue={deployment.subdomain}
+                                  id={`subdomain-${deployment.id}`}
+                                  name="subdomain"
+                                  required
+                                  type="text"
+                                />
+                                <InputGroupSuffix>
+                                  .{baseDomain}
+                                </InputGroupSuffix>
+                              </InputGroup>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor={`port-${deployment.id}`}>
+                                Port
+                              </Label>
+                              <Input
+                                defaultValue={String(deployment.port)}
+                                id={`port-${deployment.id}`}
+                                max="65535"
+                                min="1"
+                                name="port"
+                                required
+                                type="number"
+                              />
+                            </div>
+
+                            <div className="grid gap-2 md:col-span-2">
+                              <Label htmlFor={`envVariables-${deployment.id}`}>
+                                Environment variables
+                              </Label>
+                              <textarea
+                                className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+                                defaultValue={deployment.envVariables ?? ""}
+                                id={`envVariables-${deployment.id}`}
+                                name="envVariables"
+                                rows={4}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <SubmitButton
+                              iconName="check"
+                              idleLabel="Save changes"
+                              pendingLabel="Saving..."
+                              size="small"
+                              variant="primary"
+                            />
+                            <Button
+                              onClick={() => setEditingDeploymentId(null)}
+                              type="button"
+                              variant="secondary"
+                            >
+                              <Icon
+                                name="chevron-left"
+                                className="h-3.5 w-3.5"
+                              />
+                              Cancel
+                            </Button>
+                          </div>
+                        </form>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
+              );
+            })}
+          </CardContent>
+        ) : (
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            No deployments yet. Use Add app to create the first one.
+          </CardContent>
+        )}
+      </Card>
 
-                <a
-                  className="text-xs text-muted-foreground hover:underline"
-                  href={draftState.repositoryUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  {draftState.repositoryUrl}
-                </a>
-              </div>
-
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="grid min-w-40 flex-1 gap-2">
-                  <Label htmlFor="branch">Branch</Label>
-                  <Input
-                    id="branch"
-                    name="branch"
-                    onChange={(event) =>
-                      setDraftState((current) => ({
-                        ...current,
-                        branch: event.target.value,
-                      }))
-                    }
-                    required
-                    type="text"
-                    value={draftState.branch}
-                  />
-                </div>
-
-                <div className="grid min-w-45 flex-1 gap-2">
-                  <Label htmlFor="appName">App name</Label>
-                  <Input
-                    id="appName"
-                    name="appName"
-                    onChange={(event) =>
-                      setDraftState((current) => ({
-                        ...current,
-                        appName: event.target.value,
-                      }))
-                    }
-                    required
-                    type="text"
-                    value={draftState.appName}
-                  />
-                </div>
-
-                <div className="grid min-w-55 flex-[1.4] gap-2">
-                  <Label htmlFor="subdomain">Wildcard domain</Label>
-                  <InputGroup>
-                    <InputGroupInput
-                      id="subdomain"
-                      name="subdomain"
-                      onChange={(event) =>
-                        setDraftState((current) => ({
-                          ...current,
-                          subdomain: event.target.value,
-                        }))
-                      }
-                      required
-                      type="text"
-                      value={draftState.subdomain}
-                    />
-                    <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
-                  </InputGroup>
-                </div>
-
-                <div className="grid w-27.5 gap-2">
-                  <Label htmlFor="port">Port</Label>
-                  <Input
-                    id="port"
-                    max="65535"
-                    min="1"
-                    name="port"
-                    onChange={(event) =>
-                      setDraftState((current) => ({
-                        ...current,
-                        port: event.target.value,
-                      }))
-                    }
-                    required
-                    type="number"
-                    value={draftState.port}
-                  />
-                </div>
-
-                <div className="grid min-w-55 flex-1 gap-2">
-                  <Label htmlFor="serviceName">Service name</Label>
-                  <Input
-                    id="serviceName"
-                    name="serviceName"
-                    onChange={(event) =>
-                      setDraftState((current) => ({
-                        ...current,
-                        serviceName: event.target.value,
-                      }))
-                    }
-                    placeholder="Optional for multi-service compose repos"
-                    type="text"
-                    value={draftState.serviceName}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="envVariables">Variables</Label>
-                <textarea
-                  className="min-h-27 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
-                  id="envVariables"
-                  name="envVariables"
-                  onChange={(event) =>
-                    setDraftState((current) => ({
-                      ...current,
-                      envVariables: event.target.value,
-                    }))
-                  }
-                  placeholder={
-                    "MONGO_URI=mongodb://user:pass@host/db\nNEXTAUTH_SECRET=..."
-                  }
-                  rows={5}
-                  value={draftState.envVariables}
-                />
-                <span className="text-xs text-muted-foreground">
-                  Optional. One variable per line in KEY=VALUE format. If the
-                  repository is private, keep the token in the Git sidebar so it
-                  can be stored with the deployment.
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                  <Checkbox
-                    checked={storeTokenWithDeployment}
-                    disabled={!githubToken.trim()}
-                    onCheckedChange={(checked) =>
-                      setStoreTokenWithDeployment(checked === true)
-                    }
-                  />
-                  Store Git token with deployment
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  Vercelab clones the selected repository, builds the app, and
-                  exposes it at .{baseDomain}.
-                </p>
-                <Button
-                  disabled={isCreatingDeployment}
-                  size="sm"
-                  type="submit"
-                  variant="default"
-                >
-                  <Icon name="cloud" className="h-3.5 w-3.5" />
-                  {isCreatingDeployment ? "Deploying..." : "Create deployment"}
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <div className="py-6 text-center">
-              <div className="text-sm text-muted-foreground">
-                Select a repository from the sidebar
-              </div>
-            </div>
-          )}
-        </Card>
-      ) : null}
-
-      {view === "list" ? (
-        <Card aria-label="Deployed applications">
-          <CardHeader className="flex-row items-center justify-between border-b">
-            <CardTitle>Deployed apps</CardTitle>
-            <CardDescription>{deployments.length} total</CardDescription>
-          </CardHeader>
-
-          {deployments.length > 0 ? (
-            <CardContent className="p-0">
-              <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] gap-2 border-b px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                <span>Status</span>
-                <span>App name</span>
-                <span>Domain</span>
-                <span>Branch</span>
-                <span>Updated</span>
-                <span>Logs</span>
-              </div>
-              {deployments.map((deployment) => (
-                <button
-                  className={`grid grid-cols-[auto_1fr_1fr_auto_auto_auto] items-center gap-2 border-b px-3 py-2 text-left text-sm hover:bg-accent last:border-0 ${
-                    deployment.id === selectedDeploymentId ? "bg-accent" : ""
-                  }`}
-                  key={deployment.id}
-                  onClick={() => handleSelectDeployment(deployment.id)}
-                  type="button"
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${formatStatusDotColor(deployment.status)}`}
-                    title={formatDeploymentStatus(deployment.status)}
-                  />
-                  <span className="truncate font-medium text-foreground">
-                    {deployment.appName}
-                  </span>
-                  <span className="truncate text-muted-foreground">
-                    {formatDeploymentDomain(deployment, baseDomain)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {deployment.branch ?? "default"}
-                  </span>
-                  <span className="text-xs text-muted-foreground/70">
-                    {formatDeploymentTime(
-                      deployment.deployedAt ?? deployment.updatedAt,
-                    )}
-                  </span>
-                  <span
-                    className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`View logs for ${deployment.appName}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleLogsAction?.(deployment.id);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        onToggleLogsAction?.(deployment.id);
-                      }
-                    }}
-                  >
-                    <Icon
-                      name="syslog"
-                      className="h-3.5 w-3.5 text-muted-foreground"
-                    />
-                  </span>
-                </button>
-              ))}
-            </CardContent>
-          ) : (
-            <CardContent className="py-8 text-center">
-              <div className="text-sm text-muted-foreground">
-                No deployments yet
-              </div>
-            </CardContent>
-          )}
-        </Card>
-      ) : null}
-
-      {view === "detail" && selectedDeployment ? (
-        <section className="space-y-4" aria-label="Deployment detail">
-          <Button
-            className="gap-1"
-            onClick={handleBackToList}
-            type="button"
-            variant="secondary"
-            size="sm"
-          >
-            <Icon name="chevron-left" className="h-3.5 w-3.5" />
-            Back to deployments
-          </Button>
-
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>{selectedDeployment.appName}</CardTitle>
-                <CardDescription>
-                  {formatRepositoryLabel(selectedDeployment.repositoryUrl)}
-                </CardDescription>
-              </div>
-
-              <Badge
-                variant={formatStatusBadgeVariant(selectedDeployment.status)}
-              >
-                {formatDeploymentStatus(selectedDeployment.status)}
-              </Badge>
-            </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="block text-xs text-muted-foreground">
-                  Domain
-                </span>
-                <a
-                  href={formatDeploymentHref(selectedDeployment, baseDomain)}
-                  rel="noreferrer"
-                  target="_blank"
-                  className="text-foreground hover:underline"
-                >
-                  {formatDeploymentDomain(selectedDeployment, baseDomain)}
-                </a>
-              </div>
-              <div>
-                <span className="block text-xs text-muted-foreground">
-                  Branch
-                </span>
-                <span>{selectedDeployment.branch ?? "default"}</span>
-              </div>
-              <div>
-                <span className="block text-xs text-muted-foreground">
-                  Access
-                </span>
-                <span>
-                  {selectedDeployment.tokenStored
-                    ? "Git token saved"
-                    : "Public clone only"}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              {selectedDeployment.lastOperationSummary ??
-                "No deployment summary captured yet."}
-            </p>
-
-            <div className="flex flex-wrap gap-2">
-              <form action={redeployDeploymentAction}>
-                <input
-                  name="deploymentId"
-                  type="hidden"
-                  value={selectedDeployment.id}
-                />
-                <SubmitButton
-                  idleLabel="Redeploy"
-                  pendingLabel="Redeploying..."
-                  size="small"
-                  variant="secondary"
-                  iconName="cloud"
-                />
-              </form>
-
-              <form action={fetchDeploymentFromGitAction}>
-                <input
-                  name="deploymentId"
-                  type="hidden"
-                  value={selectedDeployment.id}
-                />
-                <SubmitButton
-                  idleLabel="Fetch from Git"
-                  pendingLabel="Fetching..."
-                  size="small"
-                  variant="secondary"
-                  iconName="arrow-down"
-                />
-              </form>
-
-              <form action={stopDeploymentAction}>
-                <input
-                  name="deploymentId"
-                  type="hidden"
-                  value={selectedDeployment.id}
-                />
-                <SubmitButton
-                  idleLabel="Stop"
-                  pendingLabel="Stopping..."
-                  size="small"
-                  variant="secondary"
-                  iconName="x-close"
-                />
-              </form>
-
-              <Button
-                onClick={() => {
-                  setPendingDeleteDeploymentId(null);
-                  setEditingDeploymentId((current) =>
-                    current === selectedDeployment.id
-                      ? null
-                      : selectedDeployment.id,
-                  );
-                }}
-                type="button"
-                variant="secondary"
-                size="sm"
-              >
-                <Icon name="settings" className="h-3.5 w-3.5" />
-                Edit
-              </Button>
-
-              <Button
-                onClick={() => {
-                  setEditingDeploymentId((current) =>
-                    current === selectedDeployment.id ? null : current,
-                  );
-                  setPendingDeleteDeploymentId((current) =>
-                    current === selectedDeployment.id
-                      ? null
-                      : selectedDeployment.id,
-                  );
-                }}
-                type="button"
-                variant="danger"
-                size="sm"
-              >
-                <Icon name="x-close" className="h-3.5 w-3.5" />
-                Delete
-              </Button>
-
-              <Button
-                onClick={() => onToggleLogsAction?.(selectedDeployment.id)}
-                type="button"
-                variant="secondary"
-                size="sm"
-              >
-                <Icon name="syslog" className="h-3.5 w-3.5" />
-                Logs
-              </Button>
-            </div>
-
-            {pendingDeleteDeploymentId === selectedDeployment.id ? (
-              <div
-                className="rounded-md border border-red-200 bg-red-50 p-3"
-                role="alert"
-              >
-                <div className="text-sm text-red-800">
-                  Delete <strong>{selectedDeployment.appName}</strong> and
-                  remove its deployment workspace?
-                </div>
-
-                <div className="mt-2 flex gap-2">
-                  <form action={removeDeploymentAction}>
-                    <input
-                      name="deploymentId"
-                      type="hidden"
-                      value={selectedDeployment.id}
-                    />
-                    <SubmitButton
-                      idleLabel="Confirm Delete"
-                      pendingLabel="Deleting..."
-                      size="small"
-                      variant="danger"
-                      iconName="x-close"
-                    />
-                  </form>
-
-                  <Button
-                    onClick={() => setPendingDeleteDeploymentId(null)}
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <Icon name="chevron-left" className="h-3.5 w-3.5" />
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            {editingDeploymentId === selectedDeployment.id ? (
-              <form action={updateDeploymentAction} className="space-y-3">
-                <input
-                  name="deploymentId"
-                  type="hidden"
-                  value={selectedDeployment.id}
-                />
-
-                <div className="grid gap-2">
-                  <Label htmlFor={`appName-${selectedDeployment.id}`}>
-                    Name
-                  </Label>
-                  <Input
-                    defaultValue={selectedDeployment.appName}
-                    id={`appName-${selectedDeployment.id}`}
-                    name="appName"
-                    required
-                    type="text"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor={`subdomain-${selectedDeployment.id}`}>
-                    Url
-                  </Label>
-                  <InputGroup>
-                    <InputGroupInput
-                      defaultValue={selectedDeployment.subdomain}
-                      id={`subdomain-${selectedDeployment.id}`}
-                      name="subdomain"
-                      required
-                      type="text"
-                    />
-                    <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
-                  </InputGroup>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor={`port-${selectedDeployment.id}`}>Port</Label>
-                  <Input
-                    defaultValue={String(selectedDeployment.port)}
-                    id={`port-${selectedDeployment.id}`}
-                    max="65535"
-                    min="1"
-                    name="port"
-                    required
-                    type="number"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor={`envVariables-${selectedDeployment.id}`}>
-                    Variables
-                  </Label>
-                  <textarea
-                    className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
-                    defaultValue={selectedDeployment.envVariables ?? ""}
-                    id={`envVariables-${selectedDeployment.id}`}
-                    name="envVariables"
-                    rows={4}
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <SubmitButton
-                    idleLabel="Save"
-                    pendingLabel="Saving..."
-                    size="small"
-                    variant="primary"
-                    iconName="check"
-                  />
-                  <Button
-                    onClick={() => setEditingDeploymentId(null)}
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <Icon name="chevron-left" className="h-3.5 w-3.5" />
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            ) : null}
-          </Card>
-        </section>
+      {selectedDeployment ? (
+        <div className="text-xs text-muted-foreground">
+          Active app:{" "}
+          <span className="font-medium text-foreground">
+            {selectedDeployment.appName}
+          </span>
+          {" · "}
+          {formatDeploymentDomain(selectedDeployment, baseDomain)}
+        </div>
       ) : null}
     </div>
   );
@@ -1050,7 +1570,9 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
           );
         }
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setLogState({
           isLoading: false,
@@ -1058,7 +1580,9 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
           payload: payload as DeploymentLogPayload,
         });
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setLogState({
           isLoading: false,
