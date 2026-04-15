@@ -479,11 +479,32 @@ async function detectRuntimeFiles(
 
       await fs.writeFile(overridePath, stringify(override), "utf8");
 
+      // Write a cleaned base compose that strips host `ports` bindings from all
+      // services so they can't conflict with other deployments on the same host.
+      // Docker Compose merges port lists additively, so the only reliable way to
+      // suppress them is to rewrite the base file without them.
+      const basePath = path.join(
+        deployment.workspacePath,
+        ".vercelab.base.compose.yml",
+      );
+      const cleanedParsed = parsed as {
+        services?: Record<string, Record<string, unknown>>;
+        [key: string]: unknown;
+      };
+      if (cleanedParsed?.services) {
+        for (const svc of Object.values(cleanedParsed.services)) {
+          if (svc && typeof svc === "object") {
+            delete svc.ports;
+          }
+        }
+      }
+      await fs.writeFile(basePath, stringify(cleanedParsed), "utf8");
+
       return {
         composeMode: "compose",
         composeFile: candidate,
         serviceName: selectedService,
-        fileArgs: ["-f", composePath, "-f", overridePath],
+        fileArgs: ["-f", basePath, "-f", overridePath],
       };
     }
   }
