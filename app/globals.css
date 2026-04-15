@@ -107,67 +107,6 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 0 18px;
-  border: 1px solid transparent;
-  border-radius: 11px;
-  font-size: 14px;
-  font-weight: 600;
-  transition:
-    background 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    opacity 150ms ease;
-}
-
-.button:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
-
-.button--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-}
-
-.button--primary:hover:not(:disabled) {
-  background: #0d62d9;
-  border-color: #0d62d9;
-}
-
-.button--secondary {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
-}
-
-.button--secondary:hover:not(:disabled) {
-  background: #f7f9fb;
-}
-
-.button--danger {
-  background: #fff3f3;
-  border-color: rgba(234, 84, 85, 0.24);
-  color: var(--red);
-}
-
-.button--danger:hover:not(:disabled) {
-  background: #ffe8e8;
-}
-
-.button--small {
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 12px;
-}
-
 /* ── Shell ── */
 .shell {
   height: 100vh;
@@ -1975,21 +1914,6 @@ a:focus-visible {
   padding: 14px 16px 16px;
 }
 
-.git-page .button {
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.git-page .button--small {
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 7px;
-  font-size: 11px;
-}
-
 .git-page .unifi-card {
   box-shadow: none;
   border-color: #e8edf3;
@@ -2128,110 +2052,6 @@ a:focus-visible {
 .git-form {
   display: grid;
   gap: 10px;
-}
-
-.field {
-  display: grid;
-  gap: 5px;
-}
-
-.field__label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-.field input {
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-}
-
-.field textarea,
-.git-panel__select {
-  width: 100%;
-  min-height: 34px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-}
-
-.field textarea {
-  resize: vertical;
-}
-
-.field-combo {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 34px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
-  overflow: hidden;
-}
-
-.field-combo input {
-  border: 0;
-  background: transparent;
-}
-
-.field-combo__suffix {
-  display: inline-flex;
-  align-items: center;
-  min-height: 100%;
-  padding: 0 10px;
-  border-left: 1px solid var(--border);
-  background: #f8fafc;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-@media (min-width: 1025px) {
-  .field {
-    gap: 6px;
-  }
-
-  .field input,
-  .field-combo,
-  .field textarea,
-  .git-panel__select {
-    min-height: 38px;
-  }
-
-  .field input {
-    padding: 0 12px;
-    border-radius: 10px;
-  }
-
-  .field-combo {
-    border-radius: 10px;
-  }
-
-  .field textarea,
-  .git-panel__select {
-    padding: 10px 12px;
-    border-radius: 10px;
-  }
-
-  .field-combo__suffix {
-    padding: 0 12px;
-    font-size: 12px;
-  }
-}
-
-.field__hint {
-  color: var(--text-muted);
-  font-size: 11px;
 }
 
 .git-form__actions {
@@ -2395,10 +2215,6 @@ a:focus-visible {
 .git-delete-confirm__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-}
-
-.field--compact {
   gap: 6px;
 }
 

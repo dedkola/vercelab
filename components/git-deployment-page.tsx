@@ -421,7 +421,7 @@ export function GitDeploymentPage({
               </div>
 
               <div className="git-form__grid flex flex-wrap items-end gap-3">
-                <div className="field min-w-40 flex-1">
+                <div className="grid min-w-40 flex-1 gap-2">
                   <Label htmlFor="branch">Branch</Label>
                   <Input
                     id="branch"
@@ -438,7 +438,7 @@ export function GitDeploymentPage({
                   />
                 </div>
 
-                <div className="field min-w-45 flex-1">
+                <div className="grid min-w-45 flex-1 gap-2">
                   <Label htmlFor="appName">App name</Label>
                   <Input
                     id="appName"
@@ -455,7 +455,7 @@ export function GitDeploymentPage({
                   />
                 </div>
 
-                <div className="field min-w-55 flex-[1.4]">
+                <div className="grid min-w-55 flex-[1.4] gap-2">
                   <Label htmlFor="subdomain">Wildcard domain</Label>
                   <InputGroup>
                     <InputGroupInput
@@ -475,7 +475,7 @@ export function GitDeploymentPage({
                   </InputGroup>
                 </div>
 
-                <div className="field w-27.5">
+                <div className="grid w-27.5 gap-2">
                   <Label htmlFor="port">Port</Label>
                   <Input
                     id="port"
@@ -494,7 +494,7 @@ export function GitDeploymentPage({
                   />
                 </div>
 
-                <div className="field min-w-55 flex-1">
+                <div className="grid min-w-55 flex-1 gap-2">
                   <Label htmlFor="serviceName">Service name</Label>
                   <Input
                     id="serviceName"
@@ -512,10 +512,10 @@ export function GitDeploymentPage({
                 </div>
               </div>
 
-              <div className="field">
+              <div className="grid gap-2">
                 <Label htmlFor="envVariables">Variables</Label>
                 <textarea
-                  className="min-h-27 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text) shadow-sm placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
+                  className="min-h-27 w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm text-zinc-950 shadow-sm transition-[color,box-shadow] outline-none placeholder:text-zinc-500 focus-visible:border-zinc-300 focus-visible:ring-1 focus-visible:ring-zinc-950/20"
                   id="envVariables"
                   name="envVariables"
                   onChange={(event) =>
@@ -530,7 +530,7 @@ export function GitDeploymentPage({
                   rows={5}
                   value={draftState.envVariables}
                 />
-                <span className="field__hint">
+                <span className="text-xs text-zinc-500">
                   Optional. One variable per line in KEY=VALUE format. If the
                   repository is private, keep the token in the Git sidebar so it
                   can be stored with the deployment.
@@ -854,7 +854,7 @@ export function GitDeploymentPage({
                   value={selectedDeployment.id}
                 />
 
-                <div className="field field--compact">
+                <div className="grid gap-2">
                   <Label htmlFor={`appName-${selectedDeployment.id}`}>
                     Name
                   </Label>
@@ -867,7 +867,7 @@ export function GitDeploymentPage({
                   />
                 </div>
 
-                <div className="field field--compact">
+                <div className="grid gap-2">
                   <Label htmlFor={`subdomain-${selectedDeployment.id}`}>
                     Url
                   </Label>
@@ -883,7 +883,7 @@ export function GitDeploymentPage({
                   </InputGroup>
                 </div>
 
-                <div className="field field--compact">
+                <div className="grid gap-2">
                   <Label htmlFor={`port-${selectedDeployment.id}`}>Port</Label>
                   <Input
                     defaultValue={String(selectedDeployment.port)}
@@ -896,12 +896,12 @@ export function GitDeploymentPage({
                   />
                 </div>
 
-                <div className="field field--compact git-edit-form__textarea">
+                <div className="grid gap-2 git-edit-form__textarea">
                   <Label htmlFor={`envVariables-${selectedDeployment.id}`}>
                     Variables
                   </Label>
                   <textarea
-                    className="min-h-24 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text) shadow-sm placeholder:text-(--text-muted) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
+                    className="min-h-24 w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm text-zinc-950 shadow-sm transition-[color,box-shadow] outline-none placeholder:text-zinc-500 focus-visible:border-zinc-300 focus-visible:ring-1 focus-visible:ring-zinc-950/20"
                     defaultValue={selectedDeployment.envVariables ?? ""}
                     id={`envVariables-${selectedDeployment.id}`}
                     name="envVariables"
