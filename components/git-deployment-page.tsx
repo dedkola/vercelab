@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GitHubRepository } from "@/lib/github";
 import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
@@ -42,19 +41,15 @@ type GitDeploymentPageProps = {
     message: string;
     status: "success" | "error";
   } | null;
-  githubToken: string;
   onDeploymentSelectAction?: (id: string | null) => void;
   onToggleLogsAction?: (id: string) => void;
 };
 
 type DraftFormState = {
   repositoryUrl: string;
-  branch: string;
   appName: string;
   subdomain: string;
   port: string;
-  serviceName: string;
-  envVariables: string;
 };
 
 type DeploymentLogPayload = {
@@ -87,6 +82,7 @@ const deploymentTimeFormatter = new Intl.DateTimeFormat("en", {
 const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
   numeric: "auto",
 });
+const LOG_REFRESH_INTERVAL_MS = 2000;
 
 function formatRepositoryLabel(repositoryUrl: string) {
   const trimmedUrl = repositoryUrl.replace(/\.git$/i, "");
@@ -284,41 +280,18 @@ function getRepositoryNameFromUrl(repositoryUrl: string) {
 function getEmptyDraftState(): DraftFormState {
   return {
     repositoryUrl: "",
-    branch: "main",
     appName: "",
     subdomain: "",
     port: "3000",
-    serviceName: "",
-    envVariables: "",
   };
 }
 
-function buildDraftStateFromRepository(
-  repository: GitHubRepository,
-): DraftFormState {
-  return {
-    repositoryUrl: repository.cloneUrl,
-    branch: repository.defaultBranch,
-    appName: toAppName(repository.name),
-    subdomain: toSlug(repository.name),
-    port: "3000",
-    serviceName: "",
-    envVariables: "",
-  };
-}
-
-function buildDraftStateFromCustomUrl(repositoryUrl: string): DraftFormState {
-  const repositoryName = getRepositoryNameFromUrl(repositoryUrl);
-
-  return {
-    repositoryUrl,
-    branch: "main",
-    appName: toAppName(repositoryName),
-    subdomain: toSlug(repositoryName),
-    port: "3000",
-    serviceName: "",
-    envVariables: "",
-  };
+function buildRepositoryOptions(repositories: GitHubRepository[]) {
+  return repositories.map((repository) => ({
+    value: String(repository.id),
+    label: repository.fullName,
+    description: `${repository.visibility} · ${repository.defaultBranch}`,
+  }));
 }
 
 function normalizeGitHubRepositoryUrl(value: string) {
@@ -357,19 +330,10 @@ function normalizeGitHubRepositoryUrl(value: string) {
   return parsed.toString();
 }
 
-function buildRepositoryOptions(repositories: GitHubRepository[]) {
-  return repositories.map((repository) => ({
-    value: String(repository.id),
-    label: repository.fullName,
-    description: `${repository.visibility} · ${repository.defaultBranch}`,
-  }));
-}
-
 export function GitDeploymentPage({
   baseDomain,
   dashboardData,
   flashMessage,
-  githubToken,
   onDeploymentSelectAction,
   onToggleLogsAction,
 }: GitDeploymentPageProps) {
@@ -395,11 +359,7 @@ export function GitDeploymentPage({
   const [draftState, setDraftState] =
     useState<DraftFormState>(getEmptyDraftState);
   const [selectedRepositoryId, setSelectedRepositoryId] = useState("");
-  const [customRepositoryUrl, setCustomRepositoryUrl] = useState("");
-  const [githubTokenValue, setGithubTokenValue] = useState(githubToken);
-  const [tokenDraft, setTokenDraft] = useState(githubToken);
   const [isCreatingDeployment, setIsCreatingDeployment] = useState(false);
-  const [isUpdatingToken, setIsUpdatingToken] = useState(false);
   const [localBanner, setLocalBanner] =
     useState<GitDeploymentPageProps["flashMessage"]>(null);
   const [repositoryState, setRepositoryState] = useState<RepositoryState>({
@@ -407,13 +367,14 @@ export function GitDeploymentPage({
     hasLoaded: false,
     isLoading: false,
     repositories: [],
-    tokenConfigured: Boolean(githubToken.trim()),
+    tokenConfigured: false,
   });
 
   const activeBanner = localBanner ?? flashMessage;
   const selectedDeployment =
     deployments.find((deployment) => deployment.id === selectedDeploymentId) ??
     null;
+
   const selectedRepository =
     repositoryState.repositories.find(
       (repository) => String(repository.id) === selectedRepositoryId,
@@ -471,25 +432,8 @@ export function GitDeploymentPage({
       return;
     }
 
-    if (!githubTokenValue.trim()) {
-      setRepositoryState({
-        error: "Set a GitHub token to load repositories.",
-        hasLoaded: true,
-        isLoading: false,
-        repositories: [],
-        tokenConfigured: false,
-      });
-      return;
-    }
-
     void loadRepositories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    githubTokenValue,
-    repositoryState.hasLoaded,
-    repositoryState.isLoading,
-    showAddPanel,
-  ]);
+  }, [showAddPanel, repositoryState.isLoading, repositoryState.hasLoaded]);
 
   async function loadRepositories() {
     setRepositoryState((current) => ({
@@ -500,9 +444,7 @@ export function GitDeploymentPage({
     }));
 
     try {
-      const response = await fetch("/api/github/repos", {
-        cache: "no-store",
-      });
+      const response = await fetch("/api/github/repos", { cache: "no-store" });
       const payload = (await response.json()) as {
         error?: string;
         repositories?: GitHubRepository[];
@@ -531,12 +473,12 @@ export function GitDeploymentPage({
         hasLoaded: true,
         isLoading: false,
         repositories: [],
-        tokenConfigured: Boolean(githubTokenValue.trim()),
+        tokenConfigured: false,
       });
     }
   }
 
-  function applyRepositorySelection(repositoryId: string) {
+  function handleSelectRepository(repositoryId: string) {
     const repository = repositoryState.repositories.find(
       (entry) => String(entry.id) === repositoryId,
     );
@@ -545,79 +487,21 @@ export function GitDeploymentPage({
       return;
     }
 
+    const repositoryName = getRepositoryNameFromUrl(repository.cloneUrl);
+
     setSelectedRepositoryId(repositoryId);
-    setCustomRepositoryUrl("");
-    setDraftState(buildDraftStateFromRepository(repository));
-    setLocalBanner(null);
-  }
-
-  function handleUseCustomRepository() {
-    try {
-      const repositoryUrl = normalizeGitHubRepositoryUrl(customRepositoryUrl);
-      setSelectedRepositoryId("");
-      setDraftState(buildDraftStateFromCustomUrl(repositoryUrl));
-      setLocalBanner(null);
-    } catch (error) {
-      setLocalBanner({
-        status: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to use that GitHub repository URL.",
-      });
-    }
-  }
-
-  async function handleUpdateToken() {
-    setIsUpdatingToken(true);
-    setLocalBanner(null);
-
-    try {
-      const response = await fetch("/api/github/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: tokenDraft,
-        }),
-      });
-
-      const payload = (await response.json()) as {
-        error?: string;
-        repositories?: GitHubRepository[];
-        tokenConfigured?: boolean;
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to update the GitHub token.");
-      }
-
-      setGithubTokenValue(tokenDraft.trim());
-      setRepositoryState({
-        error: null,
-        hasLoaded: true,
-        isLoading: false,
-        repositories: payload.repositories ?? [],
-        tokenConfigured: true,
-      });
-      setLocalBanner({
-        status: "success",
-        message: `GitHub token updated. ${(payload.repositories ?? []).length} repositories are available.`,
-      });
-      setShowAddPanel(true);
-      router.refresh();
-    } catch (error) {
-      setLocalBanner({
-        status: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to update the GitHub token.",
-      });
-    } finally {
-      setIsUpdatingToken(false);
-    }
+    setDraftState((current) => ({
+      ...current,
+      repositoryUrl: repository.cloneUrl,
+      appName:
+        current.appName.trim().length > 0
+          ? current.appName
+          : toAppName(repositoryName),
+      subdomain:
+        current.subdomain.trim().length > 0
+          ? current.subdomain
+          : toSlug(repositoryName),
+    }));
   }
 
   async function handleCreateDeployment(event: FormEvent<HTMLFormElement>) {
@@ -627,9 +511,18 @@ export function GitDeploymentPage({
     setLocalBanner(null);
 
     try {
+      const normalizedRepositoryUrl = normalizeGitHubRepositoryUrl(
+        draftState.repositoryUrl,
+      );
+      const formData = new FormData();
+      formData.set("repositoryUrl", normalizedRepositoryUrl);
+      formData.set("appName", draftState.appName);
+      formData.set("subdomain", draftState.subdomain);
+      formData.set("port", draftState.port);
+
       const response = await fetch("/api/deployments", {
         method: "POST",
-        body: new FormData(event.currentTarget),
+        body: formData,
       });
       const payload = (await response.json()) as
         | { deploymentId: string; domain: string }
@@ -650,8 +543,10 @@ export function GitDeploymentPage({
       setPreferredDeploymentId(payload.deploymentId);
       setExpandedDeploymentId(payload.deploymentId);
       setSelectedDeploymentId(payload.deploymentId);
-      onDeploymentSelectAction?.(payload.deploymentId);
+      onToggleLogsAction?.(payload.deploymentId);
       setShowAddPanel(false);
+      setDraftState(getEmptyDraftState());
+      setSelectedRepositoryId("");
       setLocalBanner({
         status: "success",
         message: `Deployment live at https://${payload.domain}`,
@@ -718,6 +613,7 @@ export function GitDeploymentPage({
 
                   if (!nextValue && !draftState.repositoryUrl) {
                     setDraftState(getEmptyDraftState());
+                    setSelectedRepositoryId("");
                   }
                 }}
                 type="button"
@@ -738,288 +634,105 @@ export function GitDeploymentPage({
         </CardHeader>
 
         {showAddPanel ? (
-          <CardContent className="space-y-4 p-4">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    Add app
-                  </div>
-                  <Label htmlFor="repository-picker">GitHub repositories</Label>
-                  <div id="repository-picker">
-                    <Combobox
-                      disabled={
-                        !repositoryState.tokenConfigured ||
-                        repositoryState.isLoading
-                      }
-                      emptyText={
-                        repositoryState.isLoading
-                          ? "Loading repositories..."
-                          : "No repositories available"
-                      }
-                      onValueChangeAction={applyRepositorySelection}
-                      options={buildRepositoryOptions(
-                        repositoryState.repositories,
-                      )}
-                      placeholder={
-                        repositoryState.tokenConfigured
-                          ? "Choose a repository"
-                          : "Update the token to load repositories"
-                      }
-                      searchPlaceholder="Search repositories"
-                      value={selectedRepositoryId}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span>
-                      {selectedRepository
-                        ? `${selectedRepository.visibility} repo · updated ${formatRelativeTime(selectedRepository.updatedAt)}`
-                        : (repositoryState.error ??
-                          "Uses the GitHub token configured for Vercelab.")}
-                    </span>
-                    <Button
-                      disabled={
-                        !githubTokenValue.trim() || repositoryState.isLoading
-                      }
-                      onClick={() => void loadRepositories()}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Icon name="arrow-down" className="h-3.5 w-3.5" />
-                      Reload repos
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-3">
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    Update token
-                  </div>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="min-w-60 flex-1 space-y-2">
-                      <Label htmlFor="github-token">GitHub token</Label>
-                      <Input
-                        id="github-token"
-                        onChange={(event) => setTokenDraft(event.target.value)}
-                        placeholder="ghp_..."
-                        type="password"
-                        value={tokenDraft}
-                      />
-                    </div>
-                    <Button
-                      disabled={
-                        isUpdatingToken || tokenDraft.trim().length < 20
-                      }
-                      onClick={() => void handleUpdateToken()}
-                      type="button"
-                      variant="secondary"
-                    >
-                      <Icon name="check" className="h-3.5 w-3.5" />
-                      {isUpdatingToken ? "Updating..." : "Update token"}
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-3">
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    Add from GitHub URL
-                  </div>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="min-w-60 flex-1 space-y-2">
-                      <Label htmlFor="custom-repository-url">
-                        Custom repository URL
-                      </Label>
-                      <Input
-                        id="custom-repository-url"
-                        onChange={(event) =>
-                          setCustomRepositoryUrl(event.target.value)
-                        }
-                        placeholder="https://github.com/owner/repository"
-                        type="url"
-                        value={customRepositoryUrl}
-                      />
-                    </div>
-                    <Button
-                      disabled={customRepositoryUrl.trim().length === 0}
-                      onClick={handleUseCustomRepository}
-                      type="button"
-                      variant="secondary"
-                    >
-                      <Icon name="globe" className="h-3.5 w-3.5" />
-                      Use URL
-                    </Button>
-                  </div>
+          <CardContent className="p-4">
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={handleCreateDeployment}
+            >
+              <div className="min-w-72 flex-1 space-y-2">
+                <Label htmlFor="repositoryPicker">Git repo</Label>
+                <div id="repositoryPicker">
+                  <Combobox
+                    disabled={
+                      !repositoryState.tokenConfigured ||
+                      repositoryState.isLoading
+                    }
+                    emptyText={
+                      repositoryState.isLoading
+                        ? "Loading repositories..."
+                        : "No repositories available"
+                    }
+                    onValueChangeAction={handleSelectRepository}
+                    options={buildRepositoryOptions(
+                      repositoryState.repositories,
+                    )}
+                    placeholder={
+                      repositoryState.tokenConfigured
+                        ? "Select repository"
+                        : "Token missing in .env"
+                    }
+                    searchPlaceholder="Search repositories"
+                    value={selectedRepositoryId}
+                  />
                 </div>
               </div>
 
-              <Card className="border-dashed">
-                <CardHeader>
-                  <CardTitle className="text-sm">App draft</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {draftState.repositoryUrl ? (
-                    <form
-                      className="space-y-4"
-                      onSubmit={handleCreateDeployment}
-                    >
-                      <input name="githubToken" type="hidden" value="" />
-                      <input
-                        name="repositoryUrl"
-                        type="hidden"
-                        value={draftState.repositoryUrl}
-                      />
+              <div className="min-w-44 flex-1 space-y-2">
+                <Label htmlFor="appName">App name</Label>
+                <Input
+                  id="appName"
+                  name="appName"
+                  onChange={(event) =>
+                    setDraftState((current) => ({
+                      ...current,
+                      appName: event.target.value,
+                    }))
+                  }
+                  required
+                  type="text"
+                  value={draftState.appName}
+                />
+              </div>
 
-                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                        <div className="text-xs text-muted-foreground">
-                          Repository
-                        </div>
-                        <div className="font-medium text-foreground">
-                          {selectedRepository?.fullName ??
-                            formatRepositoryLabel(draftState.repositoryUrl)}
-                        </div>
-                        <a
-                          className="text-xs text-muted-foreground hover:underline"
-                          href={draftState.repositoryUrl}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          {draftState.repositoryUrl}
-                        </a>
-                      </div>
+              <div className="w-28 space-y-2">
+                <Label htmlFor="port">App port</Label>
+                <Input
+                  id="port"
+                  max="65535"
+                  min="1"
+                  name="port"
+                  onChange={(event) =>
+                    setDraftState((current) => ({
+                      ...current,
+                      port: event.target.value,
+                    }))
+                  }
+                  required
+                  type="number"
+                  value={draftState.port}
+                />
+              </div>
 
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div className="grid gap-2">
-                          <Label htmlFor="branch">Branch</Label>
-                          <Input
-                            id="branch"
-                            name="branch"
-                            onChange={(event) =>
-                              setDraftState((current) => ({
-                                ...current,
-                                branch: event.target.value,
-                              }))
-                            }
-                            required
-                            type="text"
-                            value={draftState.branch}
-                          />
-                        </div>
+              <div className="min-w-52 flex-1 space-y-2">
+                <Label htmlFor="subdomain">URL</Label>
+                <InputGroup>
+                  <InputGroupInput
+                    id="subdomain"
+                    name="subdomain"
+                    onChange={(event) =>
+                      setDraftState((current) => ({
+                        ...current,
+                        subdomain: event.target.value,
+                      }))
+                    }
+                    required
+                    type="text"
+                    value={draftState.subdomain}
+                  />
+                  <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                </InputGroup>
+              </div>
 
-                        <div className="grid gap-2">
-                          <Label htmlFor="appName">App name</Label>
-                          <Input
-                            id="appName"
-                            name="appName"
-                            onChange={(event) =>
-                              setDraftState((current) => ({
-                                ...current,
-                                appName: event.target.value,
-                              }))
-                            }
-                            required
-                            type="text"
-                            value={draftState.appName}
-                          />
-                        </div>
+              <Button disabled={isCreatingDeployment} type="submit">
+                <Icon name="cloud" className="h-3.5 w-3.5" />
+                {isCreatingDeployment ? "Deploying..." : "Deploy app"}
+              </Button>
+            </form>
 
-                        <div className="grid gap-2">
-                          <Label htmlFor="subdomain">URL</Label>
-                          <InputGroup>
-                            <InputGroupInput
-                              id="subdomain"
-                              name="subdomain"
-                              onChange={(event) =>
-                                setDraftState((current) => ({
-                                  ...current,
-                                  subdomain: event.target.value,
-                                }))
-                              }
-                              required
-                              type="text"
-                              value={draftState.subdomain}
-                            />
-                            <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
-                          </InputGroup>
-                        </div>
-
-                        <div className="grid gap-2">
-                          <Label htmlFor="port">Port</Label>
-                          <Input
-                            id="port"
-                            max="65535"
-                            min="1"
-                            name="port"
-                            onChange={(event) =>
-                              setDraftState((current) => ({
-                                ...current,
-                                port: event.target.value,
-                              }))
-                            }
-                            required
-                            type="number"
-                            value={draftState.port}
-                          />
-                        </div>
-
-                        <div className="grid gap-2 md:col-span-2">
-                          <Label htmlFor="serviceName">Service name</Label>
-                          <Input
-                            id="serviceName"
-                            name="serviceName"
-                            onChange={(event) =>
-                              setDraftState((current) => ({
-                                ...current,
-                                serviceName: event.target.value,
-                              }))
-                            }
-                            placeholder="Optional for multi-service compose repositories"
-                            type="text"
-                            value={draftState.serviceName}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label htmlFor="envVariables">
-                          Environment variables
-                        </Label>
-                        <textarea
-                          className="min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
-                          id="envVariables"
-                          name="envVariables"
-                          onChange={(event) =>
-                            setDraftState((current) => ({
-                              ...current,
-                              envVariables: event.target.value,
-                            }))
-                          }
-                          placeholder={
-                            "DATABASE_URL=postgres://...\nNEXTAUTH_SECRET=..."
-                          }
-                          rows={5}
-                          value={draftState.envVariables}
-                        />
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-end gap-3">
-                        <Button disabled={isCreatingDeployment} type="submit">
-                          <Icon name="cloud" className="h-3.5 w-3.5" />
-                          {isCreatingDeployment ? "Deploying..." : "Deploy app"}
-                        </Button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="flex min-h-72 items-center justify-center text-center text-sm text-muted-foreground">
-                      No app draft selected.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+            <div className="mt-2 text-xs text-muted-foreground">
+              {selectedRepository
+                ? `Selected: ${selectedRepository.fullName}`
+                : (repositoryState.error ?? "")}
             </div>
           </CardContent>
         ) : null}
@@ -1039,10 +752,6 @@ export function GitDeploymentPage({
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
               <CardTitle>Installed apps</CardTitle>
-              <CardDescription>
-                Click a row to expand it. The selected app also drives the log
-                panel on the right.
-              </CardDescription>
             </div>
             <div className="text-xs text-muted-foreground">
               {deployments.length} total deployments
@@ -1227,9 +936,7 @@ export function GitDeploymentPage({
                             <div className="mt-1 text-sm text-foreground">
                               {deployment.tokenStored
                                 ? "Stored with app"
-                                : githubTokenValue.trim()
-                                  ? "Global token fallback"
-                                  : "Public clone only"}
+                                : "Global token fallback"}
                             </div>
                           </div>
                         </div>
@@ -1580,6 +1287,20 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
       cancelled = true;
     };
   }, [deploymentId, activeLogTab, logRefreshKey]);
+
+  useEffect(() => {
+    if (!deploymentId || activeLogTab !== "build") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setLogRefreshKey((current) => current + 1);
+    }, LOG_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeLogTab, deploymentId]);
 
   return (
     <div className="flex h-full flex-col">

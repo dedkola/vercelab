@@ -36,7 +36,6 @@ export default async function Home({ searchParams }: HomeProps) {
             }
           : null
       }
-      initialGithubToken={getAppConfig().security.githubToken ?? ""}
       initialSection={activeSection}
     />
   );

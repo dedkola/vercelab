@@ -52,7 +52,6 @@ type MetricsDashboardProps = {
     message: string;
     status: "success" | "error";
   } | null;
-  initialGithubToken: string;
   initialSection: DashboardSection;
 };
 
@@ -81,7 +80,6 @@ export default function MetricsDashboard({
   baseDomain,
   dashboardData,
   flashMessage,
-  initialGithubToken,
   initialSection,
 }: MetricsDashboardProps) {
   const [activeSection, setActiveSection] =
@@ -96,7 +94,6 @@ export default function MetricsDashboard({
     [],
   );
   const [overviewRange, setOverviewRange] = useState<MainChartRange>("15m");
-  const githubToken = initialGithubToken;
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -312,7 +309,6 @@ export default function MetricsDashboard({
               baseDomain={baseDomain}
               dashboardData={dashboardData}
               flashMessage={flashMessage}
-              githubToken={githubToken}
               onDeploymentSelectAction={(id) => setLogDeploymentId(id)}
               onToggleLogsAction={(id) => {
                 setLogDeploymentId(id);
