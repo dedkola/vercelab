@@ -15,7 +15,7 @@
   },
 
   "postCreateCommand": "pnpm install --frozen-lockfile",
-  "postStartCommand": "git config --global --add safe.directory /workspaces/vercelab",
+  "postStartCommand": "bash .devcontainer/post-start.sh || true; git config --global --add safe.directory /workspaces/vercelab",
 
   "customizations": {
     "vscode": {
