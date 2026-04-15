@@ -44,6 +44,11 @@
   "remoteEnv": {
     "NODE_ENV": "development",
     "VERCELAB_UI_DEV_MODE": "true",
+    "VERCELAB_HOST_ROOT": "/workspaces/vercelab",
+    "VERCELAB_DATA_ROOT": "/workspaces/vercelab/data",
+    "VERCELAB_APPS_DIR": "/workspaces/vercelab/data/apps",
+    "VERCELAB_LOGS_DIR": "/workspaces/vercelab/data/logs",
+    "VERCELAB_LOCKS_DIR": "/workspaces/vercelab/data/locks",
     "VERCELAB_DATABASE_PROVIDER": "postgres",
     "VERCELAB_POSTGRES_USER": "vercelab",
     "VERCELAB_POSTGRES_PASSWORD": "vercelab",
