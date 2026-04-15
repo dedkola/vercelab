@@ -17,7 +17,6 @@ import { DashboardHeader } from "@/components/shell/dashboard-header";
 import { DashboardLeftSidebar } from "@/components/shell/dashboard-left-sidebar";
 import { DashboardRightSidebar } from "@/components/shell/dashboard-right-sidebar";
 import { SidebarMetricCharts } from "@/components/sidebar-metric-charts";
-import { TrafficCard } from "@/components/traffic-card";
 import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import type { DashboardData } from "@/lib/persistence";
@@ -56,69 +55,6 @@ const SECTION_META: Record<
   },
 };
 
-const CONNECTION_ROWS = [
-  {
-    label: "WiFi 6",
-    band: "5 GHz",
-    activity: 0.86,
-    activityWidthClass: "connections-bar__fill--86",
-    color: "#6a35db",
-    experience: "Excellent",
-    connections: 5,
-    toneClass: "violet",
-  },
-  {
-    label: "WiFi 5",
-    band: "5 GHz",
-    activity: 0.19,
-    activityWidthClass: "connections-bar__fill--19",
-    color: "#1d74f4",
-    experience: "Excellent",
-    connections: 1,
-    toneClass: "blue",
-  },
-  {
-    label: "WiFi 6",
-    band: "6 GHz",
-    activity: 0.04,
-    activityWidthClass: "connections-bar__fill--4",
-    color: "#1746af",
-    experience: "Excellent",
-    connections: 2,
-    toneClass: "navy",
-  },
-  {
-    label: "WiFi 4",
-    band: "2.4 GHz",
-    activity: 0.06,
-    activityWidthClass: "connections-bar__fill--6",
-    color: "#4ec0f0",
-    experience: "Excellent",
-    connections: 3,
-    toneClass: "cyan",
-  },
-  {
-    label: "WiFi 4",
-    band: "5 GHz",
-    activity: 0.03,
-    activityWidthClass: "connections-bar__fill--6",
-    color: "#5a93f3",
-    experience: "Excellent",
-    connections: 2,
-    toneClass: "sky",
-  },
-  {
-    label: "WiFi 6",
-    band: "2.4 GHz",
-    activity: 0.02,
-    activityWidthClass: "connections-bar__fill--6",
-    color: "#245cc7",
-    experience: "Excellent",
-    connections: 1,
-    toneClass: "indigo",
-  },
-];
-
 type HistoryPoint = {
   timestamp: string;
   cpu: number;
@@ -155,14 +91,6 @@ function formatBytes(value: number) {
 
   const precision = size >= 100 ? 0 : size >= 10 ? 1 : 2;
   return `${size.toFixed(precision)} ${units[unitIndex]}`;
-}
-
-function formatRate(value: number) {
-  return `${formatBytes(value)}/s`;
-}
-
-function formatPercent(value: number) {
-  return `${value.toFixed(value >= 100 ? 0 : 1)}%`;
 }
 
 function formatClock(value: string) {
@@ -270,61 +198,6 @@ function buildAxisTicks(history: HistoryPoint[], count: number): AxisTick[] {
       position: count === 1 ? 0.5 : index / (count - 1),
     };
   });
-}
-
-function TrafficDonut({
-  segments,
-  centerValue,
-  label,
-}: {
-  segments: Array<{ color: string; ratio: number }>;
-  centerValue: string;
-  label: string;
-}) {
-  const radius = 54;
-  const circumference = 2 * Math.PI * radius;
-
-  return (
-    <div className="donut">
-      <svg className="donut__ring" viewBox="0 0 140 140" aria-hidden="true">
-        <circle
-          cx="70"
-          cy="70"
-          r={radius}
-          fill="none"
-          stroke="#edf0f4"
-          strokeWidth="12"
-        />
-
-        {segments.map((segment, index) => {
-          const completedRatio = segments
-            .slice(0, index)
-            .reduce((sum, entry) => sum + entry.ratio, 0);
-          const dash = circumference * segment.ratio;
-          const dashOffset = circumference * (1 - completedRatio);
-
-          return (
-            <circle
-              key={`${segment.color}-${segment.ratio}`}
-              cx="70"
-              cy="70"
-              r={radius}
-              fill="none"
-              stroke={segment.color}
-              strokeWidth="12"
-              strokeDasharray={`${dash} ${circumference - dash}`}
-              strokeDashoffset={dashOffset}
-            />
-          );
-        })}
-      </svg>
-
-      <div className="donut__center">
-        <div className="donut__value">{centerValue}</div>
-        <div className="donut__label">{label}</div>
-      </div>
-    </div>
-  );
 }
 
 function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
@@ -589,28 +462,6 @@ export default function MetricsDashboard({
     window.history.pushState(null, "", nextUrl);
   }
 
-  const totalRate = deferredSnapshot
-    ? deferredSnapshot.network.rxBytesPerSecond +
-      deferredSnapshot.network.txBytesPerSecond
-    : 0;
-  const topContainers = deferredSnapshot?.containers.top ?? [];
-  const statusMessage = deferredSnapshot
-    ? "Live host traffic aggregated across server interfaces"
-    : (errorMessage ?? "Connecting to metrics feed");
-  const connectionSegments = CONNECTION_ROWS.map((row) => ({
-    color: row.color,
-    ratio: row.connections / 14,
-  }));
-  const panelMeta = deferredSnapshot
-    ? `${formatPercent(deferredSnapshot.system.cpuPercent)} CPU · ${formatPercent(
-        deferredSnapshot.system.memoryPercent,
-      )} memory`
-    : "Collecting system metrics";
-  const uplinkLabel = deferredSnapshot
-    ? `${formatRate(deferredSnapshot.network.rxBytesPerSecond)} down · ${formatRate(
-        deferredSnapshot.network.txBytesPerSecond,
-      )} up`
-    : "Waiting for uplink counters";
   const timestampLabel = deferredSnapshot
     ? formatClock(deferredSnapshot.timestamp)
     : "--:--";
@@ -663,107 +514,6 @@ export default function MetricsDashboard({
             <>
               <section className="chart-area">
                 <MainTrafficChart history={deferredHistory} />
-              </section>
-
-              <section className="dashboard-overview">
-                <div className="dashboard-overview__main">
-                  <div className="overview-grid">
-                    <TrafficCard
-                      statusMessage={statusMessage}
-                      timestampLabel={timestampLabel}
-                    />
-
-                    <article className="unifi-card unifi-card--connections">
-                      <div className="overview-card__header">
-                        <div>
-                          <div className="overview-card__title">
-                            Connections
-                          </div>
-                          <div className="overview-card__meta">
-                            {uplinkLabel}
-                          </div>
-                        </div>
-                        <div className="overview-card__stamp">{panelMeta}</div>
-                      </div>
-
-                      <div className="connections-card">
-                        <TrafficDonut
-                          segments={connectionSegments}
-                          centerValue="14"
-                          label="Total Connections"
-                        />
-
-                        <div className="connections-table">
-                          <div className="connections-table__head">
-                            <span>Type</span>
-                            <span>Activity</span>
-                            <span>Experience</span>
-                            <span>Connections</span>
-                          </div>
-
-                          {CONNECTION_ROWS.map((row) => (
-                            <div
-                              className="connections-table__row"
-                              key={`${row.label}-${row.band}`}
-                            >
-                              <div className="connections-type">
-                                <span
-                                  className={`connections-type__dot connections-type__dot--${row.toneClass}`}
-                                />
-                                <span>{row.label}</span>
-                                <span className="connections-type__band">
-                                  {row.band}
-                                </span>
-                              </div>
-
-                              <div className="connections-bar">
-                                <span
-                                  className={`connections-bar__fill ${row.activityWidthClass}`}
-                                />
-                              </div>
-
-                              <div className="connections-table__excellent">
-                                {row.experience}
-                              </div>
-                              <div className="connections-table__count">
-                                {row.connections}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </article>
-                  </div>
-                </div>
-
-                <div className="dashboard-overview__side">
-                  <div className="unifi-card side-note">
-                    <div className="overview-card__title">Gateway Summary</div>
-                    <div className="side-note__value">
-                      {deferredSnapshot ? formatRate(totalRate) : "0 B/s"}
-                    </div>
-                    <div className="side-note__meta">
-                      {topContainers.length > 0
-                        ? `Top container ${topContainers[0].name}`
-                        : "Container telemetry will appear here"}
-                    </div>
-                    <div className="side-note__list">
-                      {topContainers.length > 0 ? (
-                        topContainers.map((container) => (
-                          <div className="side-note__row" key={container.name}>
-                            <span>{container.name}</span>
-                            <span>{formatPercent(container.cpuPercent)}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="side-note__row">
-                          <span>Metrics feed</span>
-                          <span>Online</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </section>
             </>
           ) : (

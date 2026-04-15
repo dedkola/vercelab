@@ -15,11 +15,50 @@ type SidebarMetricChartsProps = {
   className?: string;
 };
 
+type NetworkTooltipParam = {
+  marker?: string;
+  seriesName?: string;
+  name?: string;
+  value?: unknown;
+};
+
 function formatTimeLabel(timestamp: string) {
   return new Intl.DateTimeFormat("en", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   }).format(new Date(timestamp));
+}
+
+function formatCompactNetworkLabel(value: number) {
+  return `${Math.round((value * 8) / 1_000_000)} MB`;
+}
+
+function formatNetworkTooltip(
+  params: NetworkTooltipParam | NetworkTooltipParam[],
+) {
+  const items = Array.isArray(params) ? params : [params];
+
+  return items
+    .map((item) => {
+      const arrow = item.seriesName === "Upload" ? "↑" : "↓";
+      return `${item.marker ?? ""} ${arrow} ${formatCompactNetworkLabel(Number(item.value ?? 0))}`;
+    })
+    .join("<br/>");
+}
+
+function formatCpuTooltip(params: NetworkTooltipParam | NetworkTooltipParam[]) {
+  const item = Array.isArray(params) ? params[0] : params;
+
+  if (!item) {
+    return "";
+  }
+
+  return `${item.marker ?? ""} CPU ${Number(item.value ?? 0).toFixed(1)}%`;
+}
+
+function formatMemoryTooltip(param: NetworkTooltipParam) {
+  return `${param.marker ?? ""} ${param.name ?? ""} ${Number(param.value ?? 0).toFixed(1)}%`.trim();
 }
 
 function useChart(
@@ -77,26 +116,27 @@ export function SidebarMetricCharts({
     return {
       animationDuration: 400,
       grid: {
-        left: 46,
-        right: 14,
+        left: 40,
+        right: 10,
         top: 30,
         bottom: 28,
       },
       tooltip: {
         trigger: "axis",
+        formatter: (params) => formatNetworkTooltip(params as NetworkTooltipParam[]),
       },
       xAxis: {
         type: "category",
         boundaryGap: false,
         data: labels,
         axisLabel: {
-          color: "#98a2b3",
-          fontSize: 10,
+          show: false,
+        },
+        axisTick: {
+          show: false,
         },
         axisLine: {
-          lineStyle: {
-            color: "#edf1f5",
-          },
+          show: false,
         },
       },
       yAxis: {
@@ -108,7 +148,7 @@ export function SidebarMetricCharts({
         },
         axisLabel: {
           color: "#98a2b3",
-          formatter: (value: number) => `${((value * 8) / 1_000_000).toFixed(1)} Mbps`,
+          formatter: (value: number) => formatCompactNetworkLabel(value),
           fontSize: 10,
         },
       },
@@ -158,7 +198,7 @@ export function SidebarMetricCharts({
       },
       tooltip: {
         trigger: "axis",
-        valueFormatter: (value) => `${Number(value).toFixed(1)}%`,
+        formatter: (params) => formatCpuTooltip(params as NetworkTooltipParam[]),
       },
       xAxis: {
         type: "category",
@@ -224,7 +264,7 @@ export function SidebarMetricCharts({
     return {
       tooltip: {
         trigger: "item",
-        valueFormatter: (value) => `${Number(value).toFixed(1)}%`,
+        formatter: (param) => formatMemoryTooltip(param as NetworkTooltipParam),
       },
       legend: {
         bottom: 0,
@@ -247,10 +287,7 @@ export function SidebarMetricCharts({
             borderRadius: 7,
           },
           label: {
-            show: true,
-            formatter: "{d}%",
-            color: "#435064",
-            fontSize: 10,
+            show: false,
           },
           labelLine: {
             show: false,
