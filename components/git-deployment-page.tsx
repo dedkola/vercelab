@@ -128,11 +128,11 @@ function formatStatusDotColor(status: DashboardDeployment["status"]) {
     case "failed":
       return "bg-red-500";
     case "stopped":
-      return "bg-zinc-400";
+      return "bg-muted-foreground";
     case "removing":
       return "bg-orange-500";
     default:
-      return "bg-zinc-300";
+      return "bg-muted-foreground/60";
   }
 }
 
@@ -386,20 +386,24 @@ export function GitDeploymentPage({
         </CardHeader>
         <CardContent className="flex gap-6">
           <div className="text-center">
-            <span className="block text-xs text-zinc-500">Deployments</span>
-            <span className="text-lg font-semibold text-zinc-900">
+            <span className="block text-xs text-muted-foreground">
+              Deployments
+            </span>
+            <span className="text-lg font-semibold text-foreground">
               {stats.totalDeployments}
             </span>
           </div>
           <div className="text-center">
-            <span className="block text-xs text-zinc-500">Running</span>
-            <span className="text-lg font-semibold text-zinc-900">
+            <span className="block text-xs text-muted-foreground">Running</span>
+            <span className="text-lg font-semibold text-foreground">
               {stats.runningDeployments}
             </span>
           </div>
           <div className="text-center">
-            <span className="block text-xs text-zinc-500">Repositories</span>
-            <span className="text-lg font-semibold text-zinc-900">
+            <span className="block text-xs text-muted-foreground">
+              Repositories
+            </span>
+            <span className="text-lg font-semibold text-foreground">
               {stats.totalRepositories}
             </span>
           </div>
@@ -443,13 +447,13 @@ export function GitDeploymentPage({
 
               <div className="space-y-1 mb-4">
                 <div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-muted-foreground">
                     Selected repository
                   </div>
-                  <div className="text-sm font-medium text-zinc-900">
+                  <div className="text-sm font-medium text-foreground">
                     {repositoryDraft.fullName}
                   </div>
-                  <div className="flex gap-2 text-xs text-zinc-400">
+                  <div className="flex gap-2 text-xs text-muted-foreground/70">
                     <span>{repositoryDraft.visibility}</span>
                     <span>{repositoryDraft.defaultBranch}</span>
                     <span>
@@ -459,7 +463,7 @@ export function GitDeploymentPage({
                 </div>
 
                 <a
-                  className="text-xs text-zinc-500 hover:underline"
+                  className="text-xs text-muted-foreground hover:underline"
                   href={draftState.repositoryUrl}
                   rel="noreferrer"
                   target="_blank"
@@ -563,7 +567,7 @@ export function GitDeploymentPage({
               <div className="grid gap-2">
                 <Label htmlFor="envVariables">Variables</Label>
                 <textarea
-                  className="min-h-27 w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm text-zinc-950 shadow-sm transition-[color,box-shadow] outline-none placeholder:text-zinc-500 focus-visible:border-zinc-300 focus-visible:ring-1 focus-visible:ring-zinc-950/20"
+                  className="min-h-27 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
                   id="envVariables"
                   name="envVariables"
                   onChange={(event) =>
@@ -578,7 +582,7 @@ export function GitDeploymentPage({
                   rows={5}
                   value={draftState.envVariables}
                 />
-                <span className="text-xs text-zinc-500">
+                <span className="text-xs text-muted-foreground">
                   Optional. One variable per line in KEY=VALUE format. If the
                   repository is private, keep the token in the Git sidebar so it
                   can be stored with the deployment.
@@ -586,7 +590,7 @@ export function GitDeploymentPage({
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-xs text-zinc-500">
+                <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                   <Checkbox
                     checked={storeTokenWithDeployment}
                     disabled={!githubToken.trim()}
@@ -596,7 +600,7 @@ export function GitDeploymentPage({
                   />
                   Store Git token with deployment
                 </label>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   Vercelab clones the selected repository, builds the app, and
                   exposes it at .{baseDomain}.
                 </p>
@@ -613,7 +617,7 @@ export function GitDeploymentPage({
             </form>
           ) : (
             <div className="py-6 text-center">
-              <div className="text-sm text-zinc-500">
+              <div className="text-sm text-muted-foreground">
                 Select a repository from the sidebar
               </div>
             </div>
@@ -623,14 +627,14 @@ export function GitDeploymentPage({
 
       {view === "list" ? (
         <Card aria-label="Deployed applications">
-          <CardHeader className="flex-row items-center justify-between border-b border-zinc-100">
+          <CardHeader className="flex-row items-center justify-between border-b">
             <CardTitle>Deployed apps</CardTitle>
             <CardDescription>{deployments.length} total</CardDescription>
           </CardHeader>
 
           {deployments.length > 0 ? (
             <CardContent className="p-0">
-              <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] gap-2 border-b border-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-500">
+              <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] gap-2 border-b px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 <span>Status</span>
                 <span>App name</span>
                 <span>Domain</span>
@@ -640,8 +644,8 @@ export function GitDeploymentPage({
               </div>
               {deployments.map((deployment) => (
                 <button
-                  className={`grid grid-cols-[auto_1fr_1fr_auto_auto_auto] items-center gap-2 border-b border-zinc-50 px-3 py-2 text-left text-sm hover:bg-zinc-50 last:border-0 ${
-                    deployment.id === selectedDeploymentId ? "bg-zinc-50" : ""
+                  className={`grid grid-cols-[auto_1fr_1fr_auto_auto_auto] items-center gap-2 border-b px-3 py-2 text-left text-sm hover:bg-accent last:border-0 ${
+                    deployment.id === selectedDeploymentId ? "bg-accent" : ""
                   }`}
                   key={deployment.id}
                   onClick={() => handleSelectDeployment(deployment.id)}
@@ -651,22 +655,22 @@ export function GitDeploymentPage({
                     className={`h-2 w-2 rounded-full ${formatStatusDotColor(deployment.status)}`}
                     title={formatDeploymentStatus(deployment.status)}
                   />
-                  <span className="truncate font-medium text-zinc-900">
+                  <span className="truncate font-medium text-foreground">
                     {deployment.appName}
                   </span>
-                  <span className="truncate text-zinc-500">
+                  <span className="truncate text-muted-foreground">
                     {formatDeploymentDomain(deployment, baseDomain)}
                   </span>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-muted-foreground">
                     {deployment.branch ?? "default"}
                   </span>
-                  <span className="text-xs text-zinc-400">
+                  <span className="text-xs text-muted-foreground/70">
                     {formatDeploymentTime(
                       deployment.deployedAt ?? deployment.updatedAt,
                     )}
                   </span>
                   <span
-                    className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-zinc-100"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-accent"
                     role="button"
                     tabIndex={0}
                     aria-label={`View logs for ${deployment.appName}`}
@@ -682,14 +686,19 @@ export function GitDeploymentPage({
                       }
                     }}
                   >
-                    <Icon name="syslog" className="h-3.5 w-3.5 text-zinc-400" />
+                    <Icon
+                      name="syslog"
+                      className="h-3.5 w-3.5 text-muted-foreground"
+                    />
                   </span>
                 </button>
               ))}
             </CardContent>
           ) : (
             <CardContent className="py-8 text-center">
-              <div className="text-sm text-zinc-500">No deployments yet</div>
+              <div className="text-sm text-muted-foreground">
+                No deployments yet
+              </div>
             </CardContent>
           )}
         </Card>
@@ -728,22 +737,28 @@ export function GitDeploymentPage({
 
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="block text-xs text-zinc-500">Domain</span>
+                <span className="block text-xs text-muted-foreground">
+                  Domain
+                </span>
                 <a
                   href={formatDeploymentHref(selectedDeployment, baseDomain)}
                   rel="noreferrer"
                   target="_blank"
-                  className="text-zinc-900 hover:underline"
+                  className="text-foreground hover:underline"
                 >
                   {formatDeploymentDomain(selectedDeployment, baseDomain)}
                 </a>
               </div>
               <div>
-                <span className="block text-xs text-zinc-500">Branch</span>
+                <span className="block text-xs text-muted-foreground">
+                  Branch
+                </span>
                 <span>{selectedDeployment.branch ?? "default"}</span>
               </div>
               <div>
-                <span className="block text-xs text-zinc-500">Access</span>
+                <span className="block text-xs text-muted-foreground">
+                  Access
+                </span>
                 <span>
                   {selectedDeployment.tokenStored
                     ? "Git token saved"
@@ -752,7 +767,7 @@ export function GitDeploymentPage({
               </div>
             </div>
 
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted-foreground">
               {selectedDeployment.lastOperationSummary ??
                 "No deployment summary captured yet."}
             </p>
@@ -944,7 +959,7 @@ export function GitDeploymentPage({
                     Variables
                   </Label>
                   <textarea
-                    className="min-h-24 w-full rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm text-zinc-950 shadow-sm transition-[color,box-shadow] outline-none placeholder:text-zinc-500 focus-visible:border-zinc-300 focus-visible:ring-1 focus-visible:ring-zinc-950/20"
+                    className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-sm transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
                     defaultValue={selectedDeployment.envVariables ?? ""}
                     id={`envVariables-${selectedDeployment.id}`}
                     name="envVariables"
@@ -1065,7 +1080,7 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-100 px-3 py-2">
+      <div className="flex items-center justify-between border-b px-3 py-2">
         <CardTitle>Deployment logs</CardTitle>
 
         <Button
@@ -1101,11 +1116,11 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
         <>
           <div className="space-y-1 px-3 py-2 text-xs">
             <div>
-              <span className="text-zinc-400">App</span>{" "}
+              <span className="text-muted-foreground">App</span>{" "}
               <strong>{deployment.appName}</strong>
             </div>
             <div>
-              <span className="text-zinc-400">Updated</span>{" "}
+              <span className="text-muted-foreground">Updated</span>{" "}
               <strong>
                 {formatDeploymentTime(
                   logState.payload?.updatedAt ?? deployment.updatedAt,
@@ -1121,12 +1136,12 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
           </CardDescription>
 
           {logState.isLoading ? (
-            <div className="p-3 text-center text-xs text-zinc-400">
+            <div className="p-3 text-center text-xs text-muted-foreground">
               Loading logs...
             </div>
           ) : (
-            <ScrollArea className="mx-3 mt-2 flex-1 rounded-md bg-zinc-950">
-              <pre className="whitespace-pre-wrap p-3 font-mono text-xs text-zinc-300">
+            <ScrollArea className="mx-3 mt-2 flex-1 rounded-md bg-primary">
+              <pre className="whitespace-pre-wrap p-3 font-mono text-xs text-primary-foreground">
                 {logState.payload?.output ??
                   "No logs available for this deployment yet."}
               </pre>
@@ -1134,7 +1149,7 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
           )}
         </>
       ) : (
-        <div className="p-3 text-center text-xs text-zinc-400">
+        <div className="p-3 text-center text-xs text-muted-foreground">
           Select a deployment to view logs.
         </div>
       )}

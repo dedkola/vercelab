@@ -112,7 +112,7 @@ function MainChartCard({ title, children }: MainChartCardProps) {
   return (
     <Card aria-label={`${title} chart`}>
       <CardHeader className="py-1.5">
-        <CardTitle className="text-xs font-medium text-zinc-700">
+        <CardTitle className="text-xs font-medium text-muted-foreground">
           {title}
         </CardTitle>
       </CardHeader>

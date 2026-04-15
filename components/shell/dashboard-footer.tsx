@@ -11,7 +11,7 @@ export function DashboardFooter({
 }: DashboardFooterProps) {
   return (
     <footer
-      className="flex h-7 shrink-0 items-center justify-between border-t border-zinc-200 px-3 text-xs text-zinc-500"
+      className="flex h-7 shrink-0 items-center justify-between border-t px-3 text-xs text-muted-foreground"
       aria-label="Dashboard footer"
     >
       <span>Section: {activeSection}</span>

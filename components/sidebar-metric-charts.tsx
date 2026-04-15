@@ -328,7 +328,7 @@ export function SidebarMetricCharts({
     <div className={classes}>
       <Card aria-label="Network chart">
         <CardHeader className="py-1.5">
-          <CardTitle className="text-xs font-medium text-zinc-700">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
             Network
           </CardTitle>
         </CardHeader>
@@ -339,7 +339,7 @@ export function SidebarMetricCharts({
 
       <Card aria-label="CPU chart">
         <CardHeader className="py-1.5">
-          <CardTitle className="text-xs font-medium text-zinc-700">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
             CPU
           </CardTitle>
         </CardHeader>
@@ -350,7 +350,7 @@ export function SidebarMetricCharts({
 
       <Card aria-label="Memory chart">
         <CardHeader className="py-1.5">
-          <CardTitle className="text-xs font-medium text-zinc-700">
+          <CardTitle className="text-xs font-medium text-muted-foreground">
             Memory
           </CardTitle>
         </CardHeader>

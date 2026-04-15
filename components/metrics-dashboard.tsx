@@ -283,7 +283,7 @@ export default function MetricsDashboard({
                 role="toolbar"
                 aria-label="Main charts range selector"
               >
-                <div className="text-xs font-medium text-zinc-700">
+                <div className="text-xs font-medium text-muted-foreground">
                   Main graphs
                 </div>
                 <Tabs

@@ -37,13 +37,13 @@ export function DashboardLeftSidebar({
   return (
     <>
       <aside
-        className="flex w-10 shrink-0 flex-col items-center gap-1 border-r border-zinc-200 py-2"
+        className="flex w-10 shrink-0 flex-col items-center gap-1 border-r py-2"
         aria-label="Primary navigation"
       >
         {RAIL_PRIMARY.map((entry) => (
           <Button
             aria-label={entry.label}
-            className={entry.section === activeSection ? "bg-zinc-100" : ""}
+            className={entry.section === activeSection ? "bg-accent" : ""}
             key={entry.icon}
             onClick={() => onSectionChangeAction(entry.section)}
             type="button"
@@ -56,7 +56,7 @@ export function DashboardLeftSidebar({
       </aside>
 
       <aside
-        className={`shrink-0 border-r border-zinc-200 transition-all ${isPanelCollapsed ? "w-0 overflow-hidden border-0" : "w-56"}`}
+        className={`shrink-0 border-r transition-all ${isPanelCollapsed ? "w-0 overflow-hidden border-0" : "w-56"}`}
         aria-label={panelAriaLabel}
         id="gateway-panel"
       >

@@ -25,7 +25,7 @@ export function DashboardHeader({
   onCopyBaseDomainAction,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-200 px-3">
+    <header className="flex h-10 shrink-0 items-center justify-between border-b px-3">
       <div className="flex items-center gap-3">
         <button
           className="flex items-center gap-1.5 text-sm font-medium"
@@ -41,10 +41,10 @@ export function DashboardHeader({
         </Badge>
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-zinc-500">
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="text-zinc-400">Host IP</span>
-          <span className="font-medium text-zinc-700">{hostIp ?? "-"}</span>
+          <span className="text-muted-foreground/70">Host IP</span>
+          <span className="font-medium text-foreground">{hostIp ?? "-"}</span>
           <Button
             type="button"
             aria-label="Copy host IP"
@@ -58,8 +58,8 @@ export function DashboardHeader({
         </span>
         <Separator orientation="vertical" className="h-3" />
         <span className="flex items-center gap-1.5">
-          <span className="text-zinc-400">Traefik</span>
-          <span className="font-medium text-zinc-700">{baseDomain}</span>
+          <span className="text-muted-foreground/70">Traefik</span>
+          <span className="font-medium text-foreground">{baseDomain}</span>
           <Button
             type="button"
             aria-label="Copy traefik hostname"
@@ -73,8 +73,10 @@ export function DashboardHeader({
         </span>
         <Separator orientation="vertical" className="h-3" />
         <span className="flex items-center gap-1.5">
-          <span className="text-zinc-400">LA</span>
-          <span className="font-medium text-zinc-700">{loadAverageLabel}</span>
+          <span className="text-muted-foreground/70">LA</span>
+          <span className="font-medium text-foreground">
+            {loadAverageLabel}
+          </span>
         </span>
       </div>
 

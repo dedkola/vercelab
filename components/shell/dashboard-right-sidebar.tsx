@@ -19,7 +19,7 @@ export function DashboardRightSidebar({
 }: DashboardRightSidebarProps) {
   return (
     <aside
-      className={`shrink-0 border-l border-zinc-200 transition-all ${isCollapsed ? "w-0 overflow-hidden border-0" : "w-72"}`}
+      className={`shrink-0 border-l transition-all ${isCollapsed ? "w-0 overflow-hidden border-0" : "w-72"}`}
       aria-label="Deployment logs sidebar"
       id="logs-panel"
     >
