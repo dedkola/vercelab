@@ -321,41 +321,41 @@ export function SidebarMetricCharts({
   useChart(memoryRef, memoryOption);
 
   const classes = className
-    ? `flex flex-col gap-3 p-3 ${className}`
-    : "flex flex-col gap-3 p-3";
+    ? `flex min-w-0 w-full flex-col gap-3 p-3 ${className}`
+    : "flex min-w-0 w-full flex-col gap-3 p-3";
 
   return (
     <div className={classes}>
-      <Card aria-label="Network chart">
+      <Card aria-label="Network chart" className="w-full overflow-hidden">
         <CardHeader className="py-1.5">
           <CardTitle className="text-xs font-medium text-muted-foreground">
             Network
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div ref={networkRef} className="h-32" />
+          <div ref={networkRef} className="h-32 w-full min-w-0" />
         </CardContent>
       </Card>
 
-      <Card aria-label="CPU chart">
+      <Card aria-label="CPU chart" className="w-full overflow-hidden">
         <CardHeader className="py-1.5">
           <CardTitle className="text-xs font-medium text-muted-foreground">
             CPU
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div ref={cpuRef} className="h-32" />
+          <div ref={cpuRef} className="h-32 w-full min-w-0" />
         </CardContent>
       </Card>
 
-      <Card aria-label="Memory chart">
+      <Card aria-label="Memory chart" className="w-full overflow-hidden">
         <CardHeader className="py-1.5">
           <CardTitle className="text-xs font-medium text-muted-foreground">
             Memory
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div ref={memoryRef} className="h-40" />
+          <div ref={memoryRef} className="h-40 w-full min-w-0" />
         </CardContent>
       </Card>
     </div>

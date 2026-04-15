@@ -174,7 +174,7 @@ export function DashboardLeftSidebar({
         </aside>
       ) : (
         <aside
-          className="relative flex shrink-0 flex-col border-r"
+          className="relative flex min-w-0 shrink-0 flex-col border-r"
           aria-label={panelAriaLabel}
           id="gateway-panel"
           style={{ width: panelWidth }}
@@ -200,7 +200,7 @@ export function DashboardLeftSidebar({
           </div>
 
           <ScrollArea
-            className="h-[calc(100%-2rem)]"
+            className="h-[calc(100%-2rem)] min-w-0"
             id="gateway-panel-content"
           >
             {children}
