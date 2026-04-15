@@ -8,6 +8,10 @@ services:
     volumes:
       - ..:/workspaces/vercelab:cached
       - /var/run/docker.sock:/var/run/docker.sock
+    # Some hosts expose docker.sock as root:root (0660).
+    # Add group 0 so the non-root `node` user can still access Docker.
+    group_add:
+      - "0"
     command: sleep infinity
     environment:
       NODE_ENV: development

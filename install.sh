@@ -146,6 +146,10 @@ ensure_sudo() {
 }
 
 ensure_supported_os() {
+  if [[ -n "${REMOTE_CONTAINERS:-}" || -f /.dockerenv || -n "${CODESPACES:-}" ]]; then
+    fail "install.sh is for Ubuntu host installs, not devcontainers. In a devcontainer, use .devcontainer/docker-compose.yml services and run pnpm run dev."
+  fi
+
   [[ -r /etc/os-release ]] || fail "Cannot detect the operating system."
 
   # shellcheck disable=SC1091
