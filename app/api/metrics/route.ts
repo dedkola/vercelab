@@ -26,17 +26,26 @@ function normalizeRange(value: string | null): MetricsRange {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const mode = url.searchParams.get("mode");
+
+  const maxPoints = 240;
+  const currentModeLimit = 48;
+  const currentModeBucketSeconds = 5;
+
   const range = normalizeRange(url.searchParams.get("range"));
   const rangeSeconds = RANGE_TO_SECONDS[range];
-  const maxPoints = 240;
-  const bucketSeconds = Math.max(
+  const rangeBucketSeconds = Math.max(
     5,
     Math.ceil(rangeSeconds / maxPoints / 5) * 5,
   );
-  const limit = Math.max(
+  const rangeLimit = Math.max(
     12,
-    Math.min(maxPoints, Math.ceil(rangeSeconds / bucketSeconds)),
+    Math.min(maxPoints, Math.ceil(rangeSeconds / rangeBucketSeconds)),
   );
+
+  const limit = mode === "current" ? currentModeLimit : rangeLimit;
+  const bucketSeconds =
+    mode === "current" ? currentModeBucketSeconds : rangeBucketSeconds;
 
   const snapshot = await getMetricsSnapshot();
   const history = await getMetricsHistoryFromInflux({

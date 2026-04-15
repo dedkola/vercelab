@@ -10,7 +10,6 @@ import {
 import * as echarts from "echarts";
 
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
 
 const DOWNLOAD_COLOR = "#1f7aff";
 const UPLOAD_COLOR = "#17c8a6";
@@ -62,8 +61,16 @@ function formatCpuTooltip(params: NetworkTooltipParam | NetworkTooltipParam[]) {
   return `${item.marker ?? ""} CPU ${Number(item.value ?? 0).toFixed(1)}%`;
 }
 
-function formatMemoryTooltip(param: NetworkTooltipParam) {
-  return `${param.marker ?? ""} ${param.name ?? ""} ${Number(param.value ?? 0).toFixed(1)}%`.trim();
+function formatMemoryTooltip(
+  params: NetworkTooltipParam | NetworkTooltipParam[],
+) {
+  const item = Array.isArray(params) ? params[0] : params;
+
+  if (!item) {
+    return "";
+  }
+
+  return `${item.marker ?? ""} Memory ${Number(item.value ?? 0).toFixed(1)}%`;
 }
 
 function useChart(
@@ -303,77 +310,95 @@ export function MainCpuChart({ history }: { history: MetricsHistoryPoint[] }) {
 }
 
 export function MainMemoryChart({
-  snapshot,
+  history,
 }: {
-  snapshot: MetricsSnapshot | null;
+  history: MetricsHistoryPoint[];
 }) {
   const memoryRef = useRef<HTMLDivElement>(null);
+  const labels = useMemo(
+    () => history.map((point) => formatTimeLabel(point.timestamp)),
+    [history],
+  );
 
   const option = useMemo<echarts.EChartsOption>(() => {
-    const latestMemory = snapshot?.system.memoryPercent ?? 0;
-    const used = Math.min(100, Math.max(0, latestMemory));
-    const free = Math.max(0, 100 - used);
+    const memoryValues = history.map((point) =>
+      Number(point.memory.toFixed(2)),
+    );
 
     return {
+      animationDuration: 400,
       tooltip: {
-        trigger: "item",
-        formatter: (param) => formatMemoryTooltip(param as NetworkTooltipParam),
+        trigger: "axis",
+        formatter: (params) =>
+          formatMemoryTooltip(params as NetworkTooltipParam[]),
       },
-      legend: {
-        bottom: 0,
-        left: "center",
-        itemWidth: 12,
-        itemHeight: 12,
-        textStyle: {
-          color: "#636e7b",
-          fontSize: 12,
+      grid: {
+        left: 48,
+        right: 14,
+        top: 24,
+        bottom: 34,
+      },
+      xAxis: {
+        type: "category",
+        boundaryGap: false,
+        data: labels,
+        axisLabel: {
+          color: "#98a2b3",
+          fontSize: 10,
+        },
+        axisTick: {
+          show: false,
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#e6ebf1",
+          },
+        },
+      },
+      yAxis: {
+        type: "value",
+        min: 0,
+        max: 100,
+        interval: 25,
+        splitNumber: 4,
+        axisLabel: {
+          color: "#98a2b3",
+          formatter: "{value}%",
+          fontSize: 10,
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#edf1f5",
+          },
         },
       },
       series: [
         {
           name: "Memory",
-          type: "pie",
-          radius: ["56%", "78%"],
-          center: ["50%", "46%"],
-          padAngle: 4,
-          itemStyle: {
-            borderRadius: 8,
+          type: "line",
+          smooth: true,
+          showSymbol: false,
+          data: memoryValues,
+          lineStyle: {
+            width: 3,
+            color: "#ff9f43",
           },
-          label: {
-            show: false,
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(255, 159, 67, 0.34)" },
+              { offset: 1, color: "rgba(255, 159, 67, 0.04)" },
+            ]),
           },
-          labelLine: {
-            show: false,
-          },
-          data: [
-            {
-              value: used,
-              name: "Used",
-              itemStyle: {
-                color: "#ff9f43",
-              },
-            },
-            {
-              value: free,
-              name: "Free",
-              itemStyle: {
-                color: "#e4ecf5",
-              },
-            },
-          ],
         },
       ],
     };
-  }, [snapshot]);
+  }, [history, labels]);
 
   useChart(memoryRef, option);
 
   return (
     <MainChartCard title="Memory">
-      <div
-        ref={memoryRef}
-        className="main-metric-chart-card__plot main-metric-chart-card__plot--pie"
-      />
+      <div ref={memoryRef} className="main-metric-chart-card__plot" />
     </MainChartCard>
   );
 }

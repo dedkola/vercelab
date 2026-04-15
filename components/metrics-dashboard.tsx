@@ -28,6 +28,7 @@ import type { MetricsSnapshot } from "@/lib/system-metrics";
 
 const POLL_INTERVAL_MS = 5000;
 const HISTORY_LIMIT = 240;
+const SIDEBAR_HISTORY_LIMIT = 48;
 
 const MAIN_RANGE_OPTIONS = [
   { value: "1m", label: "1 min" },
@@ -88,21 +89,34 @@ export default function MetricsDashboard({
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [logDeploymentId, setLogDeploymentId] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
-  const [history, setHistory] = useState<MetricsHistoryPoint[]>([]);
+  const [mainHistory, setMainHistory] = useState<MetricsHistoryPoint[]>([]);
+  const [sidebarSnapshot, setSidebarSnapshot] =
+    useState<MetricsSnapshot | null>(null);
+  const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>(
+    [],
+  );
   const [overviewRange, setOverviewRange] = useState<MainChartRange>("15m");
   const githubToken = initialGithubToken;
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const deferredSnapshot = useDeferredValue(snapshot);
-  const deferredHistory = useDeferredValue(history);
+  const deferredMainHistory = useDeferredValue(mainHistory);
+  const deferredSidebarSnapshot = useDeferredValue(sidebarSnapshot);
+  const deferredSidebarHistory = useDeferredValue(sidebarHistory);
 
-  const commitSnapshot = useEffectEvent(
+  const commitMainSnapshot = useEffectEvent(
+    (_nextSnapshot: MetricsSnapshot, nextHistory: MetricsHistoryPoint[]) => {
+      startTransition(() => {
+        setMainHistory(nextHistory.slice(-HISTORY_LIMIT));
+      });
+    },
+  );
+
+  const commitSidebarSnapshot = useEffectEvent(
     (nextSnapshot: MetricsSnapshot, nextHistory: MetricsHistoryPoint[]) => {
       startTransition(() => {
-        setSnapshot(nextSnapshot);
-        setHistory(nextHistory.slice(-HISTORY_LIMIT));
+        setSidebarSnapshot(nextSnapshot);
+        setSidebarHistory(nextHistory.slice(-SIDEBAR_HISTORY_LIMIT));
       });
     },
   );
@@ -133,7 +147,7 @@ export default function MetricsDashboard({
           return;
         }
 
-        commitSnapshot(payload.snapshot, payload.history ?? []);
+        commitMainSnapshot(payload.snapshot, payload.history ?? []);
       } catch (error) {
         if (!active) {
           return;
@@ -156,6 +170,51 @@ export default function MetricsDashboard({
     };
   }, [overviewRange]);
 
+  useEffect(() => {
+    let active = true;
+
+    const poll = async () => {
+      try {
+        const response = await fetch("/api/metrics?mode=current", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Metrics request failed with ${response.status}.`);
+        }
+
+        const payload = (await response.json()) as {
+          snapshot: MetricsSnapshot;
+          history: MetricsHistoryPoint[];
+        };
+
+        if (!active) {
+          return;
+        }
+
+        commitSidebarSnapshot(payload.snapshot, payload.history ?? []);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        console.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to load live metrics.",
+        );
+      }
+    };
+
+    poll();
+    const intervalId = window.setInterval(poll, POLL_INTERVAL_MS);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   function handleSectionChange(section: DashboardSection) {
     setActiveSection(section);
 
@@ -173,8 +232,8 @@ export default function MetricsDashboard({
     window.history.pushState(null, "", nextUrl);
   }
 
-  const timestampLabel = deferredSnapshot
-    ? formatClock(deferredSnapshot.timestamp)
+  const timestampLabel = deferredSidebarSnapshot
+    ? formatClock(deferredSidebarSnapshot.timestamp)
     : "--:--";
   const isOverviewSection = activeSection === "overview";
   const isGitSection = activeSection === "git";
@@ -189,14 +248,16 @@ export default function MetricsDashboard({
         activeIcon={activeRailEntry.icon}
         activeLabel={activeRailEntry.label}
         baseDomain={baseDomain}
-        hostIp={deferredSnapshot?.hostIp}
+        hostIp={deferredSidebarSnapshot?.hostIp}
         loadAverageLabel={
-          deferredSnapshot
-            ? deferredSnapshot.system.loadAverage[0].toFixed(2)
+          deferredSidebarSnapshot
+            ? deferredSidebarSnapshot.system.loadAverage[0].toFixed(2)
             : "-"
         }
         onCopyHostIpAction={() =>
-          void navigator.clipboard.writeText(deferredSnapshot?.hostIp ?? "")
+          void navigator.clipboard.writeText(
+            deferredSidebarSnapshot?.hostIp ?? "",
+          )
         }
         onCopyBaseDomainAction={() =>
           void navigator.clipboard.writeText(baseDomain)
@@ -215,8 +276,8 @@ export default function MetricsDashboard({
         >
           <SidebarMetricCharts
             className="sidebar-chart-stack--embedded"
-            history={deferredHistory}
-            snapshot={deferredSnapshot}
+            history={deferredSidebarHistory}
+            snapshot={deferredSidebarSnapshot}
           />
         </DashboardLeftSidebar>
 
@@ -256,9 +317,9 @@ export default function MetricsDashboard({
                   </div>
                 </div>
                 <div className="main-chart-grid">
-                  <MainNetworkChart history={deferredHistory} />
-                  <MainCpuChart history={deferredHistory} />
-                  <MainMemoryChart snapshot={deferredSnapshot} />
+                  <MainNetworkChart history={deferredMainHistory} />
+                  <MainCpuChart history={deferredMainHistory} />
+                  <MainMemoryChart history={deferredMainHistory} />
                 </div>
               </section>
             </>
