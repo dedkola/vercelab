@@ -29,6 +29,8 @@ import type { MetricsSnapshot } from "@/lib/system-metrics";
 const POLL_INTERVAL_MS = 5000;
 const HISTORY_LIMIT = 240;
 const SIDEBAR_HISTORY_LIMIT = 48;
+const LEFT_SIDEBAR_WIDTH_STORAGE_KEY = "vercelab:left-sidebar-width";
+const RIGHT_SIDEBAR_WIDTH_STORAGE_KEY = "vercelab:right-sidebar-width";
 
 const MAIN_RANGE_OPTIONS = [
   { value: "1m", label: "1 min" },
@@ -86,6 +88,7 @@ export default function MetricsDashboard({
     useState<DashboardSection>(initialSection);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const [sidebarInstanceVersion, setSidebarInstanceVersion] = useState(0);
   const [logDeploymentId, setLogDeploymentId] = useState<string | null>(null);
   const [mainHistory, setMainHistory] = useState<MetricsHistoryPoint[]>([]);
   const [sidebarSnapshot, setSidebarSnapshot] =
@@ -229,6 +232,12 @@ export default function MetricsDashboard({
     window.history.pushState(null, "", nextUrl);
   }
 
+  function handleResetPanelSizes() {
+    window.localStorage.removeItem(LEFT_SIDEBAR_WIDTH_STORAGE_KEY);
+    window.localStorage.removeItem(RIGHT_SIDEBAR_WIDTH_STORAGE_KEY);
+    setSidebarInstanceVersion((current) => current + 1);
+  }
+
   const timestampLabel = deferredSidebarSnapshot
     ? formatClock(deferredSidebarSnapshot.timestamp)
     : "--:--";
@@ -256,10 +265,12 @@ export default function MetricsDashboard({
         onCopyBaseDomainAction={() =>
           void navigator.clipboard.writeText(baseDomain)
         }
+        onResetPanelSizesAction={handleResetPanelSizes}
       />
 
       <div className="flex flex-1 overflow-hidden">
         <DashboardLeftSidebar
+          key={`left-${sidebarInstanceVersion}`}
           activeSection={activeSection}
           isPanelCollapsed={isPanelCollapsed}
           panelAriaLabel="system metrics"
@@ -320,6 +331,7 @@ export default function MetricsDashboard({
 
         {isGitSection ? (
           <DashboardRightSidebar
+            key={`right-${sidebarInstanceVersion}`}
             isCollapsed={isRightPanelCollapsed}
             onToggleAction={() =>
               setIsRightPanelCollapsed((current) => !current)

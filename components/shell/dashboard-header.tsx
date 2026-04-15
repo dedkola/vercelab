@@ -13,6 +13,7 @@ type DashboardHeaderProps = {
   loadAverageLabel: string;
   onCopyHostIpAction: () => void;
   onCopyBaseDomainAction: () => void;
+  onResetPanelSizesAction: () => void;
 };
 
 export function DashboardHeader({
@@ -23,6 +24,7 @@ export function DashboardHeader({
   loadAverageLabel,
   onCopyHostIpAction,
   onCopyBaseDomainAction,
+  onResetPanelSizesAction,
 }: DashboardHeaderProps) {
   return (
     <header className="flex h-10 shrink-0 items-center justify-between border-b px-3">
@@ -81,6 +83,16 @@ export function DashboardHeader({
       </div>
 
       <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          aria-label="Reset panel sizes"
+          onClick={onResetPanelSizesAction}
+          variant="secondary"
+          size="sm"
+          className="h-7 px-2 text-[11px]"
+        >
+          Reset Panels
+        </Button>
         <Button
           type="button"
           aria-label="Theme"
