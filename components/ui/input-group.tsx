@@ -8,7 +8,7 @@ function InputGroup({ className, ...props }: InputGroupProps) {
   return (
     <div
       className={cn(
-        "flex h-10 w-full items-center rounded-md border border-[var(--border)] bg-[var(--surface)] shadow-sm focus-within:ring-2 focus-within:ring-[var(--accent)] focus-within:ring-offset-1",
+        "flex h-9 w-full items-center rounded-md border border-zinc-200 bg-transparent shadow-sm focus-within:border-zinc-300 focus-within:ring-1 focus-within:ring-zinc-950/20",
         className,
       )}
       {...props}
@@ -22,7 +22,7 @@ function InputGroupInput({ className, ...props }: InputGroupInputProps) {
   return (
     <input
       className={cn(
-        "h-full w-full border-0 bg-transparent px-3 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:outline-none",
+        "h-full w-full border-0 bg-transparent px-3 text-sm text-zinc-950 placeholder:text-zinc-500 focus-visible:outline-none",
         className,
       )}
       {...props}
@@ -36,7 +36,7 @@ function InputGroupSuffix({ className, ...props }: InputGroupSuffixProps) {
   return (
     <span
       className={cn(
-        "h-full shrink-0 border-l border-[var(--border)] px-3 text-sm text-[var(--text-secondary)] leading-10",
+        "h-full shrink-0 border-l border-zinc-200 px-3 text-sm text-zinc-500 leading-9",
         className,
       )}
       {...props}

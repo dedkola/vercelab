@@ -95,7 +95,7 @@ export function Combobox({
                     <span className="flex flex-col">
                       <span>{option.label}</span>
                       {option.description ? (
-                        <span className="text-xs text-(--text-muted)">
+                        <span className="text-xs text-zinc-500">
                           {option.description}
                         </span>
                       ) : null}
