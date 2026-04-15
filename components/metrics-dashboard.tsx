@@ -933,9 +933,7 @@ export default function MetricsDashboard({
 
         <aside
           className={`panel ${isPanelCollapsed ? "panel--collapsed" : ""}`}
-          aria-label={
-            isOverviewSection ? "Gateway details" : "Git deployment sidebar"
-          }
+          aria-label={isOverviewSection ? "Gateway details" : "System metrics"}
           id="gateway-panel"
         >
           <button
@@ -944,8 +942,8 @@ export default function MetricsDashboard({
             aria-controls="gateway-panel"
             aria-label={
               isPanelCollapsed
-                ? `Show ${isOverviewSection ? "gateway details" : "Git tools"} panel`
-                : `Hide ${isOverviewSection ? "gateway details" : "Git tools"} panel`
+                ? `Show ${isOverviewSection ? "gateway details" : "system metrics"} panel`
+                : `Hide ${isOverviewSection ? "gateway details" : "system metrics"} panel`
             }
             onClick={() => setIsPanelCollapsed((current) => !current)}
           >
@@ -1019,108 +1017,11 @@ export default function MetricsDashboard({
                   />
                 </>
               ) : (
-                <div className="git-panel">
-                  <div className="git-panel__eyebrow">Git</div>
-                  <div className="git-panel__title">Repository access</div>
-
-                  <form
-                    className="git-panel__form"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void loadGitRepositories();
-                    }}
-                  >
-                    <div className="field">
-                      <Label htmlFor="githubToken">GitHub token</Label>
-                      <Input
-                        autoComplete="off"
-                        id="githubToken"
-                        onChange={(event) => setGithubToken(event.target.value)}
-                        placeholder="ghp_..."
-                        type="password"
-                        value={githubToken}
-                      />
-                    </div>
-
-                    <div className="git-panel__actions">
-                      <Button
-                        className="git-panel__load-button"
-                        disabled={isLoadingGitRepositories}
-                        type="submit"
-                        variant="secondary"
-                        size="sm"
-                      >
-                        <Icon name="search" className="h-3.5 w-3.5" />
-                        {isLoadingGitRepositories ? "Loading..." : "Load repos"}
-                      </Button>
-                    </div>
-                  </form>
-
-                  <div className="field">
-                    <Label>Repository</Label>
-                    <div className="git-panel__repo-row">
-                      <div className="git-panel__dropdown">
-                        <Combobox
-                          disabled={
-                            isLoadingGitRepositories ||
-                            gitRepositories.length === 0
-                          }
-                          emptyText="No repository found."
-                          onValueChangeAction={setSelectedGitRepositoryId}
-                          options={gitRepositories.map((repository) => ({
-                            value: String(repository.id),
-                            label: repository.fullName,
-                            description: `${repository.visibility} branch ${repository.defaultBranch}`,
-                          }))}
-                          placeholder={
-                            gitRepositories.length > 0
-                              ? "Choose a repository"
-                              : isLoadingGitRepositories
-                                ? "Loading repositories..."
-                                : "Load repositories first"
-                          }
-                          searchPlaceholder="Search repositories..."
-                          value={selectedGitRepositoryId}
-                        />
-                      </div>
-
-                      <Button
-                        disabled={!selectedGitRepository}
-                        onClick={() => {
-                          queueSelectedRepository();
-                        }}
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                      >
-                        <Icon name="check" className="h-3.5 w-3.5" />
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-
-                  {selectedGitRepository ? (
-                    <div className="git-panel__repo-card">
-                      <div className="git-panel__repo-name">
-                        {selectedGitRepository.fullName}
-                      </div>
-                      <div className="git-panel__repo-meta">
-                        <span>{selectedGitRepository.visibility}</span>
-                        <span>{selectedGitRepository.defaultBranch}</span>
-                      </div>
-                      <p className="git-panel__repo-copy">
-                        {selectedGitRepository.description ??
-                          "This repository is ready to seed a deployment draft."}
-                      </p>
-                    </div>
-                  ) : null}
-
-                  {gitRepositoriesError ? (
-                    <div className="git-panel__notice git-panel__notice--error">
-                      {gitRepositoriesError}
-                    </div>
-                  ) : null}
-                </div>
+                <SidebarMetricCharts
+                  className="sidebar-chart-stack--embedded"
+                  history={deferredHistory}
+                  snapshot={deferredSnapshot}
+                />
               )}
             </div>
           ) : null}
