@@ -138,7 +138,11 @@ function parseSeries(
     .filter((entry): entry is PartialPoint => Boolean(entry));
 }
 
-function buildHostQuery({ hostIp, windowMinutes, bucketSeconds }: QueryOptions) {
+function buildHostQuery({
+  hostIp,
+  windowMinutes,
+  bucketSeconds,
+}: QueryOptions) {
   const hostFilter =
     hostIp && hostIp !== "unknown"
       ? ` AND host='${escapeInfluxString(hostIp)}'`
@@ -166,14 +170,15 @@ export async function getMetricsHistoryFromInflux(options?: {
   bucketSeconds?: number;
 }) {
   const limit = Math.max(1, Math.min(options?.limit ?? 48, 240));
-  const bucketSeconds = Math.max(1, Math.min(options?.bucketSeconds ?? 5, 300));
+  const bucketSeconds = Math.max(
+    1,
+    Math.min(options?.bucketSeconds ?? 5, 86_400),
+  );
   const hostIp = options?.hostIp ?? "unknown";
   const windowMinutes = Math.max(1, Math.ceil((limit * bucketSeconds) / 60));
 
   const [hostSeries, containerSeries] = await Promise.all([
-    runInfluxV1Query(
-      buildHostQuery({ hostIp, windowMinutes, bucketSeconds }),
-    ),
+    runInfluxV1Query(buildHostQuery({ hostIp, windowMinutes, bucketSeconds })),
     runInfluxV1Query(
       buildContainerQuery({ hostIp, windowMinutes, bucketSeconds }),
     ),
