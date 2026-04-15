@@ -696,10 +696,6 @@ export function GitDeploymentPage({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle>Git apps</CardTitle>
-              <CardDescription>
-                Add from your GitHub account or a custom GitHub repository URL,
-                then manage deployed apps inline.
-              </CardDescription>
             </div>
 
             <div
@@ -825,10 +821,6 @@ export function GitDeploymentPage({
                       {isUpdatingToken ? "Updating..." : "Update token"}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    The token is validated, saved into the workspace env file,
-                    and applied to the running app immediately.
-                  </p>
                 </div>
 
                 <Separator />
@@ -862,20 +854,12 @@ export function GitDeploymentPage({
                       Use URL
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Private custom repositories use the global GitHub token from
-                    the env file by default.
-                  </p>
                 </div>
               </div>
 
               <Card className="border-dashed">
                 <CardHeader>
                   <CardTitle className="text-sm">App draft</CardTitle>
-                  <CardDescription>
-                    Select a repository or use a custom URL, then adjust the app
-                    settings before deploying.
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {draftState.repositoryUrl ? (
@@ -1022,11 +1006,7 @@ export function GitDeploymentPage({
                         />
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs text-muted-foreground">
-                          Deploys use the configured GitHub token when the app
-                          repository needs authenticated clone access.
-                        </p>
+                      <div className="flex flex-wrap items-center justify-end gap-3">
                         <Button disabled={isCreatingDeployment} type="submit">
                           <Icon name="cloud" className="h-3.5 w-3.5" />
                           {isCreatingDeployment ? "Deploying..." : "Deploy app"}
@@ -1035,8 +1015,7 @@ export function GitDeploymentPage({
                     </form>
                   ) : (
                     <div className="flex min-h-72 items-center justify-center text-center text-sm text-muted-foreground">
-                      Select a GitHub repository or use a custom GitHub URL to
-                      start an app draft.
+                      No app draft selected.
                     </div>
                   )}
                 </CardContent>
