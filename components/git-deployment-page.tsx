@@ -777,9 +777,6 @@ export function GitDeploymentPage({
                         <span className="block truncate font-medium text-foreground">
                           {deployment.appName}
                         </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {deployment.branch ?? "default branch"}
-                        </span>
                       </span>
                     </span>
 
@@ -868,14 +865,6 @@ export function GitDeploymentPage({
                         </div>
                         <div>
                           <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                            Branch
-                          </div>
-                          <div className="mt-1 text-sm text-foreground">
-                            {deployment.branch ?? "default"}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                             Active
                           </div>
                           <div className="mt-1 text-sm text-foreground">
@@ -904,16 +893,6 @@ export function GitDeploymentPage({
                           </div>
                           <div className="mt-1 text-sm text-foreground">
                             {deployment.port}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                            Git auth
-                          </div>
-                          <div className="mt-1 text-sm text-foreground">
-                            {deployment.tokenStored
-                              ? "Stored with app"
-                              : "Global token fallback"}
                           </div>
                         </div>
                       </div>
