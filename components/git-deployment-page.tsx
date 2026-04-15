@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -1327,24 +1326,8 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <CardTitle>Deployment logs</CardTitle>
-
-        <div className="flex items-center gap-2">
-          {logState.isRefreshing ? (
-            <span className="text-xs text-muted-foreground">Refreshing...</span>
-          ) : null}
-
-          <Button
-            onClick={() => setLogRefreshKey((current) => current + 1)}
-            type="button"
-            variant="secondary"
-            size="sm"
-          >
-            <Icon name="arrow-down" className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
-        </div>
+      <div className="flex items-center justify-end border-b px-3 py-2 pl-12">
+        <CardTitle className="text-right">Deployment logs</CardTitle>
       </div>
 
       <div className="px-3 py-2">
@@ -1367,26 +1350,11 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
 
       {deployment ? (
         <>
-          <div className="space-y-1 px-3 py-2 text-xs">
-            <div>
-              <span className="text-muted-foreground">App</span>{" "}
-              <strong>{deployment.appName}</strong>
+          {logState.error ? (
+            <div className="px-3 pt-2 text-xs text-destructive">
+              {logState.error}
             </div>
-            <div>
-              <span className="text-muted-foreground">Updated</span>{" "}
-              <strong>
-                {formatDeploymentTime(
-                  logState.payload?.updatedAt ?? deployment.updatedAt,
-                )}
-              </strong>
-            </div>
-          </div>
-
-          <CardDescription className="px-3">
-            {logState.error ??
-              logState.payload?.summary ??
-              "Select a deployment to load logs."}
-          </CardDescription>
+          ) : null}
 
           {logState.isLoading ? (
             <div className="p-3 text-center text-xs text-muted-foreground">

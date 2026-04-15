@@ -136,7 +136,7 @@ export function DashboardRightSidebar({
             onMouseDown={handleResizeStart}
           />
 
-          <div className="flex items-center justify-start px-1 py-1">
+          <div className="absolute left-1 top-1 z-20 flex items-center justify-start">
             <Button
               type="button"
               aria-controls="logs-panel"
@@ -150,7 +150,7 @@ export function DashboardRightSidebar({
             </Button>
           </div>
 
-          <ScrollArea className="h-[calc(100%-2rem)]">{children}</ScrollArea>
+          <ScrollArea className="h-full">{children}</ScrollArea>
         </aside>
       )}
     </>
