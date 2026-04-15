@@ -1371,34 +1371,6 @@ a:focus-visible {
   color: #7b8794;
 }
 
-.main-chart-button-group {
-  display: inline-flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0;
-  margin-left: auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--surface);
-}
-
-.main-chart-button-group__button {
-  min-width: 58px;
-  height: 30px;
-  border-radius: 0 !important;
-  border: 0 !important;
-  border-right: 1px solid var(--border) !important;
-  padding: 0 10px !important;
-  font-size: 11px !important;
-  line-height: 1;
-}
-
-.main-chart-button-group__button:last-child {
-  border-right: 0 !important;
-}
-
 .main-chart-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3030,10 +3002,6 @@ a:focus-visible {
   .main-chart-toolbar {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .main-chart-button-group {
-    justify-content: flex-start;
   }
 }
 

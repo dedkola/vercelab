@@ -292,7 +292,7 @@ export default function MetricsDashboard({
                 >
                   <div className="main-chart-toolbar__label">Main graphs</div>
                   <div
-                    className="main-chart-button-group"
+                    className="inline-flex items-center -space-x-px rounded-md shadow-sm rtl:space-x-reverse"
                     role="radiogroup"
                     aria-label="Metrics range"
                   >
@@ -303,10 +303,10 @@ export default function MetricsDashboard({
                         size="sm"
                         variant={
                           overviewRange === option.value
-                            ? "default"
-                            : "secondary"
+                            ? "secondary"
+                            : "default"
                         }
-                        className="main-chart-button-group__button"
+                        className="rounded-none shadow-none first:rounded-s-md last:rounded-e-md focus-visible:z-10"
                         role="radio"
                         aria-checked={overviewRange === option.value}
                         onClick={() => setOverviewRange(option.value)}
