@@ -9,16 +9,16 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { StackedArea, themes, useContainerWidth } from "@derpdaderp/chartkit";
+import { themes } from "@derpdaderp/chartkit";
 
-import { Icon, type IconName } from "@/components/dashboard-kit";
+import { type IconName } from "@/components/dashboard-kit";
+import { DashboardFooter } from "@/components/shell/dashboard-footer";
+import { DashboardHeader } from "@/components/shell/dashboard-header";
+import { DashboardLeftSidebar } from "@/components/shell/dashboard-left-sidebar";
+import { DashboardRightSidebar } from "@/components/shell/dashboard-right-sidebar";
 import { SidebarMetricCharts } from "@/components/sidebar-metric-charts";
-import { Button } from "@/components/ui/button";
-import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { TrafficCard } from "@/components/traffic-card";
 import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
-import type { GitHubRepository } from "@/lib/github";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import type { DashboardData } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
@@ -42,62 +42,19 @@ type MetricsDashboardProps = {
   initialSection: DashboardSection;
 };
 
-const RAIL_PRIMARY: Array<{
-  icon: IconName;
-  label?: string;
-  section?: DashboardSection;
-}> = [
-  { icon: "network", label: "Overview", section: "overview" },
-  { icon: "cloud", label: "Git", section: "git" },
-];
-
-const TRAFFIC_ROWS = [
-  {
-    name: "DelugeTorrent",
-    badge: "D",
-    color: "#1846b3",
-    down: "1.61 GB",
-    toneClass: "torrent",
-    up: "57.3 GB",
-    traffic: "58.9 GB",
+const SECTION_META: Record<
+  DashboardSection,
+  { icon: IconName; label: string }
+> = {
+  overview: {
+    icon: "network",
+    label: "Overview",
   },
-  {
-    name: "BitTorrent Series",
-    badge: "BT",
-    color: "#2d6cf7",
-    down: "1.00 GB",
-    toneClass: "series",
-    up: "22.4 GB",
-    traffic: "23.4 GB",
+  git: {
+    icon: "cloud",
+    label: "Git",
   },
-  {
-    name: "SSL/TLS",
-    badge: "S",
-    color: "#48b8ea",
-    down: "4.92 GB",
-    toneClass: "ssl",
-    up: "84.2 MB",
-    traffic: "5.01 GB",
-  },
-  {
-    name: "YouTube",
-    badge: "YT",
-    color: "#40c463",
-    down: "3.34 GB",
-    toneClass: "youtube",
-    up: "20.5 MB",
-    traffic: "3.36 GB",
-  },
-  {
-    name: "Web Streaming",
-    badge: "WS",
-    color: "#bddb32",
-    down: "2.92 GB",
-    toneClass: "streaming",
-    up: "14.4 MB",
-    traffic: "2.94 GB",
-  },
-];
+};
 
 const CONNECTION_ROWS = [
   {
@@ -202,31 +159,6 @@ function formatBytes(value: number) {
 
 function formatRate(value: number) {
   return `${formatBytes(value)}/s`;
-}
-
-function formatBitRateParts(value: number) {
-  if (!Number.isFinite(value) || value <= 0) {
-    return {
-      amount: "0",
-      unit: "bps",
-    };
-  }
-
-  const units = ["bps", "Kbps", "Mbps", "Gbps", "Tbps"];
-  let rate = value * 8;
-  let unitIndex = 0;
-
-  while (rate >= 1000 && unitIndex < units.length - 1) {
-    rate /= 1000;
-    unitIndex += 1;
-  }
-
-  const precision = unitIndex === 0 ? 0 : rate >= 100 ? 0 : rate >= 10 ? 1 : 2;
-
-  return {
-    amount: rate.toFixed(precision),
-    unit: units[unitIndex],
-  };
 }
 
 function formatPercent(value: number) {
@@ -553,36 +485,6 @@ function MainTrafficChart({ history }: { history: HistoryPoint[] }) {
   );
 }
 
-function MiniNetworkChart({ history }: { history: HistoryPoint[] }) {
-  const { ref, width } = useContainerWidth<HTMLDivElement>();
-  const series = history.slice(-24);
-  const data = series.length
-    ? series.map((entry, i) => ({
-        time: `${i * (POLL_INTERVAL_MS / 1000)}s`,
-        download: parseFloat(((entry.networkIn * 8) / 1_000_000).toFixed(2)),
-        upload: parseFloat(((entry.networkOut * 8) / 1_000_000).toFixed(2)),
-      }))
-    : [];
-
-  return (
-    <div className="mini-network-chart" ref={ref}>
-      {width > 0 && (
-        <StackedArea
-          data={data}
-          dataKeys={["download", "upload"]}
-          timeKey="time"
-          theme="pearl"
-          showArea
-          fillOpacity={0.5}
-          width={width}
-          height={160}
-          style={{ background: "transparent" }}
-        />
-      )}
-    </div>
-  );
-}
-
 export default function MetricsDashboard({
   baseDomain,
   dashboardData,
@@ -598,19 +500,7 @@ export default function MetricsDashboard({
   const [snapshot, setSnapshot] = useState<MetricsSnapshot | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [githubToken, setGithubToken] = useState(initialGithubToken);
-  const [gitRepositories, setGitRepositories] = useState<GitHubRepository[]>(
-    [],
-  );
-  const [gitRepositoriesError, setGitRepositoriesError] = useState<
-    string | null
-  >(null);
-  const [isLoadingGitRepositories, setIsLoadingGitRepositories] =
-    useState(false);
-  const [selectedGitRepositoryId, setSelectedGitRepositoryId] = useState("");
-  const [repositoryDraft, setRepositoryDraft] =
-    useState<GitHubRepository | null>(null);
-  const [repositoryDraftSignal, setRepositoryDraftSignal] = useState(0);
+  const githubToken = initialGithubToken;
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -633,94 +523,9 @@ export default function MetricsDashboard({
     });
   });
 
-  async function loadGitRepositories() {
-    const token = githubToken.trim();
-
-    if (token.length < 20) {
-      setGitRepositoriesError(
-        "Add a valid GitHub token before loading repositories.",
-      );
-      return;
-    }
-
-    setIsLoadingGitRepositories(true);
-    setGitRepositoriesError(null);
-
-    try {
-      const response = await fetch("/api/github/repos", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      const payload = (await response.json()) as {
-        repositories?: GitHubRepository[];
-        error?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to load repositories.");
-      }
-
-      const repositories = payload.repositories ?? [];
-
-      setGitRepositories(repositories);
-      setSelectedGitRepositoryId((current) => {
-        if (
-          repositories.some((repository) => String(repository.id) === current)
-        ) {
-          return current;
-        }
-
-        return repositories[0] ? String(repositories[0].id) : "";
-      });
-      setGitRepositoriesError(
-        repositories.length === 0
-          ? "This token did not return any repositories."
-          : null,
-      );
-    } catch (error) {
-      setGitRepositories([]);
-      setSelectedGitRepositoryId("");
-      setGitRepositoriesError(
-        error instanceof Error ? error.message : "Unable to load repositories.",
-      );
-    } finally {
-      setIsLoadingGitRepositories(false);
-    }
-  }
-
-  const selectedGitRepository =
-    gitRepositories.find(
-      (repository) => String(repository.id) === selectedGitRepositoryId,
-    ) ?? null;
-
-  function queueSelectedRepository() {
-    if (!selectedGitRepository) {
-      setGitRepositoriesError("Choose a repository before adding it.");
-      return;
-    }
-
-    setRepositoryDraft(selectedGitRepository);
-    setRepositoryDraftSignal((current) => current + 1);
-    setGitRepositoriesError(null);
-  }
-
   useEffect(() => {
     setActiveSection(initialSection);
   }, [initialSection]);
-
-  const autoLoadGitRepositories = useEffectEvent(() => {
-    if (initialGithubToken.trim().length >= 20) {
-      void loadGitRepositories();
-    }
-  });
-
-  useEffect(() => {
-    autoLoadGitRepositories();
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -792,16 +597,6 @@ export default function MetricsDashboard({
   const statusMessage = deferredSnapshot
     ? "Live host traffic aggregated across server interfaces"
     : (errorMessage ?? "Connecting to metrics feed");
-  const donutSegments = TRAFFIC_ROWS.map((row) => {
-    const numericValue =
-      Number.parseFloat(row.traffic.replace(/[^\d.]/g, "")) || 1;
-    const totalNumeric = 58.9 + 23.4 + 5.01 + 3.36 + 2.94 + 2.66;
-
-    return {
-      color: row.color,
-      ratio: numericValue / totalNumeric,
-    };
-  });
   const connectionSegments = CONNECTION_ROWS.map((row) => ({
     color: row.color,
     ratio: row.connections / 14,
@@ -819,213 +614,49 @@ export default function MetricsDashboard({
   const timestampLabel = deferredSnapshot
     ? formatClock(deferredSnapshot.timestamp)
     : "--:--";
-  const downloadRate = deferredSnapshot?.network.rxBytesPerSecond ?? 0;
-  const uploadRate = deferredSnapshot?.network.txBytesPerSecond ?? 0;
-  const downloadRateDisplay = formatBitRateParts(downloadRate);
-  const uploadRateDisplay = formatBitRateParts(uploadRate);
   const isOverviewSection = activeSection === "overview";
   const isGitSection = activeSection === "git";
-  const activeRailEntry =
-    RAIL_PRIMARY.find((entry) => entry.section === activeSection) ??
-    RAIL_PRIMARY[0];
+  const activeRailEntry = SECTION_META[activeSection];
 
   return (
     <section
       className="shell shell--compact"
       aria-label="UniFi styled dashboard"
     >
-      <header className="topbar">
-        <div className="topbar__left">
-          <button className="site-switch" type="button">
-            <span className="site-switch__dot" />
-            <span className="site-switch__name">Vercelab</span>
-          </button>
-
-          <span className="app-pill">
-            <Icon name={activeRailEntry.icon} />
-            {activeRailEntry.label ?? "Overview"}
-          </span>
-        </div>
-
-        <div className="topbar__center">
-          <div className="header-sysinfo">
-            <span className="header-sysinfo__item">
-              <span className="header-sysinfo__label">Host IP</span>
-              <span className="header-sysinfo__value">
-                {deferredSnapshot?.hostIp ?? "—"}
-              </span>
-              <button
-                className="header-sysinfo__copy"
-                type="button"
-                aria-label="Copy host IP"
-                onClick={() =>
-                  void navigator.clipboard.writeText(
-                    deferredSnapshot?.hostIp ?? "",
-                  )
-                }
-              >
-                <Icon name="copy" />
-              </button>
-            </span>
-            <span className="header-sysinfo__sep" />
-            <span className="header-sysinfo__item">
-              <span className="header-sysinfo__label">Traefik</span>
-              <span className="header-sysinfo__value">{baseDomain}</span>
-              <button
-                className="header-sysinfo__copy"
-                type="button"
-                aria-label="Copy traefik hostname"
-                onClick={() => void navigator.clipboard.writeText(baseDomain)}
-              >
-                <Icon name="copy" />
-              </button>
-            </span>
-            <span className="header-sysinfo__sep" />
-            <span className="header-sysinfo__item">
-              <span className="header-sysinfo__label">LA</span>
-              <span className="header-sysinfo__value">
-                {deferredSnapshot
-                  ? deferredSnapshot.system.loadAverage[0].toFixed(2)
-                  : "—"}
-              </span>
-            </span>
-          </div>
-        </div>
-
-        <div className="topbar__right">
-          <button className="topbar-btn" type="button" aria-label="Theme">
-            <Icon name="theme" />
-          </button>
-          <button className="topbar-avatar" type="button" aria-label="Profile">
-            <Icon name="profile" />
-          </button>
-        </div>
-      </header>
+      <DashboardHeader
+        activeIcon={activeRailEntry.icon}
+        activeLabel={activeRailEntry.label}
+        baseDomain={baseDomain}
+        hostIp={deferredSnapshot?.hostIp}
+        loadAverageLabel={
+          deferredSnapshot
+            ? deferredSnapshot.system.loadAverage[0].toFixed(2)
+            : "-"
+        }
+        onCopyHostIpAction={() =>
+          void navigator.clipboard.writeText(deferredSnapshot?.hostIp ?? "")
+        }
+        onCopyBaseDomainAction={() =>
+          void navigator.clipboard.writeText(baseDomain)
+        }
+      />
 
       <div
         className={`body ${isPanelCollapsed ? "body--panel-collapsed" : ""} ${isGitSection ? (isRightPanelCollapsed ? "body--right-collapsed" : "body--right-open") : ""}`}
       >
-        <aside className="rail" aria-label="Primary navigation">
-          <div className="rail__group">
-            {RAIL_PRIMARY.map((entry) => (
-              <button
-                aria-label={entry.label ?? entry.icon}
-                className={`rail__link ${
-                  entry.section === activeSection ? "rail__link--active" : ""
-                } ${entry.section ? "" : "rail__link--muted"}`}
-                key={entry.icon}
-                onClick={
-                  entry.section
-                    ? () => {
-                        if (entry.section) {
-                          handleSectionChange(entry.section);
-                        }
-                      }
-                    : undefined
-                }
-                type="button"
-              >
-                <Icon name={entry.icon} />
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <aside
-          className={`panel ${isPanelCollapsed ? "panel--collapsed" : ""}`}
-          aria-label={isOverviewSection ? "Gateway details" : "System metrics"}
-          id="gateway-panel"
+        <DashboardLeftSidebar
+          activeSection={activeSection}
+          isPanelCollapsed={isPanelCollapsed}
+          panelAriaLabel="system metrics"
+          onSectionChangeAction={handleSectionChange}
+          onTogglePanelAction={() => setIsPanelCollapsed((current) => !current)}
         >
-          <button
-            className="panel__collapse"
-            type="button"
-            aria-controls="gateway-panel"
-            aria-label={
-              isPanelCollapsed
-                ? `Show ${isOverviewSection ? "gateway details" : "system metrics"} panel`
-                : `Hide ${isOverviewSection ? "gateway details" : "system metrics"} panel`
-            }
-            onClick={() => setIsPanelCollapsed((current) => !current)}
-          >
-            <Icon name={isPanelCollapsed ? "chevron-right" : "chevron-left"} />
-          </button>
-
-          {!isPanelCollapsed ? (
-            <div className="panel__content" id="gateway-panel-content">
-              {isOverviewSection ? (
-                <>
-                  <div className="info-row">
-                    <span className="info-row__label">Gateway IP</span>
-                    <span className="info-row__value">192.168.0.1</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-row__label">System Uptime</span>
-                    <span className="info-row__value">3w 2d 13h 37m</span>
-                  </div>
-
-                  <div className="version-bar">
-                    <span className="version-item">
-                      Network 10.2.105
-                      <Icon name="copy" />
-                    </span>
-                    <span className="version-item">
-                      UniFi OS 5.0.16
-                      <Icon name="copy" />
-                    </span>
-                  </div>
-
-                  <hr className="panel__hr" />
-
-                  <section className="throughput-card" aria-label="Throughput">
-                    <div className="throughput-compact">
-                      <div className="throughput-compact__item throughput-compact__item--down">
-                        <span className="throughput-compact__label">
-                          <Icon name="arrow-down" />
-                        </span>
-                        <span className="throughput-compact__value">
-                          <span className="throughput-compact__value-main">
-                            {downloadRateDisplay.amount}
-                          </span>
-                          <span className="throughput-compact__value-unit">
-                            {downloadRateDisplay.unit}
-                          </span>
-                        </span>
-                      </div>
-
-                      <div className="throughput-compact__item throughput-compact__item--up">
-                        <span className="throughput-compact__label">
-                          <Icon name="arrow-up" />
-                        </span>
-                        <span className="throughput-compact__value">
-                          <span className="throughput-compact__value-main">
-                            {uploadRateDisplay.amount}
-                          </span>
-                          <span className="throughput-compact__value-unit">
-                            {uploadRateDisplay.unit}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <MiniNetworkChart history={deferredHistory} />
-                  </section>
-
-                  <SidebarMetricCharts
-                    className="sidebar-chart-stack--embedded"
-                    history={deferredHistory}
-                    snapshot={deferredSnapshot}
-                  />
-                </>
-              ) : (
-                <SidebarMetricCharts
-                  className="sidebar-chart-stack--embedded"
-                  history={deferredHistory}
-                  snapshot={deferredSnapshot}
-                />
-              )}
-            </div>
-          ) : null}
-        </aside>
+          <SidebarMetricCharts
+            className="sidebar-chart-stack--embedded"
+            history={deferredHistory}
+            snapshot={deferredSnapshot}
+          />
+        </DashboardLeftSidebar>
 
         <main className="main">
           {isOverviewSection ? (
@@ -1037,58 +668,10 @@ export default function MetricsDashboard({
               <section className="dashboard-overview">
                 <div className="dashboard-overview__main">
                   <div className="overview-grid">
-                    <article className="unifi-card unifi-card--traffic">
-                      <div className="overview-card__header">
-                        <div>
-                          <div className="overview-card__title">Traffic</div>
-                          <div className="overview-card__meta">
-                            {statusMessage}
-                          </div>
-                        </div>
-                        <div className="overview-card__stamp">
-                          {timestampLabel}
-                        </div>
-                      </div>
-
-                      <div className="traffic">
-                        <TrafficDonut
-                          segments={donutSegments}
-                          centerValue="102 GB"
-                          label="Total Traffic"
-                        />
-
-                        <table className="traffic-table">
-                          <thead>
-                            <tr>
-                              <th>Application</th>
-                              <th>Down</th>
-                              <th>Up</th>
-                              <th>Traffic</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {TRAFFIC_ROWS.map((row) => (
-                              <tr key={row.name}>
-                                <td>
-                                  <div className="traffic-app">
-                                    <span
-                                      className={`traffic-app__dot traffic-app__dot--${row.toneClass}`}
-                                    />
-                                    <span className="traffic-app__icon">
-                                      {row.badge}
-                                    </span>
-                                    {row.name}
-                                  </div>
-                                </td>
-                                <td>{row.down}</td>
-                                <td>{row.up}</td>
-                                <td>{row.traffic}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </article>
+                    <TrafficCard
+                      statusMessage={statusMessage}
+                      timestampLabel={timestampLabel}
+                    />
 
                     <article className="unifi-card unifi-card--connections">
                       <div className="overview-card__header">
@@ -1194,43 +777,31 @@ export default function MetricsDashboard({
                 setLogDeploymentId(id);
                 setIsRightPanelCollapsed(false);
               }}
-              repositoryDraft={repositoryDraft}
-              repositoryDraftSignal={repositoryDraftSignal}
+              repositoryDraft={null}
+              repositoryDraftSignal={0}
             />
           )}
         </main>
 
         {isGitSection ? (
-          <aside
-            className={`panel-right ${isRightPanelCollapsed ? "panel-right--collapsed" : ""}`}
-            aria-label="Deployment logs sidebar"
-            id="logs-panel"
+          <DashboardRightSidebar
+            isCollapsed={isRightPanelCollapsed}
+            onToggleAction={() =>
+              setIsRightPanelCollapsed((current) => !current)
+            }
           >
-            <button
-              className="panel-right__collapse"
-              type="button"
-              aria-controls="logs-panel"
-              aria-label={
-                isRightPanelCollapsed ? "Show logs panel" : "Hide logs panel"
-              }
-              onClick={() => setIsRightPanelCollapsed((current) => !current)}
-            >
-              <Icon
-                name={isRightPanelCollapsed ? "chevron-left" : "chevron-right"}
-              />
-            </button>
-
-            {!isRightPanelCollapsed ? (
-              <div className="panel-right__content">
-                <GitLogPanel
-                  deploymentId={logDeploymentId}
-                  deployments={dashboardData.deployments}
-                />
-              </div>
-            ) : null}
-          </aside>
+            <GitLogPanel
+              deploymentId={logDeploymentId}
+              deployments={dashboardData.deployments}
+            />
+          </DashboardRightSidebar>
         ) : null}
       </div>
+
+      <DashboardFooter
+        activeSection={activeSection}
+        updatedAtLabel={timestampLabel}
+      />
     </section>
   );
 }

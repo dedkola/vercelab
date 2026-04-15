@@ -178,6 +178,7 @@ export function SidebarMetricCharts({
         type: "value",
         min: 0,
         max: 100,
+        interval: 25,
         splitNumber: 4,
         axisLabel: {
           color: "#98a2b3",

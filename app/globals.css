@@ -32,6 +32,7 @@
   --radius-lg: 12px;
   --radius-pill: 999px;
   --topbar-h: 48px;
+  --footer-h: 28px;
   --rail-w: 52px;
   --panel-w: 300px;
   --panel-right-w: 340px;
@@ -171,12 +172,32 @@ a:focus-visible {
 .shell {
   height: 100vh;
   display: grid;
-  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-rows: var(--topbar-h) 1fr var(--footer-h);
 }
 
 .shell--compact {
   --topbar-h: 42px;
+  --footer-h: 24px;
   --panel-w: 272px;
+}
+
+.shell-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  border-top: 1px solid var(--border-light);
+  background: #fbfcfe;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.shell-footer__section,
+.shell-footer__updated {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .shell--compact .topbar {
