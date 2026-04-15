@@ -9,10 +9,11 @@ readonly ENV_EXAMPLE="$REPO_ROOT/.env.example"
 readonly COMPOSE_FILE="$REPO_ROOT/docker-compose.yml"
 readonly NODE_MAJOR="22"
 readonly DOCKER_MAJOR="28"
-readonly PNPM_VERSION="10.0.0"
+readonly PNPM_VERSION="10.33.0"
 readonly DEFAULT_NODE_ENV="production"
 readonly DEFAULT_HOSTNAME="0.0.0.0"
 readonly DEFAULT_PORT="3000"
+readonly DEFAULT_HOST_ROOT="/opt/vercelab"
 
 CONTROL_PLANE_HOSTNAME=""
 
@@ -216,21 +217,31 @@ ensure_nodejs() {
 }
 
 ensure_pnpm() {
+  local installed_version=""
+
   if command_exists pnpm; then
-    log "pnpm is already installed."
+    installed_version="$(pnpm --version 2>/dev/null || true)"
+  fi
+
+  if [[ "$installed_version" == "$PNPM_VERSION" ]]; then
+    log "pnpm ${PNPM_VERSION} is already installed."
     return
   fi
 
   if command_exists corepack; then
     log "Installing pnpm ${PNPM_VERSION} via corepack."
-    run_privileged corepack enable
-    run_privileged corepack prepare "pnpm@${PNPM_VERSION}" --activate
+    run_privileged env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack enable
+    run_privileged env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare "pnpm@${PNPM_VERSION}" --activate
     return
   fi
 
   command_exists npm || fail "npm is required to install pnpm when corepack is unavailable."
 
-  log "corepack not found; installing pnpm ${PNPM_VERSION} globally via npm."
+  if [[ -n "$installed_version" ]]; then
+    log "Updating pnpm from ${installed_version} to ${PNPM_VERSION} via npm."
+  else
+    log "corepack not found; installing pnpm ${PNPM_VERSION} globally via npm."
+  fi
   run_privileged npm install -g "pnpm@${PNPM_VERSION}"
 }
 
@@ -453,8 +464,7 @@ gather_configuration() {
   VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-${existing_admin_host:-}}"
   VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-$(prompt_with_default "Dashboard host" "dash.${VERCELAB_BASE_DOMAIN}")}"
 
-  VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-${existing_host_root:-}}"
-  VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-$(prompt_with_default "Shared host root for data and Traefik assets" "/opt/vercelab")}" 
+  VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-${existing_host_root:-$DEFAULT_HOST_ROOT}}"
 
   VERCELAB_DATA_ROOT="${VERCELAB_DATA_ROOT:-${existing_data_root:-${VERCELAB_HOST_ROOT}/data}}"
   VERCELAB_TRAEFIK_DYNAMIC_DIR="${VERCELAB_TRAEFIK_DYNAMIC_DIR:-${existing_dynamic_dir:-${VERCELAB_HOST_ROOT}/traefik/dynamic}}"
