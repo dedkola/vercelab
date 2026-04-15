@@ -14,7 +14,6 @@ services:
       - "0"
     command: sleep infinity
     environment:
-      NODE_ENV: development
       VERCELAB_UI_DEV_MODE: "true"
       VERCELAB_HOST_ROOT: /workspaces/vercelab
       VERCELAB_DATA_ROOT: /workspaces/vercelab/data
