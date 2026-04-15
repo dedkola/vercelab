@@ -10,7 +10,7 @@ type SubmitButtonProps = {
   idleLabel: string;
   pendingLabel: string;
   variant: "primary" | "secondary" | "danger";
-  size?: "default" | "small";
+  size?: "default" | "small" | "compact";
   iconName?: IconName;
 };
 
@@ -33,7 +33,7 @@ export function SubmitButton({
   return (
     <Button
       variant={resolvedVariant}
-      size={size === "small" ? "sm" : "default"}
+      size={size === "compact" ? "xs" : size === "small" ? "sm" : "default"}
       disabled={pending}
       type="submit"
     >

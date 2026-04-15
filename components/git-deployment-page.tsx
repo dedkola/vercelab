@@ -14,12 +14,7 @@ import { Icon } from "@/components/dashboard-kit";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
@@ -760,15 +755,6 @@ export function GitDeploymentPage({
 
         {deployments.length > 0 ? (
           <CardContent className="p-0">
-            <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] gap-3 border-b px-4 py-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              <span>App</span>
-              <span>Repository</span>
-              <span>URL</span>
-              <span>Status</span>
-              <span>Uptime</span>
-              <span>Logs</span>
-            </div>
-
             {deployments.map((deployment) => {
               const isExpanded = expandedDeploymentId === deployment.id;
               const isEditing = editingDeploymentId === deployment.id;
@@ -778,7 +764,7 @@ export function GitDeploymentPage({
               return (
                 <div className="border-b last:border-0" key={deployment.id}>
                   <button
-                    className={`grid w-full grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-accent/60 ${isExpanded ? "bg-accent/40" : "bg-background"}`}
+                    className={`grid w-full grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-accent/60 ${isExpanded ? "bg-accent/40" : "bg-background"}`}
                     onClick={() => handleDeploymentToggle(deployment.id)}
                     type="button"
                   >
@@ -795,10 +781,6 @@ export function GitDeploymentPage({
                           {deployment.branch ?? "default branch"}
                         </span>
                       </span>
-                    </span>
-
-                    <span className="truncate text-muted-foreground">
-                      {formatRepositoryLabel(deployment.repositoryUrl)}
                     </span>
 
                     <span className="truncate text-muted-foreground">
@@ -849,105 +831,90 @@ export function GitDeploymentPage({
 
                   {isExpanded ? (
                     <div className="space-y-4 bg-muted/20 px-4 py-4">
-                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Name
-                            </div>
-                            <div className="mt-1 text-sm font-medium text-foreground">
-                              {deployment.appName}
-                            </div>
+                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Name
                           </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Repository
-                            </div>
-                            <a
-                              className="mt-1 block truncate text-sm text-foreground hover:underline"
-                              href={deployment.repositoryUrl}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              {formatRepositoryLabel(deployment.repositoryUrl)}
-                            </a>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              URL
-                            </div>
-                            <a
-                              className="mt-1 block truncate text-sm text-foreground hover:underline"
-                              href={formatDeploymentHref(
-                                deployment,
-                                baseDomain,
-                              )}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              {formatDeploymentDomain(deployment, baseDomain)}
-                            </a>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Branch
-                            </div>
-                            <div className="mt-1 text-sm text-foreground">
-                              {deployment.branch ?? "default"}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Active
-                            </div>
-                            <div className="mt-1 text-sm text-foreground">
-                              {deployment.status === "running" ? "Yes" : "No"}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Updated
-                            </div>
-                            <div className="mt-1 text-sm text-foreground">
-                              {formatDeploymentTime(deployment.updatedAt)}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Uptime
-                            </div>
-                            <div className="mt-1 text-sm text-foreground">
-                              {formatUptimeLabel(deployment)}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Port
-                            </div>
-                            <div className="mt-1 text-sm text-foreground">
-                              {deployment.port}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                              Git auth
-                            </div>
-                            <div className="mt-1 text-sm text-foreground">
-                              {deployment.tokenStored
-                                ? "Stored with app"
-                                : "Global token fallback"}
-                            </div>
+                          <div className="mt-1 text-sm font-medium text-foreground">
+                            {deployment.appName}
                           </div>
                         </div>
-
-                        <div className="rounded-md border bg-background p-3 text-sm">
+                        <div>
                           <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                            Latest deployment summary
+                            Repository
                           </div>
-                          <p className="mt-2 text-sm text-foreground">
-                            {deployment.lastOperationSummary ??
-                              "No deployment summary captured yet."}
-                          </p>
+                          <a
+                            className="mt-1 block truncate text-sm text-foreground hover:underline"
+                            href={deployment.repositoryUrl}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {formatRepositoryLabel(deployment.repositoryUrl)}
+                          </a>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            URL
+                          </div>
+                          <a
+                            className="mt-1 block truncate text-sm text-foreground hover:underline"
+                            href={formatDeploymentHref(deployment, baseDomain)}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {formatDeploymentDomain(deployment, baseDomain)}
+                          </a>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Branch
+                          </div>
+                          <div className="mt-1 text-sm text-foreground">
+                            {deployment.branch ?? "default"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Active
+                          </div>
+                          <div className="mt-1 text-sm text-foreground">
+                            {deployment.status === "running" ? "Yes" : "No"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Updated
+                          </div>
+                          <div className="mt-1 text-sm text-foreground">
+                            {formatDeploymentTime(deployment.updatedAt)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Uptime
+                          </div>
+                          <div className="mt-1 text-sm text-foreground">
+                            {formatUptimeLabel(deployment)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Port
+                          </div>
+                          <div className="mt-1 text-sm text-foreground">
+                            {deployment.port}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            Git auth
+                          </div>
+                          <div className="mt-1 text-sm text-foreground">
+                            {deployment.tokenStored
+                              ? "Stored with app"
+                              : "Global token fallback"}
+                          </div>
                         </div>
                       </div>
 
@@ -962,7 +929,7 @@ export function GitDeploymentPage({
                             iconName="cloud"
                             idleLabel="Restart"
                             pendingLabel="Restarting..."
-                            size="small"
+                            size="compact"
                             variant="secondary"
                           />
                         </form>
@@ -977,7 +944,7 @@ export function GitDeploymentPage({
                             iconName="arrow-down"
                             idleLabel="Fetch latest"
                             pendingLabel="Fetching..."
-                            size="small"
+                            size="compact"
                             variant="secondary"
                           />
                         </form>
@@ -992,18 +959,20 @@ export function GitDeploymentPage({
                             iconName="x-close"
                             idleLabel="Stop"
                             pendingLabel="Stopping..."
-                            size="small"
+                            size="compact"
                             variant="secondary"
                           />
                         </form>
 
                         <Button
+                          className="h-7 rounded-sm px-2.5 text-xs"
                           onClick={() => {
                             setPendingDeleteDeploymentId(null);
                             setEditingDeploymentId((current) =>
                               current === deployment.id ? null : deployment.id,
                             );
                           }}
+                          size="xs"
                           type="button"
                           variant="secondary"
                         >
@@ -1012,6 +981,7 @@ export function GitDeploymentPage({
                         </Button>
 
                         <Button
+                          className="h-7 rounded-sm px-2.5 text-xs"
                           onClick={() => {
                             setEditingDeploymentId((current) =>
                               current === deployment.id ? null : current,
@@ -1020,6 +990,7 @@ export function GitDeploymentPage({
                               current === deployment.id ? null : deployment.id,
                             );
                           }}
+                          size="xs"
                           type="button"
                           variant="danger"
                         >
@@ -1028,7 +999,9 @@ export function GitDeploymentPage({
                         </Button>
 
                         <Button
+                          className="h-7 rounded-sm px-2.5 text-xs"
                           onClick={() => onToggleLogsAction?.(deployment.id)}
+                          size="xs"
                           type="button"
                           variant="secondary"
                         >
