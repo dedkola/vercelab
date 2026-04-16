@@ -11,6 +11,7 @@ import {
   stopDeploymentAction,
   updateDeploymentAction,
 } from "@/app/actions";
+import { AddAppDialog } from "@/components/add-app-dialog";
 import { Icon } from "@/components/dashboard-kit";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { GitHubRepository } from "@/lib/github";
+import { listGitHubBranches, type GitHubRepository } from "@/lib/github";
 import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
 
 type GitDeploymentPageProps = {
@@ -328,7 +329,31 @@ export function GitDeploymentPage({
   onToggleLogsAction,
 }: GitDeploymentPageProps) {
   const router = useRouter();
-  const { deployments, stats } = dashboardData;
+  const { deployments: serverDeployments } = dashboardData;
+  const [deployments, setDeployments] = useState<DashboardDeployment[]>(
+    serverDeployments,
+  );
+
+  const stats = deployments.reduce(
+    (accumulator, deployment) => {
+      accumulator.totalDeployments += 1;
+
+      if (deployment.status === "running") {
+        accumulator.runningDeployments += 1;
+      }
+
+      if (deployment.status === "failed") {
+        accumulator.failedDeployments += 1;
+      }
+
+      return accumulator;
+    },
+    {
+      failedDeployments: 0,
+      runningDeployments: 0,
+      totalDeployments: 0,
+    },
+  );
 
   const [expandedDeploymentId, setExpandedDeploymentId] = useState<
     string | null
@@ -345,11 +370,15 @@ export function GitDeploymentPage({
   const [pendingDeleteDeploymentId, setPendingDeleteDeploymentId] = useState<
     string | null
   >(null);
-  const [showAddPanel, setShowAddPanel] = useState(false);
+  const [removingDeploymentIds, setRemovingDeploymentIds] = useState<string[]>(
+    [],
+  );
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [draftState, setDraftState] =
     useState<DraftFormState>(getEmptyDraftState);
   const [selectedRepositoryId, setSelectedRepositoryId] = useState("");
   const [isCreatingDeployment, setIsCreatingDeployment] = useState(false);
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
   const [repositoryState, setRepositoryState] = useState<RepositoryState>({
     error: null,
@@ -367,6 +396,10 @@ export function GitDeploymentPage({
     repositoryState.repositories.find(
       (repository) => String(repository.id) === selectedRepositoryId,
     ) ?? null;
+
+  useEffect(() => {
+    setDeployments(serverDeployments);
+  }, [serverDeployments]);
 
   useEffect(() => {
     setExpandedDeploymentId(initialDeploymentId);
@@ -420,7 +453,7 @@ export function GitDeploymentPage({
 
   useEffect(() => {
     if (
-      !showAddPanel ||
+      !isDialogOpen ||
       repositoryState.isLoading ||
       repositoryState.hasLoaded
     ) {
@@ -428,7 +461,7 @@ export function GitDeploymentPage({
     }
 
     void loadRepositories();
-  }, [showAddPanel, repositoryState.isLoading, repositoryState.hasLoaded]);
+  }, [isDialogOpen, repositoryState.isLoading, repositoryState.hasLoaded]);
 
   async function loadRepositories() {
     setRepositoryState((current) => ({
@@ -497,6 +530,38 @@ export function GitDeploymentPage({
           ? current.subdomain
           : toSlug(repositoryName),
     }));
+
+    // Load branches for the selected repository
+    void loadBranchesForRepository(repository);
+  }
+
+  async function loadBranchesForRepository(repository: GitHubRepository) {
+    setLoadingBranches(true);
+    try {
+      const token = repositoryState.repositories[0]?.owner; // We'll get token from API
+      const response = await fetch(
+        `/api/github/repos/${repository.owner}/${repository.name}/branches`,
+        { cache: "no-store" },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load branches");
+      }
+
+      const { branches } = (await response.json()) as { branches: string[] };
+
+      // Update the repository with branches
+      setRepositoryState((current) => ({
+        ...current,
+        repositories: current.repositories.map((repo) =>
+          repo.id === repository.id ? { ...repo, branches } : repo,
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to load branches:", error);
+    } finally {
+      setLoadingBranches(false);
+    }
   }
 
   async function handleCreateDeployment(event: FormEvent<HTMLFormElement>) {
@@ -506,13 +571,19 @@ export function GitDeploymentPage({
 
     try {
       const normalizedRepositoryUrl = normalizeGitHubRepositoryUrl(
-        draftState.repositoryUrl,
+        (event.currentTarget.repositoryUrl as any)?.value || draftState.repositoryUrl,
       );
       const formData = new FormData();
       formData.set("repositoryUrl", normalizedRepositoryUrl);
-      formData.set("appName", draftState.appName);
-      formData.set("subdomain", draftState.subdomain);
-      formData.set("port", draftState.port);
+      formData.set("appName", (event.currentTarget.appName as any)?.value || draftState.appName);
+      formData.set("subdomain", (event.currentTarget.subdomain as any)?.value || draftState.subdomain);
+      formData.set("port", (event.currentTarget.port as any)?.value || draftState.port);
+      
+      // Get branch from form
+      const branch = (event.currentTarget.branch as any)?.value;
+      if (branch) {
+        formData.set("branch", branch);
+      }
 
       const response = await fetch("/api/deployments", {
         method: "POST",
@@ -538,7 +609,7 @@ export function GitDeploymentPage({
       setExpandedDeploymentId(payload.deploymentId);
       setSelectedDeploymentId(payload.deploymentId);
       onToggleLogsAction?.(payload.deploymentId);
-      setShowAddPanel(false);
+      setIsDialogOpen(false);
       setDraftState(getEmptyDraftState());
       setSelectedRepositoryId("");
       toast.success(`Deployment live at https://${payload.domain}`);
@@ -571,6 +642,65 @@ export function GitDeploymentPage({
     onDeploymentSelectAction?.(deploymentId);
   }
 
+  async function handleRedeployAction(formData: FormData): Promise<void> {
+    await redeployDeploymentAction(formData);
+  }
+
+  async function handleFetchLatestAction(formData: FormData): Promise<void> {
+    await fetchDeploymentFromGitAction(formData);
+  }
+
+  async function handleStopAction(formData: FormData): Promise<void> {
+    await stopDeploymentAction(formData);
+  }
+
+  async function handleRemoveAction(formData: FormData): Promise<void> {
+    const deploymentIdValue = formData.get("deploymentId");
+    const deploymentId =
+      typeof deploymentIdValue === "string" ? deploymentIdValue : null;
+    const result = await removeDeploymentAction(formData);
+
+    if (result.status === "success" && deploymentId) {
+      setRemovingDeploymentIds((current) =>
+        current.includes(deploymentId) ? current : [...current, deploymentId],
+      );
+      setDeployments((current) =>
+        current.map((deployment) =>
+          deployment.id === deploymentId
+            ? { ...deployment, status: "removing" }
+            : deployment,
+        ),
+      );
+      setPendingDeleteDeploymentId(null);
+      setEditingDeploymentId((current) =>
+        current === deploymentId ? null : current,
+      );
+      setExpandedDeploymentId((current) =>
+        current === deploymentId ? null : current,
+      );
+      setSelectedDeploymentId((current) =>
+        current === deploymentId ? null : current,
+      );
+      onDeploymentSelectAction?.(null);
+      toast.success(result.message);
+      window.setTimeout(() => {
+        setDeployments((current) =>
+          current.filter((deployment) => deployment.id !== deploymentId),
+        );
+        setRemovingDeploymentIds((current) =>
+          current.filter((id) => id !== deploymentId),
+        );
+      }, 220);
+      return;
+    }
+
+    toast.error(result.message);
+  }
+
+  async function handleUpdateAction(formData: FormData): Promise<void> {
+    await updateDeploymentAction(formData);
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -588,27 +718,17 @@ export function GitDeploymentPage({
               <Button
                 size="xs"
                 onClick={() => {
-                  const nextValue = !showAddPanel;
-
-                  setShowAddPanel(nextValue);
-
-                  if (nextValue) {
-                    setRepositoryState((current) => ({
-                      ...current,
-                      hasLoaded: false,
-                    }));
-                  }
-
-                  if (!nextValue && !draftState.repositoryUrl) {
-                    setDraftState(getEmptyDraftState());
-                    setSelectedRepositoryId("");
-                  }
+                  setIsDialogOpen(true);
+                  setRepositoryState((current) => ({
+                    ...current,
+                    hasLoaded: false,
+                  }));
                 }}
                 type="button"
                 variant="secondary"
               >
                 <Icon name="cloud" className="h-3 w-3" />
-                {showAddPanel ? "Close add app" : "Add app"}
+                Add app
               </Button>
               <Badge variant="default">{stats.totalDeployments} apps</Badge>
               <Badge variant="success">
@@ -621,109 +741,26 @@ export function GitDeploymentPage({
           </div>
         </CardHeader>
 
-        {showAddPanel ? (
-          <CardContent className="p-4">
-            <form
-              className="flex flex-wrap items-end gap-3"
-              onSubmit={handleCreateDeployment}
-            >
-              <div className="min-w-72 flex-1 space-y-2">
-                <Label htmlFor="repositoryPicker">Git repo</Label>
-                <div id="repositoryPicker">
-                  <Combobox
-                    disabled={
-                      !repositoryState.tokenConfigured ||
-                      repositoryState.isLoading
-                    }
-                    emptyText={
-                      repositoryState.isLoading
-                        ? "Loading repositories..."
-                        : "No repositories available"
-                    }
-                    onValueChangeAction={handleSelectRepository}
-                    options={buildRepositoryOptions(
-                      repositoryState.repositories,
-                    )}
-                    placeholder={
-                      repositoryState.tokenConfigured
-                        ? "Select repository"
-                        : "Token missing in .env"
-                    }
-                    searchPlaceholder="Search repositories"
-                    value={selectedRepositoryId}
-                  />
-                </div>
-              </div>
-
-              <div className="min-w-44 flex-1 space-y-2">
-                <Label htmlFor="appName">App name</Label>
-                <Input
-                  id="appName"
-                  name="appName"
-                  onChange={(event) =>
-                    setDraftState((current) => ({
-                      ...current,
-                      appName: event.target.value,
-                    }))
-                  }
-                  required
-                  type="text"
-                  value={draftState.appName}
-                />
-              </div>
-
-              <div className="w-28 space-y-2">
-                <Label htmlFor="port">App port</Label>
-                <Input
-                  id="port"
-                  max="65535"
-                  min="1"
-                  name="port"
-                  onChange={(event) =>
-                    setDraftState((current) => ({
-                      ...current,
-                      port: event.target.value,
-                    }))
-                  }
-                  required
-                  type="number"
-                  value={draftState.port}
-                />
-              </div>
-
-              <div className="min-w-52 flex-1 space-y-2">
-                <Label htmlFor="subdomain">URL</Label>
-                <InputGroup>
-                  <InputGroupInput
-                    id="subdomain"
-                    name="subdomain"
-                    onChange={(event) =>
-                      setDraftState((current) => ({
-                        ...current,
-                        subdomain: event.target.value,
-                      }))
-                    }
-                    required
-                    type="text"
-                    value={draftState.subdomain}
-                  />
-                  <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
-                </InputGroup>
-              </div>
-
-              <Button disabled={isCreatingDeployment} type="submit">
-                <Icon name="cloud" className="h-3.5 w-3.5" />
-                {isCreatingDeployment ? "Deploying..." : "Deploy app"}
-              </Button>
-            </form>
-
-            <div className="mt-2 text-xs text-muted-foreground">
-              {selectedRepository
-                ? `Selected: ${selectedRepository.fullName}`
-                : (repositoryState.error ?? "")}
-            </div>
-          </CardContent>
-        ) : null}
+        <AddAppDialog
+          baseDomain={baseDomain}
+          isOpen={isDialogOpen}
+          isLoading={repositoryState.isLoading || loadingBranches}
+          isCreating={isCreatingDeployment}
+          repositories={repositoryState.repositories}
+          tokenConfigured={repositoryState.tokenConfigured}
+          error={repositoryState.error}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setDraftState(getEmptyDraftState());
+              setSelectedRepositoryId("");
+            }
+          }}
+          onRepositorySelect={handleSelectRepository}
+          onSubmit={handleCreateDeployment}
+          selectedRepositoryId={selectedRepositoryId}
+          selectedRepository={selectedRepository}
+        />
       </Card>
 
 
@@ -747,9 +784,17 @@ export function GitDeploymentPage({
               const isEditing = editingDeploymentId === deployment.id;
               const isPendingDelete =
                 pendingDeleteDeploymentId === deployment.id;
+              const isRemoving = removingDeploymentIds.includes(deployment.id);
 
               return (
-                <div className="border-b last:border-0" key={deployment.id}>
+                <div
+                  className={`border-b transition-all duration-200 last:border-0 ${
+                    isRemoving
+                      ? "pointer-events-none scale-[0.99] opacity-55"
+                      : "opacity-100"
+                  }`}
+                  key={deployment.id}
+                >
                   <button
                     className={`grid w-full grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_auto_auto_auto] items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-accent/60 ${isExpanded ? "bg-accent/40" : "bg-background"}`}
                     onClick={() => handleDeploymentToggle(deployment.id)}
@@ -885,7 +930,7 @@ export function GitDeploymentPage({
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        <form action={redeployDeploymentAction}>
+                        <form action={handleRedeployAction}>
                           <input
                             name="deploymentId"
                             type="hidden"
@@ -905,7 +950,7 @@ export function GitDeploymentPage({
                           />
                         </form>
 
-                        <form action={fetchDeploymentFromGitAction}>
+                        <form action={handleFetchLatestAction}>
                           <input
                             name="deploymentId"
                             type="hidden"
@@ -925,7 +970,7 @@ export function GitDeploymentPage({
                           />
                         </form>
 
-                        <form action={stopDeploymentAction}>
+                        <form action={handleStopAction}>
                           <input
                             name="deploymentId"
                             type="hidden"
@@ -971,6 +1016,7 @@ export function GitDeploymentPage({
                               current === deployment.id ? null : deployment.id,
                             );
                           }}
+                          disabled={isRemoving}
                           size="xs"
                           type="button"
                           variant="danger"
@@ -1002,7 +1048,14 @@ export function GitDeploymentPage({
                           </div>
 
                           <div className="mt-2 flex gap-2">
-                            <form action={removeDeploymentAction}>
+                            <form
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void handleRemoveAction(
+                                  new FormData(event.currentTarget),
+                                );
+                              }}
+                            >
                               <input
                                 name="deploymentId"
                                 type="hidden"
@@ -1015,7 +1068,11 @@ export function GitDeploymentPage({
                               />
                               <SubmitButton
                                 iconName="x-close"
-                                idleLabel="Confirm delete"
+                                idleLabel={
+                                  isRemoving
+                                    ? "Removing..."
+                                    : "Confirm delete"
+                                }
                                 pendingLabel="Deleting..."
                                 size="small"
                                 variant="danger"
@@ -1038,10 +1095,7 @@ export function GitDeploymentPage({
                       ) : null}
 
                       {isEditing ? (
-                        <form
-                          action={updateDeploymentAction}
-                          className="space-y-3"
-                        >
+                        <form action={handleUpdateAction} className="space-y-3">
                           <input
                             name="deploymentId"
                             type="hidden"

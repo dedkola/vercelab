@@ -369,8 +369,10 @@ export default function MetricsDashboard({
           ) : (
             <GitDeploymentPage
               baseDomain={baseDomain}
+              currentLogTab={activeLogTab}
               dashboardData={dashboardData}
               initialDeploymentId={logDeploymentId}
+              isLogsPanelCollapsed={isRightPanelCollapsed}
               onDeploymentSelectAction={(id) => setLogDeploymentId(id)}
               onToggleLogsAction={(id) => {
                 setLogDeploymentId(id);

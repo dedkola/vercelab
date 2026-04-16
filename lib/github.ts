@@ -4,7 +4,9 @@ export type GitHubRepository = {
   fullName: string;
   owner: string;
   cloneUrl: string;
+  url: string;
   defaultBranch: string;
+  branches?: string[];
   visibility: "public" | "private" | "internal";
   description: string | null;
   updatedAt: string;
@@ -82,6 +84,7 @@ export async function listGitHubRepositories(
         fullName: repository.full_name,
         owner: repository.owner.login,
         cloneUrl: repository.clone_url,
+        url: repository.clone_url,
         defaultBranch: repository.default_branch,
         visibility: mapVisibility(repository),
         description: repository.description,
@@ -95,4 +98,45 @@ export async function listGitHubRepositories(
   }
 
   return repositories;
+}
+
+export async function listGitHubBranches(
+  token: string,
+  owner: string,
+  repo: string,
+): Promise<string[]> {
+  const branches: string[] = [];
+  const pageSize = 100;
+  let page = 1;
+  const maxPages = 10;
+
+  while (page <= maxPages) {
+    const response = await fetch(
+      `${GITHUB_API_BASE}/repos/${owner}/${repo}/branches?per_page=${pageSize}&page=${page}`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(getGitHubErrorMessage(response.status));
+    }
+
+    const pageBranches = (await response.json()) as Array<{ name: string }>;
+
+    branches.push(...pageBranches.map((branch) => branch.name));
+
+    if (pageBranches.length < pageSize) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return branches;
 }
