@@ -81,6 +81,10 @@ function formatClock(value: string) {
   }).format(new Date(value));
 }
 
+function formatLoadAverage(loadAverage: MetricsSnapshot["system"]["loadAverage"]) {
+  return loadAverage.map((value) => value.toFixed(2)).join(" / ");
+}
+
 export default function MetricsDashboard({
   baseDomain,
   dashboardData,
@@ -305,7 +309,7 @@ export default function MetricsDashboard({
         hostIp={deferredSidebarSnapshot?.hostIp}
         loadAverageLabel={
           deferredSidebarSnapshot
-            ? deferredSidebarSnapshot.system.loadAverage[0].toFixed(2)
+            ? formatLoadAverage(deferredSidebarSnapshot.system.loadAverage)
             : "-"
         }
         onCopyHostIpAction={() =>

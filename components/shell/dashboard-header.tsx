@@ -45,11 +45,11 @@ export function DashboardHeader({
 
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="text-muted-foreground/70">Host IP</span>
+          <span className="text-muted-foreground/70">Server LAN IP</span>
           <span className="font-medium text-foreground">{hostIp ?? "-"}</span>
           <Button
             type="button"
-            aria-label="Copy host IP"
+            aria-label="Copy server LAN IP"
             onClick={onCopyHostIpAction}
             variant="ghost"
             size="icon"
@@ -101,15 +101,6 @@ export function DashboardHeader({
           className="h-7 w-7"
         >
           <Icon name="theme" className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          aria-label="Profile"
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-        >
-          <Icon name="profile" className="h-3.5 w-3.5" />
         </Button>
       </div>
     </header>

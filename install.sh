@@ -406,6 +406,20 @@ validate_domain() {
   [[ "$value" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || fail "$label must look like a real domain name."
 }
 
+validate_ipv4() {
+  local value="$1"
+  local label="$2"
+  local octet=""
+
+  [[ "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || fail "$label must be a valid IPv4 address."
+
+  IFS='.' read -r -a octets <<<"$value"
+
+  for octet in "${octets[@]}"; do
+    (( octet >= 0 && octet <= 255 )) || fail "$label must be a valid IPv4 address."
+  done
+}
+
 ensure_path_inside_root() {
   local value="$1"
   local label="$2"
@@ -420,7 +434,7 @@ ensure_path_inside_root() {
 }
 
 gather_configuration() {
-  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_secret existing_github_token default_base_domain
+  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_host_lan_ip existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_secret existing_github_token default_base_domain default_host_lan_ip
 
   existing_node_env="$(read_env_value NODE_ENV)"
   existing_runtime_host="$(read_env_value HOSTNAME)"
@@ -429,6 +443,7 @@ gather_configuration() {
   existing_base_domain="$(read_env_value VERCELAB_BASE_DOMAIN)"
   existing_admin_host="$(read_env_value VERCELAB_ADMIN_HOST)"
   existing_host_root="$(read_env_value VERCELAB_HOST_ROOT)"
+  existing_host_lan_ip="$(read_env_value VERCELAB_HOST_LAN_IP)"
   existing_data_root="$(read_env_value VERCELAB_DATA_ROOT)"
   existing_dynamic_dir="$(read_env_value VERCELAB_TRAEFIK_DYNAMIC_DIR)"
   existing_certs_dir="$(read_env_value VERCELAB_TRAEFIK_CERTS_DIR)"
@@ -453,6 +468,7 @@ gather_configuration() {
   existing_github_token="$(read_env_value VERCELAB_GITHUB_TOKEN)"
 
   default_base_domain="$(detect_default_base_domain)"
+  default_host_lan_ip="$(detect_primary_ipv4)"
 
   NODE_ENV="${NODE_ENV:-${existing_node_env:-$DEFAULT_NODE_ENV}}"
   PORT="${PORT:-${existing_port:-$DEFAULT_PORT}}"
@@ -465,6 +481,7 @@ gather_configuration() {
   VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-$(prompt_with_default "Dashboard host" "dash.${VERCELAB_BASE_DOMAIN}")}"
 
   VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-${existing_host_root:-$DEFAULT_HOST_ROOT}}"
+  VERCELAB_HOST_LAN_IP="${VERCELAB_HOST_LAN_IP:-${existing_host_lan_ip:-$default_host_lan_ip}}"
 
   VERCELAB_DATA_ROOT="${VERCELAB_DATA_ROOT:-${existing_data_root:-${VERCELAB_HOST_ROOT}/data}}"
   VERCELAB_TRAEFIK_DYNAMIC_DIR="${VERCELAB_TRAEFIK_DYNAMIC_DIR:-${existing_dynamic_dir:-${VERCELAB_HOST_ROOT}/traefik/dynamic}}"
@@ -501,6 +518,9 @@ gather_configuration() {
   validate_absolute_path "$VERCELAB_POSTGRES_DATA_DIR" "VERCELAB_POSTGRES_DATA_DIR"
   validate_absolute_path "$VERCELAB_INFLUXDB_DATA_DIR" "VERCELAB_INFLUXDB_DATA_DIR"
   validate_absolute_path "$VERCELAB_DOCKER_SOCKET_PATH" "VERCELAB_DOCKER_SOCKET_PATH"
+  if [[ -n "$VERCELAB_HOST_LAN_IP" ]]; then
+    validate_ipv4 "$VERCELAB_HOST_LAN_IP" "VERCELAB_HOST_LAN_IP"
+  fi
 
   [[ "$VERCELAB_ADMIN_HOST" == "$VERCELAB_BASE_DOMAIN" || "$VERCELAB_ADMIN_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] || fail "VERCELAB_ADMIN_HOST must be inside VERCELAB_BASE_DOMAIN."
   [[ "$VERCELAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCELAB_DATABASE_PROVIDER must be postgres."
@@ -606,6 +626,7 @@ PORT=$PORT
 
 VERCELAB_BASE_DOMAIN=$VERCELAB_BASE_DOMAIN
 VERCELAB_ADMIN_HOST=$VERCELAB_ADMIN_HOST
+VERCELAB_HOST_LAN_IP=$VERCELAB_HOST_LAN_IP
 VERCELAB_PROXY_NETWORK=$VERCELAB_PROXY_NETWORK
 VERCELAB_PROXY_ENTRYPOINT=$VERCELAB_PROXY_ENTRYPOINT
 

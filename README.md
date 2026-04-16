@@ -89,6 +89,7 @@ These are the defaults the installer writes into `.env` unless you override them
 | `PORT`                             | `3000`                                                                       | Internal port Traefik forwards to                                                   |
 | `VERCELAB_BASE_DOMAIN`             | auto-derived from the host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps                                              |
 | `VERCELAB_ADMIN_HOST`              | `vercelab.${VERCELAB_BASE_DOMAIN}`                                           | Control plane hostname                                                              |
+| `VERCELAB_HOST_LAN_IP`             | auto-derived from the host primary LAN IPv4                                  | Host LAN IPv4 shown in the dashboard and used to tag host metrics                   |
 | `VERCELAB_PROXY_NETWORK`           | `vercelab_proxy`                                                             | Shared Docker network for Traefik and managed apps                                  |
 | `VERCELAB_PROXY_ENTRYPOINT`        | `websecure`                                                                  | Traefik HTTPS entrypoint                                                            |
 | `VERCELAB_HOST_ROOT`               | `/opt/vercelab`                                                              | Shared host path mounted into the control-plane container at the same absolute path |

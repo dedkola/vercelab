@@ -58,6 +58,7 @@ export type MetricsSnapshot = {
 
 const CACHE_WINDOW_MS = 2500;
 const LOOPBACK_INTERFACE_RE = /^(lo|lo0)$/;
+const IPV4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
 let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
 let lastCpuCounters: SampleState<CpuCounters> | null = null;
@@ -130,6 +131,63 @@ function clamp(value: number, min: number, max: number) {
 function round(value: number, precision = 1) {
   const factor = 10 ** precision;
   return Math.round(value * factor) / factor;
+}
+
+function isValidIpv4(value: string) {
+  if (!IPV4_RE.test(value)) {
+    return false;
+  }
+
+  return value
+    .split(".")
+    .every((segment) => Number(segment) >= 0 && Number(segment) <= 255);
+}
+
+function parseHostIpv4FromBaseDomain(baseDomain: string) {
+  const normalized = baseDomain.trim().toLowerCase().replace(/\.$/, "");
+
+  for (const suffix of [".sslip.io", ".nip.io"]) {
+    if (!normalized.endsWith(suffix)) {
+      continue;
+    }
+
+    const candidate = normalized
+      .slice(0, -suffix.length)
+      .replaceAll("-", ".");
+
+    if (isValidIpv4(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function resolveHostLanIp() {
+  const config = getAppConfig();
+
+  if (config.runtime.hostLanIp && isValidIpv4(config.runtime.hostLanIp)) {
+    return config.runtime.hostLanIp;
+  }
+
+  const lanIpFromBaseDomain = parseHostIpv4FromBaseDomain(config.baseDomain);
+
+  if (lanIpFromBaseDomain) {
+    return lanIpFromBaseDomain;
+  }
+
+  const ifaces = os.networkInterfaces();
+
+  for (const iface of Object.values(ifaces)) {
+    if (!iface) continue;
+    for (const addr of iface) {
+      if (addr.family === "IPv4" && !addr.internal) {
+        return addr.address;
+      }
+    }
+  }
+
+  return "unknown";
 }
 
 function getCpuCount() {
@@ -640,18 +698,7 @@ async function buildSnapshot(): Promise<MetricsSnapshot> {
     warnings.push("Network interface counters are unavailable.");
   }
 
-  const hostIp = (() => {
-    const ifaces = os.networkInterfaces();
-    for (const iface of Object.values(ifaces)) {
-      if (!iface) continue;
-      for (const addr of iface) {
-        if (addr.family === "IPv4" && !addr.internal) {
-          return addr.address;
-        }
-      }
-    }
-    return "unknown";
-  })();
+  const hostIp = resolveHostLanIp();
 
   return {
     timestamp: new Date().toISOString(),

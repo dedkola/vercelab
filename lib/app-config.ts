@@ -36,6 +36,7 @@ const envSchema = z.object({
     .refine((value) => !value || path.isAbsolute(value), {
       message: "VERCELAB_HOST_ROOT must be an absolute path.",
     }),
+  VERCELAB_HOST_LAN_IP: z.string().trim().optional(),
   VERCELAB_APPS_DIR: z.string().optional(),
   VERCELAB_LOGS_DIR: z.string().optional(),
   VERCELAB_LOCKS_DIR: z.string().optional(),
@@ -90,6 +91,7 @@ function buildConfig() {
       dockerSocketPath:
         parsed.VERCELAB_DOCKER_SOCKET_PATH ?? "/var/run/docker.sock",
       hostProcPath: parsed.VERCELAB_HOST_PROC_PATH ?? "/host/proc",
+      hostLanIp: parsed.VERCELAB_HOST_LAN_IP || null,
     },
     database: {
       provider: parsed.VERCELAB_DATABASE_PROVIDER,
