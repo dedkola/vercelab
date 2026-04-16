@@ -3,7 +3,14 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import * as echarts from "echarts";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
@@ -321,40 +328,73 @@ export function SidebarMetricCharts({
   useChart(memoryRef, memoryOption);
 
   const classes = className
-    ? `flex min-w-0 w-full flex-col gap-3 p-3 ${className}`
-    : "flex min-w-0 w-full flex-col gap-3 p-3";
+    ? `flex min-w-0 w-full flex-col gap-4 p-3 ${className}`
+    : "flex min-w-0 w-full flex-col gap-4 p-3";
 
   return (
     <div className={classes}>
-      <Card aria-label="Network chart" className="w-full overflow-hidden">
-        <CardHeader className="py-1.5">
-          <CardTitle className="text-xs font-medium text-muted-foreground">
+      <div className="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/94 via-muted/20 to-background px-4 py-4 shadow-[0_22px_64px_-54px_rgba(15,23,42,0.42)]">
+        <Badge className="w-fit gap-1 border border-border/60 bg-background/85 text-foreground">
+          Live telemetry
+        </Badge>
+        <div className="mt-3 space-y-1.5">
+          <div className="text-sm font-semibold tracking-tight text-foreground">
+            System metrics
+          </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Keep pinned network, CPU, and memory trends visible while you work
+            in the main workspace.
+          </p>
+        </div>
+      </div>
+
+      <Card
+        aria-label="Network chart"
+        className="w-full overflow-hidden border-border/70 bg-card/92 shadow-[0_24px_68px_-54px_rgba(15,23,42,0.42)]"
+      >
+        <CardHeader className="border-b border-border/70 bg-linear-to-r from-muted/55 via-background to-background px-4 py-3">
+          <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
             Network
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-2">
           <div ref={networkRef} className="h-32 w-full min-w-0" />
         </CardContent>
       </Card>
 
-      <Card aria-label="CPU chart" className="w-full overflow-hidden">
-        <CardHeader className="py-1.5">
-          <CardTitle className="text-xs font-medium text-muted-foreground">
+      <Card
+        aria-label="CPU chart"
+        className="w-full overflow-hidden border-border/70 bg-card/92 shadow-[0_24px_68px_-54px_rgba(15,23,42,0.42)]"
+      >
+        <CardHeader className="border-b border-border/70 bg-linear-to-r from-muted/55 via-background to-background px-4 py-3">
+          <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
             CPU
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-2">
           <div ref={cpuRef} className="h-32 w-full min-w-0" />
         </CardContent>
       </Card>
 
-      <Card aria-label="Memory chart" className="w-full overflow-hidden">
-        <CardHeader className="py-1.5">
-          <CardTitle className="text-xs font-medium text-muted-foreground">
-            Memory
-          </CardTitle>
+      <Card
+        aria-label="Memory chart"
+        className="w-full overflow-hidden border-border/70 bg-card/92 shadow-[0_24px_68px_-54px_rgba(15,23,42,0.42)]"
+      >
+        <CardHeader className="border-b border-border/70 bg-linear-to-r from-muted/55 via-background to-background px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+                Memory
+              </CardTitle>
+              <CardDescription>
+                {snapshot
+                  ? `${snapshot.system.memoryPercent.toFixed(1)}% in use`
+                  : "Waiting for a memory snapshot"}
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-2">
           <div ref={memoryRef} className="h-40 w-full min-w-0" />
         </CardContent>
       </Card>

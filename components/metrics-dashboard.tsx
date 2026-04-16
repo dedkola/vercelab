@@ -5,11 +5,12 @@ import {
   useDeferredValue,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
 
-import { type IconName } from "@/components/dashboard-kit";
+import { Icon, type IconName } from "@/components/dashboard-kit";
 import {
   MainCpuChart,
   MainMemoryChart,
@@ -20,14 +21,23 @@ import { DashboardHeader } from "@/components/shell/dashboard-header";
 import { DashboardLeftSidebar } from "@/components/shell/dashboard-left-sidebar";
 import { DashboardRightSidebar } from "@/components/shell/dashboard-right-sidebar";
 import { SidebarMetricCharts } from "@/components/sidebar-metric-charts";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   GitDeploymentPage,
   GitLogPanel,
+  type GitView,
   type LogTab,
 } from "./git-deployment-page";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
-import type { DashboardData } from "@/lib/persistence";
+import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
 const POLL_INTERVAL_MS = 5000;
@@ -35,6 +45,8 @@ const HISTORY_LIMIT = 240;
 const SIDEBAR_HISTORY_LIMIT = 48;
 const LEFT_SIDEBAR_WIDTH_STORAGE_KEY = "vercelab:left-sidebar-width";
 const RIGHT_SIDEBAR_WIDTH_STORAGE_KEY = "vercelab:right-sidebar-width";
+const COLLAPSE_LEFT_SIDEBAR_WIDTH_PX = 1280;
+const COLLAPSE_RIGHT_SIDEBAR_WIDTH_PX = 1536;
 
 const MAIN_RANGE_OPTIONS = [
   { value: "1m", label: "1 min" },
@@ -55,6 +67,7 @@ type MetricsDashboardProps = {
   baseDomain: string;
   dashboardData: DashboardData;
   initialGitDeploymentId: string | null;
+  initialGitView: GitView;
   initialLogTab: LogTab;
   initialRightPanelCollapsed: boolean;
   initialSection: DashboardSection;
@@ -81,7 +94,9 @@ function formatClock(value: string) {
   }).format(new Date(value));
 }
 
-function formatLoadAverage(loadAverage: MetricsSnapshot["system"]["loadAverage"]) {
+function formatLoadAverage(
+  loadAverage: MetricsSnapshot["system"]["loadAverage"],
+) {
   return loadAverage.map((value) => value.toFixed(2)).join(" / ");
 }
 
@@ -89,6 +104,7 @@ export default function MetricsDashboard({
   baseDomain,
   dashboardData,
   initialGitDeploymentId,
+  initialGitView,
   initialLogTab,
   initialRightPanelCollapsed,
   initialSection,
@@ -103,6 +119,10 @@ export default function MetricsDashboard({
   const [logDeploymentId, setLogDeploymentId] = useState<string | null>(
     initialGitDeploymentId,
   );
+  const [gitDeployments, setGitDeployments] = useState<DashboardDeployment[]>(
+    dashboardData.deployments,
+  );
+  const [gitView, setGitView] = useState<GitView>(initialGitView);
   const [activeLogTab, setActiveLogTab] = useState<LogTab>(initialLogTab);
   const [mainHistory, setMainHistory] = useState<MetricsHistoryPoint[]>([]);
   const [sidebarSnapshot, setSidebarSnapshot] =
@@ -112,6 +132,15 @@ export default function MetricsDashboard({
   );
   const [overviewRange, setOverviewRange] = useState<MainChartRange>("15m");
   const pathname = usePathname();
+  const responsiveLayoutRef = useRef<{
+    leftCollapsed: boolean | null;
+    rightCollapsed: boolean | null;
+    section: DashboardSection | null;
+  }>({
+    leftCollapsed: null,
+    rightCollapsed: null,
+    section: null,
+  });
 
   const deferredMainHistory = useDeferredValue(mainHistory);
   const deferredSidebarSnapshot = useDeferredValue(sidebarSnapshot);
@@ -143,6 +172,14 @@ export default function MetricsDashboard({
   }, [initialGitDeploymentId]);
 
   useEffect(() => {
+    setGitView(initialGitView);
+  }, [initialGitView]);
+
+  useEffect(() => {
+    setGitDeployments(dashboardData.deployments);
+  }, [dashboardData.deployments]);
+
+  useEffect(() => {
     setActiveLogTab(initialLogTab);
   }, [initialLogTab]);
 
@@ -151,12 +188,52 @@ export default function MetricsDashboard({
   }, [initialRightPanelCollapsed]);
 
   useEffect(() => {
+    function syncResponsivePanels() {
+      const nextLeftCollapsed =
+        window.innerWidth < COLLAPSE_LEFT_SIDEBAR_WIDTH_PX;
+      const nextRightCollapsed =
+        window.innerWidth < COLLAPSE_RIGHT_SIDEBAR_WIDTH_PX;
+      const previous = responsiveLayoutRef.current;
+      const leftChanged = previous.leftCollapsed !== nextLeftCollapsed;
+      const rightChanged = previous.rightCollapsed !== nextRightCollapsed;
+      const sectionChanged = previous.section !== activeSection;
+
+      responsiveLayoutRef.current = {
+        leftCollapsed: nextLeftCollapsed,
+        rightCollapsed: nextRightCollapsed,
+        section: activeSection,
+      };
+
+      if (nextLeftCollapsed && leftChanged) {
+        setIsPanelCollapsed(true);
+      }
+
+      if (
+        activeSection === "git" &&
+        nextRightCollapsed &&
+        (rightChanged || sectionChanged)
+      ) {
+        setIsRightPanelCollapsed(true);
+      }
+    }
+
+    syncResponsivePanels();
+    window.addEventListener("resize", syncResponsivePanels);
+
+    return () => {
+      window.removeEventListener("resize", syncResponsivePanels);
+    };
+  }, [activeSection]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
     if (activeSection === "git") {
       params.set("section", "git");
 
-      if (logDeploymentId) {
+      params.set("gitView", gitView);
+
+      if (gitView === "detail" && logDeploymentId) {
         params.set("deployment", logDeploymentId);
       } else {
         params.delete("deployment");
@@ -166,6 +243,7 @@ export default function MetricsDashboard({
       params.set("logTab", activeLogTab);
     } else {
       params.delete("section");
+      params.delete("gitView");
       params.delete("deployment");
       params.delete("logs");
       params.delete("logTab");
@@ -178,7 +256,14 @@ export default function MetricsDashboard({
     if (currentUrl !== nextUrl) {
       window.history.replaceState(null, "", nextUrl);
     }
-  }, [activeLogTab, activeSection, isRightPanelCollapsed, logDeploymentId, pathname]);
+  }, [
+    activeLogTab,
+    activeSection,
+    gitView,
+    isRightPanelCollapsed,
+    logDeploymentId,
+    pathname,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -301,7 +386,10 @@ export default function MetricsDashboard({
   const activeRailEntry = SECTION_META[activeSection];
 
   return (
-    <section className="flex h-screen flex-col" aria-label="Dashboard">
+    <section
+      className="flex h-screen flex-col bg-linear-to-b from-background via-muted/8 to-background"
+      aria-label="Dashboard"
+    >
       <DashboardHeader
         activeIcon={activeRailEntry.icon}
         activeLabel={activeRailEntry.label}
@@ -323,7 +411,7 @@ export default function MetricsDashboard({
         onResetPanelSizesAction={handleResetPanelSizes}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-w-0 flex-1 overflow-hidden">
         <DashboardLeftSidebar
           key={`left-${sidebarInstanceVersion}`}
           activeSection={activeSection}
@@ -338,50 +426,116 @@ export default function MetricsDashboard({
           />
         </DashboardLeftSidebar>
 
-        <main className="flex-1 overflow-auto p-4">
+        <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/70 via-muted/18 to-background p-4 md:p-5">
           {isOverviewSection ? (
-            <section className="space-y-4">
-              <div
-                className="flex items-center justify-between"
-                role="toolbar"
-                aria-label="Main charts range selector"
-              >
-                <div className="text-xs font-medium text-muted-foreground">
-                  Main graphs
+            <div className="min-h-full rounded-[1.75rem] border border-border/70 bg-linear-to-b from-background via-muted/15 to-background p-4 shadow-[0_38px_100px_-64px_rgba(15,23,42,0.55)] md:p-5">
+              <section className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-linear-to-r from-muted/70 via-background to-background shadow-[0_28px_90px_-58px_rgba(15,23,42,0.45)]">
+                <div className="flex flex-col gap-6 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="max-w-3xl space-y-3">
+                    <Badge className="w-fit gap-1 rounded-full border border-border/60 bg-background/80 text-foreground shadow-sm">
+                      <Icon name="network" className="h-3.5 w-3.5" />
+                      Platform overview
+                    </Badge>
+                    <div className="space-y-2">
+                      <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                        Live host telemetry
+                      </h1>
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        Monitor network throughput, CPU pressure, and memory
+                        usage across the control plane in the same polished
+                        workspace language as the Git deployment surfaces.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.24)]">
+                      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                        Host IP
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {deferredSidebarSnapshot?.hostIp ??
+                          "Waiting for metrics"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.24)]">
+                      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                        Traefik
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {baseDomain}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.24)]">
+                      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                        Load average
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {deferredSidebarSnapshot
+                          ? formatLoadAverage(
+                              deferredSidebarSnapshot.system.loadAverage,
+                            )
+                          : "Waiting for metrics"}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <Tabs
-                  value={overviewRange}
-                  onValueChange={(value) =>
-                    setOverviewRange(value as MainChartRange)
-                  }
-                >
-                  <TabsList>
-                    {MAIN_RANGE_OPTIONS.map((option) => (
-                      <TabsTrigger key={option.value} value={option.value}>
-                        {option.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-              </div>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <MainNetworkChart history={deferredMainHistory} />
-                <MainCpuChart history={deferredMainHistory} />
-                <MainMemoryChart history={deferredMainHistory} />
-              </div>
-            </section>
+              </section>
+
+              <Card className="mt-5 overflow-hidden border-border/70 bg-card/90 shadow-[0_26px_72px_-54px_rgba(15,23,42,0.45)]">
+                <CardHeader className="border-b border-border/70 bg-linear-to-r from-muted/55 via-background to-background px-5 py-4">
+                  <div
+                    className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
+                    role="toolbar"
+                    aria-label="Main charts range selector"
+                  >
+                    <div>
+                      <CardTitle className="text-base">Main graphs</CardTitle>
+                      <CardDescription>
+                        Adjust the time horizon and compare host trends side by
+                        side.
+                      </CardDescription>
+                    </div>
+                    <Tabs
+                      value={overviewRange}
+                      onValueChange={(value) =>
+                        setOverviewRange(value as MainChartRange)
+                      }
+                    >
+                      <TabsList>
+                        {MAIN_RANGE_OPTIONS.map((option) => (
+                          <TabsTrigger key={option.value} value={option.value}>
+                            {option.label}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    <MainNetworkChart history={deferredMainHistory} />
+                    <MainCpuChart history={deferredMainHistory} />
+                    <MainMemoryChart history={deferredMainHistory} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
             <GitDeploymentPage
+              activeDeploymentId={logDeploymentId}
               baseDomain={baseDomain}
               currentLogTab={activeLogTab}
-              dashboardData={dashboardData}
-              initialDeploymentId={logDeploymentId}
+              currentView={gitView}
+              deployments={gitDeployments}
               isLogsPanelCollapsed={isRightPanelCollapsed}
+              onDeploymentsChangeAction={setGitDeployments}
               onDeploymentSelectAction={(id) => setLogDeploymentId(id)}
               onToggleLogsAction={(id) => {
                 setLogDeploymentId(id);
                 setIsRightPanelCollapsed(false);
               }}
+              onViewChangeAction={setGitView}
             />
           )}
         </main>
@@ -395,10 +549,11 @@ export default function MetricsDashboard({
             }
           >
             <GitLogPanel
+              currentView={gitView}
               deploymentId={logDeploymentId}
-              deployments={dashboardData.deployments}
-                initialActiveLogTab={activeLogTab}
-                onLogTabChangeAction={setActiveLogTab}
+              deployments={gitDeployments}
+              initialActiveLogTab={activeLogTab}
+              onLogTabChangeAction={setActiveLogTab}
             />
           </DashboardRightSidebar>
         ) : null}

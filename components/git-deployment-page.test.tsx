@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { GitDeploymentPage } from "@/components/git-deployment-page";
-import type { DashboardData } from "@/lib/persistence";
+import {
+  GitDeploymentPage,
+  type GitView,
+} from "@/components/git-deployment-page";
+import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
 import { removeDeploymentAction } from "@/app/actions";
 
 vi.mock("next/navigation", () => ({
@@ -66,8 +70,39 @@ function createDashboardData(): DashboardData {
   };
 }
 
-describe("GitDeploymentPage delete flow", () => {
-  it("optimistically shows removing state and removes app row without page reload", async () => {
+function GitDeploymentHarness({
+  initialDeploymentId = null,
+  initialView = "list",
+}: {
+  initialDeploymentId?: string | null;
+  initialView?: GitView;
+}) {
+  const [deployments, setDeployments] = useState<DashboardDeployment[]>(
+    createDashboardData().deployments,
+  );
+  const [activeDeploymentId, setActiveDeploymentId] = useState<string | null>(
+    initialDeploymentId,
+  );
+  const [view, setView] = useState<GitView>(initialView);
+
+  return (
+    <GitDeploymentPage
+      activeDeploymentId={activeDeploymentId}
+      baseDomain="home.com"
+      currentLogTab="build"
+      currentView={view}
+      deployments={deployments}
+      isLogsPanelCollapsed
+      onDeploymentSelectAction={setActiveDeploymentId}
+      onDeploymentsChangeAction={setDeployments}
+      onToggleLogsAction={setActiveDeploymentId}
+      onViewChangeAction={setView}
+    />
+  );
+}
+
+describe("GitDeploymentPage workspace flow", () => {
+  it("optimistically removes the app and returns to the list workspace", async () => {
     const user = userEvent.setup();
     const removeMock = vi.mocked(removeDeploymentAction);
 
@@ -77,37 +112,35 @@ describe("GitDeploymentPage delete flow", () => {
     });
 
     render(
-      <GitDeploymentPage
-        baseDomain="home.com"
-        currentLogTab="build"
-        dashboardData={createDashboardData()}
-        initialDeploymentId={null}
-        isLogsPanelCollapsed
-      />,
+      <GitDeploymentHarness initialDeploymentId="dep-1" initialView="detail" />,
     );
 
-    const [deploymentToggleButton] = screen.getAllByRole("button", {
-      name: /my app/i,
-    });
-    await user.click(deploymentToggleButton);
-    await user.click(screen.getByRole("button", { name: /delete/i }));
-
-    const confirmDeleteButton = screen.getByRole("button", {
-      name: /confirm delete/i,
-    });
-    await user.click(confirmDeleteButton);
+    await user.click(screen.getAllByRole("button", { name: /delete app/i })[0]);
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
 
     await waitFor(() => {
       expect(removeMock).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("button", { name: /removing/i })).toBeVisible();
     });
 
     await waitFor(() => {
-      expect(screen.queryByText("My App")).not.toBeInTheDocument();
       expect(
-        screen.getByText("No deployments yet. Use Add app to create the first one."),
+        screen.getByText(
+          "Create the first app to open a dedicated management workspace.",
+        ),
       ).toBeVisible();
-      expect(screen.getByText("0 apps")).toBeVisible();
+      expect(screen.getByText("0 total deployments")).toBeVisible();
     });
+  });
+
+  it("navigates from the app list into the dedicated create workspace", async () => {
+    const user = userEvent.setup();
+
+    render(<GitDeploymentHarness />);
+
+    await user.click(screen.getByRole("button", { name: /create app/i }));
+
+    expect(screen.getByText("Create a new app workspace")).toBeVisible();
+    expect(screen.getByText("Deployment settings")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^apps$/i })).toBeVisible();
   });
 });

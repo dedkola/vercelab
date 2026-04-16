@@ -89,7 +89,48 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(
+        circle at top left,
+        rgba(148, 163, 184, 0.16),
+        transparent 26%
+      ),
+      radial-gradient(
+        circle at top right,
+        rgba(226, 232, 240, 0.85),
+        transparent 30%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.98) 0%,
+        rgba(248, 250, 252, 0.96) 54%,
+        rgba(255, 255, 255, 1) 100%
+      );
+    font-feature-settings:
+      "ss01" 1,
+      "cv05" 1,
+      "tnum" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgba(15, 23, 42, 0.12);
+    color: inherit;
+  }
+
+  pre,
+  code,
+  kbd,
+  samp {
+    font-family:
+      var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
   }
 }

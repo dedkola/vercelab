@@ -110,7 +110,7 @@ export function DashboardRightSidebar({
   return (
     <>
       {isCollapsed ? (
-        <aside className="flex w-8 shrink-0 items-start border-l py-1">
+        <aside className="flex w-10 shrink-0 items-start border-l border-border/70 bg-linear-to-b from-background via-muted/20 to-background px-1.5 py-2 shadow-[-16px_0_40px_-34px_rgba(15,23,42,0.28)] backdrop-blur-sm">
           <Button
             type="button"
             aria-controls="logs-panel"
@@ -125,7 +125,7 @@ export function DashboardRightSidebar({
         </aside>
       ) : (
         <aside
-          className="relative flex shrink-0 flex-col border-l transition-all"
+          className="relative flex shrink-0 flex-col border-l border-border/70 bg-linear-to-b from-background via-muted/20 to-background shadow-[-28px_0_72px_-58px_rgba(15,23,42,0.4)] backdrop-blur-sm transition-all"
           aria-label="Deployment logs sidebar"
           id="logs-panel"
           style={{ width: panelWidth }}
@@ -136,7 +136,7 @@ export function DashboardRightSidebar({
             onMouseDown={handleResizeStart}
           />
 
-          <div className="absolute left-1 top-1 z-20 flex items-center justify-start">
+          <div className="absolute left-1 top-1 z-20 flex items-center justify-start rounded-full bg-background/85 shadow-sm">
             <Button
               type="button"
               aria-controls="logs-panel"

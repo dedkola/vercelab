@@ -11,6 +11,7 @@ import {
 import { Icon } from "@/components/dashboard-kit";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 type DashboardSection = "overview" | "git";
 
@@ -129,13 +130,17 @@ export function DashboardLeftSidebar({
   return (
     <>
       <aside
-        className="flex w-10 shrink-0 flex-col items-center gap-1 border-r py-2"
+        className="flex w-12 shrink-0 flex-col items-center gap-2 border-r border-border/70 bg-linear-to-b from-background via-muted/42 to-background px-1.5 py-3 shadow-[20px_0_54px_-46px_rgba(15,23,42,0.42)] backdrop-blur-sm"
         aria-label="Primary navigation"
       >
         {RAIL_PRIMARY.map((entry) => (
           <Button
             aria-label={entry.label}
-            className={entry.section === activeSection ? "bg-accent" : ""}
+            className={cn(
+              "h-9 w-9 rounded-2xl border border-transparent text-muted-foreground shadow-none",
+              entry.section === activeSection &&
+                "border-border/70 bg-background/90 text-foreground shadow-[0_16px_34px_-24px_rgba(15,23,42,0.35)]",
+            )}
             key={entry.icon}
             onClick={() => {
               if (entry.section === activeSection) {
@@ -157,7 +162,7 @@ export function DashboardLeftSidebar({
       </aside>
 
       {isPanelCollapsed ? (
-        <aside className="flex w-8 shrink-0 items-start justify-end border-r py-1">
+        <aside className="flex w-10 shrink-0 items-start justify-end border-r border-border/70 bg-linear-to-b from-background via-muted/24 to-background px-1.5 py-2 shadow-[16px_0_40px_-34px_rgba(15,23,42,0.28)] backdrop-blur-sm">
           <Button
             type="button"
             aria-controls="gateway-panel"
@@ -172,7 +177,7 @@ export function DashboardLeftSidebar({
         </aside>
       ) : (
         <aside
-          className="relative flex min-w-0 shrink-0 flex-col border-r"
+          className="relative flex min-w-0 shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/20 to-background shadow-[28px_0_72px_-58px_rgba(15,23,42,0.4)] backdrop-blur-sm"
           aria-label={panelAriaLabel}
           id="gateway-panel"
           style={{ width: panelWidth }}
@@ -183,7 +188,7 @@ export function DashboardLeftSidebar({
             onMouseDown={handleResizeStart}
           />
 
-          <div className="flex items-center justify-end px-1 py-1">
+          <div className="flex items-center justify-end border-b border-border/60 px-2 py-2">
             <Button
               type="button"
               aria-controls="gateway-panel"
@@ -198,7 +203,7 @@ export function DashboardLeftSidebar({
           </div>
 
           <ScrollArea
-            className="h-[calc(100%-2rem)] min-w-0 [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!w-full [&>[data-radix-scroll-area-viewport]>div]:min-w-0"
+            className="h-[calc(100%-3rem)] min-w-0 [&>[data-radix-scroll-area-viewport]>div]:block! [&>[data-radix-scroll-area-viewport]>div]:w-full! [&>[data-radix-scroll-area-viewport]>div]:min-w-0"
             id="gateway-panel-content"
           >
             {children}

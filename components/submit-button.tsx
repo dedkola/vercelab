@@ -7,6 +7,7 @@ import type { IconName } from "@/components/dashboard-kit";
 import { Icon } from "@/components/dashboard-kit";
 
 type SubmitButtonProps = {
+  className?: string;
   idleLabel: string;
   pendingLabel: string;
   variant: "primary" | "secondary" | "danger";
@@ -15,6 +16,7 @@ type SubmitButtonProps = {
 };
 
 export function SubmitButton({
+  className,
   idleLabel,
   pendingLabel,
   variant,
@@ -32,6 +34,7 @@ export function SubmitButton({
 
   return (
     <Button
+      className={className}
       variant={resolvedVariant}
       size={size === "compact" ? "xs" : size === "small" ? "sm" : "default"}
       disabled={pending}

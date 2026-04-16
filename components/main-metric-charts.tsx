@@ -110,13 +110,16 @@ function useChart(
 
 function MainChartCard({ title, children }: MainChartCardProps) {
   return (
-    <Card aria-label={`${title} chart`}>
-      <CardHeader className="py-1.5">
-        <CardTitle className="text-xs font-medium text-muted-foreground">
+    <Card
+      aria-label={`${title} chart`}
+      className="overflow-hidden border-border/70 bg-card/92 shadow-[0_26px_72px_-54px_rgba(15,23,42,0.42)]"
+    >
+      <CardHeader className="border-b border-border/70 bg-linear-to-r from-muted/55 via-background to-background px-4 py-3">
+        <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0">{children}</CardContent>
+      <CardContent className="p-2 sm:p-3">{children}</CardContent>
     </Card>
   );
 }
@@ -216,7 +219,7 @@ export function MainNetworkChart({
 
   return (
     <MainChartCard title="Network">
-      <div ref={networkRef} className="h-48" />
+      <div ref={networkRef} className="h-52" />
     </MainChartCard>
   );
 }
@@ -307,7 +310,7 @@ export function MainCpuChart({ history }: { history: MetricsHistoryPoint[] }) {
 
   return (
     <MainChartCard title="CPU">
-      <div ref={cpuRef} className="h-48" />
+      <div ref={cpuRef} className="h-52" />
     </MainChartCard>
   );
 }
@@ -401,7 +404,7 @@ export function MainMemoryChart({
 
   return (
     <MainChartCard title="Memory">
-      <div ref={memoryRef} className="h-48" />
+      <div ref={memoryRef} className="h-52" />
     </MainChartCard>
   );
 }

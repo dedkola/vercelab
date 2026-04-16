@@ -1,7 +1,19 @@
 import type { Metadata } from "next";
+import { JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from "@/components/ui/sonner";
+
+const sans = Manrope({
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Vercelab",
@@ -16,7 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="h-screen overflow-hidden bg-background text-sm text-foreground antialiased">
+      <body
+        className={`${sans.className} ${mono.variable} h-screen overflow-hidden bg-background text-sm text-foreground antialiased`}
+      >
         {children}
         <Toaster richColors closeButton position="top-right" />
       </body>
