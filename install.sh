@@ -228,19 +228,12 @@ ensure_pnpm() {
     return
   fi
 
-  if command_exists corepack; then
-    log "Installing pnpm ${PNPM_VERSION} via corepack."
-    run_privileged env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack enable
-    run_privileged env COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack prepare "pnpm@${PNPM_VERSION}" --activate
-    return
-  fi
-
   command_exists npm || fail "npm is required to install pnpm when corepack is unavailable."
 
   if [[ -n "$installed_version" ]]; then
     log "Updating pnpm from ${installed_version} to ${PNPM_VERSION} via npm."
   else
-    log "corepack not found; installing pnpm ${PNPM_VERSION} globally via npm."
+    log "Installing pnpm ${PNPM_VERSION} globally via npm."
   fi
   run_privileged npm install -g "pnpm@${PNPM_VERSION}"
 }
