@@ -6,6 +6,9 @@ export const dynamic = "force-dynamic";
 
 type HomeProps = {
   searchParams: Promise<{
+    deployment?: string | string[];
+    logs?: string | string[];
+    logTab?: string | string[];
     message?: string | string[];
     section?: string | string[];
     status?: string | string[];
@@ -21,22 +24,22 @@ export default async function Home({ searchParams }: HomeProps) {
   const dashboardData = await listDashboardData();
   const activeSection =
     getSearchParamValue(params.section) === "git" ? "git" : "overview";
-  const status = getSearchParamValue(params.status);
-  const message = getSearchParamValue(params.message);
+  const initialGitDeploymentId = getSearchParamValue(params.deployment) ?? null;
+  const initialRightPanelCollapsed =
+    getSearchParamValue(params.logs) === "closed";
+  const initialLogTab =
+    getSearchParamValue(params.logTab) === "container"
+      ? "container"
+      : "build";
 
   return (
     <MetricsDashboard
       baseDomain={getAppConfig().baseDomain}
       dashboardData={dashboardData}
-      flashMessage={
-        status === "success" || status === "error"
-          ? {
-              status,
-              message: message ?? "",
-            }
-          : null
-      }
       initialSection={activeSection}
+      initialGitDeploymentId={initialGitDeploymentId}
+      initialLogTab={initialLogTab}
+      initialRightPanelCollapsed={initialRightPanelCollapsed}
     />
   );
 }

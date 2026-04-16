@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import {
   fetchDeploymentFromGitAction,
@@ -30,11 +31,10 @@ import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
 
 type GitDeploymentPageProps = {
   baseDomain: string;
+  currentLogTab: LogTab;
   dashboardData: DashboardData;
-  flashMessage: {
-    message: string;
-    status: "success" | "error";
-  } | null;
+  initialDeploymentId: string | null;
+  isLogsPanelCollapsed: boolean;
   onDeploymentSelectAction?: (id: string | null) => void;
   onToggleLogsAction?: (id: string) => void;
 };
@@ -56,7 +56,7 @@ type DeploymentLogPayload = {
   updatedAt: string;
 };
 
-type LogTab = "build" | "container";
+export type LogTab = "build" | "container";
 
 type RepositoryState = {
   error: string | null;
@@ -211,34 +211,6 @@ function formatUptimeLabel(deployment: DashboardDeployment) {
   return `Up ${formatRelativeTime(deployment.deployedAt)}`;
 }
 
-function renderMessageWithLink(message: string) {
-  const match = message.match(/https?:\/\/\S+/i);
-
-  if (!match) {
-    return message;
-  }
-
-  const rawUrl = match[0];
-  const normalizedUrl = rawUrl.replace(/[.,!?]+$/, "");
-  const start = match.index ?? 0;
-  const urlEnd = start + normalizedUrl.length;
-
-  return (
-    <>
-      {message.slice(0, start)}
-      <a
-        className="font-medium underline"
-        href={normalizedUrl}
-        rel="noreferrer"
-        target="_blank"
-      >
-        {normalizedUrl}
-      </a>
-      {message.slice(urlEnd)}
-    </>
-  );
-}
-
 function toSlug(value: string) {
   return value
     .trim()
@@ -324,10 +296,34 @@ function normalizeGitHubRepositoryUrl(value: string) {
   return parsed.toString();
 }
 
+function DeploymentActionStateFields({
+  activeLogTab,
+  deploymentId,
+  isLogsPanelCollapsed,
+}: {
+  activeLogTab: LogTab;
+  deploymentId: string;
+  isLogsPanelCollapsed: boolean;
+}) {
+  return (
+    <>
+      <input name="uiDeploymentId" type="hidden" value={deploymentId} />
+      <input
+        name="uiLogsPanel"
+        type="hidden"
+        value={isLogsPanelCollapsed ? "closed" : "open"}
+      />
+      <input name="uiLogTab" type="hidden" value={activeLogTab} />
+    </>
+  );
+}
+
 export function GitDeploymentPage({
   baseDomain,
+  currentLogTab,
   dashboardData,
-  flashMessage,
+  initialDeploymentId,
+  isLogsPanelCollapsed,
   onDeploymentSelectAction,
   onToggleLogsAction,
 }: GitDeploymentPageProps) {
@@ -336,10 +332,10 @@ export function GitDeploymentPage({
 
   const [expandedDeploymentId, setExpandedDeploymentId] = useState<
     string | null
-  >(null);
+  >(initialDeploymentId);
   const [selectedDeploymentId, setSelectedDeploymentId] = useState<
     string | null
-  >(null);
+  >(initialDeploymentId);
   const [preferredDeploymentId, setPreferredDeploymentId] = useState<
     string | null
   >(null);
@@ -354,8 +350,7 @@ export function GitDeploymentPage({
     useState<DraftFormState>(getEmptyDraftState);
   const [selectedRepositoryId, setSelectedRepositoryId] = useState("");
   const [isCreatingDeployment, setIsCreatingDeployment] = useState(false);
-  const [localBanner, setLocalBanner] =
-    useState<GitDeploymentPageProps["flashMessage"]>(null);
+
   const [repositoryState, setRepositoryState] = useState<RepositoryState>({
     error: null,
     hasLoaded: false,
@@ -364,7 +359,6 @@ export function GitDeploymentPage({
     tokenConfigured: false,
   });
 
-  const activeBanner = localBanner ?? flashMessage;
   const selectedDeployment =
     deployments.find((deployment) => deployment.id === selectedDeploymentId) ??
     null;
@@ -373,6 +367,13 @@ export function GitDeploymentPage({
     repositoryState.repositories.find(
       (repository) => String(repository.id) === selectedRepositoryId,
     ) ?? null;
+
+  useEffect(() => {
+    setExpandedDeploymentId(initialDeploymentId);
+    setSelectedDeploymentId(initialDeploymentId);
+    setEditingDeploymentId(null);
+    setPendingDeleteDeploymentId(null);
+  }, [initialDeploymentId]);
 
   useEffect(() => {
     if (deployments.length === 0) {
@@ -502,7 +503,6 @@ export function GitDeploymentPage({
     event.preventDefault();
 
     setIsCreatingDeployment(true);
-    setLocalBanner(null);
 
     try {
       const normalizedRepositoryUrl = normalizeGitHubRepositoryUrl(
@@ -541,19 +541,12 @@ export function GitDeploymentPage({
       setShowAddPanel(false);
       setDraftState(getEmptyDraftState());
       setSelectedRepositoryId("");
-      setLocalBanner({
-        status: "success",
-        message: `Deployment live at https://${payload.domain}`,
-      });
+      toast.success(`Deployment live at https://${payload.domain}`);
       router.refresh();
     } catch (error) {
-      setLocalBanner({
-        status: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to create deployment.",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Unable to create deployment.",
+      );
     } finally {
       setIsCreatingDeployment(false);
     }
@@ -581,8 +574,8 @@ export function GitDeploymentPage({
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="gap-3 border-b">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <CardHeader className="gap-2 border-b py-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <CardTitle>Git apps</CardTitle>
             </div>
@@ -593,6 +586,7 @@ export function GitDeploymentPage({
               aria-label="Git actions"
             >
               <Button
+                size="xs"
                 onClick={() => {
                   const nextValue = !showAddPanel;
 
@@ -613,7 +607,7 @@ export function GitDeploymentPage({
                 type="button"
                 variant="secondary"
               >
-                <Icon name="cloud" className="h-3.5 w-3.5" />
+                <Icon name="cloud" className="h-3 w-3" />
                 {showAddPanel ? "Close add app" : "Add app"}
               </Button>
               <Badge variant="default">{stats.totalDeployments} apps</Badge>
@@ -732,14 +726,7 @@ export function GitDeploymentPage({
         ) : null}
       </Card>
 
-      {activeBanner?.message ? (
-        <div
-          className={`rounded-md border px-3 py-2 text-sm ${activeBanner.status === "success" ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800"}`}
-          role="status"
-        >
-          {renderMessageWithLink(activeBanner.message)}
-        </div>
-      ) : null}
+
 
       <Card aria-label="Installed applications">
         <CardHeader className="border-b">
@@ -904,6 +891,11 @@ export function GitDeploymentPage({
                             type="hidden"
                             value={deployment.id}
                           />
+                          <DeploymentActionStateFields
+                            activeLogTab={currentLogTab}
+                            deploymentId={deployment.id}
+                            isLogsPanelCollapsed={isLogsPanelCollapsed}
+                          />
                           <SubmitButton
                             iconName="cloud"
                             idleLabel="Restart"
@@ -919,6 +911,11 @@ export function GitDeploymentPage({
                             type="hidden"
                             value={deployment.id}
                           />
+                          <DeploymentActionStateFields
+                            activeLogTab={currentLogTab}
+                            deploymentId={deployment.id}
+                            isLogsPanelCollapsed={isLogsPanelCollapsed}
+                          />
                           <SubmitButton
                             iconName="arrow-down"
                             idleLabel="Fetch latest"
@@ -933,6 +930,11 @@ export function GitDeploymentPage({
                             name="deploymentId"
                             type="hidden"
                             value={deployment.id}
+                          />
+                          <DeploymentActionStateFields
+                            activeLogTab={currentLogTab}
+                            deploymentId={deployment.id}
+                            isLogsPanelCollapsed={isLogsPanelCollapsed}
                           />
                           <SubmitButton
                             iconName="x-close"
@@ -1006,6 +1008,11 @@ export function GitDeploymentPage({
                                 type="hidden"
                                 value={deployment.id}
                               />
+                              <DeploymentActionStateFields
+                                activeLogTab={currentLogTab}
+                                deploymentId={deployment.id}
+                                isLogsPanelCollapsed={isLogsPanelCollapsed}
+                              />
                               <SubmitButton
                                 iconName="x-close"
                                 idleLabel="Confirm delete"
@@ -1039,6 +1046,11 @@ export function GitDeploymentPage({
                             name="deploymentId"
                             type="hidden"
                             value={deployment.id}
+                          />
+                          <DeploymentActionStateFields
+                            activeLogTab={currentLogTab}
+                            deploymentId={deployment.id}
+                            isLogsPanelCollapsed={isLogsPanelCollapsed}
                           />
 
                           <div className="grid gap-3 md:grid-cols-2">
@@ -1154,10 +1166,17 @@ export function GitDeploymentPage({
 type GitLogPanelProps = {
   deploymentId: string | null;
   deployments: DashboardDeployment[];
+  initialActiveLogTab: LogTab;
+  onLogTabChangeAction?: (tab: LogTab) => void;
 };
 
-export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
-  const [activeLogTab, setActiveLogTab] = useState<LogTab>("build");
+export function GitLogPanel({
+  deploymentId,
+  deployments,
+  initialActiveLogTab,
+  onLogTabChangeAction,
+}: GitLogPanelProps) {
+  const [activeLogTab, setActiveLogTab] = useState<LogTab>(initialActiveLogTab);
   const [logRefreshKey, setLogRefreshKey] = useState(0);
   const [logState, setLogState] = useState<{
     isLoading: boolean;
@@ -1174,8 +1193,8 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
   const deployment = deployments.find((d) => d.id === deploymentId) ?? null;
 
   useEffect(() => {
-    setActiveLogTab("build");
-  }, [deploymentId]);
+    setActiveLogTab(initialActiveLogTab);
+  }, [initialActiveLogTab]);
 
   useEffect(() => {
     if (!deploymentId) {
@@ -1285,7 +1304,12 @@ export function GitLogPanel({ deploymentId, deployments }: GitLogPanelProps) {
       <div className="px-3 py-2">
         <Tabs
           value={activeLogTab}
-          onValueChange={(value) => setActiveLogTab(value as LogTab)}
+          onValueChange={(value) => {
+            const nextTab = value as LogTab;
+
+            setActiveLogTab(nextTab);
+            onLogTabChangeAction?.(nextTab);
+          }}
         >
           <TabsList>
             <TabsTrigger value="build">

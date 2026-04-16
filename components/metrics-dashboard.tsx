@@ -7,7 +7,7 @@ import {
   useEffectEvent,
   useState,
 } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { type IconName } from "@/components/dashboard-kit";
 import {
@@ -21,7 +21,11 @@ import { DashboardLeftSidebar } from "@/components/shell/dashboard-left-sidebar"
 import { DashboardRightSidebar } from "@/components/shell/dashboard-right-sidebar";
 import { SidebarMetricCharts } from "@/components/sidebar-metric-charts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GitDeploymentPage, GitLogPanel } from "./git-deployment-page";
+import {
+  GitDeploymentPage,
+  GitLogPanel,
+  type LogTab,
+} from "./git-deployment-page";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import type { DashboardData } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
@@ -50,10 +54,9 @@ type DashboardSection = "overview" | "git";
 type MetricsDashboardProps = {
   baseDomain: string;
   dashboardData: DashboardData;
-  flashMessage: {
-    message: string;
-    status: "success" | "error";
-  } | null;
+  initialGitDeploymentId: string | null;
+  initialLogTab: LogTab;
+  initialRightPanelCollapsed: boolean;
   initialSection: DashboardSection;
 };
 
@@ -81,15 +84,22 @@ function formatClock(value: string) {
 export default function MetricsDashboard({
   baseDomain,
   dashboardData,
-  flashMessage,
+  initialGitDeploymentId,
+  initialLogTab,
+  initialRightPanelCollapsed,
   initialSection,
 }: MetricsDashboardProps) {
   const [activeSection, setActiveSection] =
     useState<DashboardSection>(initialSection);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
-  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(
+    initialRightPanelCollapsed,
+  );
   const [sidebarInstanceVersion, setSidebarInstanceVersion] = useState(0);
-  const [logDeploymentId, setLogDeploymentId] = useState<string | null>(null);
+  const [logDeploymentId, setLogDeploymentId] = useState<string | null>(
+    initialGitDeploymentId,
+  );
+  const [activeLogTab, setActiveLogTab] = useState<LogTab>(initialLogTab);
   const [mainHistory, setMainHistory] = useState<MetricsHistoryPoint[]>([]);
   const [sidebarSnapshot, setSidebarSnapshot] =
     useState<MetricsSnapshot | null>(null);
@@ -98,7 +108,6 @@ export default function MetricsDashboard({
   );
   const [overviewRange, setOverviewRange] = useState<MainChartRange>("15m");
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const deferredMainHistory = useDeferredValue(mainHistory);
   const deferredSidebarSnapshot = useDeferredValue(sidebarSnapshot);
@@ -124,6 +133,48 @@ export default function MetricsDashboard({
   useEffect(() => {
     setActiveSection(initialSection);
   }, [initialSection]);
+
+  useEffect(() => {
+    setLogDeploymentId(initialGitDeploymentId);
+  }, [initialGitDeploymentId]);
+
+  useEffect(() => {
+    setActiveLogTab(initialLogTab);
+  }, [initialLogTab]);
+
+  useEffect(() => {
+    setIsRightPanelCollapsed(initialRightPanelCollapsed);
+  }, [initialRightPanelCollapsed]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (activeSection === "git") {
+      params.set("section", "git");
+
+      if (logDeploymentId) {
+        params.set("deployment", logDeploymentId);
+      } else {
+        params.delete("deployment");
+      }
+
+      params.set("logs", isRightPanelCollapsed ? "closed" : "open");
+      params.set("logTab", activeLogTab);
+    } else {
+      params.delete("section");
+      params.delete("deployment");
+      params.delete("logs");
+      params.delete("logTab");
+    }
+
+    const query = params.toString();
+    const nextUrl = query ? `${pathname}?${query}` : pathname;
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+    if (currentUrl !== nextUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [activeLogTab, activeSection, isRightPanelCollapsed, logDeploymentId, pathname]);
 
   useEffect(() => {
     let active = true;
@@ -218,7 +269,7 @@ export default function MetricsDashboard({
   function handleSectionChange(section: DashboardSection) {
     setActiveSection(section);
 
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(window.location.search);
 
     if (section === "git") {
       params.set("section", "git");
@@ -319,7 +370,7 @@ export default function MetricsDashboard({
             <GitDeploymentPage
               baseDomain={baseDomain}
               dashboardData={dashboardData}
-              flashMessage={flashMessage}
+              initialDeploymentId={logDeploymentId}
               onDeploymentSelectAction={(id) => setLogDeploymentId(id)}
               onToggleLogsAction={(id) => {
                 setLogDeploymentId(id);
@@ -340,6 +391,8 @@ export default function MetricsDashboard({
             <GitLogPanel
               deploymentId={logDeploymentId}
               deployments={dashboardData.deployments}
+                initialActiveLogTab={activeLogTab}
+                onLogTabChangeAction={setActiveLogTab}
             />
           </DashboardRightSidebar>
         ) : null}

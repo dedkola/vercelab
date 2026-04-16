@@ -1,7 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
-
 import {
   createAndDeployFromForm,
   fetchDeploymentFromGitById,
@@ -10,6 +8,11 @@ import {
   stopDeploymentById,
   updateDeploymentSettingsById,
 } from "@/lib/deployment-engine";
+
+export type DeploymentActionResult = {
+  message: string;
+  status: "success" | "error";
+};
 
 function getRequiredFormValue(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -21,20 +24,6 @@ function getRequiredFormValue(formData: FormData, name: string): string {
   return value;
 }
 
-function formatRedirectUrl(
-  status: "success" | "error",
-  message: string,
-  section: "overview" | "git" = "overview",
-): string {
-  const params = new URLSearchParams({
-    message,
-    section,
-    status,
-  });
-
-  return `/?${params.toString()}`;
-}
-
 function getActionErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
@@ -43,9 +32,17 @@ function getActionErrorMessage(error: unknown): string {
   return "Unexpected deployment error.";
 }
 
-export async function createDeploymentAction(formData: FormData) {
-  let url: string;
+function createActionResult(
+  status: DeploymentActionResult["status"],
+  message: string,
+): DeploymentActionResult {
+  return {
+    message,
+    status,
+  };
+}
 
+export async function createDeploymentAction(formData: FormData) {
   try {
     const deployment = await createAndDeployFromForm({
       repositoryUrl: getRequiredFormValue(formData, "repositoryUrl"),
@@ -57,85 +54,76 @@ export async function createDeploymentAction(formData: FormData) {
       port: getRequiredFormValue(formData, "port"),
       envVariables: formData.get("envVariables"),
     });
-    url = formatRedirectUrl(
+    return createActionResult(
       "success",
       `Deployment live at https://${deployment.domain}`,
-      "git",
     );
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+    return createActionResult("error", getActionErrorMessage(error));
   }
-
-  redirect(url);
 }
 
-export async function redeployDeploymentAction(formData: FormData) {
+export async function redeployDeploymentAction(
+  formData: FormData,
+): Promise<DeploymentActionResult> {
   const deploymentId = getRequiredFormValue(formData, "deploymentId");
-  let url: string;
 
   try {
     const result = await redeployDeploymentById(deploymentId);
-    url = formatRedirectUrl(
+    return createActionResult(
       "success",
       `Redeployed ${result.appName} to https://${result.domain}`,
-      "git",
     );
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+    return createActionResult("error", getActionErrorMessage(error));
   }
-
-  redirect(url);
 }
 
-export async function fetchDeploymentFromGitAction(formData: FormData) {
+export async function fetchDeploymentFromGitAction(
+  formData: FormData,
+): Promise<DeploymentActionResult> {
   const deploymentId = getRequiredFormValue(formData, "deploymentId");
-  let url: string;
 
   try {
     const result = await fetchDeploymentFromGitById(deploymentId);
-    url = formatRedirectUrl(
+    return createActionResult(
       "success",
       `Fetched latest changes for ${result.appName} at https://${result.domain}`,
-      "git",
     );
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+    return createActionResult("error", getActionErrorMessage(error));
   }
-
-  redirect(url);
 }
 
-export async function stopDeploymentAction(formData: FormData) {
+export async function stopDeploymentAction(
+  formData: FormData,
+): Promise<DeploymentActionResult> {
   const deploymentId = getRequiredFormValue(formData, "deploymentId");
-  let url: string;
 
   try {
     const result = await stopDeploymentById(deploymentId);
-    url = formatRedirectUrl("success", `Stopped ${result.appName}.`, "git");
+    return createActionResult("success", `Stopped ${result.appName}.`);
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+    return createActionResult("error", getActionErrorMessage(error));
   }
-
-  redirect(url);
 }
 
-export async function removeDeploymentAction(formData: FormData) {
+export async function removeDeploymentAction(
+  formData: FormData,
+): Promise<DeploymentActionResult> {
   const deploymentId = getRequiredFormValue(formData, "deploymentId");
-  let url: string;
 
   try {
     const result = await removeDeploymentById(deploymentId);
-    url = formatRedirectUrl("success", `Removed ${result.appName}.`, "git");
+    return createActionResult("success", `Removed ${result.appName}.`);
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+    return createActionResult("error", getActionErrorMessage(error));
   }
-
-  redirect(url);
 }
 
-export async function updateDeploymentAction(formData: FormData) {
-  let url: string;
-
+export async function updateDeploymentAction(
+  formData: FormData,
+): Promise<DeploymentActionResult> {
   try {
     const result = await updateDeploymentSettingsById({
       deploymentId: getRequiredFormValue(formData, "deploymentId"),
@@ -144,14 +132,11 @@ export async function updateDeploymentAction(formData: FormData) {
       port: getRequiredFormValue(formData, "port"),
       envVariables: formData.get("envVariables"),
     });
-    url = formatRedirectUrl(
+    return createActionResult(
       "success",
       `Updated ${result.appName}. Deployment live at https://${result.domain}`,
-      "git",
     );
   } catch (error) {
-    url = formatRedirectUrl("error", getActionErrorMessage(error), "git");
+    return createActionResult("error", getActionErrorMessage(error));
   }
-
-  redirect(url);
 }
