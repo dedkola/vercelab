@@ -3,6 +3,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "devcontainer",
   "workspaceFolder": "/workspaces/vercelab",
+  "updateRemoteUserUID": true,
 
   "features": {},
 

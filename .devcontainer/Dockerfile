@@ -1,9 +1,10 @@
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 WORKDIR /workspaces/vercelab
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PNPM_VERSION=10.33.0
 
 # Install system tools: git, curl, Docker CLI, Docker Compose plugin
 RUN apt-get update \
@@ -27,8 +28,8 @@ RUN apt-get update \
        docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+# Install pnpm directly so devcontainers do not trigger a Corepack approval prompt
+RUN npm install -g "pnpm@${PNPM_VERSION}"
 
 # Allow node user to access Docker socket
 RUN groupadd -f docker && usermod -aG docker node
