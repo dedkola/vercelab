@@ -235,9 +235,14 @@ describe("ContainerObservabilityPage", () => {
     expect(
       await screen.findByRole("heading", { name: /docs-app/i }),
     ).toBeVisible();
+    expect(screen.queryByText(/focused app/i)).not.toBeInTheDocument();
     expect(screen.getByText(/current app signals/i)).toBeVisible();
     expect(screen.getAllByDisplayValue(/docs/i)[0]).toBeVisible();
     expect(screen.getByText(/settings and environment/i)).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "https://docs.example.com" }),
+    ).toHaveAttribute("href", "https://docs.example.com");
+    expect(screen.queryByText(/deploy mode/i)).not.toBeInTheDocument();
 
     const appRowButton = screen.getByRole("button", {
       name: /docs-app.*example\.com/i,

@@ -8,6 +8,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import { GitBranch, Home, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -155,6 +156,7 @@ const MAX_LIST_WIDTH_PX = 420;
 const MIN_LOGS_WIDTH_PX = 300;
 const MAX_LOGS_WIDTH_PX = 520;
 const POLL_INTERVAL_MS = 5000;
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
 const CONTAINERS: MockContainer[] = [
   {
@@ -1516,6 +1518,47 @@ function formatDeploymentDomain(
   return `${deployment.subdomain}.${baseDomain}`;
 }
 
+function formatDeploymentHref(
+  deployment: Pick<DashboardDeployment, "subdomain">,
+  baseDomain?: string,
+) {
+  return `https://${formatDeploymentDomain(deployment, baseDomain)}`;
+}
+
+function renderTextWithLinks(text: string): ReactNode {
+  const segments = text.split(URL_PATTERN);
+
+  return segments.map((segment, index) => {
+    if (!segment) {
+      return null;
+    }
+
+    if (!segment.match(URL_PATTERN)) {
+      return <span key={`text-${index}`}>{segment}</span>;
+    }
+
+    const trailingPunctuationMatch = segment.match(/[),.!?:;]+$/);
+    const trailingPunctuation = trailingPunctuationMatch?.[0] ?? "";
+    const href = trailingPunctuation
+      ? segment.slice(0, -trailingPunctuation.length)
+      : segment;
+
+    return (
+      <span key={`link-${index}`}>
+        <a
+          className="font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
+          href={href}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {href}
+        </a>
+        {trailingPunctuation}
+      </span>
+    );
+  });
+}
+
 function getRepositoryPathName(repositoryUrl: string) {
   return repositoryUrl
     .replace(/^https?:\/\/github\.com\//i, "")
@@ -1867,6 +1910,12 @@ export function ContainerObservabilityPage({
         : [],
     [selectedDeployment],
   );
+  const selectedDeploymentHref = selectedDeployment
+    ? formatDeploymentHref(selectedDeployment, baseDomain)
+    : null;
+  const summaryIncludesDeploymentHref =
+    selectedDeploymentHref !== null &&
+    selectedDeployment?.lastOperationSummary?.includes(selectedDeploymentHref);
   const selectedRepositoryValue =
     repositoryState.repositories.find(
       (repository) => repository.cloneUrl === draftApp.repositoryUrl,
@@ -3230,9 +3279,8 @@ export function ContainerObservabilityPage({
           ) : selectedDeployment ? (
             <div className="space-y-4">
               <section className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-r from-background via-muted/20 to-background shadow-[0_32px_96px_-64px_rgba(15,23,42,0.42)]">
-                <div className="flex flex-col gap-6 px-5 py-5 xl:flex-row xl:items-end xl:justify-between">
+                <div className="px-5 py-5">
                   <div className="max-w-3xl space-y-3">
-                    <SectionLabel icon="github" text="Focused app" />
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
@@ -3246,45 +3294,28 @@ export function ContainerObservabilityPage({
                           {formatDeploymentStatus(selectedDeployment.status)}
                         </Badge>
                       </div>
-                      <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                        {selectedDeployment.lastOperationSummary ??
-                          `Live deployment sourced from ${getRepositoryPathName(selectedDeployment.repositoryUrl)}.`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
-                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                        Domain
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {formatDeploymentDomain(selectedDeployment, baseDomain)}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                        Repository
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {selectedDeployment.repositoryName}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                        Deploy mode
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {formatDeploymentMode(selectedDeployment.composeMode)}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                        Updated
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {formatRelativeTime(selectedDeployment.updatedAt)}
-                      </div>
+                      {selectedDeployment.lastOperationSummary ? (
+                        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                          {renderTextWithLinks(
+                            selectedDeployment.lastOperationSummary,
+                          )}
+                        </p>
+                      ) : null}
+                      {!summaryIncludesDeploymentHref &&
+                      selectedDeploymentHref ? (
+                        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                          Deployment is live at{" "}
+                          <a
+                            className="font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
+                            href={selectedDeploymentHref}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {selectedDeploymentHref}
+                          </a>
+                          .
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </div>
