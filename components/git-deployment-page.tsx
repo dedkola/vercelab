@@ -1961,7 +1961,7 @@ export function GitLogPanel({
       : `docker logs -f --tail 150 ${deployment?.appName ?? ""}`.trim();
 
   return (
-    <div className="flex h-full flex-col bg-linear-to-b from-background via-muted/10 to-background">
+    <div className="flex h-full min-w-0 flex-col bg-linear-to-b from-background via-muted/10 to-background">
       {showHeader ? (
         <div className="sticky top-0 z-10 border-b border-border/70 bg-linear-to-r from-background via-muted/40 to-background px-3 py-3 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.45)]">
           <div className="flex items-center justify-between gap-3 pl-10">
@@ -1983,7 +1983,7 @@ export function GitLogPanel({
         </div>
       ) : null}
 
-      <div className="border-b border-border/60 px-3 py-3">
+      <div className="shrink-0 border-b border-border/60 px-3 py-3">
         <div className="flex flex-wrap gap-2">
           {[
             {
@@ -2018,11 +2018,11 @@ export function GitLogPanel({
         </div>
       </div>
 
-      <ScrollArea className="h-full">
-        <div className="space-y-4 p-3">
+      <ScrollArea className="min-h-0 flex-1 min-w-0 [&>[data-radix-scroll-area-viewport]>div]:block! [&>[data-radix-scroll-area-viewport]>div]:w-full! [&>[data-radix-scroll-area-viewport]>div]:min-w-0">
+        <div className="flex min-w-0 flex-col space-y-4 p-3">
           {deployment ? (
             <>
-              <div className="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
+              <div className="w-full rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold tracking-tight text-foreground">
@@ -2039,12 +2039,12 @@ export function GitLogPanel({
               </div>
 
               {logState.error ? (
-                <div className="rounded-[1.2rem] border border-amber-200/80 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-800 shadow-[0_18px_44px_-40px_rgba(217,119,6,0.35)]">
+                <div className="w-full rounded-[1.2rem] border border-amber-200/80 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-800 shadow-[0_18px_44px_-40px_rgba(217,119,6,0.35)]">
                   {logState.error}
                 </div>
               ) : null}
 
-              <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
+              <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
                 <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
                   <div className="flex items-center gap-2 text-xs text-slate-300">
                     <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -2057,22 +2057,22 @@ export function GitLogPanel({
                   </div>
                 </div>
 
-                <div className="px-4 py-4 font-mono text-[12px] leading-6 text-slate-200">
+                <div className="max-h-[52vh] min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 font-mono text-[12px] leading-6 text-slate-200">
                   {logState.isLoading ? (
                     <div className="text-slate-400">Loading logs...</div>
                   ) : (
-                    <pre className="whitespace-pre-wrap break-words text-slate-100">
+                    <pre className="max-w-full whitespace-pre-wrap wrap-break-word text-slate-100">
                       {logOutput}
                     </pre>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
+              <div className="w-full space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Active context
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3">
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
                     <div className="text-xs text-muted-foreground">
                       Current view
@@ -2113,8 +2113,8 @@ export function GitLogPanel({
               </div>
             </>
           ) : (
-            <div className="space-y-4">
-              <div className="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
+            <div className="flex min-w-0 flex-col space-y-4">
+              <div className="w-full rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
                 <div className="text-sm font-semibold tracking-tight text-foreground">
                   {emptyState.title}
                 </div>
@@ -2123,7 +2123,7 @@ export function GitLogPanel({
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
+              <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
                 <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
                   <div className="flex items-center gap-2 text-xs text-slate-300">
                     <span className="h-2 w-2 rounded-full bg-slate-400" />
@@ -2138,11 +2138,11 @@ export function GitLogPanel({
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
+              <div className="w-full space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Active context
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3">
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
                     <div className="text-xs text-muted-foreground">
                       Current view

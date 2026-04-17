@@ -143,7 +143,7 @@ export function DashboardRightSidebar({
         </aside>
       ) : (
         <aside
-          className="relative flex shrink-0 flex-col border-l border-border/70 bg-linear-to-b from-background via-muted/20 to-background shadow-[-28px_0_72px_-58px_rgba(15,23,42,0.4)] backdrop-blur-sm transition-all"
+          className="relative flex min-w-0 shrink-0 flex-col overflow-hidden border-l border-border/70 bg-linear-to-b from-background via-muted/20 to-background shadow-[-28px_0_72px_-58px_rgba(15,23,42,0.4)] backdrop-blur-sm transition-all"
           aria-label="Deployment logs sidebar"
           id="logs-panel"
           style={{ width: panelWidth }}
@@ -167,8 +167,9 @@ export function DashboardRightSidebar({
               <Icon name="chevron-right" className="h-3.5 w-3.5" />
             </Button>
           </div>
-
-          <ScrollArea className="h-full">{children}</ScrollArea>
+          <ScrollArea className="h-full min-w-0 [&>[data-radix-scroll-area-viewport]>div]:block! [&>[data-radix-scroll-area-viewport]>div]:w-full! [&>[data-radix-scroll-area-viewport]>div]:min-w-0">
+            {children}
+          </ScrollArea>
         </aside>
       )}
     </>
