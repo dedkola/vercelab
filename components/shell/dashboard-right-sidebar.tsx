@@ -23,6 +23,24 @@ const MIN_WIDTH_PX = 320;
 const MAX_WIDTH_PX = 900;
 const STORAGE_KEY = "vercelab:right-sidebar-width";
 
+function getStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storage = window.localStorage;
+
+  if (
+    !storage ||
+    typeof storage.getItem !== "function" ||
+    typeof storage.setItem !== "function"
+  ) {
+    return null;
+  }
+
+  return storage;
+}
+
 export function DashboardRightSidebar({
   isCollapsed,
   onToggleAction,
@@ -40,7 +58,7 @@ export function DashboardRightSidebar({
   });
 
   useEffect(() => {
-    const storedWidth = window.localStorage.getItem(STORAGE_KEY);
+    const storedWidth = getStorage()?.getItem(STORAGE_KEY);
 
     if (!storedWidth) {
       return;
@@ -57,7 +75,7 @@ export function DashboardRightSidebar({
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, String(Math.round(panelWidth)));
+    getStorage()?.setItem(STORAGE_KEY, String(Math.round(panelWidth)));
   }, [panelWidth]);
 
   useEffect(() => {

@@ -12,14 +12,11 @@ import {
 } from "@/lib/persistence";
 import {
   getMetricsSnapshot,
-  type ContainerStats,
   type MetricsSnapshot,
 } from "@/lib/system-metrics";
 
 const ERROR_SIGNAL_RE =
   /\b(error|exception|fatal|panic|fail(?:ed|ure)?|timeout|denied|refused|unhealthy)\b/i;
-
-export type ContainerTone = "running" | "stopped" | "unhealthy";
 
 export type DashboardDeploymentMarker = {
   appName: string;
@@ -65,16 +62,6 @@ function toIsoTimestamp(value: string) {
   const timestamp = new Date(normalized);
 
   return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
-}
-
-export function getContainerTone(
-  container: Pick<ContainerStats, "health" | "status">,
-): ContainerTone {
-  if (container.health === "unhealthy") {
-    return "unhealthy";
-  }
-
-  return container.status === "running" ? "running" : "stopped";
 }
 
 export function countErrorSignals(output: string) {

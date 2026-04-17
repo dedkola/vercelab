@@ -22,8 +22,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { getContainerTone } from "@/lib/container-tone";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 import { cn } from "@/lib/utils";
 
 type MetricTone = "emerald" | "amber" | "slate";
@@ -86,6 +87,24 @@ type MockContainer = {
   signals: ContainerSignal[];
   timeline: Array<{ label: string; detail: string }>;
   logs: Record<LogView, LogLine[]>;
+};
+
+type ContainerWorkspaceEntry = {
+  badgeLabel: string;
+  badgeVariant: "success" | "warning" | "default";
+  display: MockContainer;
+  dotClassName: string;
+  footerLabel: string;
+  preview: MockContainer | null;
+  runtime: ContainerStats | null;
+  searchText: string;
+  subtitle: string;
+  tertiaryLabel: string;
+};
+
+type ContainerObservabilityPageProps = {
+  initialHistory?: MetricsHistoryPoint[];
+  initialSnapshot?: MetricsSnapshot | null;
 };
 
 const METRICS_PANEL_STORAGE_KEY = "vercelab:containers-metrics-panel-width";
@@ -765,6 +784,293 @@ function buildLiveServerMetrics(
   ];
 }
 
+function formatRuntimeHealthLabel(health: ContainerStats["health"]) {
+  switch (health) {
+    case "healthy":
+      return "Healthy";
+    case "unhealthy":
+      return "Unhealthy";
+    case "starting":
+      return "Starting";
+    case "none":
+      return "No healthcheck";
+  }
+}
+
+function formatRuntimeStatusLabel(runtime: ContainerStats) {
+  if (runtime.health === "unhealthy") {
+    return "Unhealthy";
+  }
+
+  if (runtime.health === "starting") {
+    return "Starting";
+  }
+
+  return runtime.status.charAt(0).toUpperCase() + runtime.status.slice(1);
+}
+
+function getRuntimeBadgeVariant(
+  runtime: Pick<ContainerStats, "health" | "status">,
+): "success" | "warning" | "default" {
+  const tone = getContainerTone(runtime);
+
+  if (tone === "running") {
+    return "success";
+  }
+
+  if (tone === "unhealthy" || runtime.health === "starting") {
+    return "warning";
+  }
+
+  return "default";
+}
+
+function getRuntimeDotClassName(
+  runtime: Pick<ContainerStats, "health" | "status">,
+) {
+  const tone = getContainerTone(runtime);
+
+  if (tone === "running") {
+    return "bg-emerald-500";
+  }
+
+  if (tone === "unhealthy" || runtime.health === "starting") {
+    return "bg-amber-500";
+  }
+
+  return "bg-slate-400";
+}
+
+function getRuntimeMetricTone(
+  runtime: Pick<ContainerStats, "health" | "status" | "cpuPercent" | "memoryPercent">,
+  metric: "cpu" | "memory" | "state",
+): MetricTone {
+  if (metric === "state") {
+    const tone = getContainerTone(runtime);
+    return tone === "running" ? "emerald" : tone === "unhealthy" ? "amber" : "slate";
+  }
+
+  return metric === "cpu"
+    ? getUsageTone(runtime.cpuPercent, { calm: 20, elevated: 70 })
+    : getUsageTone(runtime.memoryPercent, { calm: 30, elevated: 75 });
+}
+
+function createFlatSeries(value: number) {
+  return Array.from({ length: 12 }, () => value);
+}
+
+function mapRuntimeToPreviewStatus(runtime: ContainerStats): ContainerStatus {
+  const tone = getContainerTone(runtime);
+
+  if (tone === "running") {
+    return "running";
+  }
+
+  if (tone === "unhealthy") {
+    return "degraded";
+  }
+
+  return "idle";
+}
+
+function buildRuntimeSummary(runtime: ContainerStats) {
+  const parts = [
+    runtime.projectName ? `Compose project ${runtime.projectName}` : null,
+    runtime.serviceName ? `service ${runtime.serviceName}` : "standalone runtime",
+  ].filter(Boolean);
+
+  return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.`;
+}
+
+function buildRuntimeTimeline(
+  runtime: ContainerStats,
+  snapshot: MetricsSnapshot | null,
+) {
+  return [
+    {
+      label: "Runtime state",
+      detail: `${formatRuntimeStatusLabel(runtime)} at ${snapshot ? formatClock(snapshot.timestamp) : "the latest sample"}.`,
+    },
+    {
+      label: "Health check",
+      detail: formatRuntimeHealthLabel(runtime.health),
+    },
+    {
+      label: "Compose labels",
+      detail:
+        runtime.projectName || runtime.serviceName
+          ? [runtime.projectName, runtime.serviceName].filter(Boolean).join(" / ")
+          : "No compose metadata was exposed for this container.",
+    },
+  ];
+}
+
+function buildRuntimeSignals(runtime: ContainerStats): ContainerSignal[] {
+  return [
+    {
+      label: "CPU sample",
+      value: formatPercent(runtime.cpuPercent, 1),
+      delta: "Live",
+      caption: "Latest sampled compute demand from Docker stats.",
+      tone: getRuntimeMetricTone(runtime, "cpu"),
+      points: createFlatSeries(runtime.cpuPercent),
+    },
+    {
+      label: "Memory sample",
+      value: formatBytes(runtime.memoryBytes),
+      delta: formatPercent(runtime.memoryPercent, 1),
+      caption: "Current memory share of total host memory.",
+      tone: getRuntimeMetricTone(runtime, "memory"),
+      points: createFlatSeries(runtime.memoryPercent),
+    },
+    {
+      label: "Runtime state",
+      value: formatRuntimeStatusLabel(runtime),
+      delta:
+        runtime.health === "none"
+          ? "No healthcheck"
+          : formatRuntimeHealthLabel(runtime.health),
+      caption: "Container state and health derived from docker ps output.",
+      tone: getRuntimeMetricTone(runtime, "state"),
+      points: createFlatSeries(
+        runtime.health === "unhealthy"
+          ? 90
+          : runtime.status === "running"
+            ? 68
+            : 24,
+      ),
+    },
+  ];
+}
+
+function buildDisplayContainer(
+  runtime: ContainerStats,
+  preview: MockContainer | null,
+  snapshot: MetricsSnapshot | null,
+): MockContainer {
+  const base =
+    preview ??
+    ({
+      id: runtime.id,
+      name: runtime.name,
+      stack: runtime.projectName ?? "docker",
+      image: runtime.serviceName
+        ? `${runtime.serviceName} runtime`
+        : "Container image details unavailable",
+      node: snapshot?.hostIp ?? "Current host",
+      status: mapRuntimeToPreviewStatus(runtime),
+      summary: buildRuntimeSummary(runtime),
+      uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : "Live sample",
+      port: runtime.serviceName ?? "Inspect data unavailable",
+      cpu: formatPercent(runtime.cpuPercent, 1),
+      memory: formatBytes(runtime.memoryBytes),
+      restarts: 0,
+      requestRate: "Live sample",
+      region: snapshot?.hostIp ?? "Docker host",
+      deployedAt: snapshot ? formatClock(snapshot.timestamp) : "now",
+      tags: [],
+      volumes: [],
+      environment: [],
+      endpoints: [],
+      activity: createFlatSeries(runtime.cpuPercent),
+      signals: buildRuntimeSignals(runtime),
+      timeline: buildRuntimeTimeline(runtime, snapshot),
+      logs: {
+        live: [],
+        events: [],
+        alerts: [],
+      },
+    } satisfies MockContainer);
+
+  return {
+    ...base,
+    id: runtime.id,
+    name: runtime.name,
+    stack: runtime.projectName ?? base.stack,
+    node: snapshot?.hostIp ?? base.node,
+    status: mapRuntimeToPreviewStatus(runtime),
+    summary: preview?.summary ?? base.summary,
+    uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : base.uptime,
+    cpu: formatPercent(runtime.cpuPercent, 1),
+    memory: formatBytes(runtime.memoryBytes),
+    region: snapshot?.hostIp ?? base.region,
+    tags: Array.from(
+      new Set(
+        [
+          ...base.tags,
+          runtime.projectName,
+          runtime.serviceName,
+          runtime.status,
+          runtime.health !== "none" ? runtime.health : null,
+        ].filter((value): value is string => Boolean(value)),
+      ),
+    ),
+    activity: createFlatSeries(runtime.cpuPercent),
+    signals: buildRuntimeSignals(runtime),
+    timeline: buildRuntimeTimeline(runtime, snapshot),
+  };
+}
+
+function buildContainerWorkspaceEntries(
+  snapshot: MetricsSnapshot | null,
+): ContainerWorkspaceEntry[] {
+  const previewByName = new Map(CONTAINERS.map((container) => [container.name, container]));
+  const runtimeContainers = snapshot?.containers.all ?? [];
+
+  if (!runtimeContainers.length) {
+    return CONTAINERS.map((preview) => ({
+      badgeLabel: formatStatusLabel(preview.status),
+      badgeVariant: getStatusBadgeVariant(preview.status),
+      display: preview,
+      dotClassName: getStatusDotClassName(preview.status),
+      footerLabel: preview.port,
+      preview,
+      runtime: null,
+      searchText: [preview.name, preview.stack, preview.image, preview.summary]
+        .join(" ")
+        .toLowerCase(),
+      subtitle: `${preview.stack} - ${preview.image}`,
+      tertiaryLabel: preview.port,
+    }));
+  }
+
+  return runtimeContainers.map((runtime) => {
+    const preview = previewByName.get(runtime.name) ?? null;
+    const display = buildDisplayContainer(runtime, preview, snapshot);
+    const subtitle = [
+      runtime.projectName,
+      runtime.serviceName,
+      runtime.health !== "none" ? formatRuntimeHealthLabel(runtime.health) : null,
+    ]
+      .filter(Boolean)
+      .join(" - ");
+
+    return {
+      badgeLabel: formatRuntimeStatusLabel(runtime),
+      badgeVariant: getRuntimeBadgeVariant(runtime),
+      display,
+      dotClassName: getRuntimeDotClassName(runtime),
+      footerLabel: `Sampled ${snapshot ? formatClock(snapshot.timestamp) : "now"}`,
+      preview,
+      runtime,
+      searchText: [
+        runtime.name,
+        runtime.projectName,
+        runtime.serviceName,
+        runtime.status,
+        runtime.health,
+        preview?.summary,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase(),
+      subtitle: subtitle || "Docker runtime container",
+      tertiaryLabel:
+        runtime.serviceName ?? runtime.projectName ?? runtime.id.slice(0, 12),
+    };
+  });
+}
+
 function useStoredPanelWidth(
   key: string,
   initialWidth: number,
@@ -979,7 +1285,10 @@ function SectionLabel({
   );
 }
 
-export function ContainerObservabilityPage() {
+export function ContainerObservabilityPage({
+  initialHistory = [],
+  initialSnapshot = null,
+}: ContainerObservabilityPageProps) {
   const [metricsWidth, setMetricsWidth] = useStoredPanelWidth(
     METRICS_PANEL_STORAGE_KEY,
     DEFAULT_METRICS_WIDTH_PX,
@@ -1001,14 +1310,14 @@ export function ContainerObservabilityPage() {
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
   const [selectedContainerId, setSelectedContainerId] = useState(
-    CONTAINERS[0]?.id ?? "",
+    initialSnapshot?.containers.all[0]?.name ?? CONTAINERS[0]?.name ?? "",
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [logView, setLogView] = useState<LogView>("live");
-  const [sidebarSnapshot, setSidebarSnapshot] = useState<MetricsSnapshot | null>(
-    null,
-  );
-  const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>([]);
+  const [sidebarSnapshot, setSidebarSnapshot] =
+    useState<MetricsSnapshot | null>(initialSnapshot);
+  const [sidebarHistory, setSidebarHistory] =
+    useState<MetricsHistoryPoint[]>(initialHistory);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const dragStateRef = useRef<{
     kind: "metrics" | "list" | "logs" | null;
@@ -1022,6 +1331,10 @@ export function ContainerObservabilityPage() {
   const serverMetrics = useMemo(
     () => buildLiveServerMetrics(sidebarSnapshot, sidebarHistory),
     [sidebarHistory, sidebarSnapshot],
+  );
+  const workspaceContainers = useMemo(
+    () => buildContainerWorkspaceEntries(sidebarSnapshot),
+    [sidebarSnapshot],
   );
   const metricsStatus = metricsError
     ? {
@@ -1053,31 +1366,31 @@ export function ContainerObservabilityPage() {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     if (!normalizedQuery) {
-      return CONTAINERS;
+      return workspaceContainers;
     }
 
-    return CONTAINERS.filter((container) => {
-      const searchableText = [
-        container.name,
-        container.stack,
-        container.image,
-        container.summary,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return searchableText.includes(normalizedQuery);
-    });
-  }, [searchQuery]);
+    return workspaceContainers.filter((container) =>
+      container.searchText.includes(normalizedQuery),
+    );
+  }, [searchQuery, workspaceContainers]);
 
   const activeContainerId =
-    filteredContainers.some((container) => container.id === selectedContainerId)
+    filteredContainers.some(
+      (container) => container.display.name === selectedContainerId,
+    )
       ? selectedContainerId
-      : filteredContainers[0]?.id ?? CONTAINERS[0]?.id ?? selectedContainerId;
+      : filteredContainers[0]?.display.name ??
+        workspaceContainers[0]?.display.name ??
+        CONTAINERS[0]?.name ??
+        selectedContainerId;
 
-  const selectedContainer =
-    CONTAINERS.find((container) => container.id === activeContainerId) ??
-    CONTAINERS[0];
+  const selectedEntry =
+    filteredContainers.find((container) => container.display.name === activeContainerId) ??
+    workspaceContainers.find((container) => container.display.name === activeContainerId) ??
+    workspaceContainers[0];
+  const selectedContainer = selectedEntry?.display ?? CONTAINERS[0];
+  const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
+  const selectedPreviewContainer = selectedEntry?.preview ?? null;
 
   useEffect(() => {
     let active = true;
@@ -1257,7 +1570,7 @@ export function ContainerObservabilityPage() {
                 Container operations workspace
               </div>
               <div className="truncate text-xs text-muted-foreground">
-                Live Influx-backed host metrics on the left rail with preview data for the rest of the workspace.
+                Live Influx-backed host metrics and live Docker container state with preview scaffolding for the deeper runtime panels.
               </div>
             </div>
           </div>
@@ -1433,18 +1746,25 @@ export function ContainerObservabilityPage() {
           className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
           style={{ width: listWidth }}
         >
-          <div className="space-y-3 border-b border-border/60 px-3 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-1">
-                <SectionLabel icon="cloud" text="Containers" />
-                <div className="text-xs text-muted-foreground">
-                  Select a workload to inspect its focused view.
+            <div className="space-y-3 border-b border-border/60 px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <SectionLabel icon="cloud" text="Containers" />
+                  <div className="text-xs text-muted-foreground">
+                    Live Docker runtime state for the current host.
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sidebarSnapshot ? (
+                    <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
+                      {sidebarSnapshot.containers.running} running
+                    </Badge>
+                  ) : null}
+                  <Badge className="border-border/60 bg-background/80 text-foreground">
+                    {filteredContainers.length} visible
+                  </Badge>
                 </div>
               </div>
-              <Badge className="border-border/60 bg-background/80 text-foreground">
-                {filteredContainers.length} visible
-              </Badge>
-            </div>
             <div className="relative">
               <Icon
                 name="search"
@@ -1461,69 +1781,78 @@ export function ContainerObservabilityPage() {
           </div>
 
           <ScrollArea className="h-full">
-            <div className="space-y-3 p-3">
-              {filteredContainers.length ? (
-                filteredContainers.map((container) => (
-                  <button
-                    key={container.id}
-                    type="button"
-                    className={cn(
-                      "w-full rounded-[1.35rem] border px-4 py-4 text-left transition-all duration-200",
-                      "shadow-[0_20px_52px_-42px_rgba(15,23,42,0.24)] hover:-translate-y-px hover:bg-background/95",
-                      activeContainerId === container.id
-                        ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
-                        : "border-border/70 bg-background/85",
-                    )}
-                    onClick={() => setSelectedContainerId(container.id)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "h-2 w-2 rounded-full",
-                              getStatusDotClassName(container.status),
-                            )}
-                          />
-                          <div className="truncate text-sm font-semibold tracking-tight text-foreground">
-                            {container.name}
+              <div className="space-y-3 p-3">
+                {filteredContainers.length ? (
+                  filteredContainers.map((container) => (
+                    <button
+                      key={container.display.id}
+                      type="button"
+                      className={cn(
+                        "w-full rounded-[1.35rem] border px-4 py-4 text-left transition-all duration-200",
+                        "shadow-[0_20px_52px_-42px_rgba(15,23,42,0.24)] hover:-translate-y-px hover:bg-background/95",
+                        activeContainerId === container.display.name
+                          ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
+                          : "border-border/70 bg-background/85",
+                      )}
+                      onClick={() => setSelectedContainerId(container.display.name)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                container.dotClassName,
+                              )}
+                            />
+                            <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+                              {container.display.name}
+                            </div>
+                          </div>
+                          <div className="mt-1 truncate text-xs text-muted-foreground">
+                            {container.subtitle}
                           </div>
                         </div>
-                        <div className="mt-1 truncate text-xs text-muted-foreground">
-                          {container.stack} - {container.image}
-                        </div>
+                        <Badge variant={container.badgeVariant}>
+                          {container.badgeLabel}
+                        </Badge>
                       </div>
-                      <Badge variant={getStatusBadgeVariant(container.status)}>
-                        {formatStatusLabel(container.status)}
-                      </Badge>
-                    </div>
 
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                        <div className="text-muted-foreground">CPU</div>
-                        <div className="mt-1 font-semibold text-foreground">
-                          {container.cpu}
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                        <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
+                          <div className="text-muted-foreground">CPU</div>
+                          <div className="mt-1 font-semibold text-foreground">
+                            {container.display.cpu}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
+                          <div className="text-muted-foreground">Memory</div>
+                          <div className="mt-1 font-semibold text-foreground">
+                            {container.display.memory}
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
+                          <div className="text-muted-foreground">
+                            {container.runtime ? "Service" : "Port"}
+                          </div>
+                          <div className="mt-1 truncate font-semibold text-foreground">
+                            {container.tertiaryLabel}
+                          </div>
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                        <div className="text-muted-foreground">Memory</div>
-                        <div className="mt-1 font-semibold text-foreground">
-                          {container.memory}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                        <div className="text-muted-foreground">Port</div>
-                        <div className="mt-1 truncate font-semibold text-foreground">
-                          {container.port}
-                        </div>
-                      </div>
-                    </div>
 
-                    <div className="mt-4">
-                      <Sparkline className="h-12" points={container.activity} tone="slate" />
-                    </div>
-                  </button>
-                ))
+                      <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                        <span className="truncate">{container.footerLabel}</span>
+                        {container.runtime ? (
+                          <span className="font-semibold text-foreground/80">
+                            {formatRuntimeHealthLabel(container.runtime.health)}
+                          </span>
+                        ) : (
+                          <span className="truncate">{container.display.port}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))
               ) : (
                 <div className="rounded-[1.35rem] border border-dashed border-border/80 bg-background/70 px-4 py-10 text-center shadow-[0_18px_46px_-40px_rgba(15,23,42,0.2)]">
                   <div className="text-sm font-semibold tracking-tight text-foreground">
@@ -1567,36 +1896,46 @@ export function ContainerObservabilityPage() {
                       Runtime
                     </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedContainer.uptime}
+                      {selectedRuntimeContainer
+                        ? formatRuntimeStatusLabel(selectedRuntimeContainer)
+                        : selectedContainer.uptime}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      Node
+                      {selectedRuntimeContainer ? "Health" : "Node"}
                     </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedContainer.node}
+                      {selectedRuntimeContainer
+                        ? formatRuntimeHealthLabel(selectedRuntimeContainer.health)
+                        : selectedContainer.node}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      Region
+                      {selectedRuntimeContainer ? "Project" : "Region"}
                     </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedContainer.region}
+                      {selectedRuntimeContainer?.projectName ?? selectedContainer.region}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
                     <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      Exposed port
+                      {selectedRuntimeContainer ? "Service" : "Exposed port"}
                     </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedContainer.port}
+                      {selectedRuntimeContainer?.serviceName ?? selectedContainer.port}
                     </div>
                   </div>
                 </div>
               </div>
             </section>
+
+            {selectedRuntimeContainer ? (
+              <div className="rounded-[1.35rem] border border-emerald-200/70 bg-linear-to-r from-emerald-50/80 via-background to-background px-4 py-3 text-sm text-muted-foreground shadow-[0_22px_52px_-42px_rgba(16,185,129,0.24)]">
+                Live runtime data for this container is coming from the current metrics snapshot. Sections without runtime inspect/log queries still fall back to the preview scaffold when available.
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
               <Card className="overflow-hidden border-border/70 bg-linear-to-br from-emerald-50/70 via-background to-background">
@@ -1627,12 +1966,18 @@ export function ContainerObservabilityPage() {
 
               <Card className="overflow-hidden border-border/70 bg-linear-to-br from-slate-50/80 via-background to-background">
                 <CardHeader className="border-b border-border/60">
-                  <CardTitle>Traffic</CardTitle>
-                  <CardDescription>Request or job flow.</CardDescription>
+                  <CardTitle>{selectedRuntimeContainer ? "Health" : "Traffic"}</CardTitle>
+                  <CardDescription>
+                    {selectedRuntimeContainer
+                      ? "Latest runtime state from Docker."
+                      : "Request or job flow."}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-3">
                   <div className="text-2xl font-semibold tracking-tight text-foreground">
-                    {selectedContainer.requestRate}
+                    {selectedRuntimeContainer
+                      ? formatRuntimeHealthLabel(selectedRuntimeContainer.health)
+                      : selectedContainer.requestRate}
                   </div>
                   <Sparkline className="h-14" points={selectedContainer.signals[2].points} tone="slate" />
                 </CardContent>
@@ -1640,16 +1985,29 @@ export function ContainerObservabilityPage() {
 
               <Card className="overflow-hidden border-border/70 bg-linear-to-br from-background via-muted/14 to-background">
                 <CardHeader className="border-b border-border/60">
-                  <CardTitle>Restarts</CardTitle>
-                  <CardDescription>Recent container churn.</CardDescription>
+                  <CardTitle>{selectedRuntimeContainer ? "Compose" : "Restarts"}</CardTitle>
+                  <CardDescription>
+                    {selectedRuntimeContainer
+                      ? "Project and service labels from the runtime."
+                      : "Recent container churn."}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-3">
                   <div className="text-2xl font-semibold tracking-tight text-foreground">
-                    {selectedContainer.restarts}
+                    {selectedRuntimeContainer
+                      ? selectedRuntimeContainer.serviceName ??
+                        selectedRuntimeContainer.projectName ??
+                        "Standalone"
+                      : selectedContainer.restarts}
                   </div>
                   <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-3 text-xs leading-5 text-muted-foreground">
-                    Last rollout landed {selectedContainer.deployedAt.toLowerCase()} with{" "}
-                    {selectedContainer.restarts === 0 ? "no" : selectedContainer.restarts} unexpected restarts.
+                    {selectedRuntimeContainer
+                      ? `Project ${selectedRuntimeContainer.projectName ?? "n/a"} on host ${sidebarSnapshot?.hostIp ?? "unknown"} was sampled at ${sidebarSnapshot ? formatClock(sidebarSnapshot.timestamp) : "the latest poll"}.`
+                      : `Last rollout landed ${selectedContainer.deployedAt.toLowerCase()} with ${
+                          selectedContainer.restarts === 0
+                            ? "no"
+                            : selectedContainer.restarts
+                        } unexpected restarts.`}
                   </div>
                 </CardContent>
               </Card>
@@ -1723,43 +2081,55 @@ export function ContainerObservabilityPage() {
                   </div>
 
                   <div className="space-y-3">
-                    {selectedContainer.endpoints.map((endpoint) => (
-                      <div
-                        key={endpoint.name}
-                        className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
-                      >
-                        <div className="flex items-center justify-between gap-3 text-sm">
-                          <div className="font-semibold text-foreground">
-                            {endpoint.name}
+                    {selectedContainer.endpoints.length ? (
+                      selectedContainer.endpoints.map((endpoint) => (
+                        <div
+                          key={endpoint.name}
+                          className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
+                        >
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <div className="font-semibold text-foreground">
+                              {endpoint.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {endpoint.latency} - {endpoint.uptime}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {endpoint.latency} - {endpoint.uptime}
+                          <div className="mt-3 h-2 rounded-full bg-muted/70">
+                            <div
+                              className="h-2 rounded-full bg-linear-to-r from-emerald-400 to-amber-300"
+                              style={{ width: `${endpoint.load}%` }}
+                            />
                           </div>
                         </div>
-                        <div className="mt-3 h-2 rounded-full bg-muted/70">
-                          <div
-                            className="h-2 rounded-full bg-linear-to-r from-emerald-400 to-amber-300"
-                            style={{ width: `${endpoint.load}%` }}
-                          />
-                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
+                        No live endpoint inspection is wired for this container yet.
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   <div className="space-y-2 rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                    {selectedContainer.timeline.map((event) => (
-                      <div key={event.label} className="flex gap-3 text-sm">
-                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500/80" />
-                        <div>
-                          <div className="font-semibold tracking-tight text-foreground">
-                            {event.label}
-                          </div>
-                          <div className="text-xs leading-5 text-muted-foreground">
-                            {event.detail}
+                    {selectedContainer.timeline.length ? (
+                      selectedContainer.timeline.map((event) => (
+                        <div key={event.label} className="flex gap-3 text-sm">
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500/80" />
+                          <div>
+                            <div className="font-semibold tracking-tight text-foreground">
+                              {event.label}
+                            </div>
+                            <div className="text-xs leading-5 text-muted-foreground">
+                              {event.detail}
+                            </div>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-xs leading-5 text-muted-foreground">
+                        Runtime notes will appear here when richer container inspection data is connected.
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1778,41 +2148,55 @@ export function ContainerObservabilityPage() {
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Environment
                     </div>
-                    {selectedContainer.environment.map((item) => (
-                      <div
-                        key={item.key}
-                        className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
-                      >
-                        <div className="text-xs text-muted-foreground">{item.key}</div>
-                        <div className="mt-1 font-mono text-sm text-foreground">
-                          {item.value}
+                    {selectedContainer.environment.length ? (
+                      selectedContainer.environment.map((item) => (
+                        <div
+                          key={item.key}
+                          className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
+                        >
+                          <div className="text-xs text-muted-foreground">{item.key}</div>
+                          <div className="mt-1 font-mono text-sm text-foreground">
+                            {item.value}
+                          </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
+                        Environment inspection is not wired for this live runtime yet.
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   <div className="space-y-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Volumes
                     </div>
-                    {selectedContainer.volumes.map((volume) => (
-                      <div
-                        key={volume}
-                        className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
-                      >
-                        <div className="font-mono text-sm text-foreground">{volume}</div>
-                      </div>
-                    ))}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {selectedContainer.tags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          className="border-border/60 bg-muted/70 text-foreground"
+                    {selectedContainer.volumes.length ? (
+                      selectedContainer.volumes.map((volume) => (
+                        <div
+                          key={volume}
+                          className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
                         >
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+                          <div className="font-mono text-sm text-foreground">{volume}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
+                        Mount inspection is not wired for this live runtime yet.
+                      </div>
+                    )}
+                    {selectedContainer.tags.length ? (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {selectedContainer.tags.map((tag) => (
+                          <Badge
+                            key={tag}
+                            className="border-border/60 bg-muted/70 text-foreground"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>
@@ -1832,7 +2216,7 @@ export function ContainerObservabilityPage() {
                     Cards keep the same visual rhythm as the main dashboard: rounded corners, subtle gradients, light shadows, and restrained borders.
                   </div>
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                    This route intentionally ships as a static preview so the final data hooks can be wired in later without redesigning the shell.
+                    Host metrics and the container runtime list are live now; the deeper inspect and log sections still preserve the preview scaffolding until dedicated runtime queries are added.
                   </div>
                 </CardContent>
               </Card>
@@ -1950,7 +2334,9 @@ export function ContainerObservabilityPage() {
                       ))
                     ) : (
                       <div className="text-slate-400">
-                        No lines in this view for the current static preview.
+                        {selectedPreviewContainer
+                          ? "No lines in this preview view for the selected container."
+                          : "Live container logs are not wired into this page yet."}
                       </div>
                     )}
                   </div>

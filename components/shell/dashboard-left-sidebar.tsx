@@ -39,6 +39,24 @@ const MIN_PANEL_WIDTH_PX = 180;
 const MAX_PANEL_WIDTH_PX = 520;
 const STORAGE_KEY = "vercelab:left-sidebar-width";
 
+function getStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storage = window.localStorage;
+
+  if (
+    !storage ||
+    typeof storage.getItem !== "function" ||
+    typeof storage.setItem !== "function"
+  ) {
+    return null;
+  }
+
+  return storage;
+}
+
 export function DashboardLeftSidebar({
   activeSection,
   isPanelCollapsed,
@@ -59,7 +77,7 @@ export function DashboardLeftSidebar({
   });
 
   useEffect(() => {
-    const storedWidth = window.localStorage.getItem(STORAGE_KEY);
+    const storedWidth = getStorage()?.getItem(STORAGE_KEY);
 
     if (!storedWidth) {
       return;
@@ -78,7 +96,7 @@ export function DashboardLeftSidebar({
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, String(Math.round(panelWidth)));
+    getStorage()?.setItem(STORAGE_KEY, String(Math.round(panelWidth)));
   }, [panelWidth]);
 
   useEffect(() => {

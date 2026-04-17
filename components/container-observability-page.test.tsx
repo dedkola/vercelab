@@ -35,10 +35,62 @@ describe("ContainerObservabilityPage", () => {
             },
             containers: {
               running: 3,
+              total: 4,
               cpuPercent: 24,
               memoryPercent: 38,
               memoryUsedBytes: 3.8 * 1024 ** 3,
+              statusBreakdown: {
+                healthy: 3,
+                unhealthy: 1,
+                stopped: 0,
+              },
               top: [],
+              all: [
+                {
+                  id: "runtime-control-plane",
+                  name: "control-plane",
+                  cpuPercent: 18,
+                  memoryBytes: 612 * 1024 ** 2,
+                  memoryPercent: 0.9,
+                  status: "running",
+                  health: "healthy",
+                  projectName: "vercelab",
+                  serviceName: "control-plane",
+                },
+                {
+                  id: "runtime-edge-proxy",
+                  name: "edge-proxy",
+                  cpuPercent: 9,
+                  memoryBytes: 186 * 1024 ** 2,
+                  memoryPercent: 0.3,
+                  status: "running",
+                  health: "healthy",
+                  projectName: "traefik",
+                  serviceName: "proxy",
+                },
+                {
+                  id: "runtime-postgres-primary",
+                  name: "postgres-primary",
+                  cpuPercent: 31,
+                  memoryBytes: Math.round(2.8 * 1024 ** 3),
+                  memoryPercent: 4.4,
+                  status: "running",
+                  health: "unhealthy",
+                  projectName: "database",
+                  serviceName: "postgres",
+                },
+                {
+                  id: "runtime-worker-builds",
+                  name: "worker-builds",
+                  cpuPercent: 24,
+                  memoryBytes: 428 * 1024 ** 2,
+                  memoryPercent: 0.7,
+                  status: "running",
+                  health: "healthy",
+                  projectName: "jobs",
+                  serviceName: "worker",
+                },
+              ],
             },
           },
           history: [
@@ -120,21 +172,19 @@ describe("ContainerObservabilityPage", () => {
     expect(screen.getByText(/current container signals/i)).toBeVisible();
     expect(screen.getByText(/tail preview/i)).toBeVisible();
     expect(
-      await screen.findByText(/3 running containers on 192\.168\.1\.10/i),
+      await screen.findByText(/3 running containers on 192\.168\.1\.10\./i),
     ).toBeVisible();
+    expect(screen.getAllByText(/3\s+running/i)[0]).toBeVisible();
   });
 
-  it("updates the focused details when a different container is selected", async () => {
-    const user = userEvent.setup();
-
+  it("shows live runtime status in the containers sidebar", async () => {
     render(<ContainerObservabilityPage />);
 
-    await user.click(screen.getByRole("button", { name: /postgres-primary/i }));
-
     expect(
-      screen.getByRole("heading", { name: /postgres-primary/i }),
+      await screen.findByRole("button", {
+        name: /postgres-primary.*unhealthy/i,
+      }),
     ).toBeVisible();
-    expect(screen.getByText(/main relational store/i)).toBeVisible();
-    expect(screen.getAllByText(/replica lag/i)[0]).toBeVisible();
+    expect(screen.getByText(/4 visible/i)).toBeVisible();
   });
 });
