@@ -40,6 +40,7 @@ export type IconName =
   | "chat"
   | "film"
   | "cloud"
+  | "github"
   | "headphones"
   | "x-close";
 
@@ -348,6 +349,18 @@ export function Icon({ name, className = "h-4 w-4", title }: IconProps) {
             d="M6 18h11a4 4 0 0 0 .5-7.97A7 7 0 0 0 5.2 14 3 3 0 0 0 6 18z"
             {...s}
           />
+        );
+      case "github":
+        return (
+          <>
+            <path
+              d="M9 19c-3.5 1-6-1.5-6-6.5A8.2 8.2 0 0 1 11.2 4c4.7 0 8.8 3.4 8.8 8.5 0 5-2.5 7.5-6 6.5"
+              {...s}
+            />
+            <path d="M9 18c0-1.7-.1-2.7-1.1-3.3-2.5.3-3.1-1.2-3.3-1.9" {...s} />
+            <path d="M15 18c0-1.7.1-2.7 1.1-3.3 2.5.3 3.1-1.2 3.3-1.9" {...s} />
+            <path d="M9 9.8c.8-.5 1.8-.8 3-.8s2.2.3 3 .8" {...s} />
+          </>
         );
       case "headphones":
         return (

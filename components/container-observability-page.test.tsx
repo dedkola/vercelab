@@ -4,11 +4,17 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 
 import { ContainerObservabilityPage } from "@/components/container-observability-page";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+  }),
+}));
+
 describe("ContainerObservabilityPage", () => {
   const fetchSpy = vi.spyOn(global, "fetch");
 
   beforeEach(() => {
-    fetchSpy.mockResolvedValue(
+    fetchSpy.mockImplementation(async () =>
       new Response(
         JSON.stringify({
           snapshot: {
@@ -186,5 +192,42 @@ describe("ContainerObservabilityPage", () => {
       }),
     ).toBeVisible();
     expect(screen.getByText(/4 visible/i)).toBeVisible();
+  });
+
+  it("renders the github apps workspace with editable deployment details", async () => {
+    render(
+      <ContainerObservabilityPage
+        baseDomain="example.com"
+        initialDeployments={[
+          {
+            id: "dep-1",
+            repositoryName: "dedkola/vercelab",
+            repositoryUrl: "https://github.com/dedkola/vercelab.git",
+            branch: "main",
+            appName: "docs-app",
+            subdomain: "docs",
+            port: 3000,
+            envVariables: "NODE_ENV=production",
+            serviceName: "web",
+            status: "running",
+            composeMode: "dockerfile",
+            projectName: "docs-app",
+            lastOutput: "Deployment is healthy.",
+            lastOperationSummary: "Redeployed from main successfully.",
+            updatedAt: "2026-04-17T08:00:00.000Z",
+            deployedAt: "2026-04-17T07:55:00.000Z",
+            tokenStored: true,
+          },
+        ]}
+        initialPage="apps"
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /docs-app/i }),
+    ).toBeVisible();
+    expect(screen.getByText(/current app signals/i)).toBeVisible();
+    expect(screen.getAllByDisplayValue(/docs/i)[0]).toBeVisible();
+    expect(screen.getByText(/settings and environment/i)).toBeVisible();
   });
 });

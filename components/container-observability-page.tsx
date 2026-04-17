@@ -1,17 +1,25 @@
 "use client";
-
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type FormEvent,
 } from "react";
+import { toast } from "sonner";
 
 import { Icon } from "@/components/dashboard-kit";
+import {
+  updateDeploymentAction,
+  type DeploymentActionResult,
+} from "@/app/actions";
+import { GitLogPanel, type LogTab } from "@/components/git-deployment-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Card,
   CardContent,
@@ -20,16 +28,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupSuffix,
+} from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getContainerTone } from "@/lib/container-tone";
+import type { GitHubRepository } from "@/lib/github";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
+import type { DashboardDeployment } from "@/lib/persistence";
 import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 import { cn } from "@/lib/utils";
 
 type MetricTone = "emerald" | "amber" | "slate";
 type ContainerStatus = "running" | "degraded" | "idle";
-type LogView = "live" | "events" | "alerts";
+type OverviewLogView = "live" | "events" | "alerts";
+type WorkspacePage = "overview" | "apps";
 
 type MetricCard = {
   title: string;
@@ -86,7 +103,7 @@ type MockContainer = {
   activity: number[];
   signals: ContainerSignal[];
   timeline: Array<{ label: string; detail: string }>;
-  logs: Record<LogView, LogLine[]>;
+  logs: Record<OverviewLogView, LogLine[]>;
 };
 
 type ContainerWorkspaceEntry = {
@@ -103,8 +120,27 @@ type ContainerWorkspaceEntry = {
 };
 
 type ContainerObservabilityPageProps = {
+  baseDomain?: string;
+  initialDeployments?: DashboardDeployment[];
   initialHistory?: MetricsHistoryPoint[];
+  initialPage?: WorkspacePage;
   initialSnapshot?: MetricsSnapshot | null;
+};
+
+type DraftAppState = {
+  appName: string;
+  branch: string;
+  port: string;
+  repositoryUrl: string;
+  subdomain: string;
+};
+
+type RepositoryState = {
+  error: string | null;
+  hasLoaded: boolean;
+  isLoading: boolean;
+  repositories: GitHubRepository[];
+  tokenConfigured: boolean;
 };
 
 const METRICS_PANEL_STORAGE_KEY = "vercelab:containers-metrics-panel-width";
@@ -114,6 +150,7 @@ const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
 const DEFAULT_METRICS_WIDTH_PX = 248;
 const DEFAULT_LIST_WIDTH_PX = 304;
 const DEFAULT_LOGS_WIDTH_PX = 340;
+const EMPTY_DEPLOYMENTS: DashboardDeployment[] = [];
 
 const MIN_METRICS_WIDTH_PX = 216;
 const MAX_METRICS_WIDTH_PX = 420;
@@ -577,7 +614,7 @@ const CONTAINERS: MockContainer[] = [
   },
 ];
 
-const LOG_VIEW_OPTIONS: Array<{ value: LogView; label: string }> = [
+const LOG_VIEW_OPTIONS: Array<{ value: OverviewLogView; label: string }> = [
   { value: "live", label: "Live tail" },
   { value: "events", label: "Events" },
   { value: "alerts", label: "Alerts" },
@@ -1274,7 +1311,7 @@ function SectionLabel({
   icon,
   text,
 }: {
-  icon: "network" | "cloud" | "syslog" | "monitor";
+  icon: "network" | "cloud" | "github" | "syslog" | "monitor";
   text: string;
 }) {
   return (
@@ -1285,10 +1322,332 @@ function SectionLabel({
   );
 }
 
+const WORKSPACE_PAGES: Array<{
+  description: string;
+  icon: "network" | "github";
+  id: WorkspacePage;
+  label: string;
+}> = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: "network",
+    description: "Live containers and host load",
+  },
+  {
+    id: "apps",
+    label: "GitHub apps",
+    icon: "github",
+    description: "Deployments and repo wiring",
+  },
+];
+
+function toSlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+function buildRepositoryOptions(repositories: GitHubRepository[]) {
+  return repositories.map((repository) => ({
+    value: String(repository.id),
+    label: repository.fullName,
+    description:
+      repository.description ??
+      `${repository.visibility} repo • updated ${formatRelativeTime(repository.updatedAt)}`,
+  }));
+}
+
+function createEmptyDraftAppState(): DraftAppState {
+  return {
+    appName: "",
+    branch: "",
+    port: "3000",
+    repositoryUrl: "",
+    subdomain: "",
+  };
+}
+
+function formatRelativeTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const units = [
+    ["year", 60 * 60 * 24 * 365],
+    ["month", 60 * 60 * 24 * 30],
+    ["week", 60 * 60 * 24 * 7],
+    ["day", 60 * 60 * 24],
+    ["hour", 60 * 60],
+    ["minute", 60],
+  ] as const;
+
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  for (const [unit, divisor] of units) {
+    if (Math.abs(seconds) >= divisor || unit === "minute") {
+      return formatter.format(Math.round(seconds / divisor), unit);
+    }
+  }
+
+  return formatter.format(seconds, "second");
+}
+
+function getDeploymentStatusBadgeVariant(
+  status: DashboardDeployment["status"],
+): "success" | "warning" | "default" {
+  switch (status) {
+    case "running":
+      return "success";
+    case "failed":
+    case "deploying":
+      return "warning";
+    default:
+      return "default";
+  }
+}
+
+function getDeploymentStatusDotClassName(status: DashboardDeployment["status"]) {
+  switch (status) {
+    case "running":
+      return "bg-emerald-500";
+    case "failed":
+    case "deploying":
+      return "bg-amber-500";
+    default:
+      return "bg-slate-400";
+  }
+}
+
+function formatDeploymentStatus(status: DashboardDeployment["status"]) {
+  switch (status) {
+    case "deploying":
+      return "Deploying";
+    case "running":
+      return "Running";
+    case "failed":
+      return "Failed";
+    case "stopped":
+      return "Stopped";
+    case "removing":
+      return "Removing";
+  }
+}
+
+function formatDeploymentMode(mode: DashboardDeployment["composeMode"]) {
+  switch (mode) {
+    case "compose":
+      return "Compose";
+    case "dockerfile":
+      return "Dockerfile";
+    default:
+      return "Auto";
+  }
+}
+
+function formatDeploymentDomain(
+  deployment: Pick<DashboardDeployment, "subdomain">,
+  baseDomain?: string,
+) {
+  if (!baseDomain) {
+    return deployment.subdomain;
+  }
+
+  return `${deployment.subdomain}.${baseDomain}`;
+}
+
+function getRepositoryPathName(repositoryUrl: string) {
+  return repositoryUrl
+    .replace(/^https?:\/\/github\.com\//i, "")
+    .replace(/^git@github\.com:/i, "")
+    .replace(/\.git$/i, "");
+}
+
+function getDeploymentTone(
+  status: DashboardDeployment["status"],
+): MetricTone {
+  switch (status) {
+    case "running":
+      return "emerald";
+    case "failed":
+    case "deploying":
+      return "amber";
+    default:
+      return "slate";
+  }
+}
+
+function getDeploymentSeed(
+  status: DashboardDeployment["status"],
+  fallback: number,
+) {
+  switch (status) {
+    case "running":
+      return fallback + 18;
+    case "deploying":
+      return fallback + 30;
+    case "failed":
+      return fallback + 42;
+    case "stopped":
+      return fallback + 8;
+    case "removing":
+      return fallback + 14;
+  }
+}
+
+function buildDeploymentOverviewMetrics(
+  deployment: DashboardDeployment,
+): MetricCard[] {
+  const statusTone = getDeploymentTone(deployment.status);
+
+  return [
+    {
+      title: "Deployment state",
+      value: formatDeploymentStatus(deployment.status),
+      caption: "Latest persisted lifecycle state for this app.",
+      delta: formatRelativeTime(deployment.updatedAt),
+      points: createFlatSeries(getDeploymentSeed(deployment.status, 34)),
+      tone: statusTone,
+    },
+    {
+      title: "Runtime port",
+      value: String(deployment.port),
+      caption: "Public traffic is forwarded to this container port.",
+      delta: formatDeploymentMode(deployment.composeMode),
+      points: createFlatSeries(getDeploymentSeed(deployment.status, 22)),
+      tone: "amber",
+    },
+    {
+      title: "Source branch",
+      value: deployment.branch ?? "Default",
+      caption: `${deployment.repositoryName} remains the active Git source.`,
+      delta: deployment.serviceName ?? "Auto service",
+      points: createFlatSeries(26),
+      tone: "slate",
+    },
+    {
+      title: "Secret source",
+      value: deployment.tokenStored ? "Stored token" : "Server token",
+      caption: "Git credentials follow the existing encrypted deployment path.",
+      delta: deployment.tokenStored ? "Encrypted" : "Shared config",
+      points: createFlatSeries(deployment.tokenStored ? 48 : 24),
+      tone: deployment.tokenStored ? "emerald" : "slate",
+    },
+  ];
+}
+
+function buildDeploymentSignals(
+  deployment: DashboardDeployment,
+  baseDomain?: string,
+): ContainerSignal[] {
+  return [
+    {
+      label: "Public route",
+      value: formatDeploymentDomain(deployment, baseDomain),
+      delta: `:${deployment.port}`,
+      caption: "The current hostname mapped through the shared edge proxy.",
+      tone: "emerald",
+      points: createFlatSeries(58),
+    },
+    {
+      label: "Rollout cadence",
+      value: deployment.deployedAt
+        ? formatRelativeTime(deployment.deployedAt)
+        : "Not live yet",
+      delta: formatRelativeTime(deployment.updatedAt),
+      caption: "Deployment freshness based on the latest persisted rollout and update timestamps.",
+      tone: getDeploymentTone(deployment.status),
+      points: createFlatSeries(getDeploymentSeed(deployment.status, 28)),
+    },
+    {
+      label: "Source and mode",
+      value: formatDeploymentMode(deployment.composeMode),
+      delta: deployment.branch ?? "Default",
+      caption: "Repository branch selection and packaging mode for the active app.",
+      tone: "slate",
+      points: createFlatSeries(32),
+    },
+  ];
+}
+
+function buildDeploymentTimeline(
+  deployment: DashboardDeployment,
+  baseDomain?: string,
+) {
+  return [
+    {
+      label: "Latest summary",
+      detail:
+        deployment.lastOperationSummary ??
+        "No operation summary has been recorded for this deployment yet.",
+    },
+    {
+      label: "Public address",
+      detail: `https://${formatDeploymentDomain(deployment, baseDomain)}`,
+    },
+    {
+      label: "Project wiring",
+      detail: [
+        deployment.projectName,
+        deployment.serviceName ?? "auto-detect service",
+      ].join(" / "),
+    },
+  ];
+}
+
+function parseDeploymentEnvVariables(envVariables: string | null) {
+  if (!envVariables) {
+    return [];
+  }
+
+  return envVariables
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#"))
+    .map((line) => {
+      const separatorIndex = line.indexOf("=");
+
+      if (separatorIndex === -1) {
+        return {
+          key: line,
+          value: "",
+        };
+      }
+
+      return {
+        key: line.slice(0, separatorIndex),
+        value: line.slice(separatorIndex + 1),
+      };
+    });
+}
+
+function createDraftFromRepository(repository: GitHubRepository): DraftAppState {
+  const slug = toSlug(repository.name);
+
+  return {
+    appName: repository.name,
+    branch: repository.defaultBranch,
+    port: "3000",
+    repositoryUrl: repository.cloneUrl,
+    subdomain: slug || repository.name.toLowerCase(),
+  };
+}
+
 export function ContainerObservabilityPage({
+  baseDomain,
+  initialDeployments,
   initialHistory = [],
+  initialPage = "overview",
   initialSnapshot = null,
 }: ContainerObservabilityPageProps) {
+  const router = useRouter();
+  const deploymentSeed = initialDeployments ?? EMPTY_DEPLOYMENTS;
   const [metricsWidth, setMetricsWidth] = useStoredPanelWidth(
     METRICS_PANEL_STORAGE_KEY,
     DEFAULT_METRICS_WIDTH_PX,
@@ -1309,11 +1668,31 @@ export function ContainerObservabilityPage({
   );
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
+  const [activePage, setActivePage] = useState<WorkspacePage>(initialPage);
   const [selectedContainerId, setSelectedContainerId] = useState(
     initialSnapshot?.containers.all[0]?.name ?? CONTAINERS[0]?.name ?? "",
   );
+  const [deployments, setDeployments] =
+    useState<DashboardDeployment[]>(deploymentSeed);
+  const [selectedAppId, setSelectedAppId] = useState(
+    deploymentSeed[0]?.id ?? "",
+  );
   const [searchQuery, setSearchQuery] = useState("");
-  const [logView, setLogView] = useState<LogView>("live");
+  const [appSearchQuery, setAppSearchQuery] = useState("");
+  const [overviewLogView, setOverviewLogView] =
+    useState<OverviewLogView>("live");
+  const [appLogTab, setAppLogTab] = useState<LogTab>("build");
+  const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(true);
+  const [isCreateAppPending, setIsCreateAppPending] = useState(false);
+  const [updatingAppId, setUpdatingAppId] = useState<string | null>(null);
+  const [draftApp, setDraftApp] = useState<DraftAppState>(createEmptyDraftAppState);
+  const [repositoryState, setRepositoryState] = useState<RepositoryState>({
+    error: null,
+    hasLoaded: false,
+    isLoading: false,
+    repositories: [],
+    tokenConfigured: false,
+  });
   const [sidebarSnapshot, setSidebarSnapshot] =
     useState<MetricsSnapshot | null>(initialSnapshot);
   const [sidebarHistory, setSidebarHistory] =
@@ -1373,6 +1752,65 @@ export function ContainerObservabilityPage({
       container.searchText.includes(normalizedQuery),
     );
   }, [searchQuery, workspaceContainers]);
+  const repositoryOptions = useMemo(
+    () => buildRepositoryOptions(repositoryState.repositories),
+    [repositoryState.repositories],
+  );
+  const filteredDeployments = useMemo(() => {
+    const normalizedQuery = appSearchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return deployments;
+    }
+
+    return deployments.filter((deployment) =>
+      [
+        deployment.appName,
+        deployment.repositoryName,
+        deployment.repositoryUrl,
+        deployment.subdomain,
+        deployment.serviceName ?? "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [appSearchQuery, deployments]);
+  const selectedDeployment =
+    filteredDeployments.find((deployment) => deployment.id === selectedAppId) ??
+    deployments.find((deployment) => deployment.id === selectedAppId) ??
+    deployments[0] ??
+    null;
+  const deploymentOverviewMetrics = useMemo(
+    () =>
+      selectedDeployment ? buildDeploymentOverviewMetrics(selectedDeployment) : [],
+    [selectedDeployment],
+  );
+  const deploymentSignals = useMemo(
+    () =>
+      selectedDeployment
+        ? buildDeploymentSignals(selectedDeployment, baseDomain)
+        : [],
+    [baseDomain, selectedDeployment],
+  );
+  const deploymentTimeline = useMemo(
+    () =>
+      selectedDeployment
+        ? buildDeploymentTimeline(selectedDeployment, baseDomain)
+        : [],
+    [baseDomain, selectedDeployment],
+  );
+  const deploymentEnvironment = useMemo(
+    () =>
+      selectedDeployment
+        ? parseDeploymentEnvVariables(selectedDeployment.envVariables)
+        : [],
+    [selectedDeployment],
+  );
+  const selectedRepositoryValue =
+    repositoryState.repositories.find(
+      (repository) => repository.cloneUrl === draftApp.repositoryUrl,
+    )?.id ?? null;
 
   const activeContainerId =
     filteredContainers.some(
@@ -1391,6 +1829,21 @@ export function ContainerObservabilityPage({
   const selectedContainer = selectedEntry?.display ?? CONTAINERS[0];
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedPreviewContainer = selectedEntry?.preview ?? null;
+
+  useEffect(() => {
+    setDeployments(deploymentSeed);
+  }, [deploymentSeed]);
+
+  useEffect(() => {
+    if (!deployments.length) {
+      setSelectedAppId("");
+      return;
+    }
+
+    if (!deployments.some((deployment) => deployment.id === selectedAppId)) {
+      setSelectedAppId(deployments[0]?.id ?? "");
+    }
+  }, [deployments, selectedAppId]);
 
   useEffect(() => {
     let active = true;
@@ -1549,7 +2002,147 @@ export function ContainerObservabilityPage({
     setIsLogsCollapsed(false);
   }
 
-  const previewLogs = selectedContainer.logs[logView];
+  const loadRepositories = useCallback(async () => {
+    setRepositoryState((current) => ({
+      ...current,
+      error: null,
+      isLoading: true,
+    }));
+
+    try {
+      const response = await fetch("/api/github/repos", {
+        cache: "no-store",
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        repositories?: GitHubRepository[];
+        tokenConfigured?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to load repositories from GitHub.");
+      }
+
+      setRepositoryState({
+        error: null,
+        hasLoaded: true,
+        isLoading: false,
+        repositories: payload.repositories ?? [],
+        tokenConfigured: Boolean(payload.tokenConfigured),
+      });
+    } catch (error) {
+      setRepositoryState((current) => ({
+        ...current,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to load repositories from GitHub.",
+        hasLoaded: true,
+        isLoading: false,
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activePage === "apps" && !repositoryState.hasLoaded && !repositoryState.isLoading) {
+      void loadRepositories();
+    }
+  }, [
+    activePage,
+    loadRepositories,
+    repositoryState.hasLoaded,
+    repositoryState.isLoading,
+  ]);
+
+  function handleDeploymentActionResult(result: DeploymentActionResult) {
+    if (result.status === "success") {
+      toast.success(result.message);
+      router.refresh();
+      return;
+    }
+
+    toast.error(result.message);
+  }
+
+  async function handleCreateApp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const repositoryUrl = draftApp.repositoryUrl.trim();
+    const appName = draftApp.appName.trim();
+    const subdomain = draftApp.subdomain.trim();
+    const port = draftApp.port.trim();
+
+    if (!repositoryUrl || !appName || !subdomain || !port) {
+      toast.error("Select a repository and complete the app name, subdomain, and port.");
+      return;
+    }
+
+    setIsCreateAppPending(true);
+
+    try {
+      const formData = new FormData();
+      formData.set("repositoryUrl", repositoryUrl);
+      formData.set("appName", appName);
+      formData.set("subdomain", subdomain);
+      formData.set("port", port);
+
+      if (draftApp.branch.trim()) {
+        formData.set("branch", draftApp.branch.trim());
+      }
+
+      const response = await fetch("/api/deployments", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as {
+        deploymentId?: string;
+        domain?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.deploymentId) {
+        throw new Error(payload.error ?? "Unable to create deployment.");
+      }
+
+      toast.success(
+        payload.domain
+          ? `Deployment queued for https://${payload.domain}`
+          : "Deployment created.",
+      );
+      setSelectedAppId(payload.deploymentId);
+      setDraftApp(createEmptyDraftAppState());
+      setIsCreateAppExpanded(false);
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to create deployment.",
+      );
+    } finally {
+      setIsCreateAppPending(false);
+    }
+  }
+
+  async function handleUpdateApp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedDeployment) {
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    setUpdatingAppId(selectedDeployment.id);
+
+    try {
+      const result = await updateDeploymentAction(formData);
+      handleDeploymentActionResult(result);
+    } finally {
+      setUpdatingAppId(null);
+    }
+  }
+
+  const activePageMeta =
+    WORKSPACE_PAGES.find((page) => page.id === activePage) ?? WORKSPACE_PAGES[0]!;
+  const previewLogs = selectedContainer.logs[overviewLogView];
 
   return (
     <section
@@ -1565,22 +2158,26 @@ export function ContainerObservabilityPage({
             </span>
           </div>
           <Separator orientation="vertical" className="hidden h-5 md:block" />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold tracking-tight text-foreground">
-                Container operations workspace
-              </div>
-              <div className="truncate text-xs text-muted-foreground">
-                Live Influx-backed host metrics and live Docker container state with preview scaffolding for the deeper runtime panels.
-              </div>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+              {activePage === "overview"
+                ? "Container operations workspace"
+                : "GitHub apps workspace"}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {activePage === "overview"
+                ? "Live Influx-backed host metrics and Docker runtime state with deeper panels kept intentionally quiet."
+                : "Create, review, and edit live deployments with the same compact shell and restrained visual language."}
             </div>
           </div>
+        </div>
 
         <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex">
           <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
-            Live shell preview
+            {activePage === "overview" ? "Live runtime" : "Live deployments"}
           </Badge>
           <Badge className="border-amber-200/80 bg-amber-50/90 text-amber-700">
-            Minimal accents
+            {activePageMeta.label}
           </Badge>
           <Badge className="border-border/60 bg-background/80 text-foreground">
             Smooth panel transitions
@@ -1597,13 +2194,46 @@ export function ContainerObservabilityPage({
           >
             Reset layout
           </Button>
-          <Button asChild variant="default" size="sm">
-            <Link href="/">Back to dashboard</Link>
-          </Button>
         </div>
       </header>
 
       <div className="flex min-w-0 flex-1 overflow-hidden">
+        <aside className="flex w-14 shrink-0 flex-col items-center gap-3 border-r border-border/70 bg-linear-to-b from-background via-muted/22 to-background px-2 py-3 shadow-[16px_0_48px_-44px_rgba(15,23,42,0.26)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border/70 bg-background/88 shadow-[0_16px_36px_-30px_rgba(15,23,42,0.32)]">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          </div>
+
+          <div className="flex w-full flex-col gap-2 pt-1">
+            {WORKSPACE_PAGES.map((page) => {
+              const isActive = page.id === activePage;
+
+              return (
+                <button
+                  key={page.id}
+                  type="button"
+                  aria-label={page.label}
+                  title={page.label}
+                  className={cn(
+                    "group flex w-full items-center justify-center rounded-[1.15rem] border p-2.5 transition-all duration-200",
+                    isActive
+                      ? "border-emerald-200/80 bg-linear-to-b from-emerald-50/90 via-background to-background text-emerald-700 shadow-[0_18px_42px_-30px_rgba(16,185,129,0.28)]"
+                      : "border-border/60 bg-background/78 text-muted-foreground hover:border-border hover:bg-background/90 hover:text-foreground",
+                  )}
+                  onClick={() => setActivePage(page.id)}
+                >
+                  <Icon
+                    name={page.icon}
+                    className={cn(
+                      "h-4 w-4 transition-transform duration-200 group-hover:-translate-y-px",
+                      isActive ? "text-emerald-700" : "text-current",
+                    )}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
         {isMetricsCollapsed ? (
           <aside className="flex w-11 shrink-0 items-start border-r border-border/70 bg-linear-to-b from-background via-muted/26 to-background px-1.5 py-2 shadow-[20px_0_54px_-44px_rgba(15,23,42,0.3)]">
             <Button
@@ -1746,131 +2376,379 @@ export function ContainerObservabilityPage({
           className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
           style={{ width: listWidth }}
         >
-            <div className="space-y-3 border-b border-border/60 px-3 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <SectionLabel icon="cloud" text="Containers" />
-                  <div className="text-xs text-muted-foreground">
-                    Live Docker runtime state for the current host.
+          {activePage === "overview" ? (
+            <>
+              <div className="space-y-3 border-b border-border/60 px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <SectionLabel icon="cloud" text="Containers" />
+                    <div className="text-xs text-muted-foreground">
+                      Live Docker runtime state for the current host.
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {sidebarSnapshot ? (
+                      <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
+                        {sidebarSnapshot.containers.running} running
+                      </Badge>
+                    ) : null}
+                    <Badge className="border-border/60 bg-background/80 text-foreground">
+                      {filteredContainers.length} visible
+                    </Badge>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {sidebarSnapshot ? (
-                    <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
-                      {sidebarSnapshot.containers.running} running
-                    </Badge>
-                  ) : null}
-                  <Badge className="border-border/60 bg-background/80 text-foreground">
-                    {filteredContainers.length} visible
-                  </Badge>
+                <div className="relative">
+                  <Icon
+                    name="search"
+                    className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    aria-label="Search containers"
+                    className="h-10 rounded-2xl bg-background/80 pl-9 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.22)]"
+                    placeholder="Search containers, stacks, images..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                  />
                 </div>
               </div>
-            <div className="relative">
-              <Icon
-                name="search"
-                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                aria-label="Search containers"
-                className="h-10 rounded-2xl bg-background/80 pl-9 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.22)]"
-                placeholder="Search containers, stacks, images..."
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-          </div>
 
-          <ScrollArea className="h-full">
-              <div className="space-y-3 p-3">
-                {filteredContainers.length ? (
-                  filteredContainers.map((container) => (
-                    <button
-                      key={container.display.id}
-                      type="button"
-                      className={cn(
-                        "w-full rounded-[1.35rem] border px-4 py-4 text-left transition-all duration-200",
-                        "shadow-[0_20px_52px_-42px_rgba(15,23,42,0.24)] hover:-translate-y-px hover:bg-background/95",
-                        activeContainerId === container.display.name
-                          ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
-                          : "border-border/70 bg-background/85",
-                      )}
-                      onClick={() => setSelectedContainerId(container.display.name)}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                "h-2 w-2 rounded-full",
-                                container.dotClassName,
-                              )}
-                            />
-                            <div className="truncate text-sm font-semibold tracking-tight text-foreground">
-                              {container.display.name}
+              <ScrollArea className="h-full">
+                <div className="space-y-3 p-3">
+                  {filteredContainers.length ? (
+                    filteredContainers.map((container) => (
+                      <button
+                        key={container.display.id}
+                        type="button"
+                        className={cn(
+                          "w-full rounded-[1.35rem] border px-4 py-4 text-left transition-all duration-200",
+                          "shadow-[0_20px_52px_-42px_rgba(15,23,42,0.24)] hover:-translate-y-px hover:bg-background/95",
+                          activeContainerId === container.display.name
+                            ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
+                            : "border-border/70 bg-background/85",
+                        )}
+                        onClick={() => setSelectedContainerId(container.display.name)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  "h-2 w-2 rounded-full",
+                                  container.dotClassName,
+                                )}
+                              />
+                              <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+                                {container.display.name}
+                              </div>
+                            </div>
+                            <div className="mt-1 truncate text-xs text-muted-foreground">
+                              {container.subtitle}
                             </div>
                           </div>
-                          <div className="mt-1 truncate text-xs text-muted-foreground">
-                            {container.subtitle}
-                          </div>
+                          <Badge variant={container.badgeVariant}>
+                            {container.badgeLabel}
+                          </Badge>
                         </div>
-                        <Badge variant={container.badgeVariant}>
-                          {container.badgeLabel}
-                        </Badge>
-                      </div>
 
-                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                        <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                          <div className="text-muted-foreground">CPU</div>
-                          <div className="mt-1 font-semibold text-foreground">
-                            {container.display.cpu}
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                          <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
+                            <div className="text-muted-foreground">CPU</div>
+                            <div className="mt-1 font-semibold text-foreground">
+                              {container.display.cpu}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
+                            <div className="text-muted-foreground">Memory</div>
+                            <div className="mt-1 font-semibold text-foreground">
+                              {container.display.memory}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
+                            <div className="text-muted-foreground">
+                              {container.runtime ? "Service" : "Port"}
+                            </div>
+                            <div className="mt-1 truncate font-semibold text-foreground">
+                              {container.tertiaryLabel}
+                            </div>
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                          <div className="text-muted-foreground">Memory</div>
-                          <div className="mt-1 font-semibold text-foreground">
-                            {container.display.memory}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                          <div className="text-muted-foreground">
-                            {container.runtime ? "Service" : "Port"}
-                          </div>
-                          <div className="mt-1 truncate font-semibold text-foreground">
-                            {container.tertiaryLabel}
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                        <span className="truncate">{container.footerLabel}</span>
-                        {container.runtime ? (
-                          <span className="font-semibold text-foreground/80">
-                            {formatRuntimeHealthLabel(container.runtime.health)}
-                          </span>
-                        ) : (
-                          <span className="truncate">{container.display.port}</span>
-                        )}
+                        <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                          <span className="truncate">{container.footerLabel}</span>
+                          {container.runtime ? (
+                            <span className="font-semibold text-foreground/80">
+                              {formatRuntimeHealthLabel(container.runtime.health)}
+                            </span>
+                          ) : (
+                            <span className="truncate">{container.display.port}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="rounded-[1.35rem] border border-dashed border-border/80 bg-background/70 px-4 py-10 text-center shadow-[0_18px_46px_-40px_rgba(15,23,42,0.2)]">
+                      <div className="text-sm font-semibold tracking-tight text-foreground">
+                        No matching containers
                       </div>
-                    </button>
-                  ))
-              ) : (
-                <div className="rounded-[1.35rem] border border-dashed border-border/80 bg-background/70 px-4 py-10 text-center shadow-[0_18px_46px_-40px_rgba(15,23,42,0.2)]">
-                  <div className="text-sm font-semibold tracking-tight text-foreground">
-                    No matching containers
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Try a broader search term to repopulate the preview list.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </>
+          ) : (
+            <>
+              <div className="space-y-3 border-b border-border/60 px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <SectionLabel icon="github" text="GitHub apps" />
+                    <div className="text-xs text-muted-foreground">
+                      Compact create flow and live deployment inventory.
+                    </div>
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Try a broader search term to repopulate the preview list.
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
+                      {deployments.filter((deployment) => deployment.status === "running").length} live
+                    </Badge>
+                    <Badge className="border-border/60 bg-background/80 text-foreground">
+                      {deployments.length} apps
+                    </Badge>
                   </div>
                 </div>
-              )}
-            </div>
-          </ScrollArea>
+                <div className="relative">
+                  <Icon
+                    name="search"
+                    className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    aria-label="Search apps"
+                    className="h-10 rounded-2xl bg-background/80 pl-9 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.22)]"
+                    placeholder="Search apps, repos, domains..."
+                    value={appSearchQuery}
+                    onChange={(event) => setAppSearchQuery(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <ScrollArea className="h-full">
+                <div className="space-y-3 p-3">
+                  <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-background/88 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.28)]">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                      onClick={() => {
+                        setIsCreateAppExpanded((current) => !current);
+                        if (!repositoryState.hasLoaded && !repositoryState.isLoading) {
+                          void loadRepositories();
+                        }
+                      }}
+                    >
+                      <div>
+                        <div className="text-sm font-semibold tracking-tight text-foreground">
+                          New GitHub app
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Pick a repo, branch, port, and subdomain.
+                        </div>
+                      </div>
+                      <Icon
+                        name={isCreateAppExpanded ? "chevron-down" : "chevron-right"}
+                        className="h-4 w-4 text-muted-foreground"
+                      />
+                    </button>
+
+                    {isCreateAppExpanded ? (
+                      <form className="space-y-3 border-t border-border/60 px-4 py-4" onSubmit={handleCreateApp}>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Repository
+                          </Label>
+                          <Combobox
+                            disabled={repositoryState.isLoading}
+                            emptyText="No repositories found"
+                            onValueChangeAction={(value) => {
+                              const repository = repositoryState.repositories.find(
+                                (item) => String(item.id) === value,
+                              );
+
+                              if (!repository) {
+                                return;
+                              }
+
+                              setDraftApp(createDraftFromRepository(repository));
+                            }}
+                            options={repositoryOptions}
+                            placeholder={
+                              repositoryState.isLoading
+                                ? "Loading repositories..."
+                                : "Select a repository"
+                            }
+                            searchPlaceholder="Search repositories"
+                            value={selectedRepositoryValue ? String(selectedRepositoryValue) : ""}
+                          />
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              App name
+                            </Label>
+                            <Input
+                              className="h-9 rounded-xl bg-background/80"
+                              value={draftApp.appName}
+                              onChange={(event) =>
+                                setDraftApp((current) => ({
+                                  ...current,
+                                  appName: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Branch
+                            </Label>
+                            <Input
+                              className="h-9 rounded-xl bg-background/80"
+                              value={draftApp.branch}
+                              onChange={(event) =>
+                                setDraftApp((current) => ({
+                                  ...current,
+                                  branch: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Subdomain
+                            </Label>
+                            <InputGroup>
+                              <InputGroupInput
+                                value={draftApp.subdomain}
+                                onChange={(event) =>
+                                  setDraftApp((current) => ({
+                                    ...current,
+                                    subdomain: event.target.value,
+                                  }))
+                                }
+                              />
+                              {baseDomain ? (
+                                <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                              ) : null}
+                            </InputGroup>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Port
+                            </Label>
+                            <Input
+                              className="h-9 rounded-xl bg-background/80"
+                              inputMode="numeric"
+                              value={draftApp.port}
+                              onChange={(event) =>
+                                setDraftApp((current) => ({
+                                  ...current,
+                                  port: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {repositoryState.error ? (
+                          <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
+                            {repositoryState.error}
+                          </div>
+                        ) : null}
+
+                        {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (
+                          <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                            Configure a GitHub token to browse repositories from the sidebar.
+                          </div>
+                        ) : null}
+
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="h-8 w-full"
+                          disabled={isCreateAppPending}
+                        >
+                          {isCreateAppPending ? "Creating..." : "Create app"}
+                        </Button>
+                      </form>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    {filteredDeployments.length ? (
+                      filteredDeployments.map((deployment) => {
+                        const isActive = deployment.id === selectedAppId;
+
+                        return (
+                          <button
+                            key={deployment.id}
+                            type="button"
+                            className={cn(
+                              "w-full rounded-[1.1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                              isActive
+                                ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/90 via-background to-background shadow-[0_18px_42px_-34px_rgba(16,185,129,0.24)]"
+                                : "border-border/70 bg-background/85 hover:bg-background/95",
+                            )}
+                            onClick={() => setSelectedAppId(deployment.id)}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      "h-2 w-2 rounded-full",
+                                      getDeploymentStatusDotClassName(deployment.status),
+                                    )}
+                                  />
+                                  <span className="truncate text-sm font-semibold tracking-tight text-foreground">
+                                    {deployment.appName}
+                                  </span>
+                                </div>
+                                <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                                  {deployment.repositoryName}
+                                </div>
+                              </div>
+                              <Badge variant={getDeploymentStatusBadgeVariant(deployment.status)}>
+                                {formatDeploymentStatus(deployment.status)}
+                              </Badge>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                              <span className="truncate">
+                                {formatDeploymentDomain(deployment, baseDomain)}
+                              </span>
+                              <span>{formatRelativeTime(deployment.updatedAt)}</span>
+                            </div>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-6 text-sm text-muted-foreground">
+                        No apps match the current filter.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </ScrollArea>
+            </>
+          )}
         </aside>
 
         <ResizeHandle onMouseDown={(event) => handleResizeStart("list", event)} />
 
         <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
-          <div className="space-y-4">
+          {activePage === "overview" ? (
+            <div className="space-y-4">
             <section className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-r from-background via-muted/20 to-background shadow-[0_32px_96px_-64px_rgba(15,23,42,0.42)]">
               <div className="flex flex-col gap-6 px-5 py-5 xl:flex-row xl:items-end xl:justify-between">
                 <div className="max-w-3xl space-y-3">
@@ -2221,7 +3099,468 @@ export function ContainerObservabilityPage({
                 </CardContent>
               </Card>
             </div>
-          </div>
+            </div>
+          ) : selectedDeployment ? (
+            <div className="space-y-4">
+              <section className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-r from-background via-muted/20 to-background shadow-[0_32px_96px_-64px_rgba(15,23,42,0.42)]">
+                <div className="flex flex-col gap-6 px-5 py-5 xl:flex-row xl:items-end xl:justify-between">
+                  <div className="max-w-3xl space-y-3">
+                    <SectionLabel icon="github" text="Focused app" />
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                          {selectedDeployment.appName}
+                        </h1>
+                        <Badge
+                          variant={getDeploymentStatusBadgeVariant(
+                            selectedDeployment.status,
+                          )}
+                        >
+                          {formatDeploymentStatus(selectedDeployment.status)}
+                        </Badge>
+                      </div>
+                      <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                        {selectedDeployment.lastOperationSummary ??
+                          `Live deployment sourced from ${getRepositoryPathName(selectedDeployment.repositoryUrl)}.`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
+                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        Domain
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {formatDeploymentDomain(selectedDeployment, baseDomain)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
+                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        Repository
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {selectedDeployment.repositoryName}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
+                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        Deploy mode
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {formatDeploymentMode(selectedDeployment.composeMode)}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
+                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        Updated
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-foreground">
+                        {formatRelativeTime(selectedDeployment.updatedAt)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div className="rounded-[1.35rem] border border-emerald-200/70 bg-linear-to-r from-emerald-50/80 via-background to-background px-4 py-3 text-sm text-muted-foreground shadow-[0_22px_52px_-42px_rgba(16,185,129,0.24)]">
+                Live deployment data, editing controls, and right-side logs all come from the existing control-plane deployment flows. The GitHub apps page now uses the same content rhythm and surfaces as the overview workspace.
+              </div>
+
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
+                {deploymentOverviewMetrics.map((metric) => {
+                  const toneClasses = getToneClasses(metric.tone);
+
+                  return (
+                    <Card
+                      key={metric.title}
+                      className={cn(
+                        "overflow-hidden border-border/70 bg-linear-to-br",
+                        toneClasses.surface,
+                      )}
+                    >
+                      <CardHeader className="border-b border-border/60">
+                        <CardTitle>{metric.title}</CardTitle>
+                        <CardDescription>{metric.caption}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3 pt-3">
+                        <div
+                          className={cn(
+                            "text-sm font-semibold uppercase tracking-[0.16em]",
+                            toneClasses.delta,
+                          )}
+                        >
+                          {metric.delta}
+                        </div>
+                        <div className="text-2xl font-semibold tracking-tight text-foreground">
+                          {metric.value}
+                        </div>
+                        <Sparkline
+                          className="h-14"
+                          points={metric.points}
+                          tone={metric.tone}
+                        />
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Current app signals</CardTitle>
+                    <CardDescription>
+                      The same compact signal cards as overview, but focused on rollout, routing, and source state.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 pt-4 lg:grid-cols-3">
+                    {deploymentSignals.map((signal) => {
+                      const toneClasses = getToneClasses(signal.tone);
+
+                      return (
+                        <div
+                          key={signal.label}
+                          className={cn(
+                            "rounded-[1.35rem] border bg-linear-to-br px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.22)]",
+                            toneClasses.border,
+                            toneClasses.surface,
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold tracking-tight text-foreground">
+                                {signal.label}
+                              </div>
+                              <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                                {signal.caption}
+                              </div>
+                            </div>
+                            <div className={cn("text-xs font-semibold", toneClasses.delta)}>
+                              {signal.delta}
+                            </div>
+                          </div>
+                          <div className="mt-4 text-xl font-semibold tracking-tight text-foreground">
+                            {signal.value}
+                          </div>
+                          <Sparkline
+                            className="mt-4 h-16"
+                            points={signal.points}
+                            tone={signal.tone}
+                          />
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Deployment overview</CardTitle>
+                    <CardDescription>
+                      Source, route, and lifecycle context for the selected GitHub app.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
+                        <div className="text-xs text-muted-foreground">Repository</div>
+                        <div className="mt-1 text-sm font-semibold text-foreground">
+                          {selectedDeployment.repositoryName}
+                        </div>
+                      </div>
+                      <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
+                        <div className="text-xs text-muted-foreground">Project</div>
+                        <div className="mt-1 text-sm font-semibold text-foreground">
+                          {selectedDeployment.projectName}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <div className="font-semibold text-foreground">Public route</div>
+                          <div className="text-xs text-muted-foreground">
+                            :{selectedDeployment.port}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-sm text-foreground">
+                          https://{formatDeploymentDomain(selectedDeployment, baseDomain)}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <div className="font-semibold text-foreground">Service selection</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDeploymentMode(selectedDeployment.composeMode)}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-sm text-foreground">
+                          {selectedDeployment.serviceName ??
+                            "Auto-detect service from repository"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <div className="font-semibold text-foreground">Credential path</div>
+                          <div className="text-xs text-muted-foreground">
+                            {selectedDeployment.tokenStored ? "Encrypted" : "Shared"}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-sm text-foreground">
+                          {selectedDeployment.tokenStored
+                            ? "This app stores a dedicated encrypted Git token."
+                            : "This app currently relies on the server-level GitHub token."}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      {deploymentTimeline.map((event) => (
+                        <div key={event.label} className="flex gap-3 text-sm">
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500/80" />
+                          <div>
+                            <div className="font-semibold tracking-tight text-foreground">
+                              {event.label}
+                            </div>
+                            <div className="text-xs leading-5 text-muted-foreground">
+                              {event.detail}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Settings and environment</CardTitle>
+                    <CardDescription>
+                      Editable deployment fields on the left, runtime payload context on the right.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                    <form
+                      key={selectedDeployment.id}
+                      className="space-y-4"
+                      onSubmit={handleUpdateApp}
+                    >
+                      <input type="hidden" name="deploymentId" value={selectedDeployment.id} />
+
+                      <div className="rounded-[1.2rem] border border-border/60 bg-background/80 p-4">
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Editable fields
+                        </div>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor="app-name"
+                              className="text-xs font-medium text-muted-foreground"
+                            >
+                              App name
+                            </Label>
+                            <Input
+                              id="app-name"
+                              name="appName"
+                              className="h-10 rounded-xl bg-background/80"
+                              defaultValue={selectedDeployment.appName}
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor="app-port"
+                              className="text-xs font-medium text-muted-foreground"
+                            >
+                              Port
+                            </Label>
+                            <Input
+                              id="app-port"
+                              name="port"
+                              inputMode="numeric"
+                              className="h-10 rounded-xl bg-background/80"
+                              defaultValue={String(selectedDeployment.port)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Subdomain
+                            </Label>
+                            <InputGroup>
+                              <InputGroupInput
+                                name="subdomain"
+                                defaultValue={selectedDeployment.subdomain}
+                              />
+                              {baseDomain ? (
+                                <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                              ) : null}
+                            </InputGroup>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Branch
+                            </Label>
+                            <Input
+                              disabled
+                              className="h-10 rounded-xl bg-background/70"
+                              value={selectedDeployment.branch ?? "Default branch"}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Repository
+                            </Label>
+                            <Input
+                              disabled
+                              className="h-10 rounded-xl bg-background/70"
+                              value={getRepositoryPathName(selectedDeployment.repositoryUrl)}
+                              readOnly
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Service name
+                            </Label>
+                            <Input
+                              disabled
+                              className="h-10 rounded-xl bg-background/70"
+                              value={selectedDeployment.serviceName ?? "Auto-detect"}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.2rem] border border-border/60 bg-background/80 p-4">
+                        <Label
+                          htmlFor="app-env"
+                          className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+                        >
+                          Env variables
+                        </Label>
+                        <textarea
+                          id="app-env"
+                          name="envVariables"
+                          className="mt-4 min-h-44 w-full rounded-2xl border border-input/80 bg-background/80 px-3 py-3 text-sm text-foreground shadow-[0_14px_34px_-26px_rgba(15,23,42,0.28)] outline-none transition focus:border-ring focus:ring-1 focus:ring-ring/70"
+                          defaultValue={selectedDeployment.envVariables ?? ""}
+                          placeholder="KEY=value"
+                        />
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Use one KEY=VALUE pair per line. Blank lines are ignored.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="h-9 px-4"
+                          disabled={updatingAppId === selectedDeployment.id}
+                        >
+                          {updatingAppId === selectedDeployment.id
+                            ? "Saving..."
+                            : "Save changes"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-9 px-4"
+                          onClick={() => router.refresh()}
+                        >
+                          Refresh snapshot
+                        </Button>
+                      </div>
+                    </form>
+
+                    <div className="space-y-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Environment
+                      </div>
+                      {deploymentEnvironment.length ? (
+                        deploymentEnvironment.map((item) => (
+                          <div
+                            key={`${item.key}-${item.value}`}
+                            className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
+                          >
+                            <div className="text-xs text-muted-foreground">{item.key}</div>
+                            <div className="mt-1 font-mono text-sm text-foreground">
+                              {item.value || "(empty)"}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
+                          No runtime environment variables are stored for this deployment yet.
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <Badge className="border-border/60 bg-muted/70 text-foreground">
+                          {formatDeploymentMode(selectedDeployment.composeMode)}
+                        </Badge>
+                        <Badge className="border-border/60 bg-muted/70 text-foreground">
+                          {selectedDeployment.tokenStored
+                            ? "Encrypted token"
+                            : "Server token"}
+                        </Badge>
+                        <Badge className="border-border/60 bg-muted/70 text-foreground">
+                          {selectedDeployment.branch ?? "Default branch"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Workspace notes</CardTitle>
+                    <CardDescription>
+                      The apps view now follows the same restrained layout system as the overview workspace.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-4 text-sm leading-6 text-muted-foreground">
+                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      Hero framing, stat cards, signal cards, and paired detail sections now match the main overview page instead of using a flatter edit-only layout.
+                    </div>
+                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      Repository browsing, deployment creation, updates, and logs still use the same live GitHub and deployment actions already wired into the control plane.
+                    </div>
+                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      The palette stays quiet and neutral, with emerald and amber accents only where they communicate status or activity.
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <div className="max-w-lg rounded-[1.75rem] border border-border/70 bg-background/86 px-6 py-8 text-center shadow-[0_28px_72px_-48px_rgba(15,23,42,0.3)]">
+                <SectionLabel icon="github" text="GitHub apps" />
+                <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
+                  Add your first app
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Open the compact create panel in the sidebar to pick a repository and start a live deployment.
+                </p>
+              </div>
+            </div>
+          )}
         </main>
 
         {!isLogsCollapsed ? (
@@ -2246,123 +3585,160 @@ export function ContainerObservabilityPage({
             className="flex shrink-0 flex-col border-l border-border/70 bg-linear-to-b from-background via-muted/16 to-background shadow-[-22px_0_72px_-58px_rgba(15,23,42,0.34)] transition-[width] duration-300"
             style={{ width: logsWidth }}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-3">
-              <div className="space-y-1">
-                <SectionLabel icon="syslog" text="Logs" />
-                <div className="text-xs text-muted-foreground">
-                  Quiet terminal framing for the selected container.
-                </div>
-              </div>
-              <Button
-                type="button"
-                aria-label="Hide logs sidebar"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setIsLogsCollapsed(true)}
-              >
-                <Icon name="chevron-right" className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-
-            <div className="border-b border-border/60 px-3 py-3">
-              <div className="flex flex-wrap gap-2">
-                {LOG_VIEW_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
+            {activePage === "apps" ? (
+              <>
+                <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-3">
+                  <div className="space-y-1">
+                    <SectionLabel icon="syslog" text="Logs" />
+                    <div className="text-xs text-muted-foreground">
+                      Build and container output for the selected deployment.
+                    </div>
+                  </div>
+                  <Button
                     type="button"
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-semibold tracking-tight transition-all duration-200",
-                      logView === option.value
-                        ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-sm"
-                        : "border-border/60 bg-background/80 text-muted-foreground hover:text-foreground",
-                    )}
-                    onClick={() => setLogView(option.value)}
+                    aria-label="Hide logs sidebar"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsLogsCollapsed(true)}
                   >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <ScrollArea className="h-full">
-              <div className="space-y-4 p-3">
-                <div className="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold tracking-tight text-foreground">
-                        {selectedContainer.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        docker logs -f --tail 150 {selectedContainer.name}
-                      </div>
+                    <Icon name="chevron-right" className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="min-h-0 flex-1">
+                  <GitLogPanel
+                    currentView={selectedDeployment ? "detail" : "list"}
+                    deploymentId={selectedDeployment?.id ?? null}
+                    deployments={deployments}
+                    initialActiveLogTab={appLogTab}
+                    onLogTabChangeAction={setAppLogTab}
+                    showHeader={false}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-3">
+                  <div className="space-y-1">
+                    <SectionLabel icon="syslog" text="Logs" />
+                    <div className="text-xs text-muted-foreground">
+                      Quiet terminal framing for the selected container.
                     </div>
-                    <Badge variant={getStatusBadgeVariant(selectedContainer.status)}>
-                      {formatStatusLabel(selectedContainer.status)}
-                    </Badge>
+                  </div>
+                  <Button
+                    type="button"
+                    aria-label="Hide logs sidebar"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsLogsCollapsed(true)}
+                  >
+                    <Icon name="chevron-right" className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+
+                <div className="border-b border-border/60 px-3 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {LOG_VIEW_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-xs font-semibold tracking-tight transition-all duration-200",
+                          overviewLogView === option.value
+                            ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-sm"
+                            : "border-border/60 bg-background/80 text-muted-foreground hover:text-foreground",
+                        )}
+                        onClick={() => setOverviewLogView(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
-                  <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs text-slate-300">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                      Tail preview
-                    </div>
-                    <div className="font-mono text-[11px] text-slate-400">
-                      {previewLogs.length} lines
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 px-4 py-4 font-mono text-[12px] leading-6 text-slate-200">
-                    {previewLogs.length ? (
-                      previewLogs.map((line) => (
-                        <div key={line.id} className="flex gap-3">
-                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500">
-                            <span
-                              className={cn(
-                                "block h-1.5 w-1.5 rounded-full",
-                                getLogDotClassName(line.level),
-                              )}
-                            />
-                          </span>
-                          <span className="shrink-0 text-slate-500">
-                            {line.timestamp}
-                          </span>
-                          <span className="text-slate-100">{line.message}</span>
+                <ScrollArea className="h-full">
+                  <div className="space-y-4 p-3">
+                    <div className="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold tracking-tight text-foreground">
+                            {selectedContainer.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            docker logs -f --tail 150 {selectedContainer.name}
+                          </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-slate-400">
-                        {selectedPreviewContainer
-                          ? "No lines in this preview view for the selected container."
-                          : "Live container logs are not wired into this page yet."}
+                        <Badge variant={getStatusBadgeVariant(selectedContainer.status)}>
+                          {formatStatusLabel(selectedContainer.status)}
+                        </Badge>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                <div className="space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Active context
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                      <div className="text-xs text-muted-foreground">Current view</div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {LOG_VIEW_OPTIONS.find((option) => option.value === logView)?.label}
+                    <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
+                      <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+                        <div className="flex items-center gap-2 text-xs text-slate-300">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                          Tail preview
+                        </div>
+                        <div className="font-mono text-[11px] text-slate-400">
+                          {previewLogs.length} lines
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 px-4 py-4 font-mono text-[12px] leading-6 text-slate-200">
+                        {previewLogs.length ? (
+                          previewLogs.map((line) => (
+                            <div key={line.id} className="flex gap-3">
+                              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-500">
+                                <span
+                                  className={cn(
+                                    "block h-1.5 w-1.5 rounded-full",
+                                    getLogDotClassName(line.level),
+                                  )}
+                                />
+                              </span>
+                              <span className="shrink-0 text-slate-500">
+                                {line.timestamp}
+                              </span>
+                              <span className="text-slate-100">{line.message}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-slate-400">
+                            {selectedPreviewContainer
+                              ? "No lines in this preview view for the selected container."
+                              : "Live container logs are not wired into this page yet."}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                      <div className="text-xs text-muted-foreground">Selected region</div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {selectedContainer.region}
+
+                    <div className="space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Active context
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
+                          <div className="text-xs text-muted-foreground">Current view</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">
+                            {LOG_VIEW_OPTIONS.find(
+                              (option) => option.value === overviewLogView,
+                            )?.label}
+                          </div>
+                        </div>
+                        <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
+                          <div className="text-xs text-muted-foreground">Selected region</div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">
+                            {selectedContainer.region}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </ScrollArea>
+                </ScrollArea>
+              </>
+            )}
           </aside>
         )}
       </div>
