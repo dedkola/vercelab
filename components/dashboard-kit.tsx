@@ -8,6 +8,7 @@ const STROKE_PROPS = {
 
 export type IconName =
   | "bars"
+  | "chevron-down"
   | "chevron-left"
   | "chevron-right"
   | "cloud"
@@ -33,6 +34,8 @@ function getIconContent(name: IconName) {
           strokeWidth={2}
         />
       );
+    case "chevron-down":
+      return <path d="M7 10l5 5 5-5" {...STROKE_PROPS} />;
     case "chevron-left":
       return <path d="M15 7l-5 5 5 5" {...STROKE_PROPS} />;
     case "chevron-right":
