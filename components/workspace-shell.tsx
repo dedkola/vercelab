@@ -1230,6 +1230,15 @@ const WORKSPACE_PAGES: Array<{
   },
 ];
 
+function getWorkspaceViewHref(view: WorkspaceView) {
+  switch (view) {
+    case "dashboard":
+      return "/dashboard";
+    case "git-app-page":
+      return "/git-app-page";
+  }
+}
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -1648,7 +1657,7 @@ export function WorkspaceShell({
   );
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
-  const [activeView, setActiveView] = useState<WorkspaceView>(initialView);
+  const activeView = initialView;
   const [selectedContainerId, setSelectedContainerId] = useState(
     initialSnapshot?.containers.all[0]?.name ??
       PREVIEW_CONTAINERS[0]?.name ??
@@ -1878,10 +1887,6 @@ export function WorkspaceShell({
   }, [deployments, selectedAppId]);
 
   useEffect(() => {
-    setActiveView(initialView);
-  }, [initialView]);
-
-  useEffect(() => {
     let active = true;
 
     const poll = async () => {
@@ -2043,6 +2048,17 @@ export function WorkspaceShell({
     setIsMetricsCollapsed(false);
     setIsLogsCollapsed(false);
   }
+
+  const handleViewChange = useCallback(
+    (view: WorkspaceView) => {
+      if (view === activeView) {
+        return;
+      }
+
+      router.push(getWorkspaceViewHref(view));
+    },
+    [activeView, router],
+  );
 
   const loadRepositories = useCallback(async () => {
     setRepositoryState((current) => ({
@@ -2511,7 +2527,7 @@ export function WorkspaceShell({
         <WorkspaceRail
           activeView={activeView}
           items={WORKSPACE_PAGES}
-          onViewChangeAction={setActiveView}
+          onViewChangeAction={handleViewChange}
         />
 
         {activeView === "dashboard" ? (

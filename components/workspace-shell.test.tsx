@@ -12,6 +12,9 @@ import {
 
 import { WorkspaceShell } from "@/components/workspace-shell";
 
+const pushMock = vi.fn();
+const refreshMock = vi.fn();
+
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -36,7 +39,8 @@ function getRequestUrl(input: Parameters<typeof fetch>[0]) {
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    refresh: vi.fn(),
+    push: pushMock,
+    refresh: refreshMock,
   }),
 }));
 
@@ -44,6 +48,9 @@ describe("WorkspaceShell", () => {
   const fetchSpy = vi.spyOn(global, "fetch");
 
   beforeEach(() => {
+    pushMock.mockReset();
+    refreshMock.mockReset();
+
     fetchSpy.mockImplementation(async (input) => {
       const url = getRequestUrl(input);
 
@@ -242,6 +249,31 @@ describe("WorkspaceShell", () => {
       }),
     ).toBeVisible();
     expect(screen.getByText(/4 visible/i)).toBeVisible();
+  });
+
+  it("pushes the matching route when the user switches workspace views", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<WorkspaceShell />);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /git app page/i,
+      }),
+    );
+
+    expect(pushMock).toHaveBeenCalledWith("/git-app-page");
+
+    pushMock.mockReset();
+
+    rerender(<WorkspaceShell initialView="git-app-page" />);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /dashboard/i,
+      }),
+    );
+
+    expect(pushMock).toHaveBeenCalledWith("/dashboard");
   });
 
   it("renders the git app page with editable deployment details", async () => {
