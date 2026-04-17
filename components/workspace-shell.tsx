@@ -33,11 +33,11 @@ import type { LogTab } from "./git-log-panel";
 import { getContainerTone } from "@/lib/container-tone";
 import type { GitHubRepository } from "@/lib/github";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
-import type { DashboardDeployment } from "@/lib/persistence";
+import type { DeploymentSummary } from "@/lib/persistence";
 import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 
 export type MetricTone = "emerald" | "amber" | "slate";
-export type ContainerStatus = "running" | "degraded" | "idle";
+export type PreviewContainerStatus = "running" | "degraded" | "idle";
 export type DashboardLogView = "live" | "events" | "alerts";
 export type WorkspaceView = "dashboard" | "git-app-page";
 
@@ -73,13 +73,13 @@ export type LogLine = {
   message: string;
 };
 
-export type MockContainer = {
+export type PreviewContainer = {
   id: string;
   name: string;
   stack: string;
   image: string;
   node: string;
-  status: ContainerStatus;
+  status: PreviewContainerStatus;
   summary: string;
   uptime: string;
   port: string;
@@ -99,17 +99,17 @@ export type MockContainer = {
   logs: Record<DashboardLogView, LogLine[]>;
 };
 
-export type ContainerWorkspaceEntry = {
-  display: MockContainer;
+export type ContainerListEntry = {
+  display: PreviewContainer;
   dotClassName: string;
-  preview: MockContainer | null;
+  preview: PreviewContainer | null;
   runtime: ContainerStats | null;
   searchText: string;
 };
 
 type WorkspaceShellProps = {
   baseDomain?: string;
-  initialDeployments?: DashboardDeployment[];
+  initialDeployments?: DeploymentSummary[];
   initialHistory?: MetricsHistoryPoint[];
   initialView?: WorkspaceView;
   initialSnapshot?: MetricsSnapshot | null;
@@ -138,7 +138,7 @@ const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
 const DEFAULT_METRICS_WIDTH_PX = 248;
 const DEFAULT_LIST_WIDTH_PX = 304;
 const DEFAULT_LOGS_WIDTH_PX = 340;
-const EMPTY_DEPLOYMENTS: DashboardDeployment[] = [];
+const EMPTY_DEPLOYMENTS: DeploymentSummary[] = [];
 
 const MIN_METRICS_WIDTH_PX = 216;
 const MAX_METRICS_WIDTH_PX = 420;
@@ -149,7 +149,7 @@ const MAX_LOGS_WIDTH_PX = 520;
 const POLL_INTERVAL_MS = 5000;
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
-const CONTAINERS: MockContainer[] = [
+const PREVIEW_CONTAINERS: PreviewContainer[] = [
   {
     id: "control-plane",
     name: "control-plane",
@@ -905,7 +905,9 @@ function createFlatSeries(value: number) {
   return Array.from({ length: 12 }, () => value);
 }
 
-function mapRuntimeToPreviewStatus(runtime: ContainerStats): ContainerStatus {
+function getRuntimePreviewStatus(
+  runtime: ContainerStats,
+): PreviewContainerStatus {
   const tone = getContainerTone(runtime);
 
   if (tone === "running") {
@@ -995,9 +997,9 @@ function buildRuntimeSignals(runtime: ContainerStats): ContainerSignal[] {
 
 function buildDisplayContainer(
   runtime: ContainerStats,
-  preview: MockContainer | null,
+  preview: PreviewContainer | null,
   snapshot: MetricsSnapshot | null,
-): MockContainer {
+): PreviewContainer {
   const base =
     preview ??
     ({
@@ -1008,7 +1010,7 @@ function buildDisplayContainer(
         ? `${runtime.serviceName} runtime`
         : "Container image details unavailable",
       node: snapshot?.hostIp ?? "Current host",
-      status: mapRuntimeToPreviewStatus(runtime),
+      status: getRuntimePreviewStatus(runtime),
       summary: buildRuntimeSummary(runtime),
       uptime: snapshot
         ? `Updated ${formatClock(snapshot.timestamp)}`
@@ -1032,7 +1034,7 @@ function buildDisplayContainer(
         events: [],
         alerts: [],
       },
-    } satisfies MockContainer);
+    } satisfies PreviewContainer);
 
   return {
     ...base,
@@ -1040,7 +1042,7 @@ function buildDisplayContainer(
     name: runtime.name,
     stack: runtime.projectName ?? base.stack,
     node: snapshot?.hostIp ?? base.node,
-    status: mapRuntimeToPreviewStatus(runtime),
+    status: getRuntimePreviewStatus(runtime),
     summary: preview?.summary ?? base.summary,
     uptime: snapshot
       ? `Updated ${formatClock(snapshot.timestamp)}`
@@ -1065,14 +1067,14 @@ function buildDisplayContainer(
   };
 }
 
-function buildContainerWorkspaceEntries(
+function buildContainerListEntries(
   snapshot: MetricsSnapshot | null,
-): ContainerWorkspaceEntry[] {
+): ContainerListEntry[] {
   const previewByName = new Map(
-    CONTAINERS.map((container) => [container.name, container]),
+    PREVIEW_CONTAINERS.map((container) => [container.name, container]),
   );
   const previewOrder = new Map(
-    CONTAINERS.map((container, index) => [container.name, index]),
+    PREVIEW_CONTAINERS.map((container, index) => [container.name, index]),
   );
   const runtimeContainers = [...(snapshot?.containers.all ?? [])].sort(
     (left, right) => {
@@ -1100,7 +1102,7 @@ function buildContainerWorkspaceEntries(
   );
 
   if (!runtimeContainers.length) {
-    return CONTAINERS.map((preview) => ({
+    return PREVIEW_CONTAINERS.map((preview) => ({
       display: preview,
       dotClassName: getStatusDotClassName(preview.status),
       preview,
@@ -1167,7 +1169,7 @@ function useStoredPanelWidth(
   return [width, setWidth] as const;
 }
 
-function formatStatusLabel(status: ContainerStatus) {
+function formatStatusLabel(status: PreviewContainerStatus) {
   switch (status) {
     case "running":
       return "Running";
@@ -1179,7 +1181,7 @@ function formatStatusLabel(status: ContainerStatus) {
 }
 
 function getStatusBadgeVariant(
-  status: ContainerStatus,
+  status: PreviewContainerStatus,
 ): "success" | "warning" | "default" {
   switch (status) {
     case "running":
@@ -1191,7 +1193,7 @@ function getStatusBadgeVariant(
   }
 }
 
-function getStatusDotClassName(status: ContainerStatus) {
+function getStatusDotClassName(status: PreviewContainerStatus) {
   switch (status) {
     case "running":
       return "bg-emerald-500";
@@ -1279,7 +1281,7 @@ function formatRelativeTime(value: string) {
 }
 
 function getDeploymentStatusBadgeVariant(
-  status: DashboardDeployment["status"],
+  status: DeploymentSummary["status"],
 ): "success" | "warning" | "default" {
   switch (status) {
     case "running":
@@ -1292,9 +1294,7 @@ function getDeploymentStatusBadgeVariant(
   }
 }
 
-function getDeploymentStatusDotClassName(
-  status: DashboardDeployment["status"],
-) {
+function getDeploymentStatusDotClassName(status: DeploymentSummary["status"]) {
   switch (status) {
     case "running":
       return "bg-emerald-500";
@@ -1306,7 +1306,7 @@ function getDeploymentStatusDotClassName(
   }
 }
 
-function formatDeploymentStatus(status: DashboardDeployment["status"]) {
+function formatDeploymentStatus(status: DeploymentSummary["status"]) {
   switch (status) {
     case "deploying":
       return "Deploying";
@@ -1321,7 +1321,7 @@ function formatDeploymentStatus(status: DashboardDeployment["status"]) {
   }
 }
 
-function formatDeploymentMode(mode: DashboardDeployment["composeMode"]) {
+function formatDeploymentMode(mode: DeploymentSummary["composeMode"]) {
   switch (mode) {
     case "compose":
       return "Compose";
@@ -1333,7 +1333,7 @@ function formatDeploymentMode(mode: DashboardDeployment["composeMode"]) {
 }
 
 function formatDeploymentDomain(
-  deployment: Pick<DashboardDeployment, "subdomain">,
+  deployment: Pick<DeploymentSummary, "subdomain">,
   baseDomain?: string,
 ) {
   if (!baseDomain) {
@@ -1344,7 +1344,7 @@ function formatDeploymentDomain(
 }
 
 function formatDeploymentHref(
-  deployment: Pick<DashboardDeployment, "subdomain">,
+  deployment: Pick<DeploymentSummary, "subdomain">,
   baseDomain?: string,
 ) {
   return `https://${formatDeploymentDomain(deployment, baseDomain)}`;
@@ -1391,7 +1391,7 @@ function getRepositoryPathName(repositoryUrl: string) {
     .replace(/\.git$/i, "");
 }
 
-function getDeploymentTone(status: DashboardDeployment["status"]): MetricTone {
+function getDeploymentTone(status: DeploymentSummary["status"]): MetricTone {
   switch (status) {
     case "running":
       return "emerald";
@@ -1404,7 +1404,7 @@ function getDeploymentTone(status: DashboardDeployment["status"]): MetricTone {
 }
 
 function getDeploymentSeed(
-  status: DashboardDeployment["status"],
+  status: DeploymentSummary["status"],
   fallback: number,
 ) {
   switch (status) {
@@ -1422,7 +1422,7 @@ function getDeploymentSeed(
 }
 
 function buildDeploymentOverviewMetrics(
-  deployment: DashboardDeployment,
+  deployment: DeploymentSummary,
 ): MetricCard[] {
   const statusTone = getDeploymentTone(deployment.status);
 
@@ -1463,7 +1463,7 @@ function buildDeploymentOverviewMetrics(
 }
 
 function buildDeploymentSignals(
-  deployment: DashboardDeployment,
+  deployment: DeploymentSummary,
   baseDomain?: string,
 ): ContainerSignal[] {
   return [
@@ -1499,7 +1499,7 @@ function buildDeploymentSignals(
 }
 
 function buildDeploymentTimeline(
-  deployment: DashboardDeployment,
+  deployment: DeploymentSummary,
   baseDomain?: string,
 ) {
   return [
@@ -1594,10 +1594,12 @@ export function WorkspaceShell({
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
   const [activeView, setActiveView] = useState<WorkspaceView>(initialView);
   const [selectedContainerId, setSelectedContainerId] = useState(
-    initialSnapshot?.containers.all[0]?.name ?? CONTAINERS[0]?.name ?? "",
+    initialSnapshot?.containers.all[0]?.name ??
+      PREVIEW_CONTAINERS[0]?.name ??
+      "",
   );
   const [deployments, setDeployments] =
-    useState<DashboardDeployment[]>(deploymentSeed);
+    useState<DeploymentSummary[]>(deploymentSeed);
   const [selectedAppId, setSelectedAppId] = useState(
     deploymentSeed[0]?.id ?? "",
   );
@@ -1638,7 +1640,7 @@ export function WorkspaceShell({
     [sidebarHistory, sidebarSnapshot],
   );
   const workspaceContainers = useMemo(
-    () => buildContainerWorkspaceEntries(sidebarSnapshot),
+    () => buildContainerListEntries(sidebarSnapshot),
     [sidebarSnapshot],
   );
   const metricsStatus = metricsError
@@ -1753,7 +1755,7 @@ export function WorkspaceShell({
     ? selectedContainerId
     : (filteredContainers[0]?.display.name ??
       workspaceContainers[0]?.display.name ??
-      CONTAINERS[0]?.name ??
+      PREVIEW_CONTAINERS[0]?.name ??
       selectedContainerId);
 
   const selectedEntry =
@@ -1764,7 +1766,7 @@ export function WorkspaceShell({
       (container) => container.display.name === activeContainerId,
     ) ??
     workspaceContainers[0];
-  const selectedContainer = selectedEntry?.display ?? CONTAINERS[0];
+  const selectedContainer = selectedEntry?.display ?? PREVIEW_CONTAINERS[0];
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedPreviewContainer = selectedEntry?.preview ?? null;
 

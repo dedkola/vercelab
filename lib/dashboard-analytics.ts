@@ -1,19 +1,19 @@
 import { readDeploymentContainerLogTail } from "@/lib/deployment-engine";
-import { getMetricsHistoryFromInflux, type MetricsHistoryPoint } from "@/lib/influx-metrics";
+import {
+  getMetricsHistoryFromInflux,
+  type MetricsHistoryPoint,
+} from "@/lib/influx-metrics";
 import {
   getDashboardRangeSeconds,
   type DashboardRange,
 } from "@/lib/metrics-range";
 import {
   getLatestDeploymentOperation,
-  listDashboardData,
+  listWorkspaceData,
   type DashboardActivity,
-  type DashboardData,
+  type WorkspaceData,
 } from "@/lib/persistence";
-import {
-  getMetricsSnapshot,
-  type MetricsSnapshot,
-} from "@/lib/system-metrics";
+import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
 
 const ERROR_SIGNAL_RE =
   /\b(error|exception|fatal|panic|fail(?:ed|ure)?|timeout|denied|refused|unhealthy)\b/i;
@@ -38,7 +38,7 @@ export type DashboardAnalyticsPayload = {
   heatmap: DashboardHeatmapPayload;
   history: MetricsHistoryPoint[];
   snapshot: MetricsSnapshot;
-  stats: DashboardData["stats"];
+  stats: WorkspaceData["stats"];
 };
 
 type HeatmapEvent = {
@@ -127,7 +127,9 @@ export function buildHeatmapModel({
   const normalizedTimestamps = timestamps.length
     ? timestamps
     : [new Date().toISOString()];
-  const bucketTimes = normalizedTimestamps.map((value) => new Date(value).getTime());
+  const bucketTimes = normalizedTimestamps.map((value) =>
+    new Date(value).getTime(),
+  );
   const firstBucket = bucketTimes[0] ?? Date.now();
   const lastBucket = bucketTimes[bucketTimes.length - 1] ?? firstBucket;
   const bucketSpan =
@@ -175,7 +177,9 @@ export function buildHeatmapModel({
     }
 
     const label = event.label.trim() || "unknown";
-    const yIndex = rowIndices.has(label) ? rowIndices.get(label)! : rowIndices.size;
+    const yIndex = rowIndices.has(label)
+      ? rowIndices.get(label)!
+      : rowIndices.size;
 
     if (!rowIndices.has(label)) {
       rowIndices.set(label, yIndex);
@@ -187,7 +191,9 @@ export function buildHeatmapModel({
 
   const values = Array.from(cellMap.entries())
     .map(([key, value]) => {
-      const [xIndex, yIndex] = key.split(":").map((entry) => Number.parseInt(entry, 10));
+      const [xIndex, yIndex] = key
+        .split(":")
+        .map((entry) => Number.parseInt(entry, 10));
       return [xIndex, yIndex, value] as [number, number, number];
     })
     .sort((left, right) => left[1] - right[1] || left[0] - right[0]);
@@ -228,7 +234,10 @@ function getRangeQuery(range: DashboardRange) {
 
   return {
     bucketSeconds,
-    limit: Math.max(12, Math.min(maxPoints, Math.ceil(rangeSeconds / bucketSeconds))),
+    limit: Math.max(
+      12,
+      Math.min(maxPoints, Math.ceil(rangeSeconds / bucketSeconds)),
+    ),
   };
 }
 
@@ -257,7 +266,10 @@ async function getBuildHeatmapEvents(deploymentId: string, appName: string) {
   ] satisfies HeatmapEvent[];
 }
 
-async function getContainerHeatmapEvents(deploymentId: string, appName: string) {
+async function getContainerHeatmapEvents(
+  deploymentId: string,
+  appName: string,
+) {
   const output = await readDeploymentContainerLogTail(deploymentId, {
     includeAllServices: true,
     tail: 240,
@@ -271,9 +283,9 @@ export async function getDashboardAnalytics(
   range: DashboardRange,
 ): Promise<DashboardAnalyticsPayload> {
   const { bucketSeconds, limit } = getRangeQuery(range);
-  const [snapshot, dashboardData] = await Promise.all([
+  const [snapshot, workspaceData] = await Promise.all([
     getMetricsSnapshot(),
-    listDashboardData(),
+    listWorkspaceData(),
   ]);
   const history = await getMetricsHistoryFromInflux({
     bucketSeconds,
@@ -282,7 +294,7 @@ export async function getDashboardAnalytics(
   }).catch(() => [] as MetricsHistoryPoint[]);
 
   const heatmapEventGroups = await Promise.all(
-    dashboardData.deployments.map(async (deployment) => {
+    workspaceData.deployments.map(async (deployment) => {
       const [buildEvents, containerEvents] = await Promise.all([
         getBuildHeatmapEvents(deployment.id, deployment.appName),
         getContainerHeatmapEvents(deployment.id, deployment.appName),
@@ -295,7 +307,7 @@ export async function getDashboardAnalytics(
   return {
     heatmap: buildHeatmapModel({
       events: heatmapEventGroups.flat(),
-      markers: dashboardData.recentActivity.map((activity) => ({
+      markers: workspaceData.recentActivity.map((activity) => ({
         appName: activity.appName,
         label: `${activity.appName} ${activity.operationType}`,
         operationType: activity.operationType,
@@ -306,6 +318,6 @@ export async function getDashboardAnalytics(
     }),
     history,
     snapshot,
-    stats: dashboardData.stats,
+    stats: workspaceData.stats,
   };
 }

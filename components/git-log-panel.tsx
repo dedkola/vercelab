@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
-import {
-  CardTitle,
-} from "@/components/ui/card";
+import { CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { DashboardDeployment } from "@/lib/persistence";
+import type { DeploymentSummary } from "@/lib/persistence";
 import { cn } from "@/lib/utils";
 
 export type LogTab = "build" | "container";
@@ -16,7 +14,7 @@ export type LogTab = "build" | "container";
 type GitLogPanelProps = {
   currentView: "list" | "detail" | "create";
   deploymentId: string | null;
-  deployments: DashboardDeployment[];
+  deployments: DeploymentSummary[];
   initialActiveLogTab: LogTab;
   onLogTabChangeAction?: (tab: LogTab) => void;
   showHeader?: boolean;
@@ -45,7 +43,7 @@ const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
 
 const LOG_REFRESH_INTERVAL_MS = 2000;
 
-function formatDeploymentStatus(status: DashboardDeployment["status"]) {
+function formatDeploymentStatus(status: DeploymentSummary["status"]) {
   switch (status) {
     case "deploying":
       return "Deploying";
@@ -63,7 +61,7 @@ function formatDeploymentStatus(status: DashboardDeployment["status"]) {
 }
 
 function formatStatusBadgeVariant(
-  status: DashboardDeployment["status"],
+  status: DeploymentSummary["status"],
 ): "default" | "success" | "destructive" | "warning" | "info" {
   switch (status) {
     case "deploying":

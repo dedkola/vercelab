@@ -5,14 +5,14 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { Icon } from "@/components/dashboard-kit";
 import { GitLogPanel, type LogTab } from "@/components/git-log-panel";
 import { Button } from "@/components/ui/button";
-import type { DashboardDeployment } from "@/lib/persistence";
+import type { DeploymentSummary } from "@/lib/persistence";
 
 import { ResizeHandle, SectionLabel, usePixelWidthRef } from "./workspace-ui";
 
 type GitAppPageRightSidebarProps = {
   activeLogTab: LogTab;
   deploymentId: string | null;
-  deployments: DashboardDeployment[];
+  deployments: DeploymentSummary[];
   isCollapsed: boolean;
   onCollapseAction: () => void;
   onExpandAction: () => void;

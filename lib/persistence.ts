@@ -40,7 +40,7 @@ export type StoredDeployment = {
   deployedAt: string | null;
 };
 
-export type DashboardDeployment = {
+export type DeploymentSummary = {
   id: string;
   repositoryName: string;
   repositoryUrl: string;
@@ -96,8 +96,8 @@ export type DashboardModeDistribution = {
   count: number;
 };
 
-export type DashboardData = {
-  deployments: DashboardDeployment[];
+export type WorkspaceData = {
+  deployments: DeploymentSummary[];
   stats: {
     totalDeployments: number;
     runningDeployments: number;
@@ -134,7 +134,7 @@ type StoredDeploymentRow = {
   deployed_at: string | null;
 };
 
-type DashboardDeploymentRow = {
+type DeploymentSummaryRow = {
   id: string;
   repository_name: string;
   repository_url: string;
@@ -399,8 +399,8 @@ export async function getDatabaseHealth() {
   };
 }
 
-export async function listDashboardData(): Promise<DashboardData> {
-  const rows = await queryRows<DashboardDeploymentRow>(
+export async function listWorkspaceData(): Promise<WorkspaceData> {
+  const rows = await queryRows<DeploymentSummaryRow>(
     `
       SELECT
         d.id,

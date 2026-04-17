@@ -3,7 +3,7 @@
 import type { FormEvent, ReactNode } from "react";
 
 import type { ContainerSignal, MetricCard } from "@/components/workspace-shell";
-import type { DashboardDeployment } from "@/lib/persistence";
+import type { DeploymentSummary } from "@/lib/persistence";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,7 @@ type GitAppPageMainContentProps = {
   baseDomain?: string;
   credentialSourceLabel: string;
   credentialSourceText: string;
-  deployment: DashboardDeployment;
+  deployment: DeploymentSummary;
   deploymentEnvironment: Array<{ key: string; value: string }>;
   deploymentHref: string | null;
   deploymentModeLabel: string;

@@ -3,7 +3,7 @@ import {
   getMetricsHistoryFromInflux,
   type MetricsHistoryPoint,
 } from "@/lib/influx-metrics";
-import { listDashboardData, type DashboardDeployment } from "@/lib/persistence";
+import { listWorkspaceData, type DeploymentSummary } from "@/lib/persistence";
 import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
 
 type WorkspaceView = "dashboard" | "git-app-page";
@@ -14,7 +14,7 @@ type WorkspaceShellSearchParams = Promise<{
 
 export type WorkspaceShellData = {
   baseDomain: string;
-  initialDeployments: DashboardDeployment[];
+  initialDeployments: DeploymentSummary[];
   initialHistory: MetricsHistoryPoint[];
   initialView: WorkspaceView;
   initialSnapshot: MetricsSnapshot | null;
@@ -53,11 +53,11 @@ export async function loadWorkspaceShellData(
         bucketSeconds: 5,
       }).catch(() => [])
     : [];
-  const dashboardData = await listDashboardData();
+  const workspaceData = await listWorkspaceData();
 
   return {
     baseDomain: getAppConfig().baseDomain,
-    initialDeployments: dashboardData.deployments,
+    initialDeployments: workspaceData.deployments,
     initialHistory,
     initialView: getInitialView(params?.page, defaultView),
     initialSnapshot,

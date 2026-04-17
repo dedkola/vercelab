@@ -1,6 +1,6 @@
 "use client";
 
-import type { MockContainer } from "@/components/workspace-shell";
+import type { PreviewContainer } from "@/components/workspace-shell";
 import type { ContainerStats } from "@/lib/system-metrics";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,7 +28,7 @@ type DashboardMainContentProps = {
   runtimeNotice: string | null;
   runtimePillLabel: string;
   sampleContextLabel: string;
-  selectedContainer: MockContainer;
+  selectedContainer: PreviewContainer;
   selectedRuntimeContainer: ContainerStats | null;
   selectedStatusLabel: string;
   selectedStatusVariant: "success" | "warning" | "default";

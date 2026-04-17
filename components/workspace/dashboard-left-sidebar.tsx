@@ -2,7 +2,7 @@
 
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import type { ContainerWorkspaceEntry } from "@/components/workspace-shell";
+import type { ContainerListEntry } from "@/components/workspace-shell";
 import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
 } from "./host-metrics-sidebar";
 import { ResizeHandle, SectionLabel, usePixelWidthRef } from "./workspace-ui";
 
-function getContainerAriaLabel(container: ContainerWorkspaceEntry) {
+function getContainerAriaLabel(container: ContainerListEntry) {
   if (container.runtime?.health && container.runtime.health !== "none") {
     return `${container.display.name} ${container.runtime.health}`;
   }
@@ -29,7 +29,7 @@ function getContainerAriaLabel(container: ContainerWorkspaceEntry) {
 
 type DashboardLeftSidebarProps = {
   activeContainerId: string;
-  containers: ContainerWorkspaceEntry[];
+  containers: ContainerListEntry[];
   hostMetricsProps: HostMetricsSidebarProps;
   listWidth: number;
   onContainerSelectAction: (containerName: string) => void;
