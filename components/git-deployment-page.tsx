@@ -342,12 +342,10 @@ function SummaryBlock({
 }
 
 function GitStatCard({
-  description,
   iconName,
   label,
   value,
 }: {
-  description: string;
   iconName: "cloud" | "check" | "x-close";
   label: string;
   value: string;
@@ -365,7 +363,6 @@ function GitStatCard({
           <div className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
             {value}
           </div>
-          <div className="text-xs text-muted-foreground">{description}</div>
         </div>
       </CardContent>
     </Card>
@@ -1591,19 +1588,16 @@ export function GitDeploymentPage({
 
           <section className="grid gap-4 md:grid-cols-3">
             <GitStatCard
-              description="Tracked deployment workspaces"
               iconName="cloud"
               label="Apps"
               value={String(stats.totalDeployments)}
             />
             <GitStatCard
-              description="Healthy deployments currently online"
               iconName="check"
               label="Running"
               value={String(stats.runningDeployments)}
             />
             <GitStatCard
-              description="Deployments that need attention"
               iconName="x-close"
               label="Failed"
               value={String(stats.failedDeployments)}
@@ -1661,9 +1655,6 @@ export function GitDeploymentPage({
                                 {deployment.appName}
                               </h2>
                             </div>
-                            <p className="truncate text-sm text-muted-foreground">
-                              {formatRepositoryLabel(deployment.repositoryUrl)}
-                            </p>
                             <a
                               className="inline-flex items-center gap-1 truncate text-sm font-medium text-foreground transition-colors hover:text-foreground/80"
                               href={formatDeploymentHref(
@@ -2083,13 +2074,17 @@ export function GitLogPanel({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Current view</div>
+                    <div className="text-xs text-muted-foreground">
+                      Current view
+                    </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
                       {activeLogTab === "build" ? "Build log" : "Container log"}
                     </div>
                   </div>
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Last refresh</div>
+                    <div className="text-xs text-muted-foreground">
+                      Last refresh
+                    </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
                       {logState.payload?.updatedAt
                         ? formatRelativeTime(logState.payload.updatedAt)
@@ -2097,13 +2092,17 @@ export function GitLogPanel({
                     </div>
                   </div>
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Repository</div>
+                    <div className="text-xs text-muted-foreground">
+                      Repository
+                    </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
                       {deployment.repositoryName}
                     </div>
                   </div>
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Updated at</div>
+                    <div className="text-xs text-muted-foreground">
+                      Updated at
+                    </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
                       {logState.payload?.updatedAt
                         ? formatDeploymentTime(logState.payload.updatedAt)
@@ -2145,13 +2144,17 @@ export function GitLogPanel({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Current view</div>
+                    <div className="text-xs text-muted-foreground">
+                      Current view
+                    </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
                       {currentView === "create" ? "Create app" : "App list"}
                     </div>
                   </div>
                   <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">Selected app</div>
+                    <div className="text-xs text-muted-foreground">
+                      Selected app
+                    </div>
                     <div className="mt-1 text-sm font-semibold text-foreground">
                       None
                     </div>

@@ -1,6 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { ContainerObservabilityPage } from "@/components/container-observability-page";
 
@@ -14,131 +22,132 @@ describe("ContainerObservabilityPage", () => {
   const fetchSpy = vi.spyOn(global, "fetch");
 
   beforeEach(() => {
-    fetchSpy.mockImplementation(async () =>
-      new Response(
-        JSON.stringify({
-          snapshot: {
-            timestamp: "2026-04-17T08:00:00.000Z",
-            warnings: [],
-            hostIp: "192.168.1.10",
-            system: {
-              cpuPercent: 31,
-              loadAverage: [0.48, 0.52, 0.56],
-              memoryPercent: 68,
-              memoryUsedBytes: 43.8 * 1024 ** 3,
-              memoryTotalBytes: 64 * 1024 ** 3,
-            },
-            network: {
-              rxBytesPerSecond: 180_000,
-              txBytesPerSecond: 96_000,
-              interfaces: [
-                {
-                  name: "eth0",
-                  rxBytesPerSecond: 180_000,
-                  txBytesPerSecond: 96_000,
-                },
-              ],
-            },
-            containers: {
-              running: 3,
-              total: 4,
-              cpuPercent: 24,
-              memoryPercent: 38,
-              memoryUsedBytes: 3.8 * 1024 ** 3,
-              statusBreakdown: {
-                healthy: 3,
-                unhealthy: 1,
-                stopped: 0,
+    fetchSpy.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            snapshot: {
+              timestamp: "2026-04-17T08:00:00.000Z",
+              warnings: [],
+              hostIp: "192.168.1.10",
+              system: {
+                cpuPercent: 31,
+                loadAverage: [0.48, 0.52, 0.56],
+                memoryPercent: 68,
+                memoryUsedBytes: 43.8 * 1024 ** 3,
+                memoryTotalBytes: 64 * 1024 ** 3,
               },
-              top: [],
-              all: [
-                {
-                  id: "runtime-control-plane",
-                  name: "control-plane",
-                  cpuPercent: 18,
-                  memoryBytes: 612 * 1024 ** 2,
-                  memoryPercent: 0.9,
-                  status: "running",
-                  health: "healthy",
-                  projectName: "vercelab",
-                  serviceName: "control-plane",
+              network: {
+                rxBytesPerSecond: 180_000,
+                txBytesPerSecond: 96_000,
+                interfaces: [
+                  {
+                    name: "eth0",
+                    rxBytesPerSecond: 180_000,
+                    txBytesPerSecond: 96_000,
+                  },
+                ],
+              },
+              containers: {
+                running: 3,
+                total: 4,
+                cpuPercent: 24,
+                memoryPercent: 38,
+                memoryUsedBytes: 3.8 * 1024 ** 3,
+                statusBreakdown: {
+                  healthy: 3,
+                  unhealthy: 1,
+                  stopped: 0,
                 },
-                {
-                  id: "runtime-edge-proxy",
-                  name: "edge-proxy",
-                  cpuPercent: 9,
-                  memoryBytes: 186 * 1024 ** 2,
-                  memoryPercent: 0.3,
-                  status: "running",
-                  health: "healthy",
-                  projectName: "traefik",
-                  serviceName: "proxy",
-                },
-                {
-                  id: "runtime-postgres-primary",
-                  name: "postgres-primary",
-                  cpuPercent: 31,
-                  memoryBytes: Math.round(2.8 * 1024 ** 3),
-                  memoryPercent: 4.4,
-                  status: "running",
-                  health: "unhealthy",
-                  projectName: "database",
-                  serviceName: "postgres",
-                },
-                {
-                  id: "runtime-worker-builds",
-                  name: "worker-builds",
-                  cpuPercent: 24,
-                  memoryBytes: 428 * 1024 ** 2,
-                  memoryPercent: 0.7,
-                  status: "running",
-                  health: "healthy",
-                  projectName: "jobs",
-                  serviceName: "worker",
-                },
-              ],
+                top: [],
+                all: [
+                  {
+                    id: "runtime-control-plane",
+                    name: "control-plane",
+                    cpuPercent: 18,
+                    memoryBytes: 612 * 1024 ** 2,
+                    memoryPercent: 0.9,
+                    status: "running",
+                    health: "healthy",
+                    projectName: "vercelab",
+                    serviceName: "control-plane",
+                  },
+                  {
+                    id: "runtime-edge-proxy",
+                    name: "edge-proxy",
+                    cpuPercent: 9,
+                    memoryBytes: 186 * 1024 ** 2,
+                    memoryPercent: 0.3,
+                    status: "running",
+                    health: "healthy",
+                    projectName: "traefik",
+                    serviceName: "proxy",
+                  },
+                  {
+                    id: "runtime-postgres-primary",
+                    name: "postgres-primary",
+                    cpuPercent: 31,
+                    memoryBytes: Math.round(2.8 * 1024 ** 3),
+                    memoryPercent: 4.4,
+                    status: "running",
+                    health: "unhealthy",
+                    projectName: "database",
+                    serviceName: "postgres",
+                  },
+                  {
+                    id: "runtime-worker-builds",
+                    name: "worker-builds",
+                    cpuPercent: 24,
+                    memoryBytes: 428 * 1024 ** 2,
+                    memoryPercent: 0.7,
+                    status: "running",
+                    health: "healthy",
+                    projectName: "jobs",
+                    serviceName: "worker",
+                  },
+                ],
+              },
+            },
+            history: [
+              {
+                timestamp: "2026-04-17T07:59:45.000Z",
+                cpu: 27,
+                memory: 65,
+                networkIn: 150_000,
+                networkOut: 88_000,
+                networkTotal: 238_000,
+                containersCpu: 19,
+                containersMemory: 35,
+              },
+              {
+                timestamp: "2026-04-17T07:59:50.000Z",
+                cpu: 29,
+                memory: 66,
+                networkIn: 162_000,
+                networkOut: 91_000,
+                networkTotal: 253_000,
+                containersCpu: 21,
+                containersMemory: 36,
+              },
+              {
+                timestamp: "2026-04-17T07:59:55.000Z",
+                cpu: 31,
+                memory: 68,
+                networkIn: 180_000,
+                networkOut: 96_000,
+                networkTotal: 276_000,
+                containersCpu: 24,
+                containersMemory: 38,
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
             },
           },
-          history: [
-            {
-              timestamp: "2026-04-17T07:59:45.000Z",
-              cpu: 27,
-              memory: 65,
-              networkIn: 150_000,
-              networkOut: 88_000,
-              networkTotal: 238_000,
-              containersCpu: 19,
-              containersMemory: 35,
-            },
-            {
-              timestamp: "2026-04-17T07:59:50.000Z",
-              cpu: 29,
-              memory: 66,
-              networkIn: 162_000,
-              networkOut: 91_000,
-              networkTotal: 253_000,
-              containersCpu: 21,
-              containersMemory: 36,
-            },
-            {
-              timestamp: "2026-04-17T07:59:55.000Z",
-              cpu: 31,
-              memory: 68,
-              networkIn: 180_000,
-              networkOut: 96_000,
-              networkTotal: 276_000,
-              containersCpu: 24,
-              containersMemory: 38,
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      ),
+        ),
     );
   });
 
@@ -229,5 +238,13 @@ describe("ContainerObservabilityPage", () => {
     expect(screen.getByText(/current app signals/i)).toBeVisible();
     expect(screen.getAllByDisplayValue(/docs/i)[0]).toBeVisible();
     expect(screen.getByText(/settings and environment/i)).toBeVisible();
+
+    const appRowButton = screen.getByRole("button", {
+      name: /docs-app.*example\.com/i,
+    });
+
+    expect(
+      within(appRowButton).queryByText("dedkola/vercelab"),
+    ).not.toBeInTheDocument();
   });
 });

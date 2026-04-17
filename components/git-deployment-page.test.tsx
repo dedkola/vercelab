@@ -102,6 +102,23 @@ function GitDeploymentHarness({
 }
 
 describe("GitDeploymentPage workspace flow", () => {
+  it("shows app cards without repository subtitles or stat descriptions", () => {
+    render(<GitDeploymentHarness />);
+
+    expect(screen.getByText("My App")).toBeVisible();
+    expect(screen.getByText("my-app.home.com")).toBeVisible();
+    expect(screen.queryByText("ded/my-repo")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Tracked deployment workspaces"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Healthy deployments currently online"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Deployments that need attention"),
+    ).not.toBeInTheDocument();
+  });
+
   it("optimistically removes the app and returns to the list workspace", async () => {
     const user = userEvent.setup();
     const removeMock = vi.mocked(removeDeploymentAction);

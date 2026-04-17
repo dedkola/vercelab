@@ -33,7 +33,6 @@ export function DashboardHeader({
           className="flex items-center gap-2 rounded-full border border-border/70 bg-background/85 px-3.5 py-1.5 text-sm font-semibold tracking-tight shadow-[0_16px_36px_-28px_rgba(15,23,42,0.35)]"
           type="button"
         >
-          <span className="h-2 w-2 rounded-full bg-green-500" />
           <span>Vercelab</span>
         </button>
 

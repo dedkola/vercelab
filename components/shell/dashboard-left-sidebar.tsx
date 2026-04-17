@@ -25,13 +25,12 @@ type DashboardLeftSidebarProps = {
 };
 
 const RAIL_PRIMARY: Array<{
-  icon: "network" | "dashboard" | "cloud";
+  icon: "network" | "cloud";
   label: string;
   section: DashboardSection;
 }> = [
-  { icon: "network", label: "Overview", section: "overview" },
-  { icon: "dashboard", label: "Charts", section: "charts" },
-  { icon: "cloud", label: "Git", section: "git" },
+  { icon: "network", label: "Home", section: "overview" },
+  { icon: "cloud", label: "Git apps", section: "git" },
 ];
 
 const DEFAULT_PANEL_WIDTH_PX = 224;

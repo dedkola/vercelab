@@ -8,7 +8,7 @@ vi.mock("@/components/dashboard-kit", () => ({
 }));
 
 describe("DashboardLeftSidebar", () => {
-  it("navigates into the charts workspace from the rail", async () => {
+  it("navigates into the git workspace from the rail", async () => {
     const user = userEvent.setup();
     const onSectionChangeAction = vi.fn();
 
@@ -24,8 +24,8 @@ describe("DashboardLeftSidebar", () => {
       </DashboardLeftSidebar>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Charts" }));
+    await user.click(screen.getByRole("button", { name: "Git apps" }));
 
-    expect(onSectionChangeAction).toHaveBeenCalledWith("charts");
+    expect(onSectionChangeAction).toHaveBeenCalledWith("git");
   });
 });
