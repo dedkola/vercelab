@@ -2,10 +2,7 @@
 
 import type { FormEvent, ReactNode } from "react";
 
-import type {
-  ContainerSignal,
-  MetricCard,
-} from "@/components/container-observability-page";
+import type { ContainerSignal, MetricCard } from "@/components/workspace-shell";
 import type { DashboardDeployment } from "@/lib/persistence";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +24,7 @@ import { cn } from "@/lib/utils";
 
 import { getToneClasses, Sparkline } from "./workspace-ui";
 
-type GitPageMainContentProps = {
+type GitAppPageMainContentProps = {
   baseDomain?: string;
   credentialSourceLabel: string;
   credentialSourceText: string;
@@ -51,7 +48,7 @@ type GitPageMainContentProps = {
   summaryIncludesDeploymentHref: boolean;
 };
 
-export function GitPageMainContent({
+export function GitAppPageMainContent({
   baseDomain,
   credentialSourceLabel,
   credentialSourceText,
@@ -71,7 +68,7 @@ export function GitPageMainContent({
   publicDomainLabel,
   repositoryPathName,
   summaryIncludesDeploymentHref,
-}: GitPageMainContentProps) {
+}: GitAppPageMainContentProps) {
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-r from-background via-muted/20 to-background shadow-[0_32px_96px_-64px_rgba(15,23,42,0.42)]">

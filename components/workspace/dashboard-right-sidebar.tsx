@@ -2,10 +2,7 @@
 
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import type {
-  LogLine,
-  OverviewLogView,
-} from "@/components/container-observability-page";
+import type { DashboardLogView, LogLine } from "@/components/workspace-shell";
 import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,19 +11,19 @@ import { cn } from "@/lib/utils";
 
 import { ResizeHandle, SectionLabel, usePixelWidthRef } from "./workspace-ui";
 
-type HomepageLogOption = {
+type DashboardLogOption = {
   label: string;
-  value: OverviewLogView;
+  value: DashboardLogView;
 };
 
-type HomepageRightSidebarProps = {
-  activeLogView: OverviewLogView;
+type DashboardRightSidebarProps = {
+  activeLogView: DashboardLogView;
   isCollapsed: boolean;
-  logOptions: HomepageLogOption[];
+  logOptions: DashboardLogOption[];
   logs: LogLine[];
   onCollapseAction: () => void;
   onExpandAction: () => void;
-  onLogViewChangeAction: (view: OverviewLogView) => void;
+  onLogViewChangeAction: (view: DashboardLogView) => void;
   onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
   selectedContainerName: string;
   selectedContainerRegion: string;
@@ -47,7 +44,7 @@ function getLogDotClassName(level: LogLine["level"]) {
   }
 }
 
-export function HomepageRightSidebar({
+export function DashboardRightSidebar({
   activeLogView,
   isCollapsed,
   logOptions,
@@ -62,7 +59,7 @@ export function HomepageRightSidebar({
   selectedContainerStatusVariant,
   selectedPreviewAvailable,
   width,
-}: HomepageRightSidebarProps) {
+}: DashboardRightSidebarProps) {
   const panelRef = usePixelWidthRef<HTMLElement>(width);
 
   if (isCollapsed) {

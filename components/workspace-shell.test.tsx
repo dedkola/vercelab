@@ -10,7 +10,7 @@ import {
   vi,
 } from "vitest";
 
-import { ContainerObservabilityPage } from "@/components/container-observability-page";
+import { WorkspaceShell } from "@/components/workspace-shell";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -18,7 +18,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-describe("ContainerObservabilityPage", () => {
+describe("WorkspaceShell", () => {
   const fetchSpy = vi.spyOn(global, "fetch");
 
   beforeEach(() => {
@@ -162,7 +162,7 @@ describe("ContainerObservabilityPage", () => {
   it("renders the workspace shell and selected container details", async () => {
     const user = userEvent.setup();
 
-    render(<ContainerObservabilityPage />);
+    render(<WorkspaceShell />);
 
     const showMetricsButton = screen.queryByRole("button", {
       name: /show server load sidebar/i,
@@ -183,7 +183,7 @@ describe("ContainerObservabilityPage", () => {
     expect(
       screen.getByRole("heading", { name: /control-plane/i }),
     ).toBeVisible();
-    expect(screen.getByText(/container operations workspace/i)).toBeVisible();
+    expect(screen.getAllByText(/^dashboard$/i)[0]).toBeVisible();
     expect(screen.getByText(/current container signals/i)).toBeVisible();
     expect(screen.getByText(/tail preview/i)).toBeVisible();
     expect(
@@ -193,7 +193,7 @@ describe("ContainerObservabilityPage", () => {
   });
 
   it("shows live runtime status in the containers sidebar", async () => {
-    render(<ContainerObservabilityPage />);
+    render(<WorkspaceShell />);
 
     expect(
       await screen.findByRole("button", {
@@ -203,9 +203,9 @@ describe("ContainerObservabilityPage", () => {
     expect(screen.getByText(/4 visible/i)).toBeVisible();
   });
 
-  it("renders the github apps workspace with editable deployment details", async () => {
+  it("renders the git app page with editable deployment details", async () => {
     render(
-      <ContainerObservabilityPage
+      <WorkspaceShell
         baseDomain="example.com"
         initialDeployments={[
           {
@@ -228,7 +228,7 @@ describe("ContainerObservabilityPage", () => {
             tokenStored: true,
           },
         ]}
-        initialPage="apps"
+        initialView="git-app-page"
       />,
     );
 

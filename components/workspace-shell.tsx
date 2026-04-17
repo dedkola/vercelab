@@ -14,17 +14,17 @@ import {
 import { GitBranch, Home, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { GitPageLeftSidebar } from "@/components/container-observability/git-page-left-sidebar";
-import { GitPageMainContent } from "@/components/container-observability/git-page-main-content";
-import { GitPageRightSidebar } from "@/components/container-observability/git-page-right-sidebar";
-import { HomepageLeftSidebar } from "@/components/container-observability/homepage-left-sidebar";
-import { HomepageMainContent } from "@/components/container-observability/homepage-main-content";
-import { HomepageRightSidebar } from "@/components/container-observability/homepage-right-sidebar";
-import { type HostMetricsSidebarProps } from "@/components/container-observability/host-metrics-sidebar";
-import { WorkspaceFooter } from "@/components/container-observability/workspace-footer";
-import { WorkspaceHeader } from "@/components/container-observability/workspace-header";
-import { WorkspaceRail } from "@/components/container-observability/workspace-rail";
-import { SectionLabel } from "@/components/container-observability/workspace-ui";
+import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
+import { DashboardMainContent } from "@/components/workspace/dashboard-main-content";
+import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-sidebar";
+import { GitAppPageLeftSidebar } from "@/components/workspace/git-app-page-left-sidebar";
+import { GitAppPageMainContent } from "@/components/workspace/git-app-page-main-content";
+import { GitAppPageRightSidebar } from "@/components/workspace/git-app-page-right-sidebar";
+import { type HostMetricsSidebarProps } from "@/components/workspace/host-metrics-sidebar";
+import { WorkspaceFooter } from "@/components/workspace/workspace-footer";
+import { WorkspaceHeader } from "@/components/workspace/workspace-header";
+import { WorkspaceRail } from "@/components/workspace/workspace-rail";
+import { SectionLabel } from "@/components/workspace/workspace-ui";
 import {
   updateDeploymentAction,
   type DeploymentActionResult,
@@ -38,8 +38,8 @@ import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 
 export type MetricTone = "emerald" | "amber" | "slate";
 export type ContainerStatus = "running" | "degraded" | "idle";
-export type OverviewLogView = "live" | "events" | "alerts";
-export type WorkspacePage = "overview" | "apps";
+export type DashboardLogView = "live" | "events" | "alerts";
+export type WorkspaceView = "dashboard" | "git-app-page";
 
 export type MetricCard = {
   title: string;
@@ -96,7 +96,7 @@ export type MockContainer = {
   activity: number[];
   signals: ContainerSignal[];
   timeline: Array<{ label: string; detail: string }>;
-  logs: Record<OverviewLogView, LogLine[]>;
+  logs: Record<DashboardLogView, LogLine[]>;
 };
 
 export type ContainerWorkspaceEntry = {
@@ -107,11 +107,11 @@ export type ContainerWorkspaceEntry = {
   searchText: string;
 };
 
-type ContainerObservabilityPageProps = {
+type WorkspaceShellProps = {
   baseDomain?: string;
   initialDeployments?: DashboardDeployment[];
   initialHistory?: MetricsHistoryPoint[];
-  initialPage?: WorkspacePage;
+  initialView?: WorkspaceView;
   initialSnapshot?: MetricsSnapshot | null;
 };
 
@@ -232,7 +232,7 @@ const CONTAINERS: MockContainer[] = [
           id: "cp-live-2",
           timestamp: "09:14:11",
           level: "success",
-          message: "Rendered overview workspace with 5 live panels",
+          message: "Rendered dashboard workspace with 5 live panels",
         },
         {
           id: "cp-live-3",
@@ -630,7 +630,7 @@ const CONTAINERS: MockContainer[] = [
   },
 ];
 
-const LOG_VIEW_OPTIONS: Array<{ value: OverviewLogView; label: string }> = [
+const LOG_VIEW_OPTIONS: Array<{ value: DashboardLogView; label: string }> = [
   { value: "live", label: "Live tail" },
   { value: "events", label: "Events" },
   { value: "alerts", label: "Alerts" },
@@ -1205,18 +1205,18 @@ function getStatusDotClassName(status: ContainerStatus) {
 const WORKSPACE_PAGES: Array<{
   description: string;
   iconComponent: LucideIcon;
-  id: WorkspacePage;
+  id: WorkspaceView;
   label: string;
 }> = [
   {
-    id: "overview",
-    label: "Overview",
+    id: "dashboard",
+    label: "Dashboard",
     iconComponent: Home,
     description: "Live containers and host load",
   },
   {
-    id: "apps",
-    label: "GitHub apps",
+    id: "git-app-page",
+    label: "Git App Page",
     iconComponent: GitBranch,
     description: "Deployments and repo wiring",
   },
@@ -1224,7 +1224,6 @@ const WORKSPACE_PAGES: Array<{
 
 function toSlug(value: string) {
   return value
-    .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
@@ -1564,13 +1563,13 @@ function createDraftFromRepository(
   };
 }
 
-export function ContainerObservabilityPage({
+export function WorkspaceShell({
   baseDomain,
   initialDeployments,
   initialHistory = [],
-  initialPage = "overview",
+  initialView = "dashboard",
   initialSnapshot = null,
-}: ContainerObservabilityPageProps) {
+}: WorkspaceShellProps) {
   const router = useRouter();
   const deploymentSeed = initialDeployments ?? EMPTY_DEPLOYMENTS;
   const [metricsWidth, setMetricsWidth] = useStoredPanelWidth(
@@ -1593,7 +1592,7 @@ export function ContainerObservabilityPage({
   );
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
-  const [activePage, setActivePage] = useState<WorkspacePage>(initialPage);
+  const [activeView, setActiveView] = useState<WorkspaceView>(initialView);
   const [selectedContainerId, setSelectedContainerId] = useState(
     initialSnapshot?.containers.all[0]?.name ?? CONTAINERS[0]?.name ?? "",
   );
@@ -1604,8 +1603,8 @@ export function ContainerObservabilityPage({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [appSearchQuery, setAppSearchQuery] = useState("");
-  const [overviewLogView, setOverviewLogView] =
-    useState<OverviewLogView>("live");
+  const [dashboardLogView, setDashboardLogView] =
+    useState<DashboardLogView>("live");
   const [appLogTab, setAppLogTab] = useState<LogTab>("build");
   const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(true);
   const [isCreateAppPending, setIsCreateAppPending] = useState(false);
@@ -1783,6 +1782,10 @@ export function ContainerObservabilityPage({
       setSelectedAppId(deployments[0]?.id ?? "");
     }
   }, [deployments, selectedAppId]);
+
+  useEffect(() => {
+    setActiveView(initialView);
+  }, [initialView]);
 
   useEffect(() => {
     let active = true;
@@ -1992,14 +1995,14 @@ export function ContainerObservabilityPage({
 
   useEffect(() => {
     if (
-      activePage === "apps" &&
+      activeView === "git-app-page" &&
       !repositoryState.hasLoaded &&
       !repositoryState.isLoading
     ) {
       void loadRepositories();
     }
   }, [
-    activePage,
+    activeView,
     loadRepositories,
     repositoryState.hasLoaded,
     repositoryState.isLoading,
@@ -2124,19 +2127,17 @@ export function ContainerObservabilityPage({
     }));
   }
 
-  const activePageMeta =
-    WORKSPACE_PAGES.find((page) => page.id === activePage) ??
+  const activeViewMeta =
+    WORKSPACE_PAGES.find((page) => page.id === activeView) ??
     WORKSPACE_PAGES[0]!;
-  const activePageTitle =
-    activePage === "overview"
-      ? "Container operations workspace"
-      : "GitHub apps workspace";
-  const activePageDescription =
-    activePage === "overview"
-      ? "Live Influx-backed host metrics and Docker runtime state in a shared shell with page-specific sidebars."
-      : "Create, review, and edit live deployments with page-specific sidebars in the same shared shell.";
-  const activePageStatusLabel =
-    activePage === "overview" ? "Live runtime" : "Live deployments";
+  const activeViewTitle =
+    activeView === "dashboard" ? "Dashboard" : "Git App Page";
+  const activeViewDescription =
+    activeView === "dashboard"
+      ? "Live Influx-backed host metrics and Docker runtime state in the shared workspace shell."
+      : "Create, review, and edit live deployments in the same shared workspace shell.";
+  const activeViewStatusLabel =
+    activeView === "dashboard" ? "Live runtime" : "Live deployments";
   const updatedAtLabel = sidebarSnapshot
     ? formatClock(sidebarSnapshot.timestamp)
     : "Waiting for metrics";
@@ -2172,7 +2173,7 @@ export function ContainerObservabilityPage({
       : metricsStatus.helperText,
     width: metricsWidth,
   } satisfies HostMetricsSidebarProps;
-  const previewLogs = selectedContainer.logs[overviewLogView];
+  const previewLogs = selectedContainer.logs[dashboardLogView];
   const selectedContainerStatusLabel = formatStatusLabel(
     selectedContainer.status,
   );
@@ -2254,25 +2255,25 @@ export function ContainerObservabilityPage({
   return (
     <section
       className="flex h-screen flex-col bg-linear-to-b from-background via-muted/12 to-background"
-      aria-label="Container observability preview"
+      aria-label="Workspace shell"
     >
       <WorkspaceHeader
-        activePageDescription={activePageDescription}
-        activePageLabel={activePageMeta.label}
-        activePageStatusLabel={activePageStatusLabel}
+        activeViewDescription={activeViewDescription}
+        activeViewLabel={activeViewMeta.label}
+        activeViewStatusLabel={activeViewStatusLabel}
         onResetLayoutAction={handleResetLayout}
-        title={activePageTitle}
+        title={activeViewTitle}
       />
 
       <div className="flex min-w-0 flex-1 overflow-hidden">
         <WorkspaceRail
-          activePage={activePage}
+          activeView={activeView}
           items={WORKSPACE_PAGES}
-          onPageChangeAction={setActivePage}
+          onViewChangeAction={setActiveView}
         />
 
-        {activePage === "overview" ? (
-          <HomepageLeftSidebar
+        {activeView === "dashboard" ? (
+          <DashboardLeftSidebar
             activeContainerId={activeContainerId}
             containers={filteredContainers}
             hostMetricsProps={hostMetricsProps}
@@ -2287,7 +2288,7 @@ export function ContainerObservabilityPage({
             visibleCount={filteredContainers.length}
           />
         ) : (
-          <GitPageLeftSidebar
+          <GitAppPageLeftSidebar
             appItems={gitSidebarAppItems}
             appSearchQuery={appSearchQuery}
             baseDomain={baseDomain}
@@ -2316,8 +2317,8 @@ export function ContainerObservabilityPage({
         )}
 
         <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
-          {activePage === "overview" ? (
-            <HomepageMainContent
+          {activeView === "dashboard" ? (
+            <DashboardMainContent
               composeMetricDescription={composeMetricDescription}
               composeMetricTitle={composeMetricTitle}
               composeMetricValue={composeMetricValue}
@@ -2336,7 +2337,7 @@ export function ContainerObservabilityPage({
               thirdMetricValue={thirdMetricValue}
             />
           ) : selectedDeployment ? (
-            <GitPageMainContent
+            <GitAppPageMainContent
               baseDomain={baseDomain}
               credentialSourceLabel={credentialSourceLabel}
               credentialSourceText={credentialSourceText}
@@ -2360,7 +2361,7 @@ export function ContainerObservabilityPage({
           ) : (
             <div className="flex h-full items-center justify-center">
               <div className="max-w-lg rounded-[1.75rem] border border-border/70 bg-background/86 px-6 py-8 text-center shadow-[0_28px_72px_-48px_rgba(15,23,42,0.3)]">
-                <SectionLabel icon="github" text="GitHub apps" />
+                <SectionLabel icon="github" text="Git App Page" />
                 <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
                   Add your first app
                 </h1>
@@ -2373,15 +2374,15 @@ export function ContainerObservabilityPage({
           )}
         </main>
 
-        {activePage === "overview" ? (
-          <HomepageRightSidebar
-            activeLogView={overviewLogView}
+        {activeView === "dashboard" ? (
+          <DashboardRightSidebar
+            activeLogView={dashboardLogView}
             isCollapsed={isLogsCollapsed}
             logOptions={LOG_VIEW_OPTIONS}
             logs={previewLogs}
             onCollapseAction={() => setIsLogsCollapsed(true)}
             onExpandAction={() => setIsLogsCollapsed(false)}
-            onLogViewChangeAction={setOverviewLogView}
+            onLogViewChangeAction={setDashboardLogView}
             onResizeStartAction={(event) => handleResizeStart("logs", event)}
             selectedContainerName={selectedContainer.name}
             selectedContainerRegion={selectedContainer.region}
@@ -2391,7 +2392,7 @@ export function ContainerObservabilityPage({
             width={logsWidth}
           />
         ) : (
-          <GitPageRightSidebar
+          <GitAppPageRightSidebar
             activeLogTab={appLogTab}
             deploymentId={selectedDeployment?.id ?? null}
             deployments={deployments}
@@ -2406,7 +2407,7 @@ export function ContainerObservabilityPage({
       </div>
 
       <WorkspaceFooter
-        activePageLabel={activePageMeta.label}
+        activeViewLabel={activeViewMeta.label}
         updatedAtLabel={updatedAtLabel}
       />
     </section>

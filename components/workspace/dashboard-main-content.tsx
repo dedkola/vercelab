@@ -1,6 +1,6 @@
 "use client";
 
-import type { MockContainer } from "@/components/container-observability-page";
+import type { MockContainer } from "@/components/workspace-shell";
 import type { ContainerStats } from "@/lib/system-metrics";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,7 +19,7 @@ import {
   usePercentWidthRef,
 } from "./workspace-ui";
 
-type HomepageMainContentProps = {
+type DashboardMainContentProps = {
   composeMetricDescription: string;
   composeMetricTitle: string;
   composeMetricValue: string;
@@ -51,7 +51,7 @@ function EndpointLoadBar({ load }: { load: number }) {
   );
 }
 
-export function HomepageMainContent({
+export function DashboardMainContent({
   composeMetricDescription,
   composeMetricTitle,
   composeMetricValue,
@@ -68,7 +68,7 @@ export function HomepageMainContent({
   thirdMetricDescription,
   thirdMetricTitle,
   thirdMetricValue,
-}: HomepageMainContentProps) {
+}: DashboardMainContentProps) {
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-linear-to-r from-background via-muted/12 to-background shadow-[0_24px_72px_-56px_rgba(15,23,42,0.32)]">

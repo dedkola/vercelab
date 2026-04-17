@@ -9,7 +9,7 @@ import type { DashboardDeployment } from "@/lib/persistence";
 
 import { ResizeHandle, SectionLabel, usePixelWidthRef } from "./workspace-ui";
 
-type GitPageRightSidebarProps = {
+type GitAppPageRightSidebarProps = {
   activeLogTab: LogTab;
   deploymentId: string | null;
   deployments: DashboardDeployment[];
@@ -21,7 +21,7 @@ type GitPageRightSidebarProps = {
   width: number;
 };
 
-export function GitPageRightSidebar({
+export function GitAppPageRightSidebar({
   activeLogTab,
   deploymentId,
   deployments,
@@ -31,7 +31,7 @@ export function GitPageRightSidebar({
   onLogTabChangeAction,
   onResizeStartAction,
   width,
-}: GitPageRightSidebarProps) {
+}: GitAppPageRightSidebarProps) {
   const panelRef = usePixelWidthRef<HTMLElement>(width);
 
   if (isCollapsed) {

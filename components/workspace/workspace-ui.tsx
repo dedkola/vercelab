@@ -7,7 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 
-import type { MetricTone } from "@/components/container-observability-page";
+import type { MetricTone } from "@/components/workspace-shell";
 import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

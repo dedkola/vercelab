@@ -5,7 +5,7 @@ import type { FormEvent, MouseEvent as ReactMouseEvent } from "react";
 import type {
   DraftAppState,
   RepositoryState,
-} from "@/components/container-observability-page";
+} from "@/components/workspace-shell";
 import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ type RepositoryOption = {
   value: string;
 };
 
-type GitPageListItem = {
+type GitAppPageListItem = {
   appName: string;
   domain: string;
   dotClassName: string;
@@ -43,8 +43,8 @@ type GitPageListItem = {
   statusVariant: "success" | "warning" | "default";
 };
 
-type GitPageLeftSidebarProps = {
-  appItems: GitPageListItem[];
+type GitAppPageLeftSidebarProps = {
+  appItems: GitAppPageListItem[];
   appSearchQuery: string;
   baseDomain?: string;
   draftApp: DraftAppState;
@@ -68,7 +68,7 @@ type GitPageLeftSidebarProps = {
   totalAppsCount: number;
 };
 
-export function GitPageLeftSidebar({
+export function GitAppPageLeftSidebar({
   appItems,
   appSearchQuery,
   baseDomain,
@@ -89,7 +89,7 @@ export function GitPageLeftSidebar({
   repositoryState,
   selectedRepositoryValue,
   totalAppsCount,
-}: GitPageLeftSidebarProps) {
+}: GitAppPageLeftSidebarProps) {
   const listPanelRef = usePixelWidthRef<HTMLElement>(listWidth);
 
   return (
@@ -103,7 +103,7 @@ export function GitPageLeftSidebar({
         <div className="space-y-3 border-b border-border/60 px-3 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
-              <SectionLabel icon="github" text="GitHub apps" />
+              <SectionLabel icon="github" text="Git App Page" />
               <div className="text-xs text-muted-foreground">
                 Compact create flow and live deployment inventory.
               </div>

@@ -5,17 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 type WorkspaceHeaderProps = {
-  activePageDescription: string;
-  activePageLabel: string;
-  activePageStatusLabel: string;
+  activeViewDescription: string;
+  activeViewLabel: string;
+  activeViewStatusLabel: string;
   onResetLayoutAction: () => void;
   title: string;
 };
 
 export function WorkspaceHeader({
-  activePageDescription,
-  activePageLabel,
-  activePageStatusLabel,
+  activeViewDescription,
+  activeViewLabel,
+  activeViewStatusLabel,
   onResetLayoutAction,
   title,
 }: WorkspaceHeaderProps) {
@@ -34,17 +34,17 @@ export function WorkspaceHeader({
             {title}
           </div>
           <div className="truncate text-xs text-muted-foreground">
-            {activePageDescription}
+            {activeViewDescription}
           </div>
         </div>
       </div>
 
       <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex">
         <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
-          {activePageStatusLabel}
+          {activeViewStatusLabel}
         </Badge>
         <Badge className="border-amber-200/80 bg-amber-50/90 text-amber-700">
-          {activePageLabel}
+          {activeViewLabel}
         </Badge>
         <Badge className="border-border/60 bg-background/80 text-foreground">
           Shared shell

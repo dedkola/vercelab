@@ -2,7 +2,7 @@
 
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import type { ContainerWorkspaceEntry } from "@/components/container-observability-page";
+import type { ContainerWorkspaceEntry } from "@/components/workspace-shell";
 import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ function getContainerAriaLabel(container: ContainerWorkspaceEntry) {
   return `${container.display.name} ${container.display.status}`;
 }
 
-type HomepageLeftSidebarProps = {
+type DashboardLeftSidebarProps = {
   activeContainerId: string;
   containers: ContainerWorkspaceEntry[];
   hostMetricsProps: HostMetricsSidebarProps;
@@ -40,7 +40,7 @@ type HomepageLeftSidebarProps = {
   visibleCount: number;
 };
 
-export function HomepageLeftSidebar({
+export function DashboardLeftSidebar({
   activeContainerId,
   containers,
   hostMetricsProps,
@@ -51,7 +51,7 @@ export function HomepageLeftSidebar({
   runningContainersCount,
   searchQuery,
   visibleCount,
-}: HomepageLeftSidebarProps) {
+}: DashboardLeftSidebarProps) {
   const listPanelRef = usePixelWidthRef<HTMLElement>(listWidth);
 
   return (
