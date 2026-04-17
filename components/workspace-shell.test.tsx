@@ -301,8 +301,12 @@ describe("WorkspaceShell", () => {
     ).toBeVisible();
     expect(screen.getAllByText(/^dashboard$/i)[0]).toBeVisible();
     expect(screen.getByText(/current container signals/i)).toBeVisible();
+    expect(
+      screen.getByText(
+        /influx-backed micro trends for the same selected history window/i,
+      ),
+    ).toBeVisible();
     expect(screen.getByText(/tail preview/i)).toBeVisible();
-    expect(await screen.findByText(/disk i\/o/i)).toBeVisible();
     expect(
       await screen.findByText(/3 running containers on 192\.168\.1\.10\./i),
     ).toBeVisible();

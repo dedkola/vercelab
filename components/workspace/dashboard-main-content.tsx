@@ -31,6 +31,7 @@ export type FocusedMetricChart = {
   legends: FocusedMetricLegend[];
   primaryPoints: number[];
   secondaryPoints?: number[];
+  trendPoints: number[];
   title: string;
   value: string;
   variant: "cpu" | "memory" | "network" | "disk";
@@ -402,6 +403,18 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
   );
 }
 
+function getFocusedMetricTone(variant: FocusedMetricChart["variant"]) {
+  switch (variant) {
+    case "cpu":
+      return "emerald" as const;
+    case "memory":
+    case "disk":
+      return "amber" as const;
+    case "network":
+      return "slate" as const;
+  }
+}
+
 export function DashboardMainContent({
   focusedMetricCharts,
   healthOrNodeLabel,
@@ -485,12 +498,14 @@ export function DashboardMainContent({
           <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
             <CardTitle>Current container signals</CardTitle>
             <CardDescription>
-              Small trend cards tuned for a quiet, operational read.
+              Influx-backed micro trends for the same selected history window.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 pt-4 lg:grid-cols-3">
-            {selectedContainer.signals.map((signal) => {
-              const toneClasses = getToneClasses(signal.tone);
+          <CardContent className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-4 pt-4">
+            {focusedMetricCharts.map((chart) => {
+              const toneClasses = getToneClasses(
+                getFocusedMetricTone(chart.variant),
+              );
 
               return (
                 <div
@@ -499,31 +514,38 @@ export function DashboardMainContent({
                     toneClasses.border,
                     toneClasses.surface,
                   )}
-                  key={signal.label}
+                  key={chart.title}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold tracking-tight text-foreground">
-                        {signal.label}
+                        {chart.title}
                       </div>
                       <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {signal.caption}
+                        {chart.detail}
                       </div>
                     </div>
                     <div
                       className={cn("text-xs font-semibold", toneClasses.delta)}
                     >
-                      {signal.delta}
+                      {chart.delta}
                     </div>
                   </div>
                   <div className="mt-4 text-xl font-semibold tracking-tight text-foreground">
-                    {signal.value}
+                    {chart.value}
                   </div>
                   <Sparkline
                     className="mt-4 h-16"
-                    points={signal.points}
-                    tone={signal.tone}
+                    points={chart.trendPoints}
+                    tone={getFocusedMetricTone(chart.variant)}
                   />
+                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                    {chart.legends.map((legend) => (
+                      <div key={legend.label}>
+                        {legend.label} {legend.value}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}
