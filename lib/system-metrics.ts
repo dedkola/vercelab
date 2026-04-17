@@ -16,10 +16,36 @@ type InterfaceCounters = {
   txBytes: number;
 };
 
-type ContainerStats = {
+type DiskCounters = {
+  readBytes: number;
+  writeBytes: number;
+};
+
+export type ContainerRuntimeState =
+  | "running"
+  | "stopped"
+  | "paused"
+  | "restarting"
+  | "dead"
+  | "created"
+  | "unknown";
+
+export type ContainerHealthState =
+  | "healthy"
+  | "unhealthy"
+  | "starting"
+  | "none";
+
+export type ContainerStats = {
+  id: string;
   name: string;
   cpuPercent: number;
   memoryBytes: number;
+  memoryPercent: number;
+  status: ContainerRuntimeState;
+  health: ContainerHealthState;
+  projectName: string | null;
+  serviceName: string | null;
 };
 
 type SampleState<T> = {
@@ -37,6 +63,8 @@ export type MetricsSnapshot = {
     memoryPercent: number;
     memoryUsedBytes: number;
     memoryTotalBytes: number;
+    diskReadBytesPerSecond: number;
+    diskWriteBytesPerSecond: number;
   };
   network: {
     rxBytesPerSecond: number;
@@ -49,10 +77,17 @@ export type MetricsSnapshot = {
   };
   containers: {
     running: number;
+    total: number;
     cpuPercent: number;
     memoryPercent: number;
     memoryUsedBytes: number;
+    statusBreakdown: {
+      healthy: number;
+      unhealthy: number;
+      stopped: number;
+    };
     top: ContainerStats[];
+    all: ContainerStats[];
   };
 };
 
@@ -63,6 +98,7 @@ const IPV4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
 let lastCpuCounters: SampleState<CpuCounters> | null = null;
 let lastNetworkCounters: SampleState<InterfaceCounters[]> | null = null;
+let lastDiskCounters: SampleState<DiskCounters> | null = null;
 
 function escapeLineProtocol(value: string) {
   return value.replace(/([ ,=])/g, "\\$1");
@@ -73,7 +109,7 @@ function encodeLineProtocol(snapshot: MetricsSnapshot) {
   const safeTimestamp = Number.isFinite(timestampMs) ? timestampMs : Date.now();
   const hostTag = escapeLineProtocol(snapshot.hostIp || "unknown");
   const lines: string[] = [
-    `host_metrics,host=${hostTag} cpu_percent=${snapshot.system.cpuPercent},memory_percent=${snapshot.system.memoryPercent},memory_used_bytes=${snapshot.system.memoryUsedBytes},memory_total_bytes=${snapshot.system.memoryTotalBytes},load_1=${snapshot.system.loadAverage[0]},load_5=${snapshot.system.loadAverage[1]},load_15=${snapshot.system.loadAverage[2]},network_rx_bps=${snapshot.network.rxBytesPerSecond},network_tx_bps=${snapshot.network.txBytesPerSecond} ${safeTimestamp}`,
+    `host_metrics,host=${hostTag} cpu_percent=${snapshot.system.cpuPercent},memory_percent=${snapshot.system.memoryPercent},memory_used_bytes=${snapshot.system.memoryUsedBytes},memory_total_bytes=${snapshot.system.memoryTotalBytes},load_1=${snapshot.system.loadAverage[0]},load_5=${snapshot.system.loadAverage[1]},load_15=${snapshot.system.loadAverage[2]},network_rx_bps=${snapshot.network.rxBytesPerSecond},network_tx_bps=${snapshot.network.txBytesPerSecond},disk_read_bps=${snapshot.system.diskReadBytesPerSecond},disk_write_bps=${snapshot.system.diskWriteBytesPerSecond} ${safeTimestamp}`,
     `container_metrics,host=${hostTag},scope=aggregate running=${snapshot.containers.running}i,cpu_percent=${snapshot.containers.cpuPercent},memory_percent=${snapshot.containers.memoryPercent},memory_used_bytes=${snapshot.containers.memoryUsedBytes} ${safeTimestamp}`,
   ];
 
@@ -88,6 +124,17 @@ function encodeLineProtocol(snapshot: MetricsSnapshot) {
     const containerTag = escapeLineProtocol(container.name);
     lines.push(
       `container_metrics,host=${hostTag},scope=top,container=${containerTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes} ${safeTimestamp}`,
+    );
+  }
+
+  for (const container of snapshot.containers.all) {
+    const containerTag = escapeLineProtocol(container.name);
+    const projectTag = escapeLineProtocol(container.projectName ?? "unknown");
+    const serviceTag = escapeLineProtocol(container.serviceName ?? "unknown");
+    const statusTag = escapeLineProtocol(container.status);
+    const healthTag = escapeLineProtocol(container.health);
+    lines.push(
+      `container_metrics,host=${hostTag},scope=container,container=${containerTag},project=${projectTag},service=${serviceTag},status=${statusTag},health=${healthTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes},memory_percent=${container.memoryPercent} ${safeTimestamp}`,
     );
   }
 
@@ -480,6 +527,54 @@ async function readNetworkCounters() {
   }
 }
 
+function isRelevantDiskDevice(name: string) {
+  return /^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+n\d+|mmcblk\d+|md\d+|dm-\d+)$/.test(
+    name,
+  );
+}
+
+function parseLinuxDiskCounters(source: string): DiskCounters {
+  return source
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .reduce<DiskCounters>(
+      (accumulator, line) => {
+        const columns = line.split(/\s+/);
+        const name = columns[2];
+
+        if (!name || !isRelevantDiskDevice(name)) {
+          return accumulator;
+        }
+
+        const sectorsRead = Number.parseInt(columns[5] ?? "0", 10);
+        const sectorsWritten = Number.parseInt(columns[9] ?? "0", 10);
+
+        accumulator.readBytes +=
+          (Number.isFinite(sectorsRead) ? sectorsRead : 0) * 512;
+        accumulator.writeBytes +=
+          (Number.isFinite(sectorsWritten) ? sectorsWritten : 0) * 512;
+
+        return accumulator;
+      },
+      {
+        readBytes: 0,
+        writeBytes: 0,
+      },
+    );
+}
+
+async function readDiskCounters() {
+  try {
+    return parseLinuxDiskCounters(await readProcFile("diskstats"));
+  } catch {
+    return {
+      readBytes: 0,
+      writeBytes: 0,
+    };
+  }
+}
+
 function parsePercent(value: string | number | null | undefined) {
   if (typeof value === "number") {
     return value;
@@ -526,53 +621,213 @@ function parseDockerMemoryUsage(value: string | null | undefined) {
   return parseByteSize(usage);
 }
 
+function normalizeContainerName(value: string | null | undefined) {
+  const normalized = (value ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)[0]
+    ?.replace(/^\//, "");
+
+  return normalized || "container";
+}
+
+function parseDockerLabels(value: string | null | undefined) {
+  const labels = new Map<string, string>();
+
+  for (const entry of (value ?? "").split(",")) {
+    const trimmed = entry.trim();
+
+    if (!trimmed) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+
+    if (separatorIndex < 1) {
+      continue;
+    }
+
+    labels.set(
+      trimmed.slice(0, separatorIndex),
+      trimmed.slice(separatorIndex + 1),
+    );
+  }
+
+  return labels;
+}
+
+function normalizeContainerRuntimeState(
+  state: string | null | undefined,
+  statusText: string | null | undefined,
+): ContainerRuntimeState {
+  const normalizedState = (state ?? "").trim().toLowerCase();
+
+  if (normalizedState === "running") {
+    return "running";
+  }
+
+  if (["exited", "removing", "stopped"].includes(normalizedState)) {
+    return "stopped";
+  }
+
+  if (["paused", "restarting", "dead", "created"].includes(normalizedState)) {
+    return normalizedState as ContainerRuntimeState;
+  }
+
+  const normalizedStatus = (statusText ?? "").trim().toLowerCase();
+
+  if (normalizedStatus.startsWith("up ")) {
+    return "running";
+  }
+
+  if (normalizedStatus.startsWith("exited ")) {
+    return "stopped";
+  }
+
+  return "unknown";
+}
+
+function normalizeContainerHealth(
+  statusText: string | null | undefined,
+): ContainerHealthState {
+  const normalizedStatus = (statusText ?? "").trim().toLowerCase();
+
+  if (normalizedStatus.includes("(healthy)")) {
+    return "healthy";
+  }
+
+  if (normalizedStatus.includes("(unhealthy)")) {
+    return "unhealthy";
+  }
+
+  if (normalizedStatus.includes("starting")) {
+    return "starting";
+  }
+
+  return "none";
+}
+
 async function readContainerStats(totalMemoryBytes: number) {
   try {
-    const output = await runCommand("docker", [
-      "stats",
-      "--no-stream",
-      "--format",
-      "{{ json . }}",
+    const [statsOutput, containerListOutput] = await Promise.all([
+      runCommand("docker", [
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{ json . }}",
+      ]).catch(() => ""),
+      runCommand("docker", ["ps", "-a", "--format", "{{ json . }}"]),
     ]);
 
-    const rows = output
+    const statsById = new Map<
+      string,
+      {
+        cpuPercent: number;
+        memoryBytes: number;
+      }
+    >();
+    const statsByName = new Map<
+      string,
+      {
+        cpuPercent: number;
+        memoryBytes: number;
+      }
+    >();
+
+    for (const row of statsOutput
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean)
-      .map((line) => JSON.parse(line) as Record<string, string>);
-
-    const top = rows
-      .map((row) => ({
-        name: row.Name ?? row.Container ?? row.ID ?? "container",
+      .map((line) => JSON.parse(line) as Record<string, string>)) {
+      const id = row.ID ?? row.Container ?? row.Name ?? "container";
+      const name = normalizeContainerName(
+        row.Name ?? row.Container ?? row.Names ?? row.ID,
+      );
+      const metric = {
         cpuPercent: parsePercent(row.CPUPerc ?? row.CPU),
         memoryBytes: parseDockerMemoryUsage(row.MemUsage ?? row.MemoryUsage),
-      }))
-      .sort((left, right) => right.cpuPercent - left.cpuPercent);
+      };
 
-    const totalCpuPercent = top.reduce((sum, item) => sum + item.cpuPercent, 0);
-    const memoryUsedBytes = top.reduce(
-      (sum, item) => sum + item.memoryBytes,
-      0,
-    );
+      statsById.set(id, metric);
+      statsByName.set(name, metric);
+    }
+
+    const all = containerListOutput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Record<string, string>)
+      .map((row) => {
+        const id = row.ID ?? row.Id ?? row.Container ?? crypto.randomUUID();
+        const name = normalizeContainerName(
+          row.Names ?? row.Name ?? row.Container ?? row.ID,
+        );
+        const labels = parseDockerLabels(row.Labels ?? row.Label ?? "");
+        const stats = statsById.get(id) ?? statsByName.get(name);
+        const memoryBytes = stats?.memoryBytes ?? 0;
+
+        return {
+          id,
+          name,
+          cpuPercent: stats?.cpuPercent ?? 0,
+          memoryBytes,
+          memoryPercent:
+            totalMemoryBytes > 0
+              ? clamp((memoryBytes / totalMemoryBytes) * 100, 0, 100)
+              : 0,
+          status: normalizeContainerRuntimeState(row.State, row.Status),
+          health: normalizeContainerHealth(row.Status),
+          projectName: labels.get("com.docker.compose.project") ?? null,
+          serviceName: labels.get("com.docker.compose.service") ?? null,
+        } satisfies ContainerStats;
+      })
+      .sort(
+        (left, right) =>
+          right.cpuPercent - left.cpuPercent || right.memoryBytes - left.memoryBytes,
+      );
+
+    const totalCpuPercent = all.reduce((sum, item) => sum + item.cpuPercent, 0);
+    const memoryUsedBytes = all.reduce((sum, item) => sum + item.memoryBytes, 0);
+    const healthy = all.filter(
+      (item) => item.status === "running" && item.health !== "unhealthy",
+    ).length;
+    const unhealthy = all.filter((item) => item.health === "unhealthy").length;
+    const stopped = all.filter(
+      (item) => item.status !== "running" && item.health !== "unhealthy",
+    ).length;
 
     return {
-      running: top.length,
+      running: all.filter((item) => item.status === "running").length,
+      total: all.length,
       cpuPercent: clamp(totalCpuPercent / getCpuCount(), 0, 100),
       memoryPercent:
         totalMemoryBytes > 0
           ? clamp((memoryUsedBytes / totalMemoryBytes) * 100, 0, 100)
           : 0,
       memoryUsedBytes,
-      top: top.slice(0, 3),
+      statusBreakdown: {
+        healthy,
+        unhealthy,
+        stopped,
+      },
+      top: all.slice(0, 3),
+      all,
       warning: null,
     };
   } catch (error) {
     return {
       running: 0,
+      total: 0,
       cpuPercent: 0,
       memoryPercent: 0,
       memoryUsedBytes: 0,
+      statusBreakdown: {
+        healthy: 0,
+        unhealthy: 0,
+        stopped: 0,
+      },
       top: [],
+      all: [],
       warning:
         error instanceof Error
           ? `Container metrics unavailable: ${error.message}`
@@ -582,17 +837,24 @@ async function readContainerStats(totalMemoryBytes: number) {
 }
 
 async function buildSystemMetrics() {
-  const [cpuCounters, loadAverage, memory] = await Promise.all([
+  const [cpuCounters, loadAverage, memory, diskCounters] = await Promise.all([
     readCpuCounters(),
     readLoadAverage(),
     readMemorySnapshot(),
+    readDiskCounters(),
   ]);
   const currentSample: SampleState<CpuCounters> = {
     capturedAt: Date.now(),
     value: cpuCounters,
   };
+  const currentDiskSample: SampleState<DiskCounters> = {
+    capturedAt: currentSample.capturedAt,
+    value: diskCounters,
+  };
 
   let cpuPercent = clamp((loadAverage[0] / getCpuCount()) * 100, 0, 100);
+  let diskReadBytesPerSecond = 0;
+  let diskWriteBytesPerSecond = 0;
 
   if (lastCpuCounters) {
     const totalDelta = cpuCounters.total - lastCpuCounters.value.total;
@@ -603,7 +865,23 @@ async function buildSystemMetrics() {
     }
   }
 
+  if (lastDiskCounters) {
+    const seconds = Math.max(
+      (currentDiskSample.capturedAt - lastDiskCounters.capturedAt) / 1000,
+      1,
+    );
+    diskReadBytesPerSecond = Math.max(
+      0,
+      (diskCounters.readBytes - lastDiskCounters.value.readBytes) / seconds,
+    );
+    diskWriteBytesPerSecond = Math.max(
+      0,
+      (diskCounters.writeBytes - lastDiskCounters.value.writeBytes) / seconds,
+    );
+  }
+
   lastCpuCounters = currentSample;
+  lastDiskCounters = currentDiskSample;
 
   return {
     cpuPercent: round(cpuPercent),
@@ -615,6 +893,8 @@ async function buildSystemMetrics() {
     memoryPercent: round(memory.percent),
     memoryUsedBytes: memory.usedBytes,
     memoryTotalBytes: memory.totalBytes,
+    diskReadBytesPerSecond: round(diskReadBytesPerSecond),
+    diskWriteBytesPerSecond: round(diskWriteBytesPerSecond),
   };
 }
 
@@ -708,10 +988,13 @@ async function buildSnapshot(): Promise<MetricsSnapshot> {
     network,
     containers: {
       running: containers.running,
+      total: containers.total,
       cpuPercent: round(containers.cpuPercent),
       memoryPercent: round(containers.memoryPercent),
       memoryUsedBytes: containers.memoryUsedBytes,
+      statusBreakdown: containers.statusBreakdown,
       top: containers.top,
+      all: containers.all,
     },
   };
 }

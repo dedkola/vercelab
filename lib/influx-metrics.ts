@@ -7,6 +7,8 @@ export type MetricsHistoryPoint = {
   networkIn: number;
   networkOut: number;
   networkTotal: number;
+  diskRead: number;
+  diskWrite: number;
   containersCpu: number;
   containersMemory: number;
 };
@@ -38,6 +40,8 @@ type PartialPoint = {
   memory?: number;
   networkIn?: number;
   networkOut?: number;
+  diskRead?: number;
+  diskWrite?: number;
   containersCpu?: number;
   containersMemory?: number;
 };
@@ -148,7 +152,7 @@ function buildHostQuery({
       ? ` AND host='${escapeInfluxString(hostIp)}'`
       : "";
 
-  return `SELECT mean(cpu_percent) AS cpu_percent, mean(memory_percent) AS memory_percent, mean(network_rx_bps) AS network_in, mean(network_tx_bps) AS network_out FROM host_metrics WHERE time > now() - ${windowMinutes}m${hostFilter} GROUP BY time(${bucketSeconds}s) fill(none)`;
+  return `SELECT mean(cpu_percent) AS cpu_percent, mean(memory_percent) AS memory_percent, mean(network_rx_bps) AS network_in, mean(network_tx_bps) AS network_out, mean(disk_read_bps) AS disk_read, mean(disk_write_bps) AS disk_write FROM host_metrics WHERE time > now() - ${windowMinutes}m${hostFilter} GROUP BY time(${bucketSeconds}s) fill(none)`;
 }
 
 function buildContainerQuery({
@@ -191,6 +195,8 @@ export async function getMetricsHistoryFromInflux(options?: {
     entry.memory = asFiniteNumber(row.memory_percent) ?? 0;
     entry.networkIn = asFiniteNumber(row.network_in) ?? 0;
     entry.networkOut = asFiniteNumber(row.network_out) ?? 0;
+    entry.diskRead = asFiniteNumber(row.disk_read) ?? 0;
+    entry.diskWrite = asFiniteNumber(row.disk_write) ?? 0;
   })) {
     merged.set(point.timestamp, {
       ...merged.get(point.timestamp),
@@ -225,6 +231,8 @@ export async function getMetricsHistoryFromInflux(options?: {
         networkIn,
         networkOut,
         networkTotal: networkIn + networkOut,
+        diskRead: entry.diskRead ?? 0,
+        diskWrite: entry.diskWrite ?? 0,
         containersCpu: entry.containersCpu ?? 0,
         containersMemory: entry.containersMemory ?? 0,
       } satisfies MetricsHistoryPoint;

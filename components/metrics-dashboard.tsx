@@ -11,6 +11,7 @@ import {
 import { usePathname } from "next/navigation";
 
 import { Icon, type IconName } from "@/components/dashboard-kit";
+import { ChartsDashboard } from "@/components/charts-dashboard";
 import {
   MainCpuChart,
   MainMemoryChart,
@@ -37,6 +38,10 @@ import {
   type LogTab,
 } from "./git-deployment-page";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
+import {
+  DASHBOARD_RANGE_OPTIONS,
+  type DashboardRange,
+} from "@/lib/metrics-range";
 import type { DashboardData, DashboardDeployment } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
@@ -48,20 +53,7 @@ const RIGHT_SIDEBAR_WIDTH_STORAGE_KEY = "vercelab:right-sidebar-width";
 const COLLAPSE_LEFT_SIDEBAR_WIDTH_PX = 1280;
 const COLLAPSE_RIGHT_SIDEBAR_WIDTH_PX = 1536;
 
-const MAIN_RANGE_OPTIONS = [
-  { value: "1m", label: "1 min" },
-  { value: "5m", label: "5 min" },
-  { value: "15m", label: "15 min" },
-  { value: "1h", label: "1 h" },
-  { value: "24h", label: "24 h" },
-  { value: "7d", label: "7 d" },
-  { value: "30d", label: "30 d" },
-  { value: "90d", label: "90 d" },
-] as const;
-
-type MainChartRange = (typeof MAIN_RANGE_OPTIONS)[number]["value"];
-
-type DashboardSection = "overview" | "git";
+type DashboardSection = "overview" | "charts" | "git";
 
 type MetricsDashboardProps = {
   baseDomain: string;
@@ -80,6 +72,10 @@ const SECTION_META: Record<
   overview: {
     icon: "network",
     label: "Overview",
+  },
+  charts: {
+    icon: "dashboard",
+    label: "Charts",
   },
   git: {
     icon: "cloud",
@@ -130,7 +126,7 @@ export default function MetricsDashboard({
   const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>(
     [],
   );
-  const [overviewRange, setOverviewRange] = useState<MainChartRange>("15m");
+  const [overviewRange, setOverviewRange] = useState<DashboardRange>("15m");
   const pathname = usePathname();
   const responsiveLayoutRef = useRef<{
     leftCollapsed: boolean | null;
@@ -242,7 +238,12 @@ export default function MetricsDashboard({
       params.set("logs", isRightPanelCollapsed ? "closed" : "open");
       params.set("logTab", activeLogTab);
     } else {
-      params.delete("section");
+      if (activeSection === "charts") {
+        params.set("section", "charts");
+      } else {
+        params.delete("section");
+      }
+
       params.delete("gitView");
       params.delete("deployment");
       params.delete("logs");
@@ -266,6 +267,10 @@ export default function MetricsDashboard({
   ]);
 
   useEffect(() => {
+    if (activeSection !== "overview") {
+      return;
+    }
+
     let active = true;
 
     const poll = async () => {
@@ -308,7 +313,7 @@ export default function MetricsDashboard({
       active = false;
       window.clearInterval(intervalId);
     };
-  }, [overviewRange]);
+  }, [activeSection, overviewRange]);
 
   useEffect(() => {
     let active = true;
@@ -360,10 +365,10 @@ export default function MetricsDashboard({
 
     const params = new URLSearchParams(window.location.search);
 
-    if (section === "git") {
-      params.set("section", "git");
-    } else {
+    if (section === "overview") {
       params.delete("section");
+    } else {
+      params.set("section", section);
     }
 
     const query = params.toString();
@@ -382,6 +387,7 @@ export default function MetricsDashboard({
     ? formatClock(deferredSidebarSnapshot.timestamp)
     : "--:--";
   const isOverviewSection = activeSection === "overview";
+  const isChartsSection = activeSection === "charts";
   const isGitSection = activeSection === "git";
   const activeRailEntry = SECTION_META[activeSection];
 
@@ -499,11 +505,11 @@ export default function MetricsDashboard({
                     <Tabs
                       value={overviewRange}
                       onValueChange={(value) =>
-                        setOverviewRange(value as MainChartRange)
+                        setOverviewRange(value as DashboardRange)
                       }
                     >
                       <TabsList>
-                        {MAIN_RANGE_OPTIONS.map((option) => (
+                        {DASHBOARD_RANGE_OPTIONS.map((option) => (
                           <TabsTrigger key={option.value} value={option.value}>
                             {option.label}
                           </TabsTrigger>
@@ -521,6 +527,8 @@ export default function MetricsDashboard({
                 </CardContent>
               </Card>
             </div>
+          ) : isChartsSection ? (
+            <ChartsDashboard />
           ) : (
             <GitDeploymentPage
               activeDeploymentId={logDeploymentId}

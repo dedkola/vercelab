@@ -7,9 +7,25 @@ Vercelab is a self-hosted homelab deployment control plane built with Next.js 16
 - Next.js 16 control plane with server actions
 - PostgreSQL persistence with encrypted GitHub personal access tokens
 - InfluxDB 3 Core storage for host and container metrics
+- Charts analytics workspace with ECharts visualizations for container rankings, treemap fleet health, host trend lines, and live log heatmaps
 - Deployment engine for root `Dockerfile` and `docker-compose.yml` repositories
 - Traefik routing on a shared Docker network
 - Ubuntu installer for the control-plane stack, wildcard self-signed TLS, and host-path validation
+
+## Charts analytics workspace
+
+The dashboard now includes a dedicated Charts section alongside Overview and Git. It uses ECharts to render:
+
+- horizontal bar charts for CPU per container and memory per container
+- a treemap sized by memory or CPU and colored by container health
+- smooth host trend charts for CPU, memory, network, and disk I/O
+- a logs and events heatmap that combines current container log error signals with recent deployment activity
+
+Current analytics behavior:
+
+- container rankings and treemap data come from live Docker telemetry collected by the control plane
+- host trend charts are backed by InfluxDB history, including host disk read and write throughput
+- the heatmap is assembled from current timestamped container log tails plus recent deployment operations, so it is designed for live operational visibility rather than deep long-term log retention
 
 ## Local development
 

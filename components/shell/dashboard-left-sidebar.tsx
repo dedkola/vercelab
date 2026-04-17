@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-type DashboardSection = "overview" | "git";
+type DashboardSection = "overview" | "charts" | "git";
 
 type DashboardLeftSidebarProps = {
   activeSection: DashboardSection;
@@ -25,11 +25,12 @@ type DashboardLeftSidebarProps = {
 };
 
 const RAIL_PRIMARY: Array<{
-  icon: "network" | "cloud";
+  icon: "network" | "dashboard" | "cloud";
   label: string;
   section: DashboardSection;
 }> = [
   { icon: "network", label: "Overview", section: "overview" },
+  { icon: "dashboard", label: "Charts", section: "charts" },
   { icon: "cloud", label: "Git", section: "git" },
 ];
 

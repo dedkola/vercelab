@@ -1,7 +1,7 @@
 "use client";
 
 type DashboardFooterProps = {
-  activeSection: "overview" | "git";
+  activeSection: "overview" | "charts" | "git";
   updatedAtLabel: string;
 };
 

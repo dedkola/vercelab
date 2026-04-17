@@ -36,6 +36,12 @@ type RuntimeFiles = {
   fileArgs: string[];
 };
 
+type ReadComposeLogsOptions = {
+  includeAllServices?: boolean;
+  tail?: number;
+  timestamps?: boolean;
+};
+
 function parseDeploymentEnvVariables(
   rawValue: string | null,
 ): Record<string, string> {
@@ -602,13 +608,17 @@ async function runComposeCommand(
 async function readComposeLogs(
   deployment: StoredDeployment,
   runtimeFiles: RuntimeFiles,
+  options: ReadComposeLogsOptions = {},
 ) {
-  const serviceName = runtimeFiles.serviceName ?? deployment.serviceName;
+  const serviceName = options.includeAllServices
+    ? null
+    : runtimeFiles.serviceName ?? deployment.serviceName;
 
   return await runComposeCommand(deployment, runtimeFiles, [
     "logs",
+    ...(options.timestamps ? ["--timestamps"] : []),
     "--tail",
-    "200",
+    String(options.tail ?? 200),
     "--no-color",
     ...(serviceName ? [serviceName] : []),
   ]);
@@ -876,45 +886,34 @@ export async function readDeploymentBuildLog(deploymentId: string) {
 }
 
 export async function readDeploymentContainerLog(deploymentId: string) {
+  const output = await readDeploymentContainerLogTail(deploymentId);
+  const deployment = await getStoredDeploymentById(deploymentId);
+
+  return {
+    type: "container" as const,
+    deploymentId,
+    appName: deployment.appName,
+    summary: `Container output for ${deployment.appName}`,
+    output: truncateOutput(output) ?? "Container log is empty.",
+    status: deployment.status,
+    updatedAt: deployment.updatedAt,
+  };
+}
+
+export async function readDeploymentContainerLogTail(
+  deploymentId: string,
+  options: ReadComposeLogsOptions = {},
+) {
   const deployment = await getStoredDeploymentById(deploymentId);
 
   if (!(await pathExists(deployment.workspacePath))) {
-    return {
-      type: "container" as const,
-      deploymentId,
-      appName: deployment.appName,
-      summary: "Workspace is missing, so container logs are unavailable.",
-      output: "Workspace is missing, so container logs are unavailable.",
-      status: deployment.status,
-      updatedAt: deployment.updatedAt,
-    };
+    return "Workspace is missing, so container logs are unavailable.";
   }
 
   try {
     const runtimeFiles = await detectRuntimeFiles(deployment);
-    const output = await readComposeLogs(deployment, runtimeFiles);
-
-    return {
-      type: "container" as const,
-      deploymentId,
-      appName: deployment.appName,
-      summary: `Container output for ${deployment.appName}`,
-      output: truncateOutput(output) ?? "Container log is empty.",
-      status: deployment.status,
-      updatedAt: deployment.updatedAt,
-    };
+    return await readComposeLogs(deployment, runtimeFiles, options);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to read container logs.";
-
-    return {
-      type: "container" as const,
-      deploymentId,
-      appName: deployment.appName,
-      summary: message,
-      output: message,
-      status: deployment.status,
-      updatedAt: deployment.updatedAt,
-    };
+    return error instanceof Error ? error.message : "Unable to read container logs.";
   }
 }

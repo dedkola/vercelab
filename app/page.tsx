@@ -43,8 +43,13 @@ function getInitialGitView(
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const dashboardData = await listDashboardData();
+  const sectionParam = getSearchParamValue(params.section);
   const activeSection =
-    getSearchParamValue(params.section) === "git" ? "git" : "overview";
+    sectionParam === "git"
+      ? "git"
+      : sectionParam === "charts"
+        ? "charts"
+        : "overview";
   const initialGitDeploymentId = getSearchParamValue(params.deployment) ?? null;
   const initialGitView = getInitialGitView(
     getSearchParamValue(params.gitView),
