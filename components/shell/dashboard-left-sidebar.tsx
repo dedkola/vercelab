@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import { GitBranch, Home, type LucideIcon } from "lucide-react";
 
 import { Icon } from "@/components/dashboard-kit";
 import { Button } from "@/components/ui/button";
@@ -25,12 +26,12 @@ type DashboardLeftSidebarProps = {
 };
 
 const RAIL_PRIMARY: Array<{
-  icon: "network" | "cloud";
+  iconComponent: LucideIcon;
   label: string;
   section: DashboardSection;
 }> = [
-  { icon: "network", label: "Home", section: "overview" },
-  { icon: "cloud", label: "Git apps", section: "git" },
+  { iconComponent: Home, label: "Home", section: "overview" },
+  { iconComponent: GitBranch, label: "Git apps", section: "git" },
 ];
 
 const DEFAULT_PANEL_WIDTH_PX = 224;
@@ -151,32 +152,35 @@ export function DashboardLeftSidebar({
         className="flex w-12 shrink-0 flex-col items-center gap-2 border-r border-border/70 bg-linear-to-b from-background via-muted/42 to-background px-1.5 py-3 shadow-[20px_0_54px_-46px_rgba(15,23,42,0.42)] backdrop-blur-sm"
         aria-label="Primary navigation"
       >
-        {RAIL_PRIMARY.map((entry) => (
-          <Button
-            aria-label={entry.label}
-            className={cn(
-              "h-9 w-9 rounded-2xl border border-transparent text-muted-foreground shadow-none",
-              entry.section === activeSection &&
-                "border-border/70 bg-background/90 text-foreground shadow-[0_16px_34px_-24px_rgba(15,23,42,0.35)]",
-            )}
-            key={entry.icon}
-            onClick={() => {
-              if (entry.section === activeSection) {
-                onTogglePanelAction();
-              } else {
-                onSectionChangeAction(entry.section);
-                if (isPanelCollapsed) {
+        {RAIL_PRIMARY.map((entry) => {
+          const RailIcon = entry.iconComponent;
+
+          return (
+            <Button
+              aria-label={entry.label}
+              className={cn(
+                "h-9 w-9 rounded-none border-0 bg-transparent text-muted-foreground shadow-none hover:bg-transparent",
+                entry.section === activeSection && "text-foreground",
+              )}
+              key={entry.label}
+              onClick={() => {
+                if (entry.section === activeSection) {
                   onTogglePanelAction();
+                } else {
+                  onSectionChangeAction(entry.section);
+                  if (isPanelCollapsed) {
+                    onTogglePanelAction();
+                  }
                 }
-              }
-            }}
-            type="button"
-            variant="ghost"
-            size="icon"
-          >
-            <Icon name={entry.icon} className="h-4 w-4" />
-          </Button>
-        ))}
+              }}
+              type="button"
+              variant="ghost"
+              size="icon"
+            >
+              <RailIcon className="h-4 w-4" />
+            </Button>
+          );
+        })}
       </aside>
 
       {isPanelCollapsed ? (

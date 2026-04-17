@@ -9,6 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type FormEvent,
 } from "react";
+import { GitBranch, Home, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Icon } from "@/components/dashboard-kit";
@@ -1375,20 +1376,20 @@ function SectionLabel({
 
 const WORKSPACE_PAGES: Array<{
   description: string;
-  icon: "network" | "github";
+  iconComponent: LucideIcon;
   id: WorkspacePage;
   label: string;
 }> = [
   {
     id: "overview",
     label: "Overview",
-    icon: "network",
+    iconComponent: Home,
     description: "Live containers and host load",
   },
   {
     id: "apps",
     label: "GitHub apps",
-    icon: "github",
+    iconComponent: GitBranch,
     description: "Deployments and repo wiring",
   },
 ];
@@ -2276,13 +2277,10 @@ export function ContainerObservabilityPage({
 
       <div className="flex min-w-0 flex-1 overflow-hidden">
         <aside className="flex w-14 shrink-0 flex-col items-center gap-3 border-r border-border/70 bg-linear-to-b from-background via-muted/22 to-background px-2 py-3 shadow-[16px_0_48px_-44px_rgba(15,23,42,0.26)]">
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border/70 bg-background/88 shadow-[0_16px_36px_-30px_rgba(15,23,42,0.32)]">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          </div>
-
           <div className="flex w-full flex-col gap-2 pt-1">
             {WORKSPACE_PAGES.map((page) => {
               const isActive = page.id === activePage;
+              const PageIcon = page.iconComponent;
 
               return (
                 <button
@@ -2291,15 +2289,14 @@ export function ContainerObservabilityPage({
                   aria-label={page.label}
                   title={page.label}
                   className={cn(
-                    "group flex w-full items-center justify-center rounded-[1.15rem] border p-2.5 transition-all duration-200",
+                    "group flex w-full items-center justify-center border-0 bg-transparent p-2.5 transition-all duration-200",
                     isActive
-                      ? "border-emerald-200/80 bg-linear-to-b from-emerald-50/90 via-background to-background text-emerald-700 shadow-[0_18px_42px_-30px_rgba(16,185,129,0.28)]"
-                      : "border-border/60 bg-background/78 text-muted-foreground hover:border-border hover:bg-background/90 hover:text-foreground",
+                      ? "text-emerald-700"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                   onClick={() => setActivePage(page.id)}
                 >
-                  <Icon
-                    name={page.icon}
+                  <PageIcon
                     className={cn(
                       "h-4 w-4 transition-transform duration-200 group-hover:-translate-y-px",
                       isActive ? "text-emerald-700" : "text-current",
