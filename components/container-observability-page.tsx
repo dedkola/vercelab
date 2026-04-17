@@ -107,16 +107,11 @@ type MockContainer = {
 };
 
 type ContainerWorkspaceEntry = {
-  badgeLabel: string;
-  badgeVariant: "success" | "warning" | "default";
   display: MockContainer;
   dotClassName: string;
-  footerLabel: string;
   preview: MockContainer | null;
   runtime: ContainerStats | null;
   searchText: string;
-  subtitle: string;
-  tertiaryLabel: string;
 };
 
 type ContainerObservabilityPageProps = {
@@ -189,7 +184,12 @@ const CONTAINERS: MockContainer[] = [
     endpoints: [
       { name: "/dashboard", latency: "112 ms", uptime: "99.98%", load: 72 },
       { name: "/api/metrics", latency: "74 ms", uptime: "99.94%", load: 56 },
-      { name: "/api/deployments", latency: "128 ms", uptime: "99.89%", load: 68 },
+      {
+        name: "/api/deployments",
+        latency: "128 ms",
+        uptime: "99.89%",
+        load: 68,
+      },
     ],
     activity: [24, 28, 33, 35, 39, 42, 46, 45, 49, 47, 43, 40],
     signals: [
@@ -220,7 +220,10 @@ const CONTAINERS: MockContainer[] = [
     ],
     timeline: [
       { label: "Last deploy", detail: "Merged preview branch 23 min ago." },
-      { label: "Health check", detail: "Traefik and Postgres probes are green." },
+      {
+        label: "Health check",
+        detail: "Traefik and Postgres probes are green.",
+      },
       { label: "Queue depth", detail: "No pending background operations." },
     ],
     logs: {
@@ -332,13 +335,18 @@ const CONTAINERS: MockContainer[] = [
         delta: "+6%",
         caption: "Ingress rose with the latest preview rollout.",
         tone: "slate",
-        points: [680, 720, 740, 790, 860, 910, 1020, 1110, 1180, 1210, 1200, 1200],
+        points: [
+          680, 720, 740, 790, 860, 910, 1020, 1110, 1180, 1210, 1200, 1200,
+        ],
       },
     ],
     timeline: [
       { label: "Certificate sync", detail: "ACME renewals valid for 54 days." },
       { label: "Router drift", detail: "No stale routes detected." },
-      { label: "Connection pressure", detail: "Peak concurrency held below 40%." },
+      {
+        label: "Connection pressure",
+        detail: "Peak concurrency held below 40%.",
+      },
     ],
     logs: {
       live: [
@@ -410,7 +418,10 @@ const CONTAINERS: MockContainer[] = [
         delta: "+0.3 GB",
         caption: "Shared buffers expanded after vacuum and analytics jobs.",
         tone: "amber",
-        points: [1900, 1950, 2010, 2140, 2220, 2310, 2440, 2520, 2640, 2710, 2790, 2800],
+        points: [
+          1900, 1950, 2010, 2140, 2220, 2310, 2440, 2520, 2640, 2710, 2790,
+          2800,
+        ],
       },
       {
         label: "Network trend",
@@ -422,8 +433,14 @@ const CONTAINERS: MockContainer[] = [
       },
     ],
     timeline: [
-      { label: "Replica lag", detail: "Hot standby trails primary by 7 seconds." },
-      { label: "Recent maintenance", detail: "Autovacuum completed 46 minutes ago." },
+      {
+        label: "Replica lag",
+        detail: "Hot standby trails primary by 7 seconds.",
+      },
+      {
+        label: "Recent maintenance",
+        detail: "Autovacuum completed 46 minutes ago.",
+      },
       { label: "Backup window", detail: "Snapshot scheduled in 1 hour." },
     ],
     logs: {
@@ -484,7 +501,12 @@ const CONTAINERS: MockContainer[] = [
     ],
     endpoints: [
       { name: "Build queue", latency: "4 s", uptime: "99.90%", load: 64 },
-      { name: "Artifact upload", latency: "812 ms", uptime: "99.87%", load: 52 },
+      {
+        name: "Artifact upload",
+        latency: "812 ms",
+        uptime: "99.87%",
+        load: 52,
+      },
       { name: "Cleanup", latency: "1.2 s", uptime: "99.95%", load: 26 },
     ],
     activity: [18, 22, 21, 24, 28, 33, 31, 29, 35, 38, 32, 28],
@@ -683,7 +705,10 @@ function formatBytesPerSecond(value: number) {
   return `${formatBytes(value, value >= 1024 ** 2 ? 1 : 0)}/s`;
 }
 
-function formatSignedDelta(value: number, formatter: (delta: number) => string) {
+function formatSignedDelta(
+  value: number,
+  formatter: (delta: number) => string,
+) {
   if (!Number.isFinite(value) || Math.abs(value) < 0.05) {
     return "Stable";
   }
@@ -808,9 +833,8 @@ function buildLiveServerMetrics(
       title: "Container demand",
       value: formatPercent(snapshot.containers.cpuPercent),
       caption: `${snapshot.containers.running} running containers using ${formatBytes(snapshot.containers.memoryUsedBytes)}.`,
-      delta: getLatestDelta(
-        containersCpuPoints,
-        (delta) => formatPercent(delta, 1),
+      delta: getLatestDelta(containersCpuPoints, (delta) =>
+        formatPercent(delta, 1),
       ),
       points: containersCpuPoints,
       tone: getUsageTone(snapshot.containers.cpuPercent, {
@@ -879,12 +903,19 @@ function getRuntimeDotClassName(
 }
 
 function getRuntimeMetricTone(
-  runtime: Pick<ContainerStats, "health" | "status" | "cpuPercent" | "memoryPercent">,
+  runtime: Pick<
+    ContainerStats,
+    "health" | "status" | "cpuPercent" | "memoryPercent"
+  >,
   metric: "cpu" | "memory" | "state",
 ): MetricTone {
   if (metric === "state") {
     const tone = getContainerTone(runtime);
-    return tone === "running" ? "emerald" : tone === "unhealthy" ? "amber" : "slate";
+    return tone === "running"
+      ? "emerald"
+      : tone === "unhealthy"
+        ? "amber"
+        : "slate";
   }
 
   return metric === "cpu"
@@ -913,7 +944,9 @@ function mapRuntimeToPreviewStatus(runtime: ContainerStats): ContainerStatus {
 function buildRuntimeSummary(runtime: ContainerStats) {
   const parts = [
     runtime.projectName ? `Compose project ${runtime.projectName}` : null,
-    runtime.serviceName ? `service ${runtime.serviceName}` : "standalone runtime",
+    runtime.serviceName
+      ? `service ${runtime.serviceName}`
+      : "standalone runtime",
   ].filter(Boolean);
 
   return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.`;
@@ -936,7 +969,9 @@ function buildRuntimeTimeline(
       label: "Compose labels",
       detail:
         runtime.projectName || runtime.serviceName
-          ? [runtime.projectName, runtime.serviceName].filter(Boolean).join(" / ")
+          ? [runtime.projectName, runtime.serviceName]
+              .filter(Boolean)
+              .join(" / ")
           : "No compose metadata was exposed for this container.",
     },
   ];
@@ -997,7 +1032,9 @@ function buildDisplayContainer(
       node: snapshot?.hostIp ?? "Current host",
       status: mapRuntimeToPreviewStatus(runtime),
       summary: buildRuntimeSummary(runtime),
-      uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : "Live sample",
+      uptime: snapshot
+        ? `Updated ${formatClock(snapshot.timestamp)}`
+        : "Live sample",
       port: runtime.serviceName ?? "Inspect data unavailable",
       cpu: formatPercent(runtime.cpuPercent, 1),
       memory: formatBytes(runtime.memoryBytes),
@@ -1027,7 +1064,9 @@ function buildDisplayContainer(
     node: snapshot?.hostIp ?? base.node,
     status: mapRuntimeToPreviewStatus(runtime),
     summary: preview?.summary ?? base.summary,
-    uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : base.uptime,
+    uptime: snapshot
+      ? `Updated ${formatClock(snapshot.timestamp)}`
+      : base.uptime,
     cpu: formatPercent(runtime.cpuPercent, 1),
     memory: formatBytes(runtime.memoryBytes),
     region: snapshot?.hostIp ?? base.region,
@@ -1051,43 +1090,56 @@ function buildDisplayContainer(
 function buildContainerWorkspaceEntries(
   snapshot: MetricsSnapshot | null,
 ): ContainerWorkspaceEntry[] {
-  const previewByName = new Map(CONTAINERS.map((container) => [container.name, container]));
-  const runtimeContainers = snapshot?.containers.all ?? [];
+  const previewByName = new Map(
+    CONTAINERS.map((container) => [container.name, container]),
+  );
+  const previewOrder = new Map(
+    CONTAINERS.map((container, index) => [container.name, index]),
+  );
+  const runtimeContainers = [...(snapshot?.containers.all ?? [])].sort(
+    (left, right) => {
+      const leftPreviewIndex = previewOrder.get(left.name);
+      const rightPreviewIndex = previewOrder.get(right.name);
+
+      if (
+        leftPreviewIndex !== undefined &&
+        rightPreviewIndex !== undefined &&
+        leftPreviewIndex !== rightPreviewIndex
+      ) {
+        return leftPreviewIndex - rightPreviewIndex;
+      }
+
+      if (leftPreviewIndex !== undefined && rightPreviewIndex === undefined) {
+        return -1;
+      }
+
+      if (leftPreviewIndex === undefined && rightPreviewIndex !== undefined) {
+        return 1;
+      }
+
+      return left.name.localeCompare(right.name);
+    },
+  );
 
   if (!runtimeContainers.length) {
     return CONTAINERS.map((preview) => ({
-      badgeLabel: formatStatusLabel(preview.status),
-      badgeVariant: getStatusBadgeVariant(preview.status),
       display: preview,
       dotClassName: getStatusDotClassName(preview.status),
-      footerLabel: preview.port,
       preview,
       runtime: null,
       searchText: [preview.name, preview.stack, preview.image, preview.summary]
         .join(" ")
         .toLowerCase(),
-      subtitle: `${preview.stack} - ${preview.image}`,
-      tertiaryLabel: preview.port,
     }));
   }
 
   return runtimeContainers.map((runtime) => {
     const preview = previewByName.get(runtime.name) ?? null;
     const display = buildDisplayContainer(runtime, preview, snapshot);
-    const subtitle = [
-      runtime.projectName,
-      runtime.serviceName,
-      runtime.health !== "none" ? formatRuntimeHealthLabel(runtime.health) : null,
-    ]
-      .filter(Boolean)
-      .join(" - ");
 
     return {
-      badgeLabel: formatRuntimeStatusLabel(runtime),
-      badgeVariant: getRuntimeBadgeVariant(runtime),
       display,
       dotClassName: getRuntimeDotClassName(runtime),
-      footerLabel: `Sampled ${snapshot ? formatClock(snapshot.timestamp) : "now"}`,
       preview,
       runtime,
       searchText: [
@@ -1101,9 +1153,6 @@ function buildContainerWorkspaceEntries(
         .filter(Boolean)
         .join(" ")
         .toLowerCase(),
-      subtitle: subtitle || "Docker runtime container",
-      tertiaryLabel:
-        runtime.serviceName ?? runtime.projectName ?? runtime.id.slice(0, 12),
     };
   });
 }
@@ -1247,7 +1296,9 @@ function Sparkline({
       .map((value, index) => {
         const x = Number((index * step).toFixed(2));
         const normalized = (value - min) / range;
-        const y = Number((safeHeight - normalized * (safeHeight - 10) - 5).toFixed(2));
+        const y = Number(
+          (safeHeight - normalized * (safeHeight - 10) - 5).toFixed(2),
+        );
         return `${x},${y}`;
       })
       .join(" ");
@@ -1413,7 +1464,9 @@ function getDeploymentStatusBadgeVariant(
   }
 }
 
-function getDeploymentStatusDotClassName(status: DashboardDeployment["status"]) {
+function getDeploymentStatusDotClassName(
+  status: DashboardDeployment["status"],
+) {
   switch (status) {
     case "running":
       return "bg-emerald-500";
@@ -1469,9 +1522,7 @@ function getRepositoryPathName(repositoryUrl: string) {
     .replace(/\.git$/i, "");
 }
 
-function getDeploymentTone(
-  status: DashboardDeployment["status"],
-): MetricTone {
+function getDeploymentTone(status: DashboardDeployment["status"]): MetricTone {
   switch (status) {
     case "running":
       return "emerald";
@@ -1561,7 +1612,8 @@ function buildDeploymentSignals(
         ? formatRelativeTime(deployment.deployedAt)
         : "Not live yet",
       delta: formatRelativeTime(deployment.updatedAt),
-      caption: "Deployment freshness based on the latest persisted rollout and update timestamps.",
+      caption:
+        "Deployment freshness based on the latest persisted rollout and update timestamps.",
       tone: getDeploymentTone(deployment.status),
       points: createFlatSeries(getDeploymentSeed(deployment.status, 28)),
     },
@@ -1569,7 +1621,8 @@ function buildDeploymentSignals(
       label: "Source and mode",
       value: formatDeploymentMode(deployment.composeMode),
       delta: deployment.branch ?? "Default",
-      caption: "Repository branch selection and packaging mode for the active app.",
+      caption:
+        "Repository branch selection and packaging mode for the active app.",
       tone: "slate",
       points: createFlatSeries(32),
     },
@@ -1627,7 +1680,9 @@ function parseDeploymentEnvVariables(envVariables: string | null) {
     });
 }
 
-function createDraftFromRepository(repository: GitHubRepository): DraftAppState {
+function createDraftFromRepository(
+  repository: GitHubRepository,
+): DraftAppState {
   const slug = toSlug(repository.name);
 
   return {
@@ -1685,7 +1740,9 @@ export function ContainerObservabilityPage({
   const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(true);
   const [isCreateAppPending, setIsCreateAppPending] = useState(false);
   const [updatingAppId, setUpdatingAppId] = useState<string | null>(null);
-  const [draftApp, setDraftApp] = useState<DraftAppState>(createEmptyDraftAppState);
+  const [draftApp, setDraftApp] = useState<DraftAppState>(
+    createEmptyDraftAppState,
+  );
   const [repositoryState, setRepositoryState] = useState<RepositoryState>({
     error: null,
     hasLoaded: false,
@@ -1731,9 +1788,9 @@ export function ContainerObservabilityPage({
       : sidebarSnapshot
         ? {
             badgeLabel: "Snapshot only",
-            badgeClassName:
-              "border-amber-200/80 bg-amber-50/90 text-amber-700",
-            helperText: "Waiting for InfluxDB history samples to populate the charts.",
+            badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
+            helperText:
+              "Waiting for InfluxDB history samples to populate the charts.",
           }
         : {
             badgeLabel: "Connecting",
@@ -1783,7 +1840,9 @@ export function ContainerObservabilityPage({
     null;
   const deploymentOverviewMetrics = useMemo(
     () =>
-      selectedDeployment ? buildDeploymentOverviewMetrics(selectedDeployment) : [],
+      selectedDeployment
+        ? buildDeploymentOverviewMetrics(selectedDeployment)
+        : [],
     [selectedDeployment],
   );
   const deploymentSignals = useMemo(
@@ -1812,19 +1871,22 @@ export function ContainerObservabilityPage({
       (repository) => repository.cloneUrl === draftApp.repositoryUrl,
     )?.id ?? null;
 
-  const activeContainerId =
-    filteredContainers.some(
-      (container) => container.display.name === selectedContainerId,
-    )
-      ? selectedContainerId
-      : filteredContainers[0]?.display.name ??
-        workspaceContainers[0]?.display.name ??
-        CONTAINERS[0]?.name ??
-        selectedContainerId;
+  const activeContainerId = filteredContainers.some(
+    (container) => container.display.name === selectedContainerId,
+  )
+    ? selectedContainerId
+    : (filteredContainers[0]?.display.name ??
+      workspaceContainers[0]?.display.name ??
+      CONTAINERS[0]?.name ??
+      selectedContainerId);
 
   const selectedEntry =
-    filteredContainers.find((container) => container.display.name === activeContainerId) ??
-    workspaceContainers.find((container) => container.display.name === activeContainerId) ??
+    filteredContainers.find(
+      (container) => container.display.name === activeContainerId,
+    ) ??
+    workspaceContainers.find(
+      (container) => container.display.name === activeContainerId,
+    ) ??
     workspaceContainers[0];
   const selectedContainer = selectedEntry?.display ?? CONTAINERS[0];
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
@@ -1876,7 +1938,9 @@ export function ContainerObservabilityPage({
         }
 
         const message =
-          error instanceof Error ? error.message : "Unable to load live metrics.";
+          error instanceof Error
+            ? error.message
+            : "Unable to load live metrics.";
 
         console.error(message);
         setMetricsError(message);
@@ -1977,7 +2041,11 @@ export function ContainerObservabilityPage({
     event: ReactMouseEvent<HTMLDivElement>,
   ) {
     const startWidth =
-      kind === "metrics" ? metricsWidth : kind === "list" ? listWidth : logsWidth;
+      kind === "metrics"
+        ? metricsWidth
+        : kind === "list"
+          ? listWidth
+          : logsWidth;
 
     dragStateRef.current = {
       kind,
@@ -2020,7 +2088,9 @@ export function ContainerObservabilityPage({
       };
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to load repositories from GitHub.");
+        throw new Error(
+          payload.error ?? "Unable to load repositories from GitHub.",
+        );
       }
 
       setRepositoryState({
@@ -2044,7 +2114,11 @@ export function ContainerObservabilityPage({
   }, []);
 
   useEffect(() => {
-    if (activePage === "apps" && !repositoryState.hasLoaded && !repositoryState.isLoading) {
+    if (
+      activePage === "apps" &&
+      !repositoryState.hasLoaded &&
+      !repositoryState.isLoading
+    ) {
       void loadRepositories();
     }
   }, [
@@ -2073,7 +2147,9 @@ export function ContainerObservabilityPage({
     const port = draftApp.port.trim();
 
     if (!repositoryUrl || !appName || !subdomain || !port) {
-      toast.error("Select a repository and complete the app name, subdomain, and port.");
+      toast.error(
+        "Select a repository and complete the app name, subdomain, and port.",
+      );
       return;
     }
 
@@ -2141,7 +2217,8 @@ export function ContainerObservabilityPage({
   }
 
   const activePageMeta =
-    WORKSPACE_PAGES.find((page) => page.id === activePage) ?? WORKSPACE_PAGES[0]!;
+    WORKSPACE_PAGES.find((page) => page.id === activePage) ??
+    WORKSPACE_PAGES[0]!;
   const previewLogs = selectedContainer.logs[overviewLogView];
 
   return (
@@ -2292,7 +2369,9 @@ export function ContainerObservabilityPage({
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
                       <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-2.5">
-                        <div className="text-muted-foreground">CPU headroom</div>
+                        <div className="text-muted-foreground">
+                          CPU headroom
+                        </div>
                         <div className="mt-1 text-sm font-semibold text-foreground">
                           {sidebarSnapshot
                             ? formatPercent(
@@ -2305,7 +2384,9 @@ export function ContainerObservabilityPage({
                         </div>
                       </div>
                       <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-2.5">
-                        <div className="text-muted-foreground">Memory headroom</div>
+                        <div className="text-muted-foreground">
+                          Memory headroom
+                        </div>
                         <div className="mt-1 text-sm font-semibold text-foreground">
                           {sidebarSnapshot
                             ? formatBytes(
@@ -2327,7 +2408,8 @@ export function ContainerObservabilityPage({
                     </div>
                   </div>
 
-                  {((sidebarSnapshot && !sidebarHistory.length) || metricsError) && (
+                  {((sidebarSnapshot && !sidebarHistory.length) ||
+                    metricsError) && (
                     <div className="rounded-[1.2rem] border border-amber-200/80 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-800 shadow-[0_18px_44px_-40px_rgba(217,119,6,0.35)]">
                       {metricsStatus.helperText}
                     </div>
@@ -2339,18 +2421,19 @@ export function ContainerObservabilityPage({
                     return (
                       <Card
                         key={metric.title}
-                        className={cn(
-                          "overflow-hidden bg-linear-to-br shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]",
-                          toneClasses.surface,
-                        )}
+                        className="overflow-hidden border-border/70 bg-linear-to-br from-background/96 via-muted/16 to-background shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]"
                       >
                         <CardHeader className="space-y-2 border-b border-border/60 pb-3">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <CardTitle>{metric.title}</CardTitle>
-                              <CardDescription>{metric.caption}</CardDescription>
+                              <CardDescription>
+                                {metric.caption}
+                              </CardDescription>
                             </div>
-                            <Badge className={cn("shadow-none", toneClasses.badge)}>
+                            <Badge
+                              className={cn("shadow-none", toneClasses.badge)}
+                            >
                               {metric.delta}
                             </Badge>
                           </div>
@@ -2359,7 +2442,7 @@ export function ContainerObservabilityPage({
                           <div className="text-xl font-semibold tracking-tight text-foreground">
                             {metric.value}
                           </div>
-                          <Sparkline points={metric.points} tone={metric.tone} />
+                          <Sparkline points={metric.points} tone="emerald" />
                         </CardContent>
                       </Card>
                     );
@@ -2368,7 +2451,9 @@ export function ContainerObservabilityPage({
               </ScrollArea>
             </aside>
 
-            <ResizeHandle onMouseDown={(event) => handleResizeStart("metrics", event)} />
+            <ResizeHandle
+              onMouseDown={(event) => handleResizeStart("metrics", event)}
+            />
           </>
         )}
 
@@ -2420,68 +2505,26 @@ export function ContainerObservabilityPage({
                         key={container.display.id}
                         type="button"
                         className={cn(
-                          "w-full rounded-[1.35rem] border px-4 py-4 text-left transition-all duration-200",
-                          "shadow-[0_20px_52px_-42px_rgba(15,23,42,0.24)] hover:-translate-y-px hover:bg-background/95",
+                          "w-full rounded-[1.15rem] border px-3.5 py-3 text-left transition-all duration-200",
+                          "shadow-[0_16px_42px_-38px_rgba(15,23,42,0.22)] hover:-translate-y-px hover:bg-background/95",
                           activeContainerId === container.display.name
                             ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
                             : "border-border/70 bg-background/85",
                         )}
-                        onClick={() => setSelectedContainerId(container.display.name)}
+                        onClick={() =>
+                          setSelectedContainerId(container.display.name)
+                        }
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={cn(
-                                  "h-2 w-2 rounded-full",
-                                  container.dotClassName,
-                                )}
-                              />
-                              <div className="truncate text-sm font-semibold tracking-tight text-foreground">
-                                {container.display.name}
-                              </div>
-                            </div>
-                            <div className="mt-1 truncate text-xs text-muted-foreground">
-                              {container.subtitle}
-                            </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "h-2 w-2 shrink-0 rounded-full",
+                              container.dotClassName,
+                            )}
+                          />
+                          <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+                            {container.display.name}
                           </div>
-                          <Badge variant={container.badgeVariant}>
-                            {container.badgeLabel}
-                          </Badge>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                          <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                            <div className="text-muted-foreground">CPU</div>
-                            <div className="mt-1 font-semibold text-foreground">
-                              {container.display.cpu}
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                            <div className="text-muted-foreground">Memory</div>
-                            <div className="mt-1 font-semibold text-foreground">
-                              {container.display.memory}
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-border/60 bg-background/80 px-2.5 py-2">
-                            <div className="text-muted-foreground">
-                              {container.runtime ? "Service" : "Port"}
-                            </div>
-                            <div className="mt-1 truncate font-semibold text-foreground">
-                              {container.tertiaryLabel}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                          <span className="truncate">{container.footerLabel}</span>
-                          {container.runtime ? (
-                            <span className="font-semibold text-foreground/80">
-                              {formatRuntimeHealthLabel(container.runtime.health)}
-                            </span>
-                          ) : (
-                            <span className="truncate">{container.display.port}</span>
-                          )}
                         </div>
                       </button>
                     ))
@@ -2491,7 +2534,8 @@ export function ContainerObservabilityPage({
                         No matching containers
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        Try a broader search term to repopulate the preview list.
+                        Try a broader search term to repopulate the preview
+                        list.
                       </div>
                     </div>
                   )}
@@ -2510,7 +2554,12 @@ export function ContainerObservabilityPage({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
-                      {deployments.filter((deployment) => deployment.status === "running").length} live
+                      {
+                        deployments.filter(
+                          (deployment) => deployment.status === "running",
+                        ).length
+                      }{" "}
+                      live
                     </Badge>
                     <Badge className="border-border/60 bg-background/80 text-foreground">
                       {deployments.length} apps
@@ -2540,7 +2589,10 @@ export function ContainerObservabilityPage({
                       className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                       onClick={() => {
                         setIsCreateAppExpanded((current) => !current);
-                        if (!repositoryState.hasLoaded && !repositoryState.isLoading) {
+                        if (
+                          !repositoryState.hasLoaded &&
+                          !repositoryState.isLoading
+                        ) {
                           void loadRepositories();
                         }
                       }}
@@ -2554,13 +2606,18 @@ export function ContainerObservabilityPage({
                         </div>
                       </div>
                       <Icon
-                        name={isCreateAppExpanded ? "chevron-down" : "chevron-right"}
+                        name={
+                          isCreateAppExpanded ? "chevron-down" : "chevron-right"
+                        }
                         className="h-4 w-4 text-muted-foreground"
                       />
                     </button>
 
                     {isCreateAppExpanded ? (
-                      <form className="space-y-3 border-t border-border/60 px-4 py-4" onSubmit={handleCreateApp}>
+                      <form
+                        className="space-y-3 border-t border-border/60 px-4 py-4"
+                        onSubmit={handleCreateApp}
+                      >
                         <div className="space-y-1.5">
                           <Label className="text-xs font-medium text-muted-foreground">
                             Repository
@@ -2569,15 +2626,18 @@ export function ContainerObservabilityPage({
                             disabled={repositoryState.isLoading}
                             emptyText="No repositories found"
                             onValueChangeAction={(value) => {
-                              const repository = repositoryState.repositories.find(
-                                (item) => String(item.id) === value,
-                              );
+                              const repository =
+                                repositoryState.repositories.find(
+                                  (item) => String(item.id) === value,
+                                );
 
                               if (!repository) {
                                 return;
                               }
 
-                              setDraftApp(createDraftFromRepository(repository));
+                              setDraftApp(
+                                createDraftFromRepository(repository),
+                              );
                             }}
                             options={repositoryOptions}
                             placeholder={
@@ -2586,7 +2646,11 @@ export function ContainerObservabilityPage({
                                 : "Select a repository"
                             }
                             searchPlaceholder="Search repositories"
-                            value={selectedRepositoryValue ? String(selectedRepositoryValue) : ""}
+                            value={
+                              selectedRepositoryValue
+                                ? String(selectedRepositoryValue)
+                                : ""
+                            }
                           />
                         </div>
 
@@ -2639,7 +2703,9 @@ export function ContainerObservabilityPage({
                                 }
                               />
                               {baseDomain ? (
-                                <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                                <InputGroupSuffix>
+                                  .{baseDomain}
+                                </InputGroupSuffix>
                               ) : null}
                             </InputGroup>
                           </div>
@@ -2667,9 +2733,11 @@ export function ContainerObservabilityPage({
                           </div>
                         ) : null}
 
-                        {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (
+                        {!repositoryState.tokenConfigured &&
+                        repositoryState.hasLoaded ? (
                           <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                            Configure a GitHub token to browse repositories from the sidebar.
+                            Configure a GitHub token to browse repositories from
+                            the sidebar.
                           </div>
                         ) : null}
 
@@ -2708,7 +2776,9 @@ export function ContainerObservabilityPage({
                                   <span
                                     className={cn(
                                       "h-2 w-2 rounded-full",
-                                      getDeploymentStatusDotClassName(deployment.status),
+                                      getDeploymentStatusDotClassName(
+                                        deployment.status,
+                                      ),
                                     )}
                                   />
                                   <span className="truncate text-sm font-semibold tracking-tight text-foreground">
@@ -2719,7 +2789,11 @@ export function ContainerObservabilityPage({
                                   {deployment.repositoryName}
                                 </div>
                               </div>
-                              <Badge variant={getDeploymentStatusBadgeVariant(deployment.status)}>
+                              <Badge
+                                variant={getDeploymentStatusBadgeVariant(
+                                  deployment.status,
+                                )}
+                              >
                                 {formatDeploymentStatus(deployment.status)}
                               </Badge>
                             </div>
@@ -2727,7 +2801,9 @@ export function ContainerObservabilityPage({
                               <span className="truncate">
                                 {formatDeploymentDomain(deployment, baseDomain)}
                               </span>
-                              <span>{formatRelativeTime(deployment.updatedAt)}</span>
+                              <span>
+                                {formatRelativeTime(deployment.updatedAt)}
+                              </span>
                             </div>
                           </button>
                         );
@@ -2744,361 +2820,418 @@ export function ContainerObservabilityPage({
           )}
         </aside>
 
-        <ResizeHandle onMouseDown={(event) => handleResizeStart("list", event)} />
+        <ResizeHandle
+          onMouseDown={(event) => handleResizeStart("list", event)}
+        />
 
         <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
           {activePage === "overview" ? (
             <div className="space-y-4">
-            <section className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-linear-to-r from-background via-muted/20 to-background shadow-[0_32px_96px_-64px_rgba(15,23,42,0.42)]">
-              <div className="flex flex-col gap-6 px-5 py-5 xl:flex-row xl:items-end xl:justify-between">
-                <div className="max-w-3xl space-y-3">
-                  <SectionLabel icon="monitor" text="Focused container" />
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+              <section className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-linear-to-r from-background via-muted/12 to-background shadow-[0_24px_72px_-56px_rgba(15,23,42,0.32)]">
+                <div className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+                    <SectionLabel icon="monitor" text="Focused container" />
+                    <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+                      <h1 className="max-w-full truncate text-lg font-semibold tracking-tight text-foreground md:text-xl">
                         {selectedContainer.name}
                       </h1>
-                      <Badge variant={getStatusBadgeVariant(selectedContainer.status)}>
+                      <Badge
+                        variant={getStatusBadgeVariant(
+                          selectedContainer.status,
+                        )}
+                      >
                         {formatStatusLabel(selectedContainer.status)}
                       </Badge>
                     </div>
-                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                      {selectedContainer.summary}
-                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 lg:max-w-2xl lg:justify-end">
+                    <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
+                      <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        Runtime
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {selectedRuntimeContainer
+                          ? formatRuntimeStatusLabel(selectedRuntimeContainer)
+                          : selectedContainer.uptime}
+                      </span>
+                    </div>
+                    <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
+                      <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        {selectedRuntimeContainer ? "Health" : "Node"}
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {selectedRuntimeContainer
+                          ? formatRuntimeHealthLabel(
+                              selectedRuntimeContainer.health,
+                            )
+                          : selectedContainer.node}
+                      </span>
+                    </div>
+                    <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
+                      <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        {selectedRuntimeContainer ? "Project" : "Region"}
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {selectedRuntimeContainer?.projectName ??
+                          selectedContainer.region}
+                      </span>
+                    </div>
+                    <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
+                      <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                        {selectedRuntimeContainer ? "Service" : "Exposed port"}
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {selectedRuntimeContainer?.serviceName ??
+                          selectedContainer.port}
+                      </span>
+                    </div>
                   </div>
                 </div>
+              </section>
 
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3">
-                  <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      Runtime
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedRuntimeContainer
-                        ? formatRuntimeStatusLabel(selectedRuntimeContainer)
-                        : selectedContainer.uptime}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      {selectedRuntimeContainer ? "Health" : "Node"}
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedRuntimeContainer
-                        ? formatRuntimeHealthLabel(selectedRuntimeContainer.health)
-                        : selectedContainer.node}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      {selectedRuntimeContainer ? "Project" : "Region"}
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedRuntimeContainer?.projectName ?? selectedContainer.region}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-border/60 bg-background/82 px-4 py-3 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.24)]">
-                    <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      {selectedRuntimeContainer ? "Service" : "Exposed port"}
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {selectedRuntimeContainer?.serviceName ?? selectedContainer.port}
-                    </div>
-                  </div>
+              {selectedRuntimeContainer ? (
+                <div className="rounded-[1.35rem] border border-emerald-200/70 bg-linear-to-r from-emerald-50/80 via-background to-background px-4 py-3 text-sm text-muted-foreground shadow-[0_22px_52px_-42px_rgba(16,185,129,0.24)]">
+                  Live runtime data for this container is coming from the
+                  current metrics snapshot. Sections without runtime inspect/log
+                  queries still fall back to the preview scaffold when
+                  available.
                 </div>
-              </div>
-            </section>
+              ) : null}
 
-            {selectedRuntimeContainer ? (
-              <div className="rounded-[1.35rem] border border-emerald-200/70 bg-linear-to-r from-emerald-50/80 via-background to-background px-4 py-3 text-sm text-muted-foreground shadow-[0_22px_52px_-42px_rgba(16,185,129,0.24)]">
-                Live runtime data for this container is coming from the current metrics snapshot. Sections without runtime inspect/log queries still fall back to the preview scaffold when available.
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
-              <Card className="overflow-hidden border-border/70 bg-linear-to-br from-emerald-50/70 via-background to-background">
-                <CardHeader className="border-b border-border/60">
-                  <CardTitle>CPU</CardTitle>
-                  <CardDescription>Current compute demand.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-3">
-                  <div className="text-2xl font-semibold tracking-tight text-foreground">
-                    {selectedContainer.cpu}
-                  </div>
-                  <Sparkline className="h-14" points={selectedContainer.signals[0].points} tone="emerald" />
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 bg-linear-to-br from-amber-50/70 via-background to-background">
-                <CardHeader className="border-b border-border/60">
-                  <CardTitle>Memory</CardTitle>
-                  <CardDescription>Resident set and cache.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-3">
-                  <div className="text-2xl font-semibold tracking-tight text-foreground">
-                    {selectedContainer.memory}
-                  </div>
-                  <Sparkline className="h-14" points={selectedContainer.signals[1].points} tone="amber" />
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 bg-linear-to-br from-slate-50/80 via-background to-background">
-                <CardHeader className="border-b border-border/60">
-                  <CardTitle>{selectedRuntimeContainer ? "Health" : "Traffic"}</CardTitle>
-                  <CardDescription>
-                    {selectedRuntimeContainer
-                      ? "Latest runtime state from Docker."
-                      : "Request or job flow."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-3">
-                  <div className="text-2xl font-semibold tracking-tight text-foreground">
-                    {selectedRuntimeContainer
-                      ? formatRuntimeHealthLabel(selectedRuntimeContainer.health)
-                      : selectedContainer.requestRate}
-                  </div>
-                  <Sparkline className="h-14" points={selectedContainer.signals[2].points} tone="slate" />
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 bg-linear-to-br from-background via-muted/14 to-background">
-                <CardHeader className="border-b border-border/60">
-                  <CardTitle>{selectedRuntimeContainer ? "Compose" : "Restarts"}</CardTitle>
-                  <CardDescription>
-                    {selectedRuntimeContainer
-                      ? "Project and service labels from the runtime."
-                      : "Recent container churn."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-3">
-                  <div className="text-2xl font-semibold tracking-tight text-foreground">
-                    {selectedRuntimeContainer
-                      ? selectedRuntimeContainer.serviceName ??
-                        selectedRuntimeContainer.projectName ??
-                        "Standalone"
-                      : selectedContainer.restarts}
-                  </div>
-                  <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-3 text-xs leading-5 text-muted-foreground">
-                    {selectedRuntimeContainer
-                      ? `Project ${selectedRuntimeContainer.projectName ?? "n/a"} on host ${sidebarSnapshot?.hostIp ?? "unknown"} was sampled at ${sidebarSnapshot ? formatClock(sidebarSnapshot.timestamp) : "the latest poll"}.`
-                      : `Last rollout landed ${selectedContainer.deployedAt.toLowerCase()} with ${
-                          selectedContainer.restarts === 0
-                            ? "no"
-                            : selectedContainer.restarts
-                        } unexpected restarts.`}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-              <Card className="overflow-hidden border-border/70 bg-card/92">
-                <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
-                  <CardTitle>Current container signals</CardTitle>
-                  <CardDescription>
-                    Small trend cards tuned for a quiet, operational read.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 pt-4 lg:grid-cols-3">
-                  {selectedContainer.signals.map((signal) => {
-                    const toneClasses = getToneClasses(signal.tone);
-
-                    return (
-                      <div
-                        key={signal.label}
-                        className={cn(
-                          "rounded-[1.35rem] border bg-linear-to-br px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.22)]",
-                          toneClasses.border,
-                          toneClasses.surface,
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold tracking-tight text-foreground">
-                              {signal.label}
-                            </div>
-                            <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                              {signal.caption}
-                            </div>
-                          </div>
-                          <div className={cn("text-xs font-semibold", toneClasses.delta)}>
-                            {signal.delta}
-                          </div>
-                        </div>
-                        <div className="mt-4 text-xl font-semibold tracking-tight text-foreground">
-                          {signal.value}
-                        </div>
-                        <Sparkline className="mt-4 h-16" points={signal.points} tone={signal.tone} />
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 bg-card/92">
-                <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
-                  <CardTitle>Runtime overview</CardTitle>
-                  <CardDescription>
-                    Topology, endpoints, and rollout notes for the selected workload.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
-                      <div className="text-xs text-muted-foreground">Image</div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {selectedContainer.image}
-                      </div>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
+                <Card className="overflow-hidden border-border/70 bg-linear-to-br from-emerald-50/70 via-background to-background">
+                  <CardHeader className="border-b border-border/60">
+                    <CardTitle>CPU</CardTitle>
+                    <CardDescription>Current compute demand.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-3">
+                    <div className="text-2xl font-semibold tracking-tight text-foreground">
+                      {selectedContainer.cpu}
                     </div>
-                    <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
-                      <div className="text-xs text-muted-foreground">Stack</div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {selectedContainer.stack}
-                      </div>
-                    </div>
-                  </div>
+                    <Sparkline
+                      className="h-14"
+                      points={selectedContainer.signals[0].points}
+                      tone="emerald"
+                    />
+                  </CardContent>
+                </Card>
 
-                  <div className="space-y-3">
-                    {selectedContainer.endpoints.length ? (
-                      selectedContainer.endpoints.map((endpoint) => (
+                <Card className="overflow-hidden border-border/70 bg-linear-to-br from-amber-50/70 via-background to-background">
+                  <CardHeader className="border-b border-border/60">
+                    <CardTitle>Memory</CardTitle>
+                    <CardDescription>Resident set and cache.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-3">
+                    <div className="text-2xl font-semibold tracking-tight text-foreground">
+                      {selectedContainer.memory}
+                    </div>
+                    <Sparkline
+                      className="h-14"
+                      points={selectedContainer.signals[1].points}
+                      tone="amber"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/70 bg-linear-to-br from-slate-50/80 via-background to-background">
+                  <CardHeader className="border-b border-border/60">
+                    <CardTitle>
+                      {selectedRuntimeContainer ? "Health" : "Traffic"}
+                    </CardTitle>
+                    <CardDescription>
+                      {selectedRuntimeContainer
+                        ? "Latest runtime state from Docker."
+                        : "Request or job flow."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-3">
+                    <div className="text-2xl font-semibold tracking-tight text-foreground">
+                      {selectedRuntimeContainer
+                        ? formatRuntimeHealthLabel(
+                            selectedRuntimeContainer.health,
+                          )
+                        : selectedContainer.requestRate}
+                    </div>
+                    <Sparkline
+                      className="h-14"
+                      points={selectedContainer.signals[2].points}
+                      tone="slate"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/70 bg-linear-to-br from-background via-muted/14 to-background">
+                  <CardHeader className="border-b border-border/60">
+                    <CardTitle>
+                      {selectedRuntimeContainer ? "Compose" : "Restarts"}
+                    </CardTitle>
+                    <CardDescription>
+                      {selectedRuntimeContainer
+                        ? "Project and service labels from the runtime."
+                        : "Recent container churn."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-3">
+                    <div className="text-2xl font-semibold tracking-tight text-foreground">
+                      {selectedRuntimeContainer
+                        ? (selectedRuntimeContainer.serviceName ??
+                          selectedRuntimeContainer.projectName ??
+                          "Standalone")
+                        : selectedContainer.restarts}
+                    </div>
+                    <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-3 text-xs leading-5 text-muted-foreground">
+                      {selectedRuntimeContainer
+                        ? `Project ${selectedRuntimeContainer.projectName ?? "n/a"} on host ${sidebarSnapshot?.hostIp ?? "unknown"} was sampled at ${sidebarSnapshot ? formatClock(sidebarSnapshot.timestamp) : "the latest poll"}.`
+                        : `Last rollout landed ${selectedContainer.deployedAt.toLowerCase()} with ${
+                            selectedContainer.restarts === 0
+                              ? "no"
+                              : selectedContainer.restarts
+                          } unexpected restarts.`}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Current container signals</CardTitle>
+                    <CardDescription>
+                      Small trend cards tuned for a quiet, operational read.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 pt-4 lg:grid-cols-3">
+                    {selectedContainer.signals.map((signal) => {
+                      const toneClasses = getToneClasses(signal.tone);
+
+                      return (
                         <div
-                          key={endpoint.name}
-                          className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
+                          key={signal.label}
+                          className={cn(
+                            "rounded-[1.35rem] border bg-linear-to-br px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.22)]",
+                            toneClasses.border,
+                            toneClasses.surface,
+                          )}
                         >
-                          <div className="flex items-center justify-between gap-3 text-sm">
-                            <div className="font-semibold text-foreground">
-                              {endpoint.name}
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold tracking-tight text-foreground">
+                                {signal.label}
+                              </div>
+                              <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                                {signal.caption}
+                              </div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {endpoint.latency} - {endpoint.uptime}
-                            </div>
-                          </div>
-                          <div className="mt-3 h-2 rounded-full bg-muted/70">
                             <div
-                              className="h-2 rounded-full bg-linear-to-r from-emerald-400 to-amber-300"
-                              style={{ width: `${endpoint.load}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
-                        No live endpoint inspection is wired for this container yet.
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                    {selectedContainer.timeline.length ? (
-                      selectedContainer.timeline.map((event) => (
-                        <div key={event.label} className="flex gap-3 text-sm">
-                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500/80" />
-                          <div>
-                            <div className="font-semibold tracking-tight text-foreground">
-                              {event.label}
-                            </div>
-                            <div className="text-xs leading-5 text-muted-foreground">
-                              {event.detail}
+                              className={cn(
+                                "text-xs font-semibold",
+                                toneClasses.delta,
+                              )}
+                            >
+                              {signal.delta}
                             </div>
                           </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-xs leading-5 text-muted-foreground">
-                        Runtime notes will appear here when richer container inspection data is connected.
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-              <Card className="overflow-hidden border-border/70 bg-card/92">
-                <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
-                  <CardTitle>Environment and mounts</CardTitle>
-                  <CardDescription>
-                    UI-only preview cards for config, volumes, and attached context.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 pt-4 lg:grid-cols-2">
-                  <div className="space-y-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Environment
-                    </div>
-                    {selectedContainer.environment.length ? (
-                      selectedContainer.environment.map((item) => (
-                        <div
-                          key={item.key}
-                          className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
-                        >
-                          <div className="text-xs text-muted-foreground">{item.key}</div>
-                          <div className="mt-1 font-mono text-sm text-foreground">
-                            {item.value}
+                          <div className="mt-4 text-xl font-semibold tracking-tight text-foreground">
+                            {signal.value}
                           </div>
+                          <Sparkline
+                            className="mt-4 h-16"
+                            points={signal.points}
+                            tone={signal.tone}
+                          />
                         </div>
-                      ))
-                    ) : (
-                      <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
-                        Environment inspection is not wired for this live runtime yet.
-                      </div>
-                    )}
-                  </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
 
-                  <div className="space-y-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Volumes
-                    </div>
-                    {selectedContainer.volumes.length ? (
-                      selectedContainer.volumes.map((volume) => (
-                        <div
-                          key={volume}
-                          className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
-                        >
-                          <div className="font-mono text-sm text-foreground">{volume}</div>
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Runtime overview</CardTitle>
+                    <CardDescription>
+                      Topology, endpoints, and rollout notes for the selected
+                      workload.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
+                        <div className="text-xs text-muted-foreground">
+                          Image
                         </div>
-                      ))
-                    ) : (
-                      <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
-                        Mount inspection is not wired for this live runtime yet.
+                        <div className="mt-1 text-sm font-semibold text-foreground">
+                          {selectedContainer.image}
+                        </div>
                       </div>
-                    )}
-                    {selectedContainer.tags.length ? (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {selectedContainer.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            className="border-border/60 bg-muted/70 text-foreground"
+                      <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
+                        <div className="text-xs text-muted-foreground">
+                          Stack
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-foreground">
+                          {selectedContainer.stack}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {selectedContainer.endpoints.length ? (
+                        selectedContainer.endpoints.map((endpoint) => (
+                          <div
+                            key={endpoint.name}
+                            className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
                           >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
+                            <div className="flex items-center justify-between gap-3 text-sm">
+                              <div className="font-semibold text-foreground">
+                                {endpoint.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {endpoint.latency} - {endpoint.uptime}
+                              </div>
+                            </div>
+                            <div className="mt-3 h-2 rounded-full bg-muted/70">
+                              <div
+                                className="h-2 rounded-full bg-linear-to-r from-emerald-400 to-amber-300"
+                                style={{ width: `${endpoint.load}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
+                          No live endpoint inspection is wired for this
+                          container yet.
+                        </div>
+                      )}
+                    </div>
 
-              <Card className="overflow-hidden border-border/70 bg-card/92">
-                <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
-                  <CardTitle>Design notes</CardTitle>
-                  <CardDescription>
-                    The page leans on neutral surfaces, soft depth, and green or amber accents only where meaning helps.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-4 text-sm leading-6 text-muted-foreground">
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                    Left and right rails collapse into slim control columns, while the three drag handles keep the layout adjustable without overpowering the content.
-                  </div>
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                    Cards keep the same visual rhythm as the main dashboard: rounded corners, subtle gradients, light shadows, and restrained borders.
-                  </div>
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                    Host metrics and the container runtime list are live now; the deeper inspect and log sections still preserve the preview scaffolding until dedicated runtime queries are added.
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    <div className="space-y-2 rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      {selectedContainer.timeline.length ? (
+                        selectedContainer.timeline.map((event) => (
+                          <div key={event.label} className="flex gap-3 text-sm">
+                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500/80" />
+                            <div>
+                              <div className="font-semibold tracking-tight text-foreground">
+                                {event.label}
+                              </div>
+                              <div className="text-xs leading-5 text-muted-foreground">
+                                {event.detail}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs leading-5 text-muted-foreground">
+                          Runtime notes will appear here when richer container
+                          inspection data is connected.
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Environment and mounts</CardTitle>
+                    <CardDescription>
+                      UI-only preview cards for config, volumes, and attached
+                      context.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 pt-4 lg:grid-cols-2">
+                    <div className="space-y-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Environment
+                      </div>
+                      {selectedContainer.environment.length ? (
+                        selectedContainer.environment.map((item) => (
+                          <div
+                            key={item.key}
+                            className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
+                          >
+                            <div className="text-xs text-muted-foreground">
+                              {item.key}
+                            </div>
+                            <div className="mt-1 font-mono text-sm text-foreground">
+                              {item.value}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
+                          Environment inspection is not wired for this live
+                          runtime yet.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Volumes
+                      </div>
+                      {selectedContainer.volumes.length ? (
+                        selectedContainer.volumes.map((volume) => (
+                          <div
+                            key={volume}
+                            className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
+                          >
+                            <div className="font-mono text-sm text-foreground">
+                              {volume}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
+                          Mount inspection is not wired for this live runtime
+                          yet.
+                        </div>
+                      )}
+                      {selectedContainer.tags.length ? (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {selectedContainer.tags.map((tag) => (
+                            <Badge
+                              key={tag}
+                              className="border-border/60 bg-muted/70 text-foreground"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-border/70 bg-card/92">
+                  <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+                    <CardTitle>Design notes</CardTitle>
+                    <CardDescription>
+                      The page leans on neutral surfaces, soft depth, and green
+                      or amber accents only where meaning helps.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-4 text-sm leading-6 text-muted-foreground">
+                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      Left and right rails collapse into slim control columns,
+                      while the three drag handles keep the layout adjustable
+                      without overpowering the content.
+                    </div>
+                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      Cards keep the same visual rhythm as the main dashboard:
+                      rounded corners, subtle gradients, light shadows, and
+                      restrained borders.
+                    </div>
+                    <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
+                      Host metrics and the container runtime list are live now;
+                      the deeper inspect and log sections still preserve the
+                      preview scaffolding until dedicated runtime queries are
+                      added.
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           ) : selectedDeployment ? (
             <div className="space-y-4">
@@ -3164,7 +3297,10 @@ export function ContainerObservabilityPage({
               </section>
 
               <div className="rounded-[1.35rem] border border-emerald-200/70 bg-linear-to-r from-emerald-50/80 via-background to-background px-4 py-3 text-sm text-muted-foreground shadow-[0_22px_52px_-42px_rgba(16,185,129,0.24)]">
-                Live deployment data, editing controls, and right-side logs all come from the existing control-plane deployment flows. The GitHub apps page now uses the same content rhythm and surfaces as the overview workspace.
+                Live deployment data, editing controls, and right-side logs all
+                come from the existing control-plane deployment flows. The
+                GitHub apps page now uses the same content rhythm and surfaces
+                as the overview workspace.
               </div>
 
               <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
@@ -3211,7 +3347,8 @@ export function ContainerObservabilityPage({
                   <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
                     <CardTitle>Current app signals</CardTitle>
                     <CardDescription>
-                      The same compact signal cards as overview, but focused on rollout, routing, and source state.
+                      The same compact signal cards as overview, but focused on
+                      rollout, routing, and source state.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-4 pt-4 lg:grid-cols-3">
@@ -3236,7 +3373,12 @@ export function ContainerObservabilityPage({
                                 {signal.caption}
                               </div>
                             </div>
-                            <div className={cn("text-xs font-semibold", toneClasses.delta)}>
+                            <div
+                              className={cn(
+                                "text-xs font-semibold",
+                                toneClasses.delta,
+                              )}
+                            >
                               {signal.delta}
                             </div>
                           </div>
@@ -3258,19 +3400,24 @@ export function ContainerObservabilityPage({
                   <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
                     <CardTitle>Deployment overview</CardTitle>
                     <CardDescription>
-                      Source, route, and lifecycle context for the selected GitHub app.
+                      Source, route, and lifecycle context for the selected
+                      GitHub app.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 pt-4">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
-                        <div className="text-xs text-muted-foreground">Repository</div>
+                        <div className="text-xs text-muted-foreground">
+                          Repository
+                        </div>
                         <div className="mt-1 text-sm font-semibold text-foreground">
                           {selectedDeployment.repositoryName}
                         </div>
                       </div>
                       <div className="rounded-[1.25rem] border border-border/60 bg-background/80 px-4 py-3">
-                        <div className="text-xs text-muted-foreground">Project</div>
+                        <div className="text-xs text-muted-foreground">
+                          Project
+                        </div>
                         <div className="mt-1 text-sm font-semibold text-foreground">
                           {selectedDeployment.projectName}
                         </div>
@@ -3280,21 +3427,31 @@ export function ContainerObservabilityPage({
                     <div className="space-y-3">
                       <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
                         <div className="flex items-center justify-between gap-3 text-sm">
-                          <div className="font-semibold text-foreground">Public route</div>
+                          <div className="font-semibold text-foreground">
+                            Public route
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             :{selectedDeployment.port}
                           </div>
                         </div>
                         <div className="mt-1 text-sm text-foreground">
-                          https://{formatDeploymentDomain(selectedDeployment, baseDomain)}
+                          https://
+                          {formatDeploymentDomain(
+                            selectedDeployment,
+                            baseDomain,
+                          )}
                         </div>
                       </div>
 
                       <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
                         <div className="flex items-center justify-between gap-3 text-sm">
-                          <div className="font-semibold text-foreground">Service selection</div>
+                          <div className="font-semibold text-foreground">
+                            Service selection
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            {formatDeploymentMode(selectedDeployment.composeMode)}
+                            {formatDeploymentMode(
+                              selectedDeployment.composeMode,
+                            )}
                           </div>
                         </div>
                         <div className="mt-1 text-sm text-foreground">
@@ -3305,9 +3462,13 @@ export function ContainerObservabilityPage({
 
                       <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
                         <div className="flex items-center justify-between gap-3 text-sm">
-                          <div className="font-semibold text-foreground">Credential path</div>
+                          <div className="font-semibold text-foreground">
+                            Credential path
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            {selectedDeployment.tokenStored ? "Encrypted" : "Shared"}
+                            {selectedDeployment.tokenStored
+                              ? "Encrypted"
+                              : "Shared"}
                           </div>
                         </div>
                         <div className="mt-1 text-sm text-foreground">
@@ -3342,7 +3503,8 @@ export function ContainerObservabilityPage({
                   <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
                     <CardTitle>Settings and environment</CardTitle>
                     <CardDescription>
-                      Editable deployment fields on the left, runtime payload context on the right.
+                      Editable deployment fields on the left, runtime payload
+                      context on the right.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
@@ -3351,7 +3513,11 @@ export function ContainerObservabilityPage({
                       className="space-y-4"
                       onSubmit={handleUpdateApp}
                     >
-                      <input type="hidden" name="deploymentId" value={selectedDeployment.id} />
+                      <input
+                        type="hidden"
+                        name="deploymentId"
+                        value={selectedDeployment.id}
+                      />
 
                       <div className="rounded-[1.2rem] border border-border/60 bg-background/80 p-4">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -3401,7 +3567,9 @@ export function ContainerObservabilityPage({
                                 defaultValue={selectedDeployment.subdomain}
                               />
                               {baseDomain ? (
-                                <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
+                                <InputGroupSuffix>
+                                  .{baseDomain}
+                                </InputGroupSuffix>
                               ) : null}
                             </InputGroup>
                           </div>
@@ -3413,7 +3581,9 @@ export function ContainerObservabilityPage({
                             <Input
                               disabled
                               className="h-10 rounded-xl bg-background/70"
-                              value={selectedDeployment.branch ?? "Default branch"}
+                              value={
+                                selectedDeployment.branch ?? "Default branch"
+                              }
                               readOnly
                             />
                           </div>
@@ -3427,7 +3597,9 @@ export function ContainerObservabilityPage({
                             <Input
                               disabled
                               className="h-10 rounded-xl bg-background/70"
-                              value={getRepositoryPathName(selectedDeployment.repositoryUrl)}
+                              value={getRepositoryPathName(
+                                selectedDeployment.repositoryUrl,
+                              )}
                               readOnly
                             />
                           </div>
@@ -3439,7 +3611,9 @@ export function ContainerObservabilityPage({
                             <Input
                               disabled
                               className="h-10 rounded-xl bg-background/70"
-                              value={selectedDeployment.serviceName ?? "Auto-detect"}
+                              value={
+                                selectedDeployment.serviceName ?? "Auto-detect"
+                              }
                               readOnly
                             />
                           </div>
@@ -3461,7 +3635,8 @@ export function ContainerObservabilityPage({
                           placeholder="KEY=value"
                         />
                         <p className="mt-3 text-xs text-muted-foreground">
-                          Use one KEY=VALUE pair per line. Blank lines are ignored.
+                          Use one KEY=VALUE pair per line. Blank lines are
+                          ignored.
                         </p>
                       </div>
 
@@ -3498,7 +3673,9 @@ export function ContainerObservabilityPage({
                             key={`${item.key}-${item.value}`}
                             className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
                           >
-                            <div className="text-xs text-muted-foreground">{item.key}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {item.key}
+                            </div>
                             <div className="mt-1 font-mono text-sm text-foreground">
                               {item.value || "(empty)"}
                             </div>
@@ -3506,7 +3683,8 @@ export function ContainerObservabilityPage({
                         ))
                       ) : (
                         <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
-                          No runtime environment variables are stored for this deployment yet.
+                          No runtime environment variables are stored for this
+                          deployment yet.
                         </div>
                       )}
 
@@ -3531,18 +3709,25 @@ export function ContainerObservabilityPage({
                   <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
                     <CardTitle>Workspace notes</CardTitle>
                     <CardDescription>
-                      The apps view now follows the same restrained layout system as the overview workspace.
+                      The apps view now follows the same restrained layout
+                      system as the overview workspace.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3 pt-4 text-sm leading-6 text-muted-foreground">
                     <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                      Hero framing, stat cards, signal cards, and paired detail sections now match the main overview page instead of using a flatter edit-only layout.
+                      Hero framing, stat cards, signal cards, and paired detail
+                      sections now match the main overview page instead of using
+                      a flatter edit-only layout.
                     </div>
                     <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                      Repository browsing, deployment creation, updates, and logs still use the same live GitHub and deployment actions already wired into the control plane.
+                      Repository browsing, deployment creation, updates, and
+                      logs still use the same live GitHub and deployment actions
+                      already wired into the control plane.
                     </div>
                     <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3">
-                      The palette stays quiet and neutral, with emerald and amber accents only where they communicate status or activity.
+                      The palette stays quiet and neutral, with emerald and
+                      amber accents only where they communicate status or
+                      activity.
                     </div>
                   </CardContent>
                 </Card>
@@ -3556,7 +3741,8 @@ export function ContainerObservabilityPage({
                   Add your first app
                 </h1>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Open the compact create panel in the sidebar to pick a repository and start a live deployment.
+                  Open the compact create panel in the sidebar to pick a
+                  repository and start a live deployment.
                 </p>
               </div>
             </div>
@@ -3564,7 +3750,9 @@ export function ContainerObservabilityPage({
         </main>
 
         {!isLogsCollapsed ? (
-          <ResizeHandle onMouseDown={(event) => handleResizeStart("logs", event)} />
+          <ResizeHandle
+            onMouseDown={(event) => handleResizeStart("logs", event)}
+          />
         ) : null}
 
         {isLogsCollapsed ? (
@@ -3669,7 +3857,11 @@ export function ContainerObservabilityPage({
                             docker logs -f --tail 150 {selectedContainer.name}
                           </div>
                         </div>
-                        <Badge variant={getStatusBadgeVariant(selectedContainer.status)}>
+                        <Badge
+                          variant={getStatusBadgeVariant(
+                            selectedContainer.status,
+                          )}
+                        >
                           {formatStatusLabel(selectedContainer.status)}
                         </Badge>
                       </div>
@@ -3701,7 +3893,9 @@ export function ContainerObservabilityPage({
                               <span className="shrink-0 text-slate-500">
                                 {line.timestamp}
                               </span>
-                              <span className="text-slate-100">{line.message}</span>
+                              <span className="text-slate-100">
+                                {line.message}
+                              </span>
                             </div>
                           ))
                         ) : (
@@ -3720,15 +3914,21 @@ export function ContainerObservabilityPage({
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                          <div className="text-xs text-muted-foreground">Current view</div>
+                          <div className="text-xs text-muted-foreground">
+                            Current view
+                          </div>
                           <div className="mt-1 text-sm font-semibold text-foreground">
-                            {LOG_VIEW_OPTIONS.find(
-                              (option) => option.value === overviewLogView,
-                            )?.label}
+                            {
+                              LOG_VIEW_OPTIONS.find(
+                                (option) => option.value === overviewLogView,
+                              )?.label
+                            }
                           </div>
                         </div>
                         <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                          <div className="text-xs text-muted-foreground">Selected region</div>
+                          <div className="text-xs text-muted-foreground">
+                            Selected region
+                          </div>
                           <div className="mt-1 text-sm font-semibold text-foreground">
                             {selectedContainer.region}
                           </div>
