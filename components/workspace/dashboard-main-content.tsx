@@ -2,7 +2,9 @@
 
 import type { PreviewContainer } from "@/components/workspace-shell";
 import type { ContainerStats } from "@/lib/system-metrics";
+import type { DashboardRange } from "@/lib/metrics-range";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -40,7 +42,13 @@ export type FocusedMetricChart = {
 type DashboardMainContentProps = {
   focusedMetricCharts: FocusedMetricChart[];
   healthOrNodeLabel: string;
+  onRangeChangeAction: (range: DashboardRange) => void;
   projectOrRegionLabel: string;
+  range: DashboardRange;
+  rangeOptions: ReadonlyArray<{
+    label: string;
+    value: DashboardRange;
+  }>;
   runtimeNotice: string | null;
   runtimePillLabel: string;
   sampleContextLabel: string;
@@ -418,7 +426,10 @@ function getFocusedMetricTone(variant: FocusedMetricChart["variant"]) {
 export function DashboardMainContent({
   focusedMetricCharts,
   healthOrNodeLabel,
+  onRangeChangeAction,
   projectOrRegionLabel,
+  range,
+  rangeOptions,
   runtimeNotice,
   runtimePillLabel,
   sampleContextLabel,
@@ -486,6 +497,41 @@ export function DashboardMainContent({
           {runtimeNotice}
         </div>
       ) : null}
+
+      <section className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-linear-to-r from-background via-muted/12 to-background shadow-[0_24px_64px_-52px_rgba(15,23,42,0.24)]">
+        <div className="flex flex-col gap-4 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <div className="text-sm font-semibold tracking-tight text-foreground">
+              History window
+            </div>
+            <div className="mt-1 text-sm leading-6 text-muted-foreground">
+              Focused container charts read from the selected Influx history
+              window instead of only the latest live buckets.
+            </div>
+          </div>
+
+          <div className="flex max-w-3xl flex-wrap gap-2 xl:justify-end">
+            {rangeOptions.map((option) => (
+              <Button
+                aria-pressed={range === option.value}
+                className={cn(
+                  "rounded-full",
+                  range === option.value
+                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-[0_18px_40px_-32px_rgba(16,185,129,0.3)] hover:bg-emerald-50"
+                    : "border-border/60 bg-background/82 text-muted-foreground hover:text-foreground",
+                )}
+                key={option.value}
+                onClick={() => onRangeChangeAction(option.value)}
+                size="xs"
+                type="button"
+                variant="ghost"
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4">
         {focusedMetricCharts.map((chart) => (

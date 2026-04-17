@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 type HomeProps = {
   searchParams?: Promise<{
     page?: string | string[];
+    range?: string | string[];
   }>;
 };
 

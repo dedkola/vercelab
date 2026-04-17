@@ -7,7 +7,7 @@ import {
   getMetricsHistoryFromInflux,
 } from "@/lib/influx-metrics";
 import {
-  getDashboardRangeSeconds,
+  getDashboardHistorySettings,
   normalizeDashboardRange,
 } from "@/lib/metrics-range";
 
@@ -25,15 +25,8 @@ export async function GET(request: Request) {
   const currentModeBucketSeconds = 5;
 
   const range = normalizeDashboardRange(url.searchParams.get("range"));
-  const rangeSeconds = getDashboardRangeSeconds(range);
-  const rangeBucketSeconds = Math.max(
-    5,
-    Math.ceil(rangeSeconds / maxPoints / 5) * 5,
-  );
-  const rangeLimit = Math.max(
-    12,
-    Math.min(maxPoints, Math.ceil(rangeSeconds / rangeBucketSeconds)),
-  );
+  const { bucketSeconds: rangeBucketSeconds, limit: rangeLimit } =
+    getDashboardHistorySettings(range, maxPoints);
 
   const historyLimit = mode === "current" ? currentModeLimit : rangeLimit;
   const historyBucketSeconds =
@@ -59,8 +52,8 @@ export async function GET(request: Request) {
           hostIp: snapshot.hostIp,
           containerId: containerId || undefined,
           containerName: containerName || undefined,
-          limit: historyLimit,
-          bucketSeconds: historyBucketSeconds,
+          limit: rangeLimit,
+          bucketSeconds: rangeBucketSeconds,
         }).catch((error) => {
           const message =
             error instanceof Error

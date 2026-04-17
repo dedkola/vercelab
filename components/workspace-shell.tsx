@@ -125,6 +125,7 @@ export type ContainerListEntry = {
 type WorkspaceShellProps = {
   baseDomain?: string;
   initialContainerHistory?: ContainerMetricsHistoryPoint[];
+  initialDashboardRange?: DashboardRange;
   initialDeployments?: DeploymentSummary[];
   initialHistory?: MetricsHistoryPoint[];
   initialView?: WorkspaceView;
@@ -1675,13 +1676,18 @@ const WORKSPACE_PAGES: Array<{
   },
 ];
 
-function getWorkspaceViewHref(view: WorkspaceView) {
-  switch (view) {
-    case "dashboard":
-      return "/dashboard";
-    case "git-app-page":
-      return "/git-app-page";
+function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
+  const pathname = view === "dashboard" ? "/dashboard" : "/git-app-page";
+
+  if (range === "15m") {
+    return pathname;
   }
+
+  const searchParams = new URLSearchParams({
+    range,
+  });
+
+  return `${pathname}?${searchParams.toString()}`;
 }
 
 function toSlug(value: string) {
@@ -2076,6 +2082,7 @@ function createDraftFromRepository(
 export function WorkspaceShell({
   baseDomain,
   initialContainerHistory = [],
+  initialDashboardRange = "15m",
   initialDeployments,
   initialHistory = [],
   initialView = "dashboard",
@@ -2104,7 +2111,9 @@ export function WorkspaceShell({
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
   const activeView = initialView;
-  const [dashboardRange, setDashboardRange] = useState<DashboardRange>("15m");
+  const [dashboardRange, setDashboardRange] = useState<DashboardRange>(
+    initialDashboardRange,
+  );
   const [selectedContainerId, setSelectedContainerId] = useState(
     initialSnapshot?.containers.all[0]?.name ??
       PREVIEW_CONTAINERS[0]?.name ??
@@ -2370,6 +2379,31 @@ export function WorkspaceShell({
   }, [deploymentSeed]);
 
   useEffect(() => {
+    setDashboardRange(initialDashboardRange);
+  }, [initialDashboardRange]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextUrl = new URL(window.location.href);
+
+    if (dashboardRange === "15m") {
+      nextUrl.searchParams.delete("range");
+    } else {
+      nextUrl.searchParams.set("range", dashboardRange);
+    }
+
+    const nextHref = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+    const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    if (nextHref !== currentHref) {
+      window.history.replaceState(window.history.state, "", nextHref);
+    }
+  }, [dashboardRange]);
+
+  useEffect(() => {
     if (!deployments.length) {
       setSelectedAppId("");
       return;
@@ -2393,11 +2427,11 @@ export function WorkspaceShell({
       try {
         const searchParams = new URLSearchParams({
           mode: "current",
+          range: dashboardRange,
         });
 
         if (isAllContainersSelected) {
           searchParams.set("allContainers", "true");
-          searchParams.set("range", dashboardRange);
         } else if (selectedRuntimeContainerId && selectedRuntimeContainerName) {
           searchParams.set("containerId", selectedRuntimeContainerId);
           searchParams.set("containerName", selectedRuntimeContainerName);
@@ -2587,9 +2621,9 @@ export function WorkspaceShell({
         return;
       }
 
-      router.push(getWorkspaceViewHref(view));
+      router.push(getWorkspaceViewHref(view, dashboardRange));
     },
-    [activeView, router],
+    [activeView, dashboardRange, router],
   );
 
   const loadRepositories = useCallback(async () => {
@@ -3123,7 +3157,10 @@ export function WorkspaceShell({
               <DashboardMainContent
                 focusedMetricCharts={focusedMetricCharts}
                 healthOrNodeLabel={healthOrNodeLabel}
+                onRangeChangeAction={setDashboardRange}
                 projectOrRegionLabel={projectOrRegionLabel}
+                range={dashboardRange}
+                rangeOptions={ALL_CONTAINERS_RANGE_OPTIONS}
                 runtimeNotice={runtimeNotice}
                 runtimePillLabel={runtimePillLabel}
                 sampleContextLabel={sampleContextLabel}

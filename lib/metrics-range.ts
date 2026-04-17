@@ -9,8 +9,7 @@ export const DASHBOARD_RANGE_OPTIONS = [
   { value: "90d", label: "90 d" },
 ] as const;
 
-export type DashboardRange =
-  (typeof DASHBOARD_RANGE_OPTIONS)[number]["value"];
+export type DashboardRange = (typeof DASHBOARD_RANGE_OPTIONS)[number]["value"];
 
 const RANGE_TO_SECONDS: Record<DashboardRange, number> = {
   "1m": 60,
@@ -35,4 +34,25 @@ export function normalizeDashboardRange(
 
 export function getDashboardRangeSeconds(range: DashboardRange) {
   return RANGE_TO_SECONDS[range];
+}
+
+export function getDashboardHistorySettings(
+  range: DashboardRange,
+  maxPoints = 240,
+) {
+  const rangeSeconds = getDashboardRangeSeconds(range);
+  const bucketSeconds = Math.max(
+    5,
+    Math.ceil(rangeSeconds / maxPoints / 5) * 5,
+  );
+  const limit = Math.max(
+    12,
+    Math.min(maxPoints, Math.ceil(rangeSeconds / bucketSeconds)),
+  );
+
+  return {
+    bucketSeconds,
+    limit,
+    rangeSeconds,
+  };
 }

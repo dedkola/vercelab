@@ -50,6 +50,7 @@ describe("WorkspaceShell", () => {
   beforeEach(() => {
     pushMock.mockReset();
     refreshMock.mockReset();
+    window.history.replaceState(null, "", "/dashboard");
 
     fetchSpy.mockImplementation(async (input) => {
       const url = getRequestUrl(input);
@@ -547,10 +548,41 @@ describe("WorkspaceShell", () => {
       ).toBe(true),
     );
 
+    expect(window.location.search).toBe("?range=24h");
+
     expect(screen.getAllByText(/cpu load/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/memory load/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/^network$/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/disk i\/o/i).length).toBeGreaterThan(0);
+  });
+
+  it("lets the user change the focused container history window and stores it in the URL", async () => {
+    const user = userEvent.setup();
+
+    render(<WorkspaceShell />);
+
+    expect(screen.getByRole("button", { name: /^15 min$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: /^24 h$/i }));
+
+    await waitFor(() =>
+      expect(
+        fetchSpy.mock.calls.some(([input]) => {
+          const url = getRequestUrl(input);
+
+          return (
+            url.includes("/api/metrics?") &&
+            url.includes("containerId=runtime-control-plane") &&
+            url.includes("range=24h")
+          );
+        }),
+      ).toBe(true),
+    );
+
+    expect(window.location.search).toBe("?range=24h");
   });
 
   it("pushes the matching route when the user switches workspace views", async () => {
@@ -576,6 +608,20 @@ describe("WorkspaceShell", () => {
     );
 
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("preserves the selected range when switching workspace views", async () => {
+    const user = userEvent.setup();
+
+    render(<WorkspaceShell initialDashboardRange="24h" />);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /git app page/i,
+      }),
+    );
+
+    expect(pushMock).toHaveBeenCalledWith("/git-app-page?range=24h");
   });
 
   it("renders the git app page with editable deployment details", async () => {

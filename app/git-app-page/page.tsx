@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 type GitAppPageRouteProps = {
   searchParams?: Promise<{
     page?: string | string[];
+    range?: string | string[];
   }>;
 };
 
