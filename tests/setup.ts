@@ -8,3 +8,8 @@ class ResizeObserverMock {
 }
 
 vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+
+Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+  configurable: true,
+  value() {},
+});

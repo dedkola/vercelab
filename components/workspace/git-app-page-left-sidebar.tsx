@@ -26,7 +26,7 @@ import {
 } from "./host-metrics-sidebar";
 import { ResizeHandle, SectionLabel, usePixelWidthRef } from "./workspace-ui";
 
-type RepositoryOption = {
+type SelectOption = {
   description?: string;
   label: string;
   value: string;
@@ -47,8 +47,12 @@ type GitAppPageLeftSidebarProps = {
   appItems: GitAppPageListItem[];
   appSearchQuery: string;
   baseDomain?: string;
+  branchError: string | null;
+  branchHelperText: string | null;
+  branchOptions: SelectOption[];
   draftApp: DraftAppState;
   hostMetricsProps: HostMetricsSidebarProps;
+  isBranchLoading: boolean;
   isCreateAppExpanded: boolean;
   isCreateAppPending: boolean;
   listWidth: number;
@@ -62,8 +66,9 @@ type GitAppPageLeftSidebarProps = {
   onRepositorySelectAction: (value: string) => void;
   onSelectAppAction: (id: string) => void;
   onToggleCreateAppAction: () => void;
-  repositoryOptions: RepositoryOption[];
+  repositoryOptions: SelectOption[];
   repositoryState: RepositoryState;
+  selectedRepositorySummary: string | null;
   selectedRepositoryValue: string;
   totalAppsCount: number;
 };
@@ -72,8 +77,12 @@ export function GitAppPageLeftSidebar({
   appItems,
   appSearchQuery,
   baseDomain,
+  branchError,
+  branchHelperText,
+  branchOptions,
   draftApp,
   hostMetricsProps,
+  isBranchLoading,
   isCreateAppExpanded,
   isCreateAppPending,
   listWidth,
@@ -87,10 +96,19 @@ export function GitAppPageLeftSidebar({
   onToggleCreateAppAction,
   repositoryOptions,
   repositoryState,
+  selectedRepositorySummary,
   selectedRepositoryValue,
   totalAppsCount,
 }: GitAppPageLeftSidebarProps) {
   const listPanelRef = usePixelWidthRef<HTMLElement>(listWidth);
+  const isCreateDisabled =
+    isCreateAppPending ||
+    repositoryState.isLoading ||
+    (Boolean(draftApp.repositoryUrl) && isBranchLoading) ||
+    !draftApp.repositoryUrl.trim() ||
+    !draftApp.appName.trim() ||
+    !draftApp.subdomain.trim() ||
+    !draftApp.port.trim();
 
   return (
     <>
@@ -104,9 +122,6 @@ export function GitAppPageLeftSidebar({
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
               <SectionLabel icon="github" text="Git App Page" />
-              <div className="text-xs text-muted-foreground">
-                Compact create flow and live deployment inventory.
-              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
@@ -136,18 +151,15 @@ export function GitAppPageLeftSidebar({
 
         <ScrollArea className="h-full">
           <div className="space-y-3 p-3">
-            <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-background/88 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.28)]">
+            <div className="overflow-hidden rounded-[1.2rem] border border-border/70 bg-background/92 shadow-[0_18px_46px_-40px_rgba(15,23,42,0.24)]">
               <button
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left"
                 onClick={onToggleCreateAppAction}
                 type="button"
               >
                 <div>
                   <div className="text-sm font-semibold tracking-tight text-foreground">
-                    New GitHub app
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Pick a repo, branch, port, and subdomain.
+                    Add Git app
                   </div>
                 </div>
                 <Icon
@@ -158,14 +170,13 @@ export function GitAppPageLeftSidebar({
 
               {isCreateAppExpanded ? (
                 <form
-                  className="space-y-3 border-t border-border/60 px-4 py-4"
+                  className="grid gap-3 border-t border-border/60 px-3.5 py-3.5"
                   onSubmit={onCreateAppAction}
                 >
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                      Repository
-                    </Label>
                     <Combobox
+                      ariaLabel="Repository"
+                      buttonClassName="h-9 rounded-xl bg-background/80 text-sm shadow-[0_14px_34px_-28px_rgba(15,23,42,0.24)]"
                       disabled={repositoryState.isLoading}
                       emptyText="No repositories found"
                       onValueChangeAction={onRepositorySelectAction}
@@ -178,9 +189,49 @@ export function GitAppPageLeftSidebar({
                       searchPlaceholder="Search repositories"
                       value={selectedRepositoryValue}
                     />
+                    {selectedRepositorySummary ? (
+                      <div className="text-[11px] text-muted-foreground">
+                        {selectedRepositorySummary}
+                      </div>
+                    ) : null}
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Combobox
+                      ariaLabel="Branch"
+                      buttonClassName="h-9 rounded-xl bg-background/80 text-sm shadow-[0_14px_34px_-28px_rgba(15,23,42,0.24)]"
+                      disabled={
+                        !selectedRepositoryValue ||
+                        isBranchLoading ||
+                        branchOptions.length === 0
+                      }
+                      emptyText={
+                        selectedRepositoryValue
+                          ? (branchError ?? "No branches found")
+                          : "Select a repository first"
+                      }
+                      onValueChangeAction={(value) =>
+                        onDraftChangeAction("branch", value)
+                      }
+                      options={branchOptions}
+                      placeholder={
+                        !selectedRepositoryValue
+                          ? "Select a repository first"
+                          : isBranchLoading
+                            ? "Loading branches..."
+                            : "Select a branch"
+                      }
+                      searchPlaceholder="Search branches"
+                      value={draftApp.branch}
+                    />
+                    {branchHelperText ? (
+                      <div className="text-[11px] text-muted-foreground">
+                        {branchHelperText}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">
                         App name
@@ -192,37 +243,6 @@ export function GitAppPageLeftSidebar({
                         }
                         value={draftApp.appName}
                       />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Branch
-                      </Label>
-                      <Input
-                        className="h-9 rounded-xl bg-background/80"
-                        onChange={(event) =>
-                          onDraftChangeAction("branch", event.target.value)
-                        }
-                        value={draftApp.branch}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Subdomain
-                      </Label>
-                      <InputGroup>
-                        <InputGroupInput
-                          onChange={(event) =>
-                            onDraftChangeAction("subdomain", event.target.value)
-                          }
-                          value={draftApp.subdomain}
-                        />
-                        {baseDomain ? (
-                          <InputGroupSuffix>.{baseDomain}</InputGroupSuffix>
-                        ) : null}
-                      </InputGroup>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">
@@ -239,24 +259,48 @@ export function GitAppPageLeftSidebar({
                     </div>
                   </div>
 
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      Subdomain
+                    </Label>
+                    <InputGroup className="h-9">
+                      <InputGroupInput
+                        onChange={(event) =>
+                          onDraftChangeAction("subdomain", event.target.value)
+                        }
+                        value={draftApp.subdomain}
+                      />
+                      {baseDomain ? (
+                        <InputGroupSuffix className="leading-9">
+                          .{baseDomain}
+                        </InputGroupSuffix>
+                      ) : null}
+                    </InputGroup>
+                  </div>
+
                   {repositoryState.error ? (
-                    <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
+                    <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
                       {repositoryState.error}
+                    </div>
+                  ) : null}
+
+                  {branchError ? (
+                    <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
+                      {branchError}
                     </div>
                   ) : null}
 
                   {!repositoryState.tokenConfigured &&
                   repositoryState.hasLoaded ? (
-                    <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    <div className="rounded-xl border border-border/70 bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
                       Configure a GitHub token to browse repositories from the
                       sidebar.
                     </div>
                   ) : null}
 
                   <Button
-                    className="h-8 w-full"
-                    disabled={isCreateAppPending}
-                    size="sm"
+                    className="h-9 w-full rounded-xl"
+                    disabled={isCreateDisabled}
                     type="submit"
                   >
                     {isCreateAppPending ? "Creating..." : "Create app"}

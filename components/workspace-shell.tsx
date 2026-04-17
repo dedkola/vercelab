@@ -131,6 +131,12 @@ export type RepositoryState = {
   tokenConfigured: boolean;
 };
 
+type BranchState = {
+  branchesByRepositoryId: Record<string, string[]>;
+  error: string | null;
+  isLoading: boolean;
+};
+
 const METRICS_PANEL_STORAGE_KEY = "vercelab:containers-metrics-panel-width";
 const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
 const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
@@ -1242,6 +1248,14 @@ function buildRepositoryOptions(repositories: GitHubRepository[]) {
   }));
 }
 
+function buildBranchOptions(branches: string[], defaultBranch: string) {
+  return branches.map((branch) => ({
+    value: branch,
+    label: branch,
+    description: branch === defaultBranch ? "Default branch" : undefined,
+  }));
+}
+
 function createEmptyDraftAppState(): DraftAppState {
   return {
     appName: "",
@@ -1250,6 +1264,48 @@ function createEmptyDraftAppState(): DraftAppState {
     repositoryUrl: "",
     subdomain: "",
   };
+}
+
+function normalizeGitHubBranches(branches: string[], defaultBranch: string) {
+  const normalizedBranches = Array.from(
+    new Set(
+      branches
+        .map((branch) => branch.trim())
+        .filter((branch) => branch.length > 0),
+    ),
+  );
+
+  if (!defaultBranch.trim()) {
+    return normalizedBranches;
+  }
+
+  const defaultBranchIndex = normalizedBranches.indexOf(defaultBranch);
+
+  if (defaultBranchIndex === 0) {
+    return normalizedBranches;
+  }
+
+  if (defaultBranchIndex > 0) {
+    normalizedBranches.splice(defaultBranchIndex, 1);
+  }
+
+  return [defaultBranch, ...normalizedBranches];
+}
+
+function getPreferredBranch(
+  currentBranch: string,
+  defaultBranch: string,
+  availableBranches: string[],
+) {
+  if (currentBranch && availableBranches.includes(currentBranch)) {
+    return currentBranch;
+  }
+
+  if (defaultBranch && availableBranches.includes(defaultBranch)) {
+    return defaultBranch;
+  }
+
+  return availableBranches[0] ?? currentBranch;
 }
 
 function formatRelativeTime(value: string) {
@@ -1621,11 +1677,18 @@ export function WorkspaceShell({
     repositories: [],
     tokenConfigured: false,
   });
+  const [branchState, setBranchState] = useState<BranchState>({
+    branchesByRepositoryId: {},
+    error: null,
+    isLoading: false,
+  });
   const [sidebarSnapshot, setSidebarSnapshot] =
     useState<MetricsSnapshot | null>(initialSnapshot);
   const [sidebarHistory, setSidebarHistory] =
     useState<MetricsHistoryPoint[]>(initialHistory);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const branchCacheRef = useRef<Record<string, string[]>>({});
+  const branchRequestIdRef = useRef(0);
   const dragStateRef = useRef<{
     kind: "metrics" | "list" | "logs" | null;
     startWidth: number;
@@ -1683,6 +1746,24 @@ export function WorkspaceShell({
   const repositoryOptions = useMemo(
     () => buildRepositoryOptions(repositoryState.repositories),
     [repositoryState.repositories],
+  );
+  const selectedRepository = useMemo(
+    () =>
+      repositoryState.repositories.find(
+        (repository) => repository.cloneUrl === draftApp.repositoryUrl,
+      ) ?? null,
+    [draftApp.repositoryUrl, repositoryState.repositories],
+  );
+  const branchOptions = useMemo(
+    () =>
+      selectedRepository
+        ? buildBranchOptions(
+            branchState.branchesByRepositoryId[String(selectedRepository.id)] ??
+              [],
+            selectedRepository.defaultBranch,
+          )
+        : [],
+    [branchState.branchesByRepositoryId, selectedRepository],
   );
   const filteredDeployments = useMemo(() => {
     const normalizedQuery = appSearchQuery.trim().toLowerCase();
@@ -1744,10 +1825,21 @@ export function WorkspaceShell({
     selectedDeploymentHref !== null &&
     selectedDeployment?.lastOperationSummary?.includes(selectedDeploymentHref),
   );
-  const selectedRepositoryValue =
-    repositoryState.repositories.find(
-      (repository) => repository.cloneUrl === draftApp.repositoryUrl,
-    )?.id ?? null;
+  const selectedRepositoryValue = selectedRepository
+    ? String(selectedRepository.id)
+    : "";
+  const selectedRepositorySummary = selectedRepository
+    ? `${selectedRepository.visibility} repo • default ${selectedRepository.defaultBranch} • updated ${formatRelativeTime(selectedRepository.updatedAt)}`
+    : null;
+  const branchHelperText = selectedRepository
+    ? branchState.isLoading
+      ? "Loading branches from GitHub."
+      : branchOptions.length
+        ? `${branchOptions.length} branches available for selection.`
+        : branchState.error
+          ? null
+          : "No branches returned for this repository."
+    : null;
 
   const activeContainerId = filteredContainers.some(
     (container) => container.display.name === selectedContainerId,
@@ -2009,6 +2101,154 @@ export function WorkspaceShell({
     repositoryState.hasLoaded,
     repositoryState.isLoading,
   ]);
+
+  const loadBranches = useCallback(async (repository: GitHubRepository) => {
+    const repositoryId = String(repository.id);
+    const requestId = branchRequestIdRef.current + 1;
+
+    branchRequestIdRef.current = requestId;
+
+    const cachedBranches = branchCacheRef.current[repositoryId];
+
+    if (cachedBranches) {
+      setBranchState((current) =>
+        current.error === null && !current.isLoading
+          ? current
+          : {
+              ...current,
+              error: null,
+              isLoading: false,
+            },
+      );
+      setDraftApp((current) => {
+        if (current.repositoryUrl !== repository.cloneUrl) {
+          return current;
+        }
+
+        const nextBranch = getPreferredBranch(
+          current.branch,
+          repository.defaultBranch,
+          cachedBranches,
+        );
+
+        return current.branch === nextBranch
+          ? current
+          : {
+              ...current,
+              branch: nextBranch,
+            };
+      });
+      return;
+    }
+
+    setBranchState((current) =>
+      current.isLoading && current.error === null
+        ? current
+        : {
+            ...current,
+            error: null,
+            isLoading: true,
+          },
+    );
+
+    try {
+      const response = await fetch(
+        `/api/github/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}/branches`,
+        {
+          cache: "no-store",
+        },
+      );
+      const payload = (await response.json()) as {
+        branches?: string[];
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error ?? "Unable to load branches from GitHub.",
+        );
+      }
+
+      if (branchRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      const branches = normalizeGitHubBranches(
+        payload.branches ?? [],
+        repository.defaultBranch,
+      );
+
+      setBranchState((current) => {
+        const branchesByRepositoryId = {
+          ...current.branchesByRepositoryId,
+          [repositoryId]: branches,
+        };
+
+        branchCacheRef.current = branchesByRepositoryId;
+
+        return {
+          branchesByRepositoryId,
+          error: null,
+          isLoading: false,
+        };
+      });
+      setDraftApp((current) => {
+        if (current.repositoryUrl !== repository.cloneUrl) {
+          return current;
+        }
+
+        const nextBranch = getPreferredBranch(
+          current.branch,
+          repository.defaultBranch,
+          branches,
+        );
+
+        return current.branch === nextBranch
+          ? current
+          : {
+              ...current,
+              branch: nextBranch,
+            };
+      });
+    } catch (error) {
+      if (branchRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setBranchState((current) => ({
+        ...current,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to load branches from GitHub.",
+        isLoading: false,
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      branchRequestIdRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRepository) {
+      branchRequestIdRef.current += 1;
+      setBranchState((current) =>
+        current.error === null && !current.isLoading
+          ? current
+          : {
+              ...current,
+              error: null,
+              isLoading: false,
+            },
+      );
+      return;
+    }
+
+    void loadBranches(selectedRepository);
+  }, [loadBranches, selectedRepository]);
 
   function handleDeploymentActionResult(result: DeploymentActionResult) {
     if (result.status === "success") {
@@ -2294,8 +2534,12 @@ export function WorkspaceShell({
             appItems={gitSidebarAppItems}
             appSearchQuery={appSearchQuery}
             baseDomain={baseDomain}
+            branchError={branchState.error}
+            branchHelperText={branchHelperText}
+            branchOptions={branchOptions}
             draftApp={draftApp}
             hostMetricsProps={hostMetricsProps}
+            isBranchLoading={branchState.isLoading}
             isCreateAppExpanded={isCreateAppExpanded}
             isCreateAppPending={isCreateAppPending}
             listWidth={listWidth}
@@ -2311,9 +2555,8 @@ export function WorkspaceShell({
             onToggleCreateAppAction={handleToggleCreateAppPanel}
             repositoryOptions={repositoryOptions}
             repositoryState={repositoryState}
-            selectedRepositoryValue={
-              selectedRepositoryValue ? String(selectedRepositoryValue) : ""
-            }
+            selectedRepositorySummary={selectedRepositorySummary}
+            selectedRepositoryValue={selectedRepositoryValue}
             totalAppsCount={deployments.length}
           />
         )}

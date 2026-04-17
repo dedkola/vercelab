@@ -26,6 +26,8 @@ type ComboboxOption = {
 };
 
 type ComboboxProps = {
+  ariaLabel?: string;
+  buttonClassName?: string;
   emptyText: string;
   onValueChangeAction: (value: string) => void;
   options: ComboboxOption[];
@@ -36,6 +38,8 @@ type ComboboxProps = {
 };
 
 export function Combobox({
+  ariaLabel,
+  buttonClassName,
   emptyText,
   onValueChangeAction,
   options,
@@ -52,10 +56,11 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          aria-label={ariaLabel}
           variant="secondary"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className={cn("w-full justify-between", buttonClassName)}
           disabled={disabled}
           size="sm"
         >
