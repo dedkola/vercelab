@@ -19,10 +19,25 @@ import {
   usePercentWidthRef,
 } from "./workspace-ui";
 
+type FocusedMetricLegend = {
+  label: string;
+  value: string;
+};
+
+export type FocusedMetricChart = {
+  description: string;
+  detail: string;
+  delta: string;
+  legends: FocusedMetricLegend[];
+  primaryPoints: number[];
+  secondaryPoints?: number[];
+  title: string;
+  value: string;
+  variant: "cpu" | "memory" | "network" | "disk";
+};
+
 type DashboardMainContentProps = {
-  composeMetricDescription: string;
-  composeMetricTitle: string;
-  composeMetricValue: string;
+  focusedMetricCharts: FocusedMetricChart[];
   healthOrNodeLabel: string;
   projectOrRegionLabel: string;
   runtimeNotice: string | null;
@@ -33,9 +48,6 @@ type DashboardMainContentProps = {
   selectedStatusLabel: string;
   selectedStatusVariant: "success" | "warning" | "default";
   serviceOrPortLabel: string;
-  thirdMetricDescription: string;
-  thirdMetricTitle: string;
-  thirdMetricValue: string;
 };
 
 function EndpointLoadBar({ load }: { load: number }) {
@@ -51,10 +63,347 @@ function EndpointLoadBar({ load }: { load: number }) {
   );
 }
 
+function getChartSeries(points: number[]) {
+  const safePoints = points.length
+    ? points
+    : Array.from({ length: 12 }, () => 0);
+  const width = 224;
+  const height = 108;
+  const paddingX = 10;
+  const paddingY = 12;
+  const max = Math.max(...safePoints);
+  const min = Math.min(...safePoints);
+  const range = max - min || 1;
+  const step =
+    safePoints.length > 1
+      ? (width - paddingX * 2) / (safePoints.length - 1)
+      : width - paddingX * 2;
+
+  const pointsData = safePoints.map((value, index) => {
+    const normalized = (value - min) / range;
+
+    return {
+      x: Number((paddingX + index * step).toFixed(2)),
+      y: Number(
+        (height - paddingY - normalized * (height - paddingY * 2)).toFixed(2),
+      ),
+    };
+  });
+
+  return {
+    areaPoints: [
+      `${paddingX},${height - paddingY}`,
+      ...pointsData.map((point) => `${point.x},${point.y}`),
+      `${width - paddingX},${height - paddingY}`,
+    ].join(" "),
+    height,
+    linePoints: pointsData.map((point) => `${point.x},${point.y}`).join(" "),
+    pointsData,
+    width,
+  };
+}
+
+function MetricChartEmptyState() {
+  return (
+    <div className="flex h-28 items-center justify-center rounded-[1.15rem] border border-dashed border-border/70 bg-background/70 px-3 text-center text-xs leading-5 text-muted-foreground">
+      Waiting for recent InfluxDB samples for this container.
+    </div>
+  );
+}
+
+function CpuLoadChart({ points }: { points: number[] }) {
+  if (!points.length) {
+    return <MetricChartEmptyState />;
+  }
+
+  const series = getChartSeries(points);
+  const lastPoint = series.pointsData[series.pointsData.length - 1];
+
+  return (
+    <div className="rounded-[1.2rem] border border-emerald-200/70 bg-linear-to-br from-emerald-100/60 via-background to-background px-3 py-3 shadow-[0_20px_48px_-40px_rgba(5,150,105,0.32)]">
+      <svg
+        aria-hidden="true"
+        className="h-28 w-full"
+        preserveAspectRatio="none"
+        viewBox={`0 0 ${series.width} ${series.height}`}
+      >
+        <path
+          d={`M10 ${series.height - 12} H${series.width - 10}`}
+          stroke="rgba(5, 150, 105, 0.12)"
+          strokeDasharray="4 5"
+          strokeWidth="1"
+        />
+        <polygon fill="rgba(16, 185, 129, 0.18)" points={series.areaPoints} />
+        <polyline
+          fill="none"
+          points={series.linePoints}
+          stroke="rgba(5, 150, 105, 0.94)"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2.75"
+        />
+        {lastPoint ? (
+          <circle
+            cx={lastPoint.x}
+            cy={lastPoint.y}
+            fill="white"
+            r="4.5"
+            stroke="rgba(5, 150, 105, 0.94)"
+            strokeWidth="2"
+          />
+        ) : null}
+      </svg>
+    </div>
+  );
+}
+
+function MemoryLoadChart({ points }: { points: number[] }) {
+  if (!points.length) {
+    return <MetricChartEmptyState />;
+  }
+
+  const safePoints = points.length
+    ? points
+    : Array.from({ length: 12 }, () => 0);
+  const max = Math.max(...safePoints, 1);
+  const barWidth = Math.max(8, Math.floor(188 / safePoints.length));
+  const gap = 5;
+  const chartHeight = 92;
+
+  return (
+    <div className="rounded-[1.2rem] border border-amber-200/70 bg-linear-to-br from-amber-100/60 via-background to-background px-3 py-3 shadow-[0_20px_48px_-40px_rgba(217,119,6,0.28)]">
+      <svg aria-hidden="true" className="h-28 w-full" viewBox="0 0 224 108">
+        <path
+          d="M12 96 H212"
+          stroke="rgba(217, 119, 6, 0.12)"
+          strokeDasharray="4 5"
+          strokeWidth="1"
+        />
+        {safePoints.map((point, index) => {
+          const normalized = point / max;
+          const height = Math.max(6, normalized * chartHeight);
+          const x = 12 + index * (barWidth + gap);
+          const y = 96 - height;
+          const isLast = index === safePoints.length - 1;
+
+          return (
+            <rect
+              fill={
+                isLast ? "rgba(217, 119, 6, 0.88)" : "rgba(245, 158, 11, 0.34)"
+              }
+              height={height}
+              key={`${point}-${index}`}
+              rx="6"
+              width={barWidth}
+              x={x}
+              y={y}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function DualLineChart({
+  primaryPoints,
+  secondaryPoints,
+}: {
+  primaryPoints: number[];
+  secondaryPoints: number[];
+}) {
+  if (!primaryPoints.length && !secondaryPoints.length) {
+    return <MetricChartEmptyState />;
+  }
+
+  const primarySeries = getChartSeries(primaryPoints);
+  const secondarySeries = getChartSeries(secondaryPoints);
+
+  return (
+    <div className="rounded-[1.2rem] border border-sky-200/70 bg-linear-to-br from-sky-100/55 via-background to-background px-3 py-3 shadow-[0_20px_48px_-40px_rgba(14,165,233,0.28)]">
+      <svg
+        aria-hidden="true"
+        className="h-28 w-full"
+        preserveAspectRatio="none"
+        viewBox={`0 0 ${primarySeries.width} ${primarySeries.height}`}
+      >
+        <path
+          d={`M10 ${primarySeries.height - 12} H${primarySeries.width - 10}`}
+          stroke="rgba(14, 165, 233, 0.12)"
+          strokeDasharray="4 5"
+          strokeWidth="1"
+        />
+        <polygon
+          fill="rgba(56, 189, 248, 0.14)"
+          points={primarySeries.areaPoints}
+        />
+        <polyline
+          fill="none"
+          points={primarySeries.linePoints}
+          stroke="rgba(2, 132, 199, 0.95)"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2.4"
+        />
+        <polyline
+          fill="none"
+          points={secondarySeries.linePoints}
+          stroke="rgba(71, 85, 105, 0.88)"
+          strokeDasharray="5 4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2.2"
+        />
+      </svg>
+    </div>
+  );
+}
+
+function DiskIoChart({
+  primaryPoints,
+  secondaryPoints,
+}: {
+  primaryPoints: number[];
+  secondaryPoints: number[];
+}) {
+  if (!primaryPoints.length && !secondaryPoints.length) {
+    return <MetricChartEmptyState />;
+  }
+
+  const safePrimary = primaryPoints.length
+    ? primaryPoints
+    : Array.from({ length: secondaryPoints.length || 12 }, () => 0);
+  const safeSecondary = secondaryPoints.length
+    ? secondaryPoints
+    : Array.from({ length: safePrimary.length }, () => 0);
+  const laneWidth = Math.max(8, Math.floor(188 / safePrimary.length));
+  const gap = 5;
+  const laneHeight = 34;
+  const maxPrimary = Math.max(...safePrimary, 1);
+  const maxSecondary = Math.max(...safeSecondary, 1);
+
+  return (
+    <div className="rounded-[1.2rem] border border-rose-200/70 bg-linear-to-br from-rose-100/55 via-background to-background px-3 py-3 shadow-[0_20px_48px_-40px_rgba(244,63,94,0.22)]">
+      <svg aria-hidden="true" className="h-28 w-full" viewBox="0 0 224 108">
+        <path
+          d="M12 44 H212"
+          stroke="rgba(244, 63, 94, 0.12)"
+          strokeDasharray="4 5"
+          strokeWidth="1"
+        />
+        <path
+          d="M12 96 H212"
+          stroke="rgba(251, 146, 60, 0.12)"
+          strokeDasharray="4 5"
+          strokeWidth="1"
+        />
+        {safePrimary.map((point, index) => {
+          const x = 12 + index * (laneWidth + gap);
+          const topHeight = Math.max(4, (point / maxPrimary) * laneHeight);
+          const bottomHeight = Math.max(
+            4,
+            (safeSecondary[index] / maxSecondary) * laneHeight,
+          );
+
+          return (
+            <g key={`${point}-${safeSecondary[index]}-${index}`}>
+              <rect
+                fill="rgba(244, 63, 94, 0.42)"
+                height={topHeight}
+                rx="5"
+                width={laneWidth}
+                x={x}
+                y={44 - topHeight}
+              />
+              <rect
+                fill="rgba(251, 146, 60, 0.42)"
+                height={bottomHeight}
+                rx="5"
+                width={laneWidth}
+                x={x}
+                y={96 - bottomHeight}
+              />
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
+  const cardClassName =
+    chart.variant === "cpu"
+      ? "from-emerald-50/80 via-background to-background"
+      : chart.variant === "memory"
+        ? "from-amber-50/80 via-background to-background"
+        : chart.variant === "network"
+          ? "from-sky-50/80 via-background to-background"
+          : "from-rose-50/80 via-background to-background";
+  const badgeClassName =
+    chart.variant === "cpu"
+      ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700"
+      : chart.variant === "memory"
+        ? "border-amber-200/80 bg-amber-50/90 text-amber-700"
+        : chart.variant === "network"
+          ? "border-sky-200/80 bg-sky-50/90 text-sky-700"
+          : "border-rose-200/80 bg-rose-50/90 text-rose-700";
+
+  return (
+    <Card
+      className={cn(
+        "overflow-hidden border-border/70 bg-linear-to-br shadow-[0_24px_64px_-48px_rgba(15,23,42,0.3)]",
+        cardClassName,
+      )}
+    >
+      <CardHeader className="border-b border-border/60">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle>{chart.title}</CardTitle>
+            <CardDescription>{chart.description}</CardDescription>
+          </div>
+          <Badge className={badgeClassName}>{chart.delta}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-4">
+        <div className="text-2xl font-semibold tracking-tight text-foreground">
+          {chart.value}
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+          {chart.legends.map((legend) => (
+            <div
+              className="rounded-full border border-border/60 bg-background/82 px-2.5 py-1"
+              key={legend.label}
+            >
+              {legend.label} {legend.value}
+            </div>
+          ))}
+        </div>
+        {chart.variant === "cpu" ? (
+          <CpuLoadChart points={chart.primaryPoints} />
+        ) : chart.variant === "memory" ? (
+          <MemoryLoadChart points={chart.primaryPoints} />
+        ) : chart.variant === "network" ? (
+          <DualLineChart
+            primaryPoints={chart.primaryPoints}
+            secondaryPoints={chart.secondaryPoints ?? []}
+          />
+        ) : (
+          <DiskIoChart
+            primaryPoints={chart.primaryPoints}
+            secondaryPoints={chart.secondaryPoints ?? []}
+          />
+        )}
+        <div className="text-xs leading-5 text-muted-foreground">
+          {chart.detail}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function DashboardMainContent({
-  composeMetricDescription,
-  composeMetricTitle,
-  composeMetricValue,
+  focusedMetricCharts,
   healthOrNodeLabel,
   projectOrRegionLabel,
   runtimeNotice,
@@ -65,9 +414,6 @@ export function DashboardMainContent({
   selectedStatusLabel,
   selectedStatusVariant,
   serviceOrPortLabel,
-  thirdMetricDescription,
-  thirdMetricTitle,
-  thirdMetricValue,
 }: DashboardMainContentProps) {
   return (
     <div className="space-y-4">
@@ -128,76 +474,10 @@ export function DashboardMainContent({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-4">
-        <Card className="overflow-hidden border-border/70 bg-linear-to-br from-emerald-50/70 via-background to-background">
-          <CardHeader className="border-b border-border/60">
-            <CardTitle>CPU</CardTitle>
-            <CardDescription>Current compute demand.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-3">
-            <div className="text-2xl font-semibold tracking-tight text-foreground">
-              {selectedContainer.cpu}
-            </div>
-            <Sparkline
-              className="h-14"
-              points={selectedContainer.signals[0].points}
-              tone="emerald"
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-border/70 bg-linear-to-br from-amber-50/70 via-background to-background">
-          <CardHeader className="border-b border-border/60">
-            <CardTitle>Memory</CardTitle>
-            <CardDescription>Resident set and cache.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-3">
-            <div className="text-2xl font-semibold tracking-tight text-foreground">
-              {selectedContainer.memory}
-            </div>
-            <Sparkline
-              className="h-14"
-              points={selectedContainer.signals[1].points}
-              tone="amber"
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-border/70 bg-linear-to-br from-slate-50/80 via-background to-background">
-          <CardHeader className="border-b border-border/60">
-            <CardTitle>{thirdMetricTitle}</CardTitle>
-            <CardDescription>{thirdMetricDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-3">
-            <div className="text-2xl font-semibold tracking-tight text-foreground">
-              {thirdMetricValue}
-            </div>
-            <Sparkline
-              className="h-14"
-              points={selectedContainer.signals[2].points}
-              tone="slate"
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-border/70 bg-linear-to-br from-background via-muted/14 to-background">
-          <CardHeader className="border-b border-border/60">
-            <CardTitle>{composeMetricTitle}</CardTitle>
-            <CardDescription>
-              {selectedRuntimeContainer
-                ? "Project and service labels from the runtime."
-                : "Recent container churn."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-3">
-            <div className="text-2xl font-semibold tracking-tight text-foreground">
-              {composeMetricValue}
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-3 text-xs leading-5 text-muted-foreground">
-              {composeMetricDescription}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4">
+        {focusedMetricCharts.map((chart) => (
+          <FocusedMetricChartCard chart={chart} key={chart.title} />
+        ))}
       </div>
 
       <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">

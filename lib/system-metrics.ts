@@ -21,6 +21,13 @@ type DiskCounters = {
   writeBytes: number;
 };
 
+type ContainerIoCounters = {
+  networkRxBytes: number;
+  networkTxBytes: number;
+  blockReadBytes: number;
+  blockWriteBytes: number;
+};
+
 export type ContainerRuntimeState =
   | "running"
   | "stopped"
@@ -42,6 +49,12 @@ export type ContainerStats = {
   cpuPercent: number;
   memoryBytes: number;
   memoryPercent: number;
+  networkRxBytesPerSecond: number;
+  networkTxBytesPerSecond: number;
+  networkTotalBytesPerSecond: number;
+  diskReadBytesPerSecond: number;
+  diskWriteBytesPerSecond: number;
+  diskTotalBytesPerSecond: number;
   status: ContainerRuntimeState;
   health: ContainerHealthState;
   projectName: string | null;
@@ -99,6 +112,10 @@ let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
 let lastCpuCounters: SampleState<CpuCounters> | null = null;
 let lastNetworkCounters: SampleState<InterfaceCounters[]> | null = null;
 let lastDiskCounters: SampleState<DiskCounters> | null = null;
+let lastContainerIoCounters = new Map<
+  string,
+  SampleState<ContainerIoCounters>
+>();
 
 function escapeLineProtocol(value: string) {
   return value.replace(/([ ,=])/g, "\\$1");
@@ -129,12 +146,13 @@ function encodeLineProtocol(snapshot: MetricsSnapshot) {
 
   for (const container of snapshot.containers.all) {
     const containerTag = escapeLineProtocol(container.name);
+    const containerIdTag = escapeLineProtocol(container.id);
     const projectTag = escapeLineProtocol(container.projectName ?? "unknown");
     const serviceTag = escapeLineProtocol(container.serviceName ?? "unknown");
     const statusTag = escapeLineProtocol(container.status);
     const healthTag = escapeLineProtocol(container.health);
     lines.push(
-      `container_metrics,host=${hostTag},scope=container,container=${containerTag},project=${projectTag},service=${serviceTag},status=${statusTag},health=${healthTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes},memory_percent=${container.memoryPercent} ${safeTimestamp}`,
+      `container_metrics,host=${hostTag},scope=container,container=${containerTag},container_id=${containerIdTag},project=${projectTag},service=${serviceTag},status=${statusTag},health=${healthTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes},memory_percent=${container.memoryPercent},network_rx_bps=${container.networkRxBytesPerSecond},network_tx_bps=${container.networkTxBytesPerSecond},block_read_bps=${container.diskReadBytesPerSecond},block_write_bps=${container.diskWriteBytesPerSecond} ${safeTimestamp}`,
     );
   }
 
@@ -198,9 +216,7 @@ function parseHostIpv4FromBaseDomain(baseDomain: string) {
       continue;
     }
 
-    const candidate = normalized
-      .slice(0, -suffix.length)
-      .replaceAll("-", ".");
+    const candidate = normalized.slice(0, -suffix.length).replaceAll("-", ".");
 
     if (isValidIpv4(candidate)) {
       return candidate;
@@ -621,6 +637,26 @@ function parseDockerMemoryUsage(value: string | null | undefined) {
   return parseByteSize(usage);
 }
 
+function getContainerCounterKey(kind: "id" | "name", value: string) {
+  return `${kind}:${value}`;
+}
+
+function parseDockerTransferCounters(value: string | null | undefined) {
+  if (!value) {
+    return {
+      firstBytes: 0,
+      secondBytes: 0,
+    };
+  }
+
+  const [first = "0 B", second = "0 B"] = value.split("/");
+
+  return {
+    firstBytes: parseByteSize(first),
+    secondBytes: parseByteSize(second),
+  };
+}
+
 function normalizeContainerName(value: string | null | undefined) {
   const normalized = (value ?? "")
     .split(",")
@@ -709,6 +745,7 @@ function normalizeContainerHealth(
 
 async function readContainerStats(totalMemoryBytes: number) {
   try {
+    const capturedAt = Date.now();
     const [statsOutput, containerListOutput] = await Promise.all([
       runCommand("docker", [
         "stats",
@@ -724,6 +761,12 @@ async function readContainerStats(totalMemoryBytes: number) {
       {
         cpuPercent: number;
         memoryBytes: number;
+        networkRxBytesPerSecond: number;
+        networkTxBytesPerSecond: number;
+        networkTotalBytesPerSecond: number;
+        diskReadBytesPerSecond: number;
+        diskWriteBytesPerSecond: number;
+        diskTotalBytesPerSecond: number;
       }
     >();
     const statsByName = new Map<
@@ -731,7 +774,17 @@ async function readContainerStats(totalMemoryBytes: number) {
       {
         cpuPercent: number;
         memoryBytes: number;
+        networkRxBytesPerSecond: number;
+        networkTxBytesPerSecond: number;
+        networkTotalBytesPerSecond: number;
+        diskReadBytesPerSecond: number;
+        diskWriteBytesPerSecond: number;
+        diskTotalBytesPerSecond: number;
       }
+    >();
+    const nextContainerIoCounters = new Map<
+      string,
+      SampleState<ContainerIoCounters>
     >();
 
     for (const row of statsOutput
@@ -743,14 +796,86 @@ async function readContainerStats(totalMemoryBytes: number) {
       const name = normalizeContainerName(
         row.Name ?? row.Container ?? row.Names ?? row.ID,
       );
+      const networkCounters = parseDockerTransferCounters(
+        row.NetIO ?? row.NetworkIO,
+      );
+      const blockCounters = parseDockerTransferCounters(
+        row.BlockIO ?? row.BlockIo,
+      );
+      const currentIoCounters = {
+        networkRxBytes: networkCounters.firstBytes,
+        networkTxBytes: networkCounters.secondBytes,
+        blockReadBytes: blockCounters.firstBytes,
+        blockWriteBytes: blockCounters.secondBytes,
+      } satisfies ContainerIoCounters;
+      const previousIoCounters =
+        lastContainerIoCounters.get(getContainerCounterKey("id", id)) ??
+        lastContainerIoCounters.get(getContainerCounterKey("name", name));
+      const seconds = previousIoCounters
+        ? Math.max((capturedAt - previousIoCounters.capturedAt) / 1000, 1)
+        : 1;
+      const networkRxBytesPerSecond = previousIoCounters
+        ? Math.max(
+            0,
+            (currentIoCounters.networkRxBytes -
+              previousIoCounters.value.networkRxBytes) /
+              seconds,
+          )
+        : 0;
+      const networkTxBytesPerSecond = previousIoCounters
+        ? Math.max(
+            0,
+            (currentIoCounters.networkTxBytes -
+              previousIoCounters.value.networkTxBytes) /
+              seconds,
+          )
+        : 0;
+      const diskReadBytesPerSecond = previousIoCounters
+        ? Math.max(
+            0,
+            (currentIoCounters.blockReadBytes -
+              previousIoCounters.value.blockReadBytes) /
+              seconds,
+          )
+        : 0;
+      const diskWriteBytesPerSecond = previousIoCounters
+        ? Math.max(
+            0,
+            (currentIoCounters.blockWriteBytes -
+              previousIoCounters.value.blockWriteBytes) /
+              seconds,
+          )
+        : 0;
       const metric = {
         cpuPercent: parsePercent(row.CPUPerc ?? row.CPU),
         memoryBytes: parseDockerMemoryUsage(row.MemUsage ?? row.MemoryUsage),
+        networkRxBytesPerSecond: round(networkRxBytesPerSecond),
+        networkTxBytesPerSecond: round(networkTxBytesPerSecond),
+        networkTotalBytesPerSecond: round(
+          networkRxBytesPerSecond + networkTxBytesPerSecond,
+        ),
+        diskReadBytesPerSecond: round(diskReadBytesPerSecond),
+        diskWriteBytesPerSecond: round(diskWriteBytesPerSecond),
+        diskTotalBytesPerSecond: round(
+          diskReadBytesPerSecond + diskWriteBytesPerSecond,
+        ),
       };
+
+      const ioSample = {
+        capturedAt,
+        value: currentIoCounters,
+      } satisfies SampleState<ContainerIoCounters>;
 
       statsById.set(id, metric);
       statsByName.set(name, metric);
+      nextContainerIoCounters.set(getContainerCounterKey("id", id), ioSample);
+      nextContainerIoCounters.set(
+        getContainerCounterKey("name", name),
+        ioSample,
+      );
     }
+
+    lastContainerIoCounters = nextContainerIoCounters;
 
     const all = containerListOutput
       .split("\n")
@@ -775,6 +900,12 @@ async function readContainerStats(totalMemoryBytes: number) {
             totalMemoryBytes > 0
               ? clamp((memoryBytes / totalMemoryBytes) * 100, 0, 100)
               : 0,
+          networkRxBytesPerSecond: stats?.networkRxBytesPerSecond ?? 0,
+          networkTxBytesPerSecond: stats?.networkTxBytesPerSecond ?? 0,
+          networkTotalBytesPerSecond: stats?.networkTotalBytesPerSecond ?? 0,
+          diskReadBytesPerSecond: stats?.diskReadBytesPerSecond ?? 0,
+          diskWriteBytesPerSecond: stats?.diskWriteBytesPerSecond ?? 0,
+          diskTotalBytesPerSecond: stats?.diskTotalBytesPerSecond ?? 0,
           status: normalizeContainerRuntimeState(row.State, row.Status),
           health: normalizeContainerHealth(row.Status),
           projectName: labels.get("com.docker.compose.project") ?? null,
@@ -783,11 +914,15 @@ async function readContainerStats(totalMemoryBytes: number) {
       })
       .sort(
         (left, right) =>
-          right.cpuPercent - left.cpuPercent || right.memoryBytes - left.memoryBytes,
+          right.cpuPercent - left.cpuPercent ||
+          right.memoryBytes - left.memoryBytes,
       );
 
     const totalCpuPercent = all.reduce((sum, item) => sum + item.cpuPercent, 0);
-    const memoryUsedBytes = all.reduce((sum, item) => sum + item.memoryBytes, 0);
+    const memoryUsedBytes = all.reduce(
+      (sum, item) => sum + item.memoryBytes,
+      0,
+    );
     const healthy = all.filter(
       (item) => item.status === "running" && item.health !== "unhealthy",
     ).length;

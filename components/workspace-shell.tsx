@@ -15,7 +15,10 @@ import { GitBranch, Home, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
-import { DashboardMainContent } from "@/components/workspace/dashboard-main-content";
+import {
+  DashboardMainContent,
+  type FocusedMetricChart,
+} from "@/components/workspace/dashboard-main-content";
 import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-sidebar";
 import { GitAppPageLeftSidebar } from "@/components/workspace/git-app-page-left-sidebar";
 import { GitAppPageMainContent } from "@/components/workspace/git-app-page-main-content";
@@ -32,7 +35,10 @@ import {
 import type { LogTab } from "./git-log-panel";
 import { getContainerTone } from "@/lib/container-tone";
 import type { GitHubRepository } from "@/lib/github";
-import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
+import type {
+  ContainerMetricsHistoryPoint,
+  MetricsHistoryPoint,
+} from "@/lib/influx-metrics";
 import type { DeploymentSummary } from "@/lib/persistence";
 import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 
@@ -109,6 +115,7 @@ export type ContainerListEntry = {
 
 type WorkspaceShellProps = {
   baseDomain?: string;
+  initialContainerHistory?: ContainerMetricsHistoryPoint[];
   initialDeployments?: DeploymentSummary[];
   initialHistory?: MetricsHistoryPoint[];
   initialView?: WorkspaceView;
@@ -145,6 +152,7 @@ const DEFAULT_METRICS_WIDTH_PX = 248;
 const DEFAULT_LIST_WIDTH_PX = 304;
 const DEFAULT_LOGS_WIDTH_PX = 340;
 const EMPTY_DEPLOYMENTS: DeploymentSummary[] = [];
+const EMPTY_CONTAINER_HISTORY: ContainerMetricsHistoryPoint[] = [];
 
 const MIN_METRICS_WIDTH_PX = 216;
 const MAX_METRICS_WIDTH_PX = 420;
@@ -938,6 +946,241 @@ function buildRuntimeSummary(runtime: ContainerStats) {
   return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.`;
 }
 
+function buildRuntimeContainerMetricsKey(
+  runtime: Pick<ContainerStats, "id" | "name">,
+) {
+  return `${runtime.id}:${runtime.name}`;
+}
+
+function formatAverageValue(
+  points: number[],
+  formatter: (value: number) => string,
+) {
+  if (!points.length) {
+    return "--";
+  }
+
+  return formatter(
+    points.reduce((sum, point) => sum + point, 0) / points.length,
+  );
+}
+
+function formatPeakValue(
+  points: number[],
+  formatter: (value: number) => string,
+) {
+  if (!points.length) {
+    return "--";
+  }
+
+  return formatter(Math.max(...points));
+}
+
+function buildFocusedMetricCharts(
+  runtime: ContainerStats | null,
+  history: ContainerMetricsHistoryPoint[],
+  preview: PreviewContainer,
+): FocusedMetricChart[] {
+  if (!runtime) {
+    return [
+      {
+        description:
+          "Preview compute trend until live runtime metrics connect.",
+        detail:
+          "Select a live runtime container to swap these cards over to InfluxDB-backed CPU, memory, network, and disk history.",
+        delta: "Preview",
+        legends: [
+          {
+            label: "Latest",
+            value: preview.cpu,
+          },
+          {
+            label: "Mode",
+            value: "Scaffold",
+          },
+        ],
+        primaryPoints: preview.signals[0]?.points ?? [],
+        title: "CPU load",
+        value: preview.cpu,
+        variant: "cpu",
+      },
+      {
+        description: "Preview memory curve until live history is available.",
+        detail:
+          "Resident memory history will populate from InfluxDB when a runtime-sampled container is selected.",
+        delta: "Preview",
+        legends: [
+          {
+            label: "Latest",
+            value: preview.memory,
+          },
+          {
+            label: "Mode",
+            value: "Scaffold",
+          },
+        ],
+        primaryPoints: preview.signals[1]?.points ?? [],
+        title: "Memory load",
+        value: preview.memory,
+        variant: "memory",
+      },
+      {
+        description:
+          "Preview request flow until live throughput history lands.",
+        detail:
+          "Network throughput comes from per-container InfluxDB samples when live runtime data is available.",
+        delta: "Preview",
+        legends: [
+          {
+            label: "Flow",
+            value: preview.requestRate,
+          },
+        ],
+        primaryPoints: preview.signals[2]?.points ?? [],
+        secondaryPoints: [],
+        title: "Network",
+        value: preview.requestRate,
+        variant: "network",
+      },
+      {
+        description: "Block device activity requires a live runtime sample.",
+        detail:
+          "Disk I/O is only rendered from per-container InfluxDB history, so preview-only containers do not expose this chart.",
+        delta: "Live only",
+        legends: [
+          {
+            label: "Source",
+            value: "InfluxDB",
+          },
+        ],
+        primaryPoints: [],
+        secondaryPoints: [],
+        title: "Disk I/O",
+        value: "--",
+        variant: "disk",
+      },
+    ];
+  }
+
+  const latest = history[history.length - 1] ?? null;
+  const cpuPoints = history.map((point) => point.cpuPercent);
+  const memoryBytesPoints = history.map((point) => point.memoryUsedBytes);
+  const memoryPercentPoints = history.map((point) => point.memoryPercent);
+  const networkInPoints = history.map((point) => point.networkIn);
+  const networkOutPoints = history.map((point) => point.networkOut);
+  const networkTotalPoints = history.map((point) => point.networkTotal);
+  const diskReadPoints = history.map((point) => point.diskRead);
+  const diskWritePoints = history.map((point) => point.diskWrite);
+  const diskTotalPoints = history.map((point) => point.diskTotal);
+  const waitingDetail =
+    "InfluxDB is still collecting recent buckets for this container.";
+
+  return [
+    {
+      description: "Bucketed CPU load from this container's InfluxDB history.",
+      detail: latest
+        ? `Latest bucket closed at ${formatClock(latest.timestamp)}.`
+        : waitingDetail,
+      delta: getLatestDelta(cpuPoints, (delta) => formatPercent(delta, 1)),
+      legends: [
+        {
+          label: "Avg",
+          value: formatAverageValue(cpuPoints, (value) =>
+            formatPercent(value, 1),
+          ),
+        },
+        {
+          label: "Peak",
+          value: formatPeakValue(cpuPoints, (value) => formatPercent(value, 1)),
+        },
+      ],
+      primaryPoints: cpuPoints,
+      title: "CPU load",
+      value: latest ? formatPercent(latest.cpuPercent, 1) : "--",
+      variant: "cpu",
+    },
+    {
+      description: "Resident memory sampled and bucketed in InfluxDB.",
+      detail: latest
+        ? `${formatPercent(latest.memoryPercent, 1)} of host memory in the latest bucket.`
+        : waitingDetail,
+      delta: getLatestDelta(memoryPercentPoints, (delta) =>
+        formatPercent(delta, 1),
+      ),
+      legends: [
+        {
+          label: "Host share",
+          value: latest ? formatPercent(latest.memoryPercent, 1) : "--",
+        },
+        {
+          label: "Peak",
+          value: formatPeakValue(memoryBytesPoints, (value) =>
+            formatBytes(value),
+          ),
+        },
+      ],
+      primaryPoints: memoryBytesPoints,
+      title: "Memory load",
+      value: latest ? formatBytes(latest.memoryUsedBytes) : "--",
+      variant: "memory",
+    },
+    {
+      description:
+        "Ingress and egress throughput from container metrics in InfluxDB.",
+      detail: latest
+        ? `${formatBytesPerSecond(latest.networkIn)} in and ${formatBytesPerSecond(latest.networkOut)} out in the latest bucket.`
+        : waitingDetail,
+      delta: getLatestDelta(
+        networkTotalPoints,
+        (delta) => formatBytesPerSecond(delta),
+        1024,
+      ),
+      legends: [
+        {
+          label: "Ingress",
+          value: latest ? formatBytesPerSecond(latest.networkIn) : "--",
+        },
+        {
+          label: "Egress",
+          value: latest ? formatBytesPerSecond(latest.networkOut) : "--",
+        },
+      ],
+      primaryPoints: networkInPoints,
+      secondaryPoints: networkOutPoints,
+      title: "Network",
+      value: latest ? formatBytesPerSecond(latest.networkTotal) : "--",
+      variant: "network",
+    },
+    {
+      description:
+        "Block read and write throughput from container history in InfluxDB.",
+      detail: latest
+        ? `${formatBytesPerSecond(latest.diskRead)} read and ${formatBytesPerSecond(latest.diskWrite)} written in the latest bucket.`
+        : waitingDetail,
+      delta: getLatestDelta(
+        diskTotalPoints,
+        (delta) => formatBytesPerSecond(delta),
+        1024,
+      ),
+      legends: [
+        {
+          label: "Read",
+          value: latest ? formatBytesPerSecond(latest.diskRead) : "--",
+        },
+        {
+          label: "Write",
+          value: latest ? formatBytesPerSecond(latest.diskWrite) : "--",
+        },
+      ],
+      primaryPoints: diskReadPoints,
+      secondaryPoints: diskWritePoints,
+      title: "Disk I/O",
+      value: latest ? formatBytesPerSecond(latest.diskTotal) : "--",
+      variant: "disk",
+    },
+  ];
+}
+
 function buildRuntimeTimeline(
   runtime: ContainerStats,
   snapshot: MetricsSnapshot | null,
@@ -1630,6 +1873,7 @@ function createDraftFromRepository(
 
 export function WorkspaceShell({
   baseDomain,
+  initialContainerHistory = [],
   initialDeployments,
   initialHistory = [],
   initialView = "dashboard",
@@ -1691,10 +1935,18 @@ export function WorkspaceShell({
     error: null,
     isLoading: false,
   });
+  const initialSelectedContainerHistoryKey = initialSnapshot?.containers.all[0]
+    ? buildRuntimeContainerMetricsKey(initialSnapshot.containers.all[0])
+    : null;
   const [sidebarSnapshot, setSidebarSnapshot] =
     useState<MetricsSnapshot | null>(initialSnapshot);
   const [sidebarHistory, setSidebarHistory] =
     useState<MetricsHistoryPoint[]>(initialHistory);
+  const [selectedContainerHistory, setSelectedContainerHistory] = useState<
+    ContainerMetricsHistoryPoint[]
+  >(initialContainerHistory);
+  const [selectedContainerHistoryKey, setSelectedContainerHistoryKey] =
+    useState<string | null>(initialSelectedContainerHistoryKey);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const branchCacheRef = useRef<Record<string, string[]>>({});
   const branchRequestIdRef = useRef(0);
@@ -1870,6 +2122,29 @@ export function WorkspaceShell({
   const selectedContainer = selectedEntry?.display ?? PREVIEW_CONTAINERS[0];
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedPreviewContainer = selectedEntry?.preview ?? null;
+  const selectedRuntimeContainerId = selectedRuntimeContainer?.id ?? "";
+  const selectedRuntimeContainerName = selectedRuntimeContainer?.name ?? "";
+  const selectedRuntimeContainerKey = selectedRuntimeContainer
+    ? buildRuntimeContainerMetricsKey(selectedRuntimeContainer)
+    : null;
+  const activeSelectedContainerHistory =
+    selectedRuntimeContainerKey &&
+    selectedContainerHistoryKey === selectedRuntimeContainerKey
+      ? selectedContainerHistory
+      : EMPTY_CONTAINER_HISTORY;
+  const focusedMetricCharts = useMemo(
+    () =>
+      buildFocusedMetricCharts(
+        selectedRuntimeContainer,
+        activeSelectedContainerHistory,
+        selectedContainer,
+      ),
+    [
+      activeSelectedContainerHistory,
+      selectedContainer,
+      selectedRuntimeContainer,
+    ],
+  );
 
   useEffect(() => {
     setDeployments(deploymentSeed);
@@ -1888,18 +2163,35 @@ export function WorkspaceShell({
 
   useEffect(() => {
     let active = true;
+    const activeHistoryKey =
+      selectedRuntimeContainerId && selectedRuntimeContainerName
+        ? `${selectedRuntimeContainerId}:${selectedRuntimeContainerName}`
+        : null;
 
     const poll = async () => {
       try {
-        const response = await fetch("/api/metrics?mode=current", {
-          cache: "no-store",
+        const searchParams = new URLSearchParams({
+          mode: "current",
         });
+
+        if (selectedRuntimeContainerId && selectedRuntimeContainerName) {
+          searchParams.set("containerId", selectedRuntimeContainerId);
+          searchParams.set("containerName", selectedRuntimeContainerName);
+        }
+
+        const response = await fetch(
+          `/api/metrics?${searchParams.toString()}`,
+          {
+            cache: "no-store",
+          },
+        );
 
         if (!response.ok) {
           throw new Error(`Metrics request failed with ${response.status}.`);
         }
 
         const payload = (await response.json()) as {
+          containerHistory?: ContainerMetricsHistoryPoint[];
           snapshot: MetricsSnapshot;
           history: MetricsHistoryPoint[];
         };
@@ -1910,6 +2202,8 @@ export function WorkspaceShell({
 
         setSidebarSnapshot(payload.snapshot);
         setSidebarHistory(payload.history ?? []);
+        setSelectedContainerHistory(payload.containerHistory ?? []);
+        setSelectedContainerHistoryKey(activeHistoryKey);
         setMetricsError(null);
       } catch (error) {
         if (!active) {
@@ -1935,7 +2229,7 @@ export function WorkspaceShell({
       active = false;
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [selectedRuntimeContainerId, selectedRuntimeContainerName]);
 
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
@@ -2448,24 +2742,6 @@ export function WorkspaceShell({
     selectedRuntimeContainer?.projectName ?? selectedContainer.region;
   const serviceOrPortLabel =
     selectedRuntimeContainer?.serviceName ?? selectedContainer.port;
-  const thirdMetricTitle = selectedRuntimeContainer ? "Health" : "Traffic";
-  const thirdMetricDescription = selectedRuntimeContainer
-    ? "Latest runtime state from Docker."
-    : "Request or job flow.";
-  const thirdMetricValue = selectedRuntimeContainer
-    ? formatRuntimeHealthLabel(selectedRuntimeContainer.health)
-    : selectedContainer.requestRate;
-  const composeMetricTitle = selectedRuntimeContainer ? "Compose" : "Restarts";
-  const composeMetricValue = selectedRuntimeContainer
-    ? (selectedRuntimeContainer.serviceName ??
-      selectedRuntimeContainer.projectName ??
-      "Standalone")
-    : String(selectedContainer.restarts);
-  const composeMetricDescription = selectedRuntimeContainer
-    ? `Project ${selectedRuntimeContainer.projectName ?? "n/a"} on host ${sidebarSnapshot?.hostIp ?? "unknown"} was sampled at ${sidebarSnapshot ? formatClock(sidebarSnapshot.timestamp) : "the latest poll"}.`
-    : `Last rollout landed ${selectedContainer.deployedAt.toLowerCase()} with ${
-        selectedContainer.restarts === 0 ? "no" : selectedContainer.restarts
-      } unexpected restarts.`;
   const runtimeNotice = selectedRuntimeContainer
     ? "Live runtime data for this container is coming from the current metrics snapshot. Sections without runtime inspect or log queries still fall back to preview scaffold data when available."
     : null;
@@ -2580,9 +2856,7 @@ export function WorkspaceShell({
         <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
           {activeView === "dashboard" ? (
             <DashboardMainContent
-              composeMetricDescription={composeMetricDescription}
-              composeMetricTitle={composeMetricTitle}
-              composeMetricValue={composeMetricValue}
+              focusedMetricCharts={focusedMetricCharts}
               healthOrNodeLabel={healthOrNodeLabel}
               projectOrRegionLabel={projectOrRegionLabel}
               runtimeNotice={runtimeNotice}
@@ -2593,9 +2867,6 @@ export function WorkspaceShell({
               selectedStatusLabel={selectedContainerStatusLabel}
               selectedStatusVariant={selectedContainerStatusVariant}
               serviceOrPortLabel={serviceOrPortLabel}
-              thirdMetricDescription={thirdMetricDescription}
-              thirdMetricTitle={thirdMetricTitle}
-              thirdMetricValue={thirdMetricValue}
             />
           ) : selectedDeployment ? (
             <GitAppPageMainContent
