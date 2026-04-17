@@ -19,6 +19,7 @@ type DashboardLogOption = {
 type DashboardRightSidebarProps = {
   activeLogView: DashboardLogView;
   isCollapsed: boolean;
+  isAggregateSelection?: boolean;
   logOptions: DashboardLogOption[];
   logs: LogLine[];
   onCollapseAction: () => void;
@@ -47,6 +48,7 @@ function getLogDotClassName(level: LogLine["level"]) {
 export function DashboardRightSidebar({
   activeLogView,
   isCollapsed,
+  isAggregateSelection = false,
   logOptions,
   logs,
   onCollapseAction,
@@ -91,7 +93,9 @@ export function DashboardRightSidebar({
           <div className="space-y-1">
             <SectionLabel icon="syslog" text="Logs" />
             <div className="text-xs text-muted-foreground">
-              Quiet terminal framing for the selected container.
+              {isAggregateSelection
+                ? "Grouped history context for the full container fleet."
+                : "Quiet terminal framing for the selected container."}
             </div>
           </div>
           <Button
@@ -135,7 +139,9 @@ export function DashboardRightSidebar({
                     {selectedContainerName}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    docker logs -f --tail 150 {selectedContainerName}
+                    {isAggregateSelection
+                      ? "Grouped Influx history and range-aware fleet context"
+                      : `docker logs -f --tail 150 ${selectedContainerName}`}
                   </div>
                 </div>
                 <Badge variant={selectedContainerStatusVariant}>
@@ -175,9 +181,11 @@ export function DashboardRightSidebar({
                   ))
                 ) : (
                   <div className="text-slate-400">
-                    {selectedPreviewAvailable
-                      ? "No lines in this preview view for the selected container."
-                      : "Live container logs are not wired into this page yet."}
+                    {isAggregateSelection
+                      ? "Aggregate selection does not expose preview log lines. Pick a single container to inspect the log rail."
+                      : selectedPreviewAvailable
+                        ? "No lines in this preview view for the selected container."
+                        : "Live container logs are not wired into this page yet."}
                   </div>
                 )}
               </div>

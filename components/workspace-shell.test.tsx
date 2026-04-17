@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   afterAll,
@@ -263,6 +263,176 @@ describe("WorkspaceShell", () => {
             diskTotal: 24_000,
           },
         ],
+        allContainerHistory: [
+          {
+            containerId: "runtime-control-plane",
+            containerName: "control-plane",
+            points: [
+              {
+                timestamp: "2026-04-17T07:59:45.000Z",
+                cpuPercent: 14,
+                memoryPercent: 0.8,
+                memoryUsedBytes: 560 * 1024 ** 2,
+                networkIn: 32_000,
+                networkOut: 11_000,
+                networkTotal: 43_000,
+                diskRead: 0,
+                diskWrite: 18_000,
+                diskTotal: 18_000,
+              },
+              {
+                timestamp: "2026-04-17T07:59:50.000Z",
+                cpuPercent: 16,
+                memoryPercent: 0.8,
+                memoryUsedBytes: 586 * 1024 ** 2,
+                networkIn: 41_000,
+                networkOut: 12_500,
+                networkTotal: 53_500,
+                diskRead: 0,
+                diskWrite: 21_000,
+                diskTotal: 21_000,
+              },
+              {
+                timestamp: "2026-04-17T07:59:55.000Z",
+                cpuPercent: 18,
+                memoryPercent: 0.9,
+                memoryUsedBytes: 612 * 1024 ** 2,
+                networkIn: 48_000,
+                networkOut: 14_000,
+                networkTotal: 62_000,
+                diskRead: 0,
+                diskWrite: 24_000,
+                diskTotal: 24_000,
+              },
+            ],
+          },
+          {
+            containerId: "runtime-edge-proxy",
+            containerName: "edge-proxy",
+            points: [
+              {
+                timestamp: "2026-04-17T07:59:45.000Z",
+                cpuPercent: 7,
+                memoryPercent: 0.2,
+                memoryUsedBytes: 170 * 1024 ** 2,
+                networkIn: 35_000,
+                networkOut: 120,
+                networkTotal: 35_120,
+                diskRead: 4_000,
+                diskWrite: 18_000,
+                diskTotal: 22_000,
+              },
+              {
+                timestamp: "2026-04-17T07:59:50.000Z",
+                cpuPercent: 8,
+                memoryPercent: 0.2,
+                memoryUsedBytes: 178 * 1024 ** 2,
+                networkIn: 39_000,
+                networkOut: 122,
+                networkTotal: 39_122,
+                diskRead: 4_500,
+                diskWrite: 20_000,
+                diskTotal: 24_500,
+              },
+              {
+                timestamp: "2026-04-17T07:59:55.000Z",
+                cpuPercent: 9,
+                memoryPercent: 0.3,
+                memoryUsedBytes: 186 * 1024 ** 2,
+                networkIn: 43_000,
+                networkOut: 126,
+                networkTotal: 43_126,
+                diskRead: 4_900,
+                diskWrite: 22_900,
+                diskTotal: 27_800,
+              },
+            ],
+          },
+          {
+            containerId: "runtime-postgres-primary",
+            containerName: "postgres-primary",
+            points: [
+              {
+                timestamp: "2026-04-17T07:59:45.000Z",
+                cpuPercent: 24,
+                memoryPercent: 4.1,
+                memoryUsedBytes: Math.round(2.5 * 1024 ** 3),
+                networkIn: 10_000,
+                networkOut: 8_000,
+                networkTotal: 18_000,
+                diskRead: 112_000,
+                diskWrite: 226_000,
+                diskTotal: 338_000,
+              },
+              {
+                timestamp: "2026-04-17T07:59:50.000Z",
+                cpuPercent: 28,
+                memoryPercent: 4.2,
+                memoryUsedBytes: Math.round(2.65 * 1024 ** 3),
+                networkIn: 11_000,
+                networkOut: 8_600,
+                networkTotal: 19_600,
+                diskRead: 120_000,
+                diskWrite: 240_000,
+                diskTotal: 360_000,
+              },
+              {
+                timestamp: "2026-04-17T07:59:55.000Z",
+                cpuPercent: 31,
+                memoryPercent: 4.4,
+                memoryUsedBytes: Math.round(2.8 * 1024 ** 3),
+                networkIn: 12_000,
+                networkOut: 9_000,
+                networkTotal: 21_000,
+                diskRead: 128_000,
+                diskWrite: 256_000,
+                diskTotal: 384_000,
+              },
+            ],
+          },
+          {
+            containerId: "runtime-worker-builds",
+            containerName: "worker-builds",
+            points: [
+              {
+                timestamp: "2026-04-17T07:59:45.000Z",
+                cpuPercent: 18,
+                memoryPercent: 0.6,
+                memoryUsedBytes: 396 * 1024 ** 2,
+                networkIn: 5_000,
+                networkOut: 9_000,
+                networkTotal: 14_000,
+                diskRead: 0,
+                diskWrite: 3_000,
+                diskTotal: 3_000,
+              },
+              {
+                timestamp: "2026-04-17T07:59:50.000Z",
+                cpuPercent: 21,
+                memoryPercent: 0.7,
+                memoryUsedBytes: 412 * 1024 ** 2,
+                networkIn: 5_500,
+                networkOut: 10_000,
+                networkTotal: 15_500,
+                diskRead: 0,
+                diskWrite: 3_600,
+                diskTotal: 3_600,
+              },
+              {
+                timestamp: "2026-04-17T07:59:55.000Z",
+                cpuPercent: 24,
+                memoryPercent: 0.7,
+                memoryUsedBytes: 428 * 1024 ** 2,
+                networkIn: 6_000,
+                networkOut: 11_000,
+                networkTotal: 17_000,
+                diskRead: 0,
+                diskWrite: 4_100,
+                diskTotal: 4_100,
+              },
+            ],
+          },
+        ],
       });
     });
   });
@@ -322,6 +492,65 @@ describe("WorkspaceShell", () => {
       }),
     ).toBeVisible();
     expect(screen.getByText(/4 visible/i)).toBeVisible();
+  });
+
+  it("renders grouped all-container charts and lets the user change the range", async () => {
+    const user = userEvent.setup();
+
+    render(<WorkspaceShell />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /all containers/i,
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /all containers/i }),
+    ).toBeVisible();
+    expect(screen.getByText(/grouped containers/i)).toBeVisible();
+    expect(
+      screen.getByText(/compare cpu, memory, network, and disk behavior/i),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: /^15 min$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchSpy.mock.calls.some(([input]) => {
+          const url = getRequestUrl(input);
+
+          return (
+            url.includes("/api/metrics?") &&
+            url.includes("allContainers=true") &&
+            url.includes("range=15m")
+          );
+        }),
+      ).toBe(true),
+    );
+
+    await user.click(screen.getByRole("button", { name: /^24 h$/i }));
+
+    await waitFor(() =>
+      expect(
+        fetchSpy.mock.calls.some(([input]) => {
+          const url = getRequestUrl(input);
+
+          return (
+            url.includes("/api/metrics?") &&
+            url.includes("allContainers=true") &&
+            url.includes("range=24h")
+          );
+        }),
+      ).toBe(true),
+    );
+
+    expect(screen.getAllByText(/cpu load/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/memory load/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^network$/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/disk i\/o/i).length).toBeGreaterThan(0);
   });
 
   it("pushes the matching route when the user switches workspace views", async () => {

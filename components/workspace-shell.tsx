@@ -16,6 +16,10 @@ import { toast } from "sonner";
 
 import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
 import {
+  DashboardAllContainersContent,
+  type AllContainersMetricChart,
+} from "@/components/workspace/dashboard-all-containers-content";
+import {
   DashboardMainContent,
   type FocusedMetricChart,
 } from "@/components/workspace/dashboard-main-content";
@@ -36,9 +40,14 @@ import type { LogTab } from "./git-log-panel";
 import { getContainerTone } from "@/lib/container-tone";
 import type { GitHubRepository } from "@/lib/github";
 import type {
+  AllContainersMetricsHistorySeries,
   ContainerMetricsHistoryPoint,
   MetricsHistoryPoint,
 } from "@/lib/influx-metrics";
+import {
+  DASHBOARD_RANGE_OPTIONS,
+  type DashboardRange,
+} from "@/lib/metrics-range";
 import type { DeploymentSummary } from "@/lib/persistence";
 import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 
@@ -162,6 +171,11 @@ const MIN_LOGS_WIDTH_PX = 300;
 const MAX_LOGS_WIDTH_PX = 520;
 const POLL_INTERVAL_MS = 5000;
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+const ALL_CONTAINERS_ID = "__all-containers__";
+const STABLE_TIME_ZONE = "UTC";
+const ALL_CONTAINERS_RANGE_OPTIONS = DASHBOARD_RANGE_OPTIONS.filter(
+  (option) => option.value !== "90d",
+) as ReadonlyArray<(typeof DASHBOARD_RANGE_OPTIONS)[number]>;
 
 const PREVIEW_CONTAINERS: PreviewContainer[] = [
   {
@@ -677,6 +691,7 @@ function formatClock(value: string) {
   return new Intl.DateTimeFormat("en", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: STABLE_TIME_ZONE,
   }).format(new Date(value));
 }
 
@@ -953,6 +968,244 @@ function formatPeakValue(
   }
 
   return formatter(Math.max(...points));
+}
+
+type AggregateHistoryContainer = {
+  history: ContainerMetricsHistoryPoint[];
+  id: string;
+  label: string;
+};
+
+function formatDashboardRangeLabel(range: DashboardRange) {
+  return (
+    ALL_CONTAINERS_RANGE_OPTIONS.find((option) => option.value === range)
+      ?.label ?? "15 min"
+  );
+}
+
+function formatBucketTimestamp(value: string, range: DashboardRange) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const options: Intl.DateTimeFormatOptions =
+    range === "24h" || range === "7d" || range === "30d"
+      ? {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: STABLE_TIME_ZONE,
+        }
+      : {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: STABLE_TIME_ZONE,
+        };
+
+  return new Intl.DateTimeFormat("en", options).format(date);
+}
+
+function getLatestSeriesTotal(points: number[]) {
+  return points.length ? points[points.length - 1]! : null;
+}
+
+function buildAggregateHistoryContainers(
+  snapshot: MetricsSnapshot | null,
+  allContainerHistory: AllContainersMetricsHistorySeries[],
+): AggregateHistoryContainer[] {
+  const historyById = new Map(
+    allContainerHistory.map((series) => [series.containerId, series.points]),
+  );
+  const historyByName = new Map(
+    allContainerHistory.map((series) => [series.containerName, series.points]),
+  );
+
+  if (snapshot?.containers.all.length) {
+    return [...snapshot.containers.all]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((runtime) => ({
+        history:
+          historyById.get(runtime.id) ?? historyByName.get(runtime.name) ?? [],
+        id: runtime.id,
+        label: runtime.name,
+      }));
+  }
+
+  return [...allContainerHistory]
+    .sort((left, right) =>
+      left.containerName.localeCompare(right.containerName),
+    )
+    .map((series) => ({
+      history: series.points,
+      id: series.containerId,
+      label: series.containerName,
+    }));
+}
+
+function alignAllContainersMetricSeries(
+  containers: AggregateHistoryContainer[],
+  selectValue: (point: ContainerMetricsHistoryPoint) => number,
+  formatter: (value: number) => string,
+) {
+  const timestamps = Array.from(
+    new Set(
+      containers.flatMap((container) =>
+        container.history.map((point) => point.timestamp),
+      ),
+    ),
+  ).sort();
+
+  const linesWithMaps = containers.map((container) => {
+    const valuesByTimestamp = new Map(
+      container.history.map((point) => [point.timestamp, selectValue(point)]),
+    );
+    const latestPoint = container.history[container.history.length - 1] ?? null;
+
+    return {
+      id: container.id,
+      label: container.label,
+      latestValue: latestPoint ? formatter(selectValue(latestPoint)) : "--",
+      points: timestamps.map(
+        (timestamp) => valuesByTimestamp.get(timestamp) ?? null,
+      ),
+      valuesByTimestamp,
+    };
+  });
+
+  return {
+    latestTimestamp: timestamps[timestamps.length - 1] ?? null,
+    lines: linesWithMaps.map((line) => ({
+      id: line.id,
+      label: line.label,
+      latestValue: line.latestValue,
+      points: line.points,
+    })),
+    totalPoints: timestamps.map((timestamp) =>
+      linesWithMaps.reduce(
+        (sum, line) => sum + (line.valuesByTimestamp.get(timestamp) ?? 0),
+        0,
+      ),
+    ),
+  } satisfies {
+    latestTimestamp: string | null;
+    lines: AllContainersMetricChart["series"];
+    totalPoints: number[];
+  };
+}
+
+function buildAllContainersMetricCharts(
+  range: DashboardRange,
+  snapshot: MetricsSnapshot | null,
+  allContainerHistory: AllContainersMetricsHistorySeries[],
+): AllContainersMetricChart[] {
+  const containers = buildAggregateHistoryContainers(
+    snapshot,
+    allContainerHistory,
+  );
+  const rangeLabel = formatDashboardRangeLabel(range).toLowerCase();
+  const liveNetworkTotal = snapshot
+    ? snapshot.containers.all.reduce(
+        (sum, container) => sum + container.networkTotalBytesPerSecond,
+        0,
+      )
+    : 0;
+  const liveDiskTotal = snapshot
+    ? snapshot.containers.all.reduce(
+        (sum, container) => sum + container.diskTotalBytesPerSecond,
+        0,
+      )
+    : 0;
+  const cpuMetric = alignAllContainersMetricSeries(
+    containers,
+    (point) => point.cpuPercent,
+    (value) => formatPercent(value, 1),
+  );
+  const memoryMetric = alignAllContainersMetricSeries(
+    containers,
+    (point) => point.memoryUsedBytes,
+    (value) => formatBytes(value),
+  );
+  const networkMetric = alignAllContainersMetricSeries(
+    containers,
+    (point) => point.networkTotal,
+    (value) => formatBytesPerSecond(value),
+  );
+  const diskMetric = alignAllContainersMetricSeries(
+    containers,
+    (point) => point.diskTotal,
+    (value) => formatBytesPerSecond(value),
+  );
+
+  const buildDetail = (latestTimestamp: string | null, topic: string) =>
+    latestTimestamp
+      ? `Showing ${topic} for the last ${rangeLabel}. Latest bucket closed at ${formatBucketTimestamp(latestTimestamp, range)}.`
+      : `Waiting for InfluxDB ${topic.toLowerCase()} buckets for the last ${rangeLabel}.`;
+
+  const latestCpuTotal = getLatestSeriesTotal(cpuMetric.totalPoints);
+  const latestMemoryTotal = getLatestSeriesTotal(memoryMetric.totalPoints);
+  const latestNetworkTotal = getLatestSeriesTotal(networkMetric.totalPoints);
+  const latestDiskTotal = getLatestSeriesTotal(diskMetric.totalPoints);
+
+  return [
+    {
+      description: "Per-container CPU load over the selected history window.",
+      detail: buildDetail(cpuMetric.latestTimestamp, "container CPU load"),
+      series: cpuMetric.lines,
+      summaryLabel: "Fleet load",
+      summaryValue: snapshot
+        ? formatPercent(snapshot.containers.cpuPercent, 1)
+        : latestCpuTotal !== null
+          ? formatPercent(latestCpuTotal, 1)
+          : "--",
+      title: "CPU load",
+      variant: "cpu",
+    },
+    {
+      description:
+        "Resident memory for every tracked container in the same range.",
+      detail: buildDetail(memoryMetric.latestTimestamp, "container memory"),
+      series: memoryMetric.lines,
+      summaryLabel: "Resident set",
+      summaryValue: snapshot
+        ? formatBytes(snapshot.containers.memoryUsedBytes)
+        : latestMemoryTotal !== null
+          ? formatBytes(latestMemoryTotal)
+          : "--",
+      title: "Memory load",
+      variant: "memory",
+    },
+    {
+      description: "Combined ingress and egress throughput per container.",
+      detail: buildDetail(networkMetric.latestTimestamp, "network throughput"),
+      series: networkMetric.lines,
+      summaryLabel: "Live throughput",
+      summaryValue:
+        liveNetworkTotal > 0
+          ? formatBytesPerSecond(liveNetworkTotal)
+          : latestNetworkTotal !== null
+            ? formatBytesPerSecond(latestNetworkTotal)
+            : "--",
+      title: "Network",
+      variant: "network",
+    },
+    {
+      description: "Combined block read and write throughput per container.",
+      detail: buildDetail(diskMetric.latestTimestamp, "disk activity"),
+      series: diskMetric.lines,
+      summaryLabel: "Live I/O",
+      summaryValue:
+        liveDiskTotal > 0
+          ? formatBytesPerSecond(liveDiskTotal)
+          : latestDiskTotal !== null
+            ? formatBytesPerSecond(latestDiskTotal)
+            : "--",
+      title: "Disk I/O",
+      variant: "disk",
+    },
+  ];
 }
 
 function buildFocusedMetricCharts(
@@ -1851,6 +2104,7 @@ export function WorkspaceShell({
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
   const activeView = initialView;
+  const [dashboardRange, setDashboardRange] = useState<DashboardRange>("15m");
   const [selectedContainerId, setSelectedContainerId] = useState(
     initialSnapshot?.containers.all[0]?.name ??
       PREVIEW_CONTAINERS[0]?.name ??
@@ -1894,6 +2148,9 @@ export function WorkspaceShell({
   const [selectedContainerHistory, setSelectedContainerHistory] = useState<
     ContainerMetricsHistoryPoint[]
   >(initialContainerHistory);
+  const [allContainerHistory, setAllContainerHistory] = useState<
+    AllContainersMetricsHistorySeries[]
+  >([]);
   const [selectedContainerHistoryKey, setSelectedContainerHistoryKey] =
     useState<string | null>(initialSelectedContainerHistoryKey);
   const [metricsError, setMetricsError] = useState<string | null>(null);
@@ -2050,24 +2307,28 @@ export function WorkspaceShell({
           ? null
           : "No branches returned for this repository."
     : null;
+  const isAllContainersSelected = selectedContainerId === ALL_CONTAINERS_ID;
 
-  const activeContainerId = filteredContainers.some(
-    (container) => container.display.name === selectedContainerId,
-  )
-    ? selectedContainerId
-    : (filteredContainers[0]?.display.name ??
-      workspaceContainers[0]?.display.name ??
-      PREVIEW_CONTAINERS[0]?.name ??
-      selectedContainerId);
+  const activeContainerId = isAllContainersSelected
+    ? ALL_CONTAINERS_ID
+    : filteredContainers.some(
+          (container) => container.display.name === selectedContainerId,
+        )
+      ? selectedContainerId
+      : (filteredContainers[0]?.display.name ??
+        workspaceContainers[0]?.display.name ??
+        PREVIEW_CONTAINERS[0]?.name ??
+        selectedContainerId);
 
-  const selectedEntry =
-    filteredContainers.find(
-      (container) => container.display.name === activeContainerId,
-    ) ??
-    workspaceContainers.find(
-      (container) => container.display.name === activeContainerId,
-    ) ??
-    workspaceContainers[0];
+  const selectedEntry = isAllContainersSelected
+    ? null
+    : (filteredContainers.find(
+        (container) => container.display.name === activeContainerId,
+      ) ??
+      workspaceContainers.find(
+        (container) => container.display.name === activeContainerId,
+      ) ??
+      workspaceContainers[0]);
   const selectedContainer = selectedEntry?.display ?? PREVIEW_CONTAINERS[0];
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedPreviewContainer = selectedEntry?.preview ?? null;
@@ -2094,6 +2355,15 @@ export function WorkspaceShell({
       selectedRuntimeContainer,
     ],
   );
+  const allContainersMetricCharts = useMemo(
+    () =>
+      buildAllContainersMetricCharts(
+        dashboardRange,
+        sidebarSnapshot,
+        allContainerHistory,
+      ),
+    [allContainerHistory, dashboardRange, sidebarSnapshot],
+  );
 
   useEffect(() => {
     setDeployments(deploymentSeed);
@@ -2113,7 +2383,9 @@ export function WorkspaceShell({
   useEffect(() => {
     let active = true;
     const activeHistoryKey =
-      selectedRuntimeContainerId && selectedRuntimeContainerName
+      !isAllContainersSelected &&
+      selectedRuntimeContainerId &&
+      selectedRuntimeContainerName
         ? `${selectedRuntimeContainerId}:${selectedRuntimeContainerName}`
         : null;
 
@@ -2123,7 +2395,10 @@ export function WorkspaceShell({
           mode: "current",
         });
 
-        if (selectedRuntimeContainerId && selectedRuntimeContainerName) {
+        if (isAllContainersSelected) {
+          searchParams.set("allContainers", "true");
+          searchParams.set("range", dashboardRange);
+        } else if (selectedRuntimeContainerId && selectedRuntimeContainerName) {
           searchParams.set("containerId", selectedRuntimeContainerId);
           searchParams.set("containerName", selectedRuntimeContainerName);
         }
@@ -2140,6 +2415,7 @@ export function WorkspaceShell({
         }
 
         const payload = (await response.json()) as {
+          allContainerHistory?: AllContainersMetricsHistorySeries[];
           containerHistory?: ContainerMetricsHistoryPoint[];
           snapshot: MetricsSnapshot;
           history: MetricsHistoryPoint[];
@@ -2151,8 +2427,16 @@ export function WorkspaceShell({
 
         setSidebarSnapshot(payload.snapshot);
         setSidebarHistory(payload.history ?? []);
-        setSelectedContainerHistory(payload.containerHistory ?? []);
-        setSelectedContainerHistoryKey(activeHistoryKey);
+
+        if (isAllContainersSelected) {
+          setAllContainerHistory(payload.allContainerHistory ?? []);
+          setSelectedContainerHistory([]);
+          setSelectedContainerHistoryKey(null);
+        } else {
+          setSelectedContainerHistory(payload.containerHistory ?? []);
+          setSelectedContainerHistoryKey(activeHistoryKey);
+        }
+
         setMetricsError(null);
       } catch (error) {
         if (!active) {
@@ -2178,7 +2462,12 @@ export function WorkspaceShell({
       active = false;
       window.clearInterval(intervalId);
     };
-  }, [selectedRuntimeContainerId, selectedRuntimeContainerName]);
+  }, [
+    dashboardRange,
+    isAllContainersSelected,
+    selectedRuntimeContainerId,
+    selectedRuntimeContainerName,
+  ]);
 
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
@@ -2674,7 +2963,9 @@ export function WorkspaceShell({
       : metricsStatus.helperText,
     width: metricsWidth,
   } satisfies HostMetricsSidebarProps;
-  const previewLogs = selectedContainer.logs[dashboardLogView];
+  const previewLogs = isAllContainersSelected
+    ? []
+    : selectedContainer.logs[dashboardLogView];
   const selectedContainerStatusLabel = formatStatusLabel(
     selectedContainer.status,
   );
@@ -2697,6 +2988,18 @@ export function WorkspaceShell({
   const sampleContextLabel = selectedRuntimeContainer
     ? buildRuntimeSummary(selectedRuntimeContainer)
     : selectedContainer.summary;
+  const aggregateLogsTargetName = isAllContainersSelected
+    ? "All containers"
+    : selectedContainer.name;
+  const aggregateLogsTargetRegion = isAllContainersSelected
+    ? (sidebarSnapshot?.hostIp ?? "Current host")
+    : selectedContainer.region;
+  const aggregateLogsStatusLabel = isAllContainersSelected
+    ? `${sidebarSnapshot?.containers.running ?? 0} running`
+    : selectedContainerStatusLabel;
+  const aggregateLogsStatusVariant = isAllContainersSelected
+    ? "default"
+    : selectedContainerStatusVariant;
   const liveAppsCount = deployments.filter(
     (deployment) => deployment.status === "running",
   ).length;
@@ -2760,7 +3063,11 @@ export function WorkspaceShell({
             activeContainerId={activeContainerId}
             containers={filteredContainers}
             hostMetricsProps={hostMetricsProps}
+            isAllContainersSelected={isAllContainersSelected}
             listWidth={listWidth}
+            onAllContainersSelectAction={() =>
+              setSelectedContainerId(ALL_CONTAINERS_ID)
+            }
             onContainerSelectAction={setSelectedContainerId}
             onListResizeStartAction={(event) =>
               handleResizeStart("list", event)
@@ -2804,19 +3111,29 @@ export function WorkspaceShell({
 
         <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
           {activeView === "dashboard" ? (
-            <DashboardMainContent
-              focusedMetricCharts={focusedMetricCharts}
-              healthOrNodeLabel={healthOrNodeLabel}
-              projectOrRegionLabel={projectOrRegionLabel}
-              runtimeNotice={runtimeNotice}
-              runtimePillLabel={runtimePillLabel}
-              sampleContextLabel={sampleContextLabel}
-              selectedContainer={selectedContainer}
-              selectedRuntimeContainer={selectedRuntimeContainer}
-              selectedStatusLabel={selectedContainerStatusLabel}
-              selectedStatusVariant={selectedContainerStatusVariant}
-              serviceOrPortLabel={serviceOrPortLabel}
-            />
+            isAllContainersSelected ? (
+              <DashboardAllContainersContent
+                charts={allContainersMetricCharts}
+                onRangeChangeAction={setDashboardRange}
+                range={dashboardRange}
+                rangeOptions={ALL_CONTAINERS_RANGE_OPTIONS}
+                snapshot={sidebarSnapshot}
+              />
+            ) : (
+              <DashboardMainContent
+                focusedMetricCharts={focusedMetricCharts}
+                healthOrNodeLabel={healthOrNodeLabel}
+                projectOrRegionLabel={projectOrRegionLabel}
+                runtimeNotice={runtimeNotice}
+                runtimePillLabel={runtimePillLabel}
+                sampleContextLabel={sampleContextLabel}
+                selectedContainer={selectedContainer}
+                selectedRuntimeContainer={selectedRuntimeContainer}
+                selectedStatusLabel={selectedContainerStatusLabel}
+                selectedStatusVariant={selectedContainerStatusVariant}
+                serviceOrPortLabel={serviceOrPortLabel}
+              />
+            )
           ) : selectedDeployment ? (
             <GitAppPageMainContent
               baseDomain={baseDomain}
@@ -2859,17 +3176,20 @@ export function WorkspaceShell({
           <DashboardRightSidebar
             activeLogView={dashboardLogView}
             isCollapsed={isLogsCollapsed}
+            isAggregateSelection={isAllContainersSelected}
             logOptions={LOG_VIEW_OPTIONS}
             logs={previewLogs}
             onCollapseAction={() => setIsLogsCollapsed(true)}
             onExpandAction={() => setIsLogsCollapsed(false)}
             onLogViewChangeAction={setDashboardLogView}
             onResizeStartAction={(event) => handleResizeStart("logs", event)}
-            selectedContainerName={selectedContainer.name}
-            selectedContainerRegion={selectedContainer.region}
-            selectedContainerStatusLabel={selectedContainerStatusLabel}
-            selectedContainerStatusVariant={selectedContainerStatusVariant}
-            selectedPreviewAvailable={Boolean(selectedPreviewContainer)}
+            selectedContainerName={aggregateLogsTargetName}
+            selectedContainerRegion={aggregateLogsTargetRegion}
+            selectedContainerStatusLabel={aggregateLogsStatusLabel}
+            selectedContainerStatusVariant={aggregateLogsStatusVariant}
+            selectedPreviewAvailable={
+              !isAllContainersSelected && Boolean(selectedPreviewContainer)
+            }
             width={logsWidth}
           />
         ) : (

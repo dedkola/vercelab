@@ -31,7 +31,9 @@ type DashboardLeftSidebarProps = {
   activeContainerId: string;
   containers: ContainerListEntry[];
   hostMetricsProps: HostMetricsSidebarProps;
+  isAllContainersSelected: boolean;
   listWidth: number;
+  onAllContainersSelectAction: () => void;
   onContainerSelectAction: (containerName: string) => void;
   onListResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onSearchQueryChangeAction: (value: string) => void;
@@ -44,7 +46,9 @@ export function DashboardLeftSidebar({
   activeContainerId,
   containers,
   hostMetricsProps,
+  isAllContainersSelected,
   listWidth,
+  onAllContainersSelectAction,
   onContainerSelectAction,
   onListResizeStartAction,
   onSearchQueryChangeAction,
@@ -100,6 +104,34 @@ export function DashboardLeftSidebar({
 
         <ScrollArea className="h-full">
           <div className="space-y-3 p-3">
+            <button
+              aria-label="All containers"
+              className={cn(
+                "w-full rounded-[1.15rem] border px-3.5 py-3 text-left transition-all duration-200",
+                "shadow-[0_16px_42px_-38px_rgba(15,23,42,0.22)] hover:-translate-y-px hover:bg-background/95",
+                isAllContainersSelected ||
+                  activeContainerId === "__all-containers__"
+                  ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
+                  : "border-border/70 bg-background/85",
+              )}
+              onClick={onAllContainersSelectAction}
+              type="button"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold tracking-tight text-foreground">
+                    All containers
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Grouped load charts across the whole system.
+                  </div>
+                </div>
+                <Badge className="border-border/60 bg-background/80 text-foreground">
+                  {containers.length}
+                </Badge>
+              </div>
+            </button>
+
             {containers.length ? (
               containers.map((container) => (
                 <button

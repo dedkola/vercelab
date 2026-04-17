@@ -26,8 +26,15 @@ export type ContainerMetricsHistoryPoint = {
   diskTotal: number;
 };
 
+export type AllContainersMetricsHistorySeries = {
+  containerId: string;
+  containerName: string;
+  points: ContainerMetricsHistoryPoint[];
+};
+
 type InfluxV1Series = {
   columns?: string[];
+  tags?: Record<string, string>;
   values?: Array<Array<string | number | null>>;
 };
 
@@ -218,6 +225,19 @@ function buildContainerHistoryQuery({
   return `SELECT mean(cpu_percent) AS cpu_percent, mean(memory_percent) AS memory_percent, mean(memory_used_bytes) AS memory_used_bytes, mean(network_rx_bps) AS network_in, mean(network_tx_bps) AS network_out, mean(block_read_bps) AS disk_read, mean(block_write_bps) AS disk_write FROM container_metrics WHERE scope='container' AND time > now() - ${windowMinutes}m${hostFilter}${containerFilter} GROUP BY time(${bucketSeconds}s) fill(none)`;
 }
 
+function buildAllContainersHistoryQuery({
+  bucketSeconds,
+  hostIp,
+  windowMinutes,
+}: QueryOptions) {
+  const hostFilter =
+    hostIp && hostIp !== "unknown"
+      ? ` AND host='${escapeInfluxString(hostIp)}'`
+      : "";
+
+  return `SELECT mean(cpu_percent) AS cpu_percent, mean(memory_percent) AS memory_percent, mean(memory_used_bytes) AS memory_used_bytes, mean(network_rx_bps) AS network_in, mean(network_tx_bps) AS network_out, mean(block_read_bps) AS disk_read, mean(block_write_bps) AS disk_write FROM container_metrics WHERE scope='container' AND time > now() - ${windowMinutes}m${hostFilter} GROUP BY container_id, container, time(${bucketSeconds}s) fill(none)`;
+}
+
 export async function getMetricsHistoryFromInflux(options?: {
   hostIp?: string;
   limit?: number;
@@ -354,4 +374,84 @@ export async function getContainerMetricsHistoryFromInflux(options?: {
     })
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
     .slice(-limit);
+}
+
+export async function getAllContainersMetricsHistoryFromInflux(options?: {
+  hostIp?: string;
+  limit?: number;
+  bucketSeconds?: number;
+}) {
+  const limit = Math.max(1, Math.min(options?.limit ?? 48, 240));
+  const bucketSeconds = Math.max(
+    1,
+    Math.min(options?.bucketSeconds ?? 5, 86_400),
+  );
+  const hostIp = options?.hostIp ?? "unknown";
+  const windowMinutes = Math.max(1, Math.ceil((limit * bucketSeconds) / 60));
+  const groupedSeries = await runInfluxV1Query(
+    buildAllContainersHistoryQuery({
+      bucketSeconds,
+      hostIp,
+      windowMinutes,
+    }),
+  );
+
+  return groupedSeries
+    .map((series, index) => {
+      const containerId =
+        series.tags?.container_id?.trim() ||
+        series.tags?.container?.trim() ||
+        `container-${index + 1}`;
+      const containerName =
+        series.tags?.container?.trim() ||
+        containerId ||
+        `container-${index + 1}`;
+      const points = parseSeries(series, (entry, row) => {
+        const containerEntry = entry as PartialContainerPoint;
+
+        containerEntry.cpuPercent = asFiniteNumber(row.cpu_percent) ?? 0;
+        containerEntry.memoryPercent = asFiniteNumber(row.memory_percent) ?? 0;
+        containerEntry.memoryUsedBytes =
+          asFiniteNumber(row.memory_used_bytes) ?? 0;
+        containerEntry.networkIn = asFiniteNumber(row.network_in) ?? 0;
+        containerEntry.networkOut = asFiniteNumber(row.network_out) ?? 0;
+        containerEntry.diskRead = asFiniteNumber(row.disk_read) ?? 0;
+        containerEntry.diskWrite = asFiniteNumber(row.disk_write) ?? 0;
+      })
+        .map((entry) => {
+          const networkIn = (entry as PartialContainerPoint).networkIn ?? 0;
+          const networkOut = (entry as PartialContainerPoint).networkOut ?? 0;
+          const diskRead = (entry as PartialContainerPoint).diskRead ?? 0;
+          const diskWrite = (entry as PartialContainerPoint).diskWrite ?? 0;
+
+          return {
+            timestamp: entry.timestamp,
+            cpuPercent: (entry as PartialContainerPoint).cpuPercent ?? 0,
+            memoryPercent: (entry as PartialContainerPoint).memoryPercent ?? 0,
+            memoryUsedBytes:
+              (entry as PartialContainerPoint).memoryUsedBytes ?? 0,
+            networkIn,
+            networkOut,
+            networkTotal: networkIn + networkOut,
+            diskRead,
+            diskWrite,
+            diskTotal: diskRead + diskWrite,
+          } satisfies ContainerMetricsHistoryPoint;
+        })
+        .sort((left, right) => left.timestamp.localeCompare(right.timestamp))
+        .slice(-limit);
+
+      return {
+        containerId,
+        containerName,
+        points,
+      } satisfies AllContainersMetricsHistorySeries;
+    })
+    .filter(
+      (series) =>
+        series.containerId.length > 0 && series.containerName.length > 0,
+    )
+    .sort((left, right) =>
+      left.containerName.localeCompare(right.containerName),
+    );
 }
