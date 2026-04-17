@@ -1,11 +1,22 @@
 import { getAppConfig } from "@/lib/app-config";
-import { getMetricsHistoryFromInflux } from "@/lib/influx-metrics";
-import { listDashboardData } from "@/lib/persistence";
-import { getMetricsSnapshot } from "@/lib/system-metrics";
+import {
+  getMetricsHistoryFromInflux,
+  type MetricsHistoryPoint,
+} from "@/lib/influx-metrics";
+import { listDashboardData, type DashboardDeployment } from "@/lib/persistence";
+import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
 
 type ContainerObservabilitySearchParams = Promise<{
   page?: string | string[];
 }>;
+
+export type ContainerObservabilityPageData = {
+  baseDomain: string;
+  initialDeployments: DashboardDeployment[];
+  initialHistory: MetricsHistoryPoint[];
+  initialPage: "overview" | "apps";
+  initialSnapshot: MetricsSnapshot | null;
+};
 
 function getSearchParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -13,7 +24,7 @@ function getSearchParamValue(value: string | string[] | undefined) {
 
 export async function loadContainerObservabilityPageData(
   searchParams?: ContainerObservabilitySearchParams,
-) {
+): Promise<ContainerObservabilityPageData> {
   const params = searchParams ? await searchParams : undefined;
   const initialSnapshot = await getMetricsSnapshot().catch(() => null);
   const initialHistory = initialSnapshot
