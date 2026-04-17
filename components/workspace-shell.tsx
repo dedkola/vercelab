@@ -894,27 +894,6 @@ function getRuntimeDotClassName(
   return "bg-slate-400";
 }
 
-function getRuntimeMetricTone(
-  runtime: Pick<
-    ContainerStats,
-    "health" | "status" | "cpuPercent" | "memoryPercent"
-  >,
-  metric: "cpu" | "memory" | "state",
-): MetricTone {
-  if (metric === "state") {
-    const tone = getContainerTone(runtime);
-    return tone === "running"
-      ? "emerald"
-      : tone === "unhealthy"
-        ? "amber"
-        : "slate";
-  }
-
-  return metric === "cpu"
-    ? getUsageTone(runtime.cpuPercent, { calm: 20, elevated: 70 })
-    : getUsageTone(runtime.memoryPercent, { calm: 30, elevated: 75 });
-}
-
 function createFlatSeries(value: number) {
   return Array.from({ length: 12 }, () => value);
 }
@@ -1214,44 +1193,6 @@ function buildRuntimeTimeline(
   ];
 }
 
-function buildRuntimeSignals(runtime: ContainerStats): ContainerSignal[] {
-  return [
-    {
-      label: "CPU sample",
-      value: formatPercent(runtime.cpuPercent, 1),
-      delta: "Live",
-      caption: "Latest sampled compute demand from Docker stats.",
-      tone: getRuntimeMetricTone(runtime, "cpu"),
-      points: createFlatSeries(runtime.cpuPercent),
-    },
-    {
-      label: "Memory sample",
-      value: formatBytes(runtime.memoryBytes),
-      delta: formatPercent(runtime.memoryPercent, 1),
-      caption: "Current memory share of total host memory.",
-      tone: getRuntimeMetricTone(runtime, "memory"),
-      points: createFlatSeries(runtime.memoryPercent),
-    },
-    {
-      label: "Runtime state",
-      value: formatRuntimeStatusLabel(runtime),
-      delta:
-        runtime.health === "none"
-          ? "No healthcheck"
-          : formatRuntimeHealthLabel(runtime.health),
-      caption: "Container state and health derived from docker ps output.",
-      tone: getRuntimeMetricTone(runtime, "state"),
-      points: createFlatSeries(
-        runtime.health === "unhealthy"
-          ? 90
-          : runtime.status === "running"
-            ? 68
-            : 24,
-      ),
-    },
-  ];
-}
-
 function buildDisplayContainer(
   runtime: ContainerStats,
   preview: PreviewContainer | null,
@@ -1284,7 +1225,7 @@ function buildDisplayContainer(
       environment: [],
       endpoints: [],
       activity: createFlatSeries(runtime.cpuPercent),
-      signals: buildRuntimeSignals(runtime),
+      signals: [],
       timeline: buildRuntimeTimeline(runtime, snapshot),
       logs: {
         live: [],
@@ -1319,7 +1260,7 @@ function buildDisplayContainer(
       ),
     ),
     activity: createFlatSeries(runtime.cpuPercent),
-    signals: buildRuntimeSignals(runtime),
+    signals: base.signals,
     timeline: buildRuntimeTimeline(runtime, snapshot),
   };
 }
