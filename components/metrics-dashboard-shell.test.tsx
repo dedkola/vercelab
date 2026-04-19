@@ -501,4 +501,182 @@ describe("MetricsDashboardShell", () => {
 
     expect(pushMock).toHaveBeenCalledWith("/git-app-page");
   });
+
+  it("shows deployment app names and friendly system names in sidebar and charts", async () => {
+    const labelPayload = {
+      allContainerHistory: [
+        {
+          containerId: "runtime-omnichat",
+          containerName: "vercelab-omnichat-c6f86566-server-1",
+          points: [
+            {
+              cpuPercent: 14,
+              diskRead: 2_000,
+              diskTotal: 8_000,
+              diskWrite: 6_000,
+              memoryPercent: 0.6,
+              memoryUsedBytes: 420 * 1024 ** 2,
+              networkIn: 14_000,
+              networkOut: 7_000,
+              networkTotal: 21_000,
+              timestamp: "2026-04-19T10:00:00.000Z",
+            },
+          ],
+        },
+        {
+          containerId: "runtime-traefik",
+          containerName: "vercelab-traefik-1",
+          points: [
+            {
+              cpuPercent: 5,
+              diskRead: 0,
+              diskTotal: 2_000,
+              diskWrite: 2_000,
+              memoryPercent: 0.2,
+              memoryUsedBytes: 140 * 1024 ** 2,
+              networkIn: 10_000,
+              networkOut: 1_000,
+              networkTotal: 11_000,
+              timestamp: "2026-04-19T10:00:00.000Z",
+            },
+          ],
+        },
+      ],
+      history: [
+        {
+          containersCpu: 19,
+          containersMemory: 12,
+          cpu: 24,
+          diskRead: 70_000,
+          diskWrite: 84_000,
+          memory: 61,
+          networkIn: 140_000,
+          networkOut: 82_000,
+          networkTotal: 222_000,
+          timestamp: "2026-04-19T10:00:00.000Z",
+        },
+      ],
+      snapshot: {
+        containers: {
+          all: [
+            {
+              cpuPercent: 14,
+              diskReadBytesPerSecond: 2_000,
+              diskTotalBytesPerSecond: 8_000,
+              diskWriteBytesPerSecond: 6_000,
+              health: "healthy",
+              id: "runtime-omnichat",
+              memoryBytes: 420 * 1024 ** 2,
+              memoryPercent: 0.6,
+              name: "vercelab-omnichat-c6f86566-server-1",
+              networkRxBytesPerSecond: 14_000,
+              networkTotalBytesPerSecond: 21_000,
+              networkTxBytesPerSecond: 7_000,
+              projectName: "vercelab-omnichat-c6f86566",
+              serviceName: "server",
+              status: "running",
+            },
+            {
+              cpuPercent: 5,
+              diskReadBytesPerSecond: 0,
+              diskTotalBytesPerSecond: 2_000,
+              diskWriteBytesPerSecond: 2_000,
+              health: "healthy",
+              id: "runtime-traefik",
+              memoryBytes: 140 * 1024 ** 2,
+              memoryPercent: 0.2,
+              name: "vercelab-traefik-1",
+              networkRxBytesPerSecond: 10_000,
+              networkTotalBytesPerSecond: 11_000,
+              networkTxBytesPerSecond: 1_000,
+              projectName: "traefik",
+              serviceName: "traefik",
+              status: "running",
+            },
+          ],
+          cpuPercent: 19,
+          memoryPercent: 12,
+          memoryUsedBytes: Math.round(560 * 1024 ** 2),
+          running: 2,
+          statusBreakdown: {
+            healthy: 2,
+            stopped: 0,
+            unhealthy: 0,
+          },
+          top: [],
+          total: 2,
+        },
+        hostIp: "192.168.1.10",
+        network: {
+          interfaces: [
+            {
+              name: "eth0",
+              rxBytesPerSecond: 140_000,
+              txBytesPerSecond: 82_000,
+            },
+          ],
+          rxBytesPerSecond: 140_000,
+          txBytesPerSecond: 82_000,
+        },
+        system: {
+          cpuPercent: 24,
+          diskReadBytesPerSecond: 70_000,
+          diskWriteBytesPerSecond: 84_000,
+          loadAverage: [0.42, 0.46, 0.5],
+          memoryPercent: 61,
+          memoryTotalBytes: 64 * 1024 ** 3,
+          memoryUsedBytes: Math.round(39 * 1024 ** 3),
+        },
+        timestamp: "2026-04-19T10:00:00.000Z",
+        warnings: [],
+      },
+    };
+
+    fetchSpy.mockImplementation(async () => jsonResponse(labelPayload));
+
+    render(
+      <MetricsDashboardShell
+        initialAllContainerHistory={labelPayload.allContainerHistory}
+        initialDashboardRange="15m"
+        initialDeployments={[
+          {
+            id: "dep-omnichat",
+            repositoryName: "dedkola/omnichat",
+            repositoryUrl: "https://github.com/dedkola/omnichat.git",
+            branch: "main",
+            commitSha: null,
+            appName: "Omnichat",
+            subdomain: "dash",
+            port: 3000,
+            envVariables: null,
+            serviceName: "server",
+            status: "running",
+            composeMode: "compose",
+            projectName: "vercelab-omnichat-c6f86566",
+            lastOutput: null,
+            lastOperationSummary: null,
+            updatedAt: "2026-04-19T10:00:00.000Z",
+            deployedAt: "2026-04-19T09:59:00.000Z",
+            tokenStored: false,
+          },
+        ]}
+        initialHistory={labelPayload.history}
+        initialSnapshot={labelPayload.snapshot}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /omnichat \/ server.*healthy/i,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", {
+        name: /vercelab traefik.*healthy/i,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/hot now\s+omnichat \/ server\s+14\.0%/i),
+    ).toBeVisible();
+  });
 });

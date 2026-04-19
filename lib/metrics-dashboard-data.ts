@@ -9,6 +9,7 @@ import {
   normalizeDashboardRange,
   type DashboardRange,
 } from "@/lib/metrics-range";
+import { listWorkspaceData, type DeploymentSummary } from "@/lib/persistence";
 import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
 
 type MetricsDashboardSearchParams = Promise<{
@@ -18,6 +19,7 @@ type MetricsDashboardSearchParams = Promise<{
 export type MetricsDashboardData = {
   initialAllContainerHistory: AllContainersMetricsHistorySeries[];
   initialDashboardRange: DashboardRange;
+  initialDeployments: DeploymentSummary[];
   initialHistory: MetricsHistoryPoint[];
   initialSnapshot: MetricsSnapshot | null;
 };
@@ -37,11 +39,15 @@ export async function loadMetricsDashboardData(
     initialDashboardRange,
   );
   const initialSnapshot = await getMetricsSnapshot().catch(() => null);
+  const initialDeployments = await listWorkspaceData()
+    .then((workspaceData) => workspaceData.deployments)
+    .catch(() => [] as DeploymentSummary[]);
 
   if (!initialSnapshot) {
     return {
       initialAllContainerHistory: [],
       initialDashboardRange,
+      initialDeployments,
       initialHistory: [],
       initialSnapshot,
     };
@@ -63,6 +69,7 @@ export async function loadMetricsDashboardData(
   return {
     initialAllContainerHistory,
     initialDashboardRange,
+    initialDeployments,
     initialHistory,
     initialSnapshot,
   };

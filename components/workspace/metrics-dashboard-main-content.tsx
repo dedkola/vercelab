@@ -12,6 +12,7 @@ import type {
   AllContainersMetricsHistorySeries,
   MetricsHistoryPoint,
 } from "@/lib/influx-metrics";
+import type { DeploymentSummary } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 import {
   buildContainerMetricPanels,
@@ -30,6 +31,7 @@ import type { EChartsCoreOption } from "echarts";
 
 type MetricsDashboardMainContentProps = {
   allContainerHistory: AllContainersMetricsHistorySeries[];
+  deployments: DeploymentSummary[];
   onRangeChangeAction: (range: DashboardRange) => void;
   range: DashboardRange;
   rangeOptions: ReadonlyArray<{
@@ -597,6 +599,7 @@ function ContainerMetricCard({ panel }: { panel: ContainerMetricPanel }) {
 
 export function MetricsDashboardMainContent({
   allContainerHistory,
+  deployments,
   onRangeChangeAction,
   range,
   rangeOptions,
@@ -615,8 +618,9 @@ export function MetricsDashboardMainContent({
         snapshot,
         allContainerHistory,
         selectedContainerId,
+        deployments,
       ),
-    [allContainerHistory, selectedContainerId, snapshot],
+    [allContainerHistory, deployments, selectedContainerId, snapshot],
   );
   const rangeLabel = formatDashboardRangeLabel(range);
   const trackedContainers =

@@ -992,12 +992,26 @@ function formatManagedContainerLabel(label: string) {
     return "Vercelab UI";
   }
 
-  if (normalized === "vercelab-influxdb") {
+  if (
+    normalized === "vercelab-influxdb" ||
+    normalized.startsWith("vercelab-influxdb-")
+  ) {
     return "Vercelab InfluxDB";
   }
 
-  if (normalized === "vercelab-postgres") {
+  if (
+    normalized === "vercelab-postgres" ||
+    normalized.startsWith("vercelab-postgres-")
+  ) {
     return "Vercelab PostgreSQL";
+  }
+
+  if (
+    normalized === "traefik" ||
+    normalized === "vercelab-traefik" ||
+    normalized.startsWith("vercelab-traefik-")
+  ) {
+    return "Vercelab Traefik";
   }
 
   return label;
@@ -1467,7 +1481,7 @@ function buildContainerSidebarMetadata(
 ) {
   if (!runtime?.projectName) {
     return {
-      sidebarName: display.name,
+      sidebarName: formatManagedContainerLabel(display.name),
       sidebarSecondaryLabel: runtime
         ? (runtime.projectName ?? display.stack)
         : display.stack,
@@ -1480,7 +1494,7 @@ function buildContainerSidebarMetadata(
 
   if (!matchingDeployment) {
     return {
-      sidebarName: display.name,
+      sidebarName: formatManagedContainerLabel(display.name),
       sidebarSecondaryLabel: runtime.projectName,
     };
   }

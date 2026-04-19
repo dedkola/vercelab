@@ -16,6 +16,7 @@ import type {
   ContainerMetricsHistoryPoint,
   MetricsHistoryPoint,
 } from "@/lib/influx-metrics";
+import type { DeploymentSummary } from "@/lib/persistence";
 import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 
 const STABLE_TIME_ZONE = "UTC";
@@ -215,15 +216,108 @@ function formatManagedContainerLabel(label: string) {
     return "Vercelab UI";
   }
 
-  if (normalized === "vercelab-influxdb") {
+  if (
+    normalized === "vercelab-influxdb" ||
+    normalized.startsWith("vercelab-influxdb-")
+  ) {
     return "Vercelab InfluxDB";
   }
 
-  if (normalized === "vercelab-postgres") {
+  if (
+    normalized === "vercelab-postgres" ||
+    normalized.startsWith("vercelab-postgres-")
+  ) {
     return "Vercelab PostgreSQL";
   }
 
+  if (
+    normalized === "traefik" ||
+    normalized === "vercelab-traefik" ||
+    normalized.startsWith("vercelab-traefik-")
+  ) {
+    return "Vercelab Traefik";
+  }
+
   return label;
+}
+
+function parseComposeContainerName(containerName: string) {
+  const normalized = containerName.trim();
+  const match = /^(.+)-([^-]+)-(\d+)$/.exec(normalized);
+
+  if (!match) {
+    return null;
+  }
+
+  const projectName = match[1]?.trim() ?? "";
+  const serviceName = match[2]?.trim() ?? "";
+
+  if (!projectName || !serviceName) {
+    return null;
+  }
+
+  return {
+    projectName,
+    serviceName,
+  };
+}
+
+function findDeploymentByProjectName(
+  deployments: DeploymentSummary[],
+  projectName: string,
+) {
+  return (
+    deployments.find((deployment) => deployment.projectName === projectName) ??
+    null
+  );
+}
+
+function resolveDisplayLabelFromDeployment(
+  deployment: DeploymentSummary,
+  serviceName: string | null,
+) {
+  const normalizedService = serviceName?.trim() ?? "";
+
+  return normalizedService
+    ? `${deployment.appName} / ${normalizedService}`
+    : deployment.appName;
+}
+
+function resolveRuntimeContainerLabel(
+  runtime: ContainerStats,
+  deployments: DeploymentSummary[],
+) {
+  const projectName = runtime.projectName?.trim() ?? "";
+
+  if (projectName) {
+    const deployment = findDeploymentByProjectName(deployments, projectName);
+
+    if (deployment) {
+      return resolveDisplayLabelFromDeployment(deployment, runtime.serviceName);
+    }
+  }
+
+  return formatManagedContainerLabel(runtime.name);
+}
+
+function resolveHistoricalContainerLabel(
+  containerName: string,
+  deployments: DeploymentSummary[],
+) {
+  const parsed = parseComposeContainerName(containerName);
+
+  if (parsed) {
+    const deployment = findDeploymentByProjectName(
+      deployments,
+      parsed.projectName,
+    );
+
+    if (deployment) {
+      return resolveDisplayLabelFromDeployment(deployment, parsed.serviceName);
+    }
+  }
+
+  return formatManagedContainerLabel(containerName);
 }
 
 function buildRuntimeSummary(runtime: ContainerStats) {
@@ -462,6 +556,7 @@ function buildDisplayContainer(
 function buildContainerDescriptors(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
+  deployments: DeploymentSummary[],
 ) {
   const historyById = new Map(
     allContainerHistory.map((series) => [series.containerId, series.points]),
@@ -477,7 +572,7 @@ function buildContainerDescriptors(
         history:
           historyById.get(runtime.id) ?? historyByName.get(runtime.name) ?? [],
         id: runtime.id,
-        label: formatManagedContainerLabel(runtime.name),
+        label: resolveRuntimeContainerLabel(runtime, deployments),
         runtime,
       })) satisfies ContainerDescriptor[];
   }
@@ -489,7 +584,7 @@ function buildContainerDescriptors(
     .map((series) => ({
       history: series.points,
       id: series.containerId,
-      label: formatManagedContainerLabel(series.containerName),
+      label: resolveHistoricalContainerLabel(series.containerName, deployments),
       runtime: null,
     })) satisfies ContainerDescriptor[];
 }
@@ -785,8 +880,13 @@ export function buildLiveServerMetrics(
 export function buildContainerListEntries(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
+  deployments: DeploymentSummary[] = [],
 ): ContainerListEntry[] {
-  const descriptors = buildContainerDescriptors(snapshot, allContainerHistory);
+  const descriptors = buildContainerDescriptors(
+    snapshot,
+    allContainerHistory,
+    deployments,
+  );
 
   return descriptors.map((descriptor) => {
     if (descriptor.runtime) {
@@ -889,12 +989,17 @@ export function buildAggregateLogs(
   snapshot: MetricsSnapshot | null,
   history: MetricsHistoryPoint[],
   allContainerHistory: AllContainersMetricsHistorySeries[],
+  deployments: DeploymentSummary[] = [],
 ) {
   const timestamp =
     snapshot?.timestamp ??
     history[history.length - 1]?.timestamp ??
     new Date().toISOString();
-  const descriptors = buildContainerDescriptors(snapshot, allContainerHistory);
+  const descriptors = buildContainerDescriptors(
+    snapshot,
+    allContainerHistory,
+    deployments,
+  );
   const hottestCpuRuntime =
     descriptors
       .map((descriptor) => {
@@ -1166,8 +1271,13 @@ export function buildContainerMetricPanels(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
   selectedContainerId: string | null,
+  deployments: DeploymentSummary[] = [],
 ): ContainerMetricPanel[] {
-  const descriptors = buildContainerDescriptors(snapshot, allContainerHistory);
+  const descriptors = buildContainerDescriptors(
+    snapshot,
+    allContainerHistory,
+    deployments,
+  );
   const cpuSeries = alignContainerSeries(
     descriptors,
     selectedContainerId,

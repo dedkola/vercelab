@@ -140,6 +140,7 @@ type MetricsDashboardShellProps = MetricsDashboardData;
 export function MetricsDashboardShell({
   initialAllContainerHistory = [],
   initialDashboardRange = "15m",
+  initialDeployments = [],
   initialHistory = [],
   initialSnapshot = null,
 }: MetricsDashboardShellProps) {
@@ -194,13 +195,23 @@ export function MetricsDashboardShell({
     [sidebarHistory, sidebarSnapshot],
   );
   const workspaceContainers = useMemo(
-    () => buildContainerListEntries(sidebarSnapshot, allContainerHistory),
-    [allContainerHistory, sidebarSnapshot],
+    () =>
+      buildContainerListEntries(
+        sidebarSnapshot,
+        allContainerHistory,
+        initialDeployments,
+      ),
+    [allContainerHistory, initialDeployments, sidebarSnapshot],
   );
   const aggregateLogs = useMemo(
     () =>
-      buildAggregateLogs(sidebarSnapshot, sidebarHistory, allContainerHistory),
-    [allContainerHistory, sidebarHistory, sidebarSnapshot],
+      buildAggregateLogs(
+        sidebarSnapshot,
+        sidebarHistory,
+        allContainerHistory,
+        initialDeployments,
+      ),
+    [allContainerHistory, initialDeployments, sidebarHistory, sidebarSnapshot],
   );
 
   const metricsStatus = metricsError
@@ -548,6 +559,7 @@ export function MetricsDashboardShell({
         <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
           <MetricsDashboardMainContent
             allContainerHistory={allContainerHistory}
+            deployments={initialDeployments}
             onRangeChangeAction={setDashboardRange}
             range={dashboardRange}
             rangeOptions={METRICS_DASHBOARD_RANGE_OPTIONS}
