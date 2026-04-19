@@ -1918,7 +1918,7 @@ export function WorkspaceShell({
   const [dashboardLogView, setDashboardLogView] =
     useState<DashboardLogView>("live");
   const [appLogTab, setAppLogTab] = useState<LogTab>("build");
-  const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(true);
+  const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(false);
   const [isCreateAppPending, setIsCreateAppPending] = useState(false);
   const [draftApp, setDraftApp] = useState<DraftAppState>(
     createEmptyDraftAppState,

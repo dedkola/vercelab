@@ -690,6 +690,12 @@ describe("WorkspaceShell", () => {
 
     render(<WorkspaceShell initialView="git-app-page" />);
 
+    await user.click(
+      screen.getByRole("button", {
+        name: /add git app/i,
+      }),
+    );
+
     const repositoryCombobox = await screen.findByRole("combobox", {
       name: /repository/i,
     });
