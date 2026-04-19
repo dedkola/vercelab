@@ -16,8 +16,6 @@ type FocusedMetricLegend = {
 };
 
 export type FocusedMetricChart = {
-  description: string;
-  detail: string;
   delta: string;
   legends: FocusedMetricLegend[];
   primaryPoints: number[];
@@ -390,9 +388,6 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
             secondaryPoints={chart.secondaryPoints ?? []}
           />
         )}
-        <div className="text-xs leading-5 text-muted-foreground">
-          {chart.detail}
-        </div>
       </CardContent>
     </Card>
   );
@@ -531,13 +526,8 @@ export function DashboardMainContent({
                   key={chart.title}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold tracking-tight text-foreground">
-                        {chart.title}
-                      </div>
-                      <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {chart.detail}
-                      </div>
+                    <div className="text-sm font-semibold tracking-tight text-foreground">
+                      {chart.title}
                     </div>
                     <div
                       className={cn("text-xs font-semibold", toneClasses.delta)}

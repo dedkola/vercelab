@@ -122,6 +122,8 @@ export type ContainerListEntry = {
   dotClassName: string;
   preview: PreviewContainer | null;
   runtime: ContainerStats | null;
+  sidebarName: string;
+  sidebarSecondaryLabel: string;
   searchText: string;
 };
 
@@ -979,38 +981,6 @@ type AggregateHistoryContainer = {
   label: string;
 };
 
-function formatDashboardRangeLabel(range: DashboardRange) {
-  return (
-    ALL_CONTAINERS_RANGE_OPTIONS.find((option) => option.value === range)
-      ?.label ?? "15 min"
-  );
-}
-
-function formatBucketTimestamp(value: string, range: DashboardRange) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  const options: Intl.DateTimeFormatOptions =
-    range === "24h" || range === "7d" || range === "30d"
-      ? {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: STABLE_TIME_ZONE,
-        }
-      : {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: STABLE_TIME_ZONE,
-        };
-
-  return new Intl.DateTimeFormat("en", options).format(date);
-}
-
 function getLatestSeriesTotal(points: number[]) {
   return points.length ? points[points.length - 1]! : null;
 }
@@ -1126,7 +1096,6 @@ function buildAllContainersMetricCharts(
     snapshot,
     allContainerHistory,
   );
-  const rangeLabel = formatDashboardRangeLabel(range).toLowerCase();
   const liveNetworkTotal = snapshot
     ? snapshot.containers.all.reduce(
         (sum, container) => sum + container.networkTotalBytesPerSecond,
@@ -1160,11 +1129,6 @@ function buildAllContainersMetricCharts(
     (value) => formatBytesPerSecond(value),
   );
 
-  const buildDetail = (latestTimestamp: string | null, topic: string) =>
-    latestTimestamp
-      ? `Showing ${topic} for the last ${rangeLabel}. Latest bucket closed at ${formatBucketTimestamp(latestTimestamp, range)}.`
-      : `Waiting for InfluxDB ${topic.toLowerCase()} buckets for the last ${rangeLabel}.`;
-
   const latestCpuTotal = getLatestSeriesTotal(cpuMetric.totalPoints);
   const latestMemoryTotal = getLatestSeriesTotal(memoryMetric.totalPoints);
   const latestNetworkTotal = getLatestSeriesTotal(networkMetric.totalPoints);
@@ -1172,8 +1136,6 @@ function buildAllContainersMetricCharts(
 
   return [
     {
-      description: "Per-container CPU load over the selected history window.",
-      detail: buildDetail(cpuMetric.latestTimestamp, "container CPU load"),
       series: cpuMetric.lines,
       summaryLabel: "Fleet load",
       summaryValue: snapshot
@@ -1185,9 +1147,6 @@ function buildAllContainersMetricCharts(
       variant: "cpu",
     },
     {
-      description:
-        "Resident memory for every tracked container in the same range.",
-      detail: buildDetail(memoryMetric.latestTimestamp, "container memory"),
       series: memoryMetric.lines,
       summaryLabel: "Resident set",
       summaryValue: snapshot
@@ -1199,8 +1158,6 @@ function buildAllContainersMetricCharts(
       variant: "memory",
     },
     {
-      description: "Combined ingress and egress throughput per container.",
-      detail: buildDetail(networkMetric.latestTimestamp, "network throughput"),
       series: networkMetric.lines,
       summaryLabel: "Live throughput",
       summaryValue:
@@ -1213,8 +1170,6 @@ function buildAllContainersMetricCharts(
       variant: "network",
     },
     {
-      description: "Combined block read and write throughput per container.",
-      detail: buildDetail(diskMetric.latestTimestamp, "disk activity"),
       series: diskMetric.lines,
       summaryLabel: "Live I/O",
       summaryValue:
@@ -1237,10 +1192,6 @@ function buildFocusedMetricCharts(
   if (!runtime) {
     return [
       {
-        description:
-          "Preview compute trend until live runtime metrics connect.",
-        detail:
-          "Select a live runtime container to swap these cards over to InfluxDB-backed CPU, memory, network, and disk history.",
         delta: "Preview",
         legends: [
           {
@@ -1259,9 +1210,6 @@ function buildFocusedMetricCharts(
         variant: "cpu",
       },
       {
-        description: "Preview memory curve until live history is available.",
-        detail:
-          "Resident memory history will populate from InfluxDB when a runtime-sampled container is selected.",
         delta: "Preview",
         legends: [
           {
@@ -1280,10 +1228,6 @@ function buildFocusedMetricCharts(
         variant: "memory",
       },
       {
-        description:
-          "Preview request flow until live throughput history lands.",
-        detail:
-          "Network throughput comes from per-container InfluxDB samples when live runtime data is available.",
         delta: "Preview",
         legends: [
           {
@@ -1299,9 +1243,6 @@ function buildFocusedMetricCharts(
         variant: "network",
       },
       {
-        description: "Block device activity requires a live runtime sample.",
-        detail:
-          "Disk I/O is only rendered from per-container InfluxDB history, so preview-only containers do not expose this chart.",
         delta: "Live only",
         legends: [
           {
@@ -1329,15 +1270,9 @@ function buildFocusedMetricCharts(
   const diskReadPoints = history.map((point) => point.diskRead);
   const diskWritePoints = history.map((point) => point.diskWrite);
   const diskTotalPoints = history.map((point) => point.diskTotal);
-  const waitingDetail =
-    "InfluxDB is still collecting recent buckets for this container.";
 
   return [
     {
-      description: "Bucketed CPU load from this container's InfluxDB history.",
-      detail: latest
-        ? `Latest bucket closed at ${formatClock(latest.timestamp)}.`
-        : waitingDetail,
       delta: getLatestDelta(cpuPoints, (delta) => formatPercent(delta, 1)),
       legends: [
         {
@@ -1358,10 +1293,6 @@ function buildFocusedMetricCharts(
       variant: "cpu",
     },
     {
-      description: "Resident memory sampled and bucketed in InfluxDB.",
-      detail: latest
-        ? `${formatPercent(latest.memoryPercent, 1)} of host memory in the latest bucket.`
-        : waitingDetail,
       delta: getLatestDelta(memoryPercentPoints, (delta) =>
         formatPercent(delta, 1),
       ),
@@ -1384,11 +1315,6 @@ function buildFocusedMetricCharts(
       variant: "memory",
     },
     {
-      description:
-        "Ingress and egress throughput from container metrics in InfluxDB.",
-      detail: latest
-        ? `${formatBytesPerSecond(latest.networkIn)} in and ${formatBytesPerSecond(latest.networkOut)} out in the latest bucket.`
-        : waitingDetail,
       delta: getLatestDelta(
         networkTotalPoints,
         (delta) => formatBytesPerSecond(delta),
@@ -1412,11 +1338,6 @@ function buildFocusedMetricCharts(
       variant: "network",
     },
     {
-      description:
-        "Block read and write throughput from container history in InfluxDB.",
-      detail: latest
-        ? `${formatBytesPerSecond(latest.diskRead)} read and ${formatBytesPerSecond(latest.diskWrite)} written in the latest bucket.`
-        : waitingDetail,
       delta: getLatestDelta(
         diskTotalPoints,
         (delta) => formatBytesPerSecond(delta),
@@ -1539,8 +1460,45 @@ function buildDisplayContainer(
   };
 }
 
+function buildContainerSidebarMetadata(
+  runtime: ContainerStats | null,
+  display: PreviewContainer,
+  deployments: DeploymentSummary[],
+) {
+  if (!runtime?.projectName) {
+    return {
+      sidebarName: display.name,
+      sidebarSecondaryLabel: runtime
+        ? (runtime.projectName ?? display.stack)
+        : display.stack,
+    };
+  }
+
+  const matchingDeployment = deployments.find(
+    (deployment) => deployment.projectName === runtime.projectName,
+  );
+
+  if (!matchingDeployment) {
+    return {
+      sidebarName: display.name,
+      sidebarSecondaryLabel: runtime.projectName,
+    };
+  }
+
+  const serviceLabel =
+    runtime.serviceName?.trim() || matchingDeployment.serviceName?.trim() || "";
+
+  return {
+    sidebarName: serviceLabel
+      ? `${matchingDeployment.appName} / ${serviceLabel}`
+      : matchingDeployment.appName,
+    sidebarSecondaryLabel: runtime.name,
+  };
+}
+
 function buildContainerListEntries(
   snapshot: MetricsSnapshot | null,
+  deployments: DeploymentSummary[],
 ): ContainerListEntry[] {
   const previewByName = new Map(
     PREVIEW_CONTAINERS.map((container) => [container.name, container]),
@@ -1579,6 +1537,8 @@ function buildContainerListEntries(
       dotClassName: getStatusDotClassName(preview.status),
       preview,
       runtime: null,
+      sidebarName: preview.name,
+      sidebarSecondaryLabel: preview.stack,
       searchText: [preview.name, preview.stack, preview.image, preview.summary]
         .join(" ")
         .toLowerCase(),
@@ -1588,13 +1548,22 @@ function buildContainerListEntries(
   return runtimeContainers.map((runtime) => {
     const preview = previewByName.get(runtime.name) ?? null;
     const display = buildDisplayContainer(runtime, preview, snapshot);
+    const sidebarMetadata = buildContainerSidebarMetadata(
+      runtime,
+      display,
+      deployments,
+    );
 
     return {
       display,
       dotClassName: getRuntimeDotClassName(runtime),
       preview,
       runtime,
+      sidebarName: sidebarMetadata.sidebarName,
+      sidebarSecondaryLabel: sidebarMetadata.sidebarSecondaryLabel,
       searchText: [
+        sidebarMetadata.sidebarName,
+        sidebarMetadata.sidebarSecondaryLabel,
         runtime.name,
         runtime.projectName,
         runtime.serviceName,
@@ -1697,7 +1666,7 @@ const WORKSPACE_PAGES: Array<{
 ];
 
 function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
-  const pathname = view === "dashboard" ? "/dashboard" : "/git-app-page";
+  const pathname = view === "dashboard" ? "/" : "/git-app-page";
 
   if (range === "15m") {
     return pathname;
@@ -1985,8 +1954,8 @@ export function WorkspaceShell({
     [sidebarHistory, sidebarSnapshot],
   );
   const workspaceContainers = useMemo(
-    () => buildContainerListEntries(sidebarSnapshot),
-    [sidebarSnapshot],
+    () => buildContainerListEntries(sidebarSnapshot, deployments),
+    [deployments, sidebarSnapshot],
   );
   const metricsStatus = metricsError
     ? {
@@ -2095,21 +2064,21 @@ export function WorkspaceShell({
   const activeContainerId = isAllContainersSelected
     ? ALL_CONTAINERS_ID
     : filteredContainers.some(
-          (container) => container.display.name === selectedContainerId,
+          (container) => container.display.id === selectedContainerId,
         )
       ? selectedContainerId
-      : (filteredContainers[0]?.display.name ??
-        workspaceContainers[0]?.display.name ??
+      : (filteredContainers[0]?.display.id ??
+        workspaceContainers[0]?.display.id ??
         PREVIEW_CONTAINERS[0]?.name ??
         selectedContainerId);
 
   const selectedEntry = isAllContainersSelected
     ? null
     : (filteredContainers.find(
-        (container) => container.display.name === activeContainerId,
+        (container) => container.display.id === activeContainerId,
       ) ??
       workspaceContainers.find(
-        (container) => container.display.name === activeContainerId,
+        (container) => container.display.id === activeContainerId,
       ) ??
       workspaceContainers[0]);
   const selectedContainer = selectedEntry?.display ?? PREVIEW_CONTAINERS[0];

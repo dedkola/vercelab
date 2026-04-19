@@ -15,8 +15,6 @@ type AggregateChartLine = {
 };
 
 export type AllContainersMetricChart = {
-  description: string;
-  detail: string;
   series: AggregateChartLine[];
   summaryLabel: string;
   summaryValue: string;
@@ -214,9 +212,6 @@ function AggregateChartCard({ chart }: { chart: AllContainersMetricChart }) {
       </CardHeader>
       <CardContent className="space-y-4 pt-5">
         <LargeMultiLineChart chart={chart} />
-        <div className="text-sm leading-6 text-muted-foreground">
-          {chart.detail}
-        </div>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           {chart.series.map((line, index) => (
             <div

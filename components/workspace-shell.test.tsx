@@ -50,7 +50,7 @@ describe("WorkspaceShell", () => {
   beforeEach(() => {
     pushMock.mockReset();
     refreshMock.mockReset();
-    window.history.replaceState(null, "", "/dashboard");
+    window.history.replaceState(null, "", "/");
 
     fetchSpy.mockImplementation(async (input) => {
       const url = getRequestUrl(input);
@@ -523,6 +523,135 @@ describe("WorkspaceShell", () => {
     expect(screen.getByText(/4 visible/i)).toBeVisible();
   });
 
+  it("shows app names for managed containers and raw names for docker containers in the sidebar", async () => {
+    fetchSpy.mockImplementation(async (input) => {
+      const url = getRequestUrl(input);
+
+      if (url.includes("/api/metrics")) {
+        return jsonResponse({
+          snapshot: {
+            timestamp: "2026-04-17T08:00:00.000Z",
+            warnings: [],
+            hostIp: "192.168.1.10",
+            system: {
+              cpuPercent: 18,
+              loadAverage: [0.22, 0.3, 0.4],
+              memoryPercent: 52,
+              memoryUsedBytes: 33.2 * 1024 ** 3,
+              memoryTotalBytes: 64 * 1024 ** 3,
+            },
+            network: {
+              rxBytesPerSecond: 120_000,
+              txBytesPerSecond: 72_000,
+              interfaces: [
+                {
+                  name: "eth0",
+                  rxBytesPerSecond: 120_000,
+                  txBytesPerSecond: 72_000,
+                },
+              ],
+            },
+            containers: {
+              running: 2,
+              total: 2,
+              cpuPercent: 12,
+              memoryPercent: 9,
+              memoryUsedBytes: 1.4 * 1024 ** 3,
+              statusBreakdown: {
+                healthy: 2,
+                unhealthy: 0,
+                stopped: 0,
+              },
+              top: [],
+              all: [
+                {
+                  id: "runtime-marketing-web",
+                  name: "vercelab-marketing-1234-web-1",
+                  cpuPercent: 8,
+                  memoryBytes: 512 * 1024 ** 2,
+                  memoryPercent: 0.8,
+                  networkRxBytesPerSecond: 18_000,
+                  networkTxBytesPerSecond: 9_000,
+                  networkTotalBytesPerSecond: 27_000,
+                  diskReadBytesPerSecond: 0,
+                  diskWriteBytesPerSecond: 6_000,
+                  diskTotalBytesPerSecond: 6_000,
+                  status: "running",
+                  health: "healthy",
+                  projectName: "vercelab-marketing-1234",
+                  serviceName: "web",
+                },
+                {
+                  id: "runtime-manual-redis",
+                  name: "manual-redis",
+                  cpuPercent: 4,
+                  memoryBytes: 128 * 1024 ** 2,
+                  memoryPercent: 0.2,
+                  networkRxBytesPerSecond: 2_000,
+                  networkTxBytesPerSecond: 1_000,
+                  networkTotalBytesPerSecond: 3_000,
+                  diskReadBytesPerSecond: 0,
+                  diskWriteBytesPerSecond: 1_000,
+                  diskTotalBytesPerSecond: 1_000,
+                  status: "running",
+                  health: "healthy",
+                  projectName: null,
+                  serviceName: null,
+                },
+              ],
+            },
+          },
+          history: [],
+          containerHistory: [],
+          allContainerHistory: [],
+        });
+      }
+
+      return jsonResponse({});
+    });
+
+    render(
+      <WorkspaceShell
+        initialDeployments={[
+          {
+            id: "dep-marketing",
+            repositoryName: "dedkola/marketing-site",
+            repositoryUrl: "https://github.com/dedkola/marketing-site.git",
+            branch: "main",
+            commitSha: null,
+            appName: "Marketing Site",
+            subdomain: "marketing",
+            port: 3000,
+            envVariables: null,
+            serviceName: "web",
+            status: "running",
+            composeMode: "compose",
+            projectName: "vercelab-marketing-1234",
+            lastOutput: null,
+            lastOperationSummary: null,
+            updatedAt: "2026-04-17T08:00:00.000Z",
+            deployedAt: "2026-04-17T07:55:00.000Z",
+            tokenStored: false,
+          },
+        ]}
+      />,
+    );
+
+    const managedAppRow = await screen.findByRole("button", {
+      name: /marketing site \/ web.*healthy/i,
+    });
+
+    expect(managedAppRow).toBeVisible();
+    expect(
+      within(managedAppRow).getByText("vercelab-marketing-1234-web-1"),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", {
+        name: /manual-redis.*healthy/i,
+      }),
+    ).toBeVisible();
+  });
+
   it("renders grouped all-container charts and lets the user change the range", async () => {
     const user = userEvent.setup();
 
@@ -609,7 +738,7 @@ describe("WorkspaceShell", () => {
       }),
     );
 
-    expect(pushMock).toHaveBeenCalledWith("/dashboard");
+    expect(pushMock).toHaveBeenCalledWith("/");
   });
 
   it("preserves the selected range when switching workspace views", async () => {

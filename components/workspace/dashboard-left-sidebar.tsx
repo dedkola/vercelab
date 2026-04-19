@@ -17,14 +17,14 @@ import { ResizeHandle, SectionLabel } from "./workspace-ui";
 
 function getContainerAriaLabel(container: ContainerListEntry) {
   if (container.runtime?.health && container.runtime.health !== "none") {
-    return `${container.display.name} ${container.runtime.health}`;
+    return `${container.sidebarName} ${container.runtime.health}`;
   }
 
   if (container.runtime) {
-    return `${container.display.name} ${container.runtime.status}`;
+    return `${container.sidebarName} ${container.runtime.status}`;
   }
 
-  return `${container.display.name} ${container.display.status}`;
+  return `${container.sidebarName} ${container.display.status}`;
 }
 
 function formatContainerStatusLabel(container: ContainerListEntry) {
@@ -75,7 +75,7 @@ function getContainerStatusVariant(
 }
 
 function getContainerSecondaryLabel(container: ContainerListEntry) {
-  return container.runtime?.projectName ?? container.display.stack;
+  return container.sidebarSecondaryLabel;
 }
 
 type DashboardLeftSidebarProps = {
@@ -189,13 +189,13 @@ export function DashboardLeftSidebar({
                     aria-label={getContainerAriaLabel(container)}
                     className={cn(
                       "w-full rounded-[1.1rem] border px-3 py-2.5 text-left transition-all duration-200",
-                      activeContainerId === container.display.name
+                      activeContainerId === container.display.id
                         ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/90 via-background to-background shadow-[0_18px_42px_-34px_rgba(16,185,129,0.24)]"
                         : "border-border/70 bg-background/85 hover:bg-background/95",
                     )}
                     key={container.display.id}
                     onClick={() =>
-                      onContainerSelectAction(container.display.name)
+                      onContainerSelectAction(container.display.id)
                     }
                     type="button"
                   >
@@ -209,7 +209,7 @@ export function DashboardLeftSidebar({
                             )}
                           />
                           <span className="truncate text-sm font-semibold tracking-tight text-foreground">
-                            {container.display.name}
+                            {container.sidebarName}
                           </span>
                         </div>
                       </div>

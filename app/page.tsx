@@ -1,5 +1,13 @@
-import { WorkspaceShell } from "@/components/workspace-shell";
-import { loadWorkspaceShellData } from "@/lib/workspace-shell-data";
+import type { Metadata } from "next";
+
+import { MetricsDashboardShell } from "@/components/metrics-dashboard-shell";
+import { loadMetricsDashboardData } from "@/lib/metrics-dashboard-data";
+
+export const metadata: Metadata = {
+  title: "Dashboard | Vercelab",
+  description:
+    "Live dashboard for host load, container activity, and infrastructure metrics.",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +19,7 @@ type HomeProps = {
 };
 
 export default async function Home({ searchParams }: HomeProps) {
-  const pageData = await loadWorkspaceShellData(searchParams, "dashboard");
+  const pageData = await loadMetricsDashboardData(searchParams);
 
-  return <WorkspaceShell {...pageData} />;
+  return <MetricsDashboardShell {...pageData} />;
 }
