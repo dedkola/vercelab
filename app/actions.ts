@@ -128,6 +128,8 @@ export async function updateDeploymentAction(
     const result = await updateDeploymentSettingsById({
       deploymentId: getRequiredFormValue(formData, "deploymentId"),
       appName: getRequiredFormValue(formData, "appName"),
+      branch: formData.get("branch"),
+      commitSha: formData.get("commitSha"),
       subdomain: getRequiredFormValue(formData, "subdomain"),
       port: getRequiredFormValue(formData, "port"),
       envVariables: formData.get("envVariables"),

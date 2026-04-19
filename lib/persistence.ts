@@ -23,6 +23,7 @@ export type StoredDeployment = {
   repositoryUrl: string;
   encryptedToken: string | null;
   branch: string | null;
+  commitSha: string | null;
   appName: string;
   appSlug: string;
   subdomain: string;
@@ -45,6 +46,7 @@ export type DeploymentSummary = {
   repositoryName: string;
   repositoryUrl: string;
   branch: string | null;
+  commitSha: string | null;
   appName: string;
   subdomain: string;
   port: number;
@@ -117,6 +119,7 @@ type StoredDeploymentRow = {
   repository_url: string;
   encrypted_token: string | null;
   branch: string | null;
+  commit_sha: string | null;
   app_name: string;
   app_slug: string;
   subdomain: string;
@@ -139,6 +142,7 @@ type DeploymentSummaryRow = {
   repository_name: string;
   repository_url: string;
   branch: string | null;
+  commit_sha: string | null;
   app_name: string;
   subdomain: string;
   port: number;
@@ -216,6 +220,7 @@ function mapStoredDeployment(row: StoredDeploymentRow): StoredDeployment {
     repositoryUrl: row.repository_url,
     encryptedToken: row.encrypted_token,
     branch: row.branch,
+    commitSha: row.commit_sha,
     appName: row.app_name,
     appSlug: row.app_slug,
     subdomain: row.subdomain,
@@ -307,6 +312,7 @@ async function initDatabase() {
             repository_url TEXT NOT NULL,
             encrypted_token TEXT,
             branch TEXT,
+            commit_sha TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
           );
@@ -346,6 +352,9 @@ async function initDatabase() {
           CREATE INDEX IF NOT EXISTS idx_operations_deployment_id ON operations(deployment_id);
           CREATE INDEX IF NOT EXISTS idx_operations_created_at ON operations(created_at DESC);
         `);
+        await client.query(
+          "ALTER TABLE repositories ADD COLUMN IF NOT EXISTS commit_sha TEXT",
+        );
       } finally {
         client.release();
       }
@@ -407,6 +416,7 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
         r.name AS repository_name,
         r.repository_url,
         r.branch,
+        r.commit_sha,
         d.app_name,
         d.subdomain,
         d.port,
@@ -516,6 +526,7 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
       repositoryName: row.repository_name,
       repositoryUrl: row.repository_url,
       branch: row.branch,
+      commitSha: row.commit_sha,
       appName: row.app_name,
       subdomain: row.subdomain,
       port: row.port,
@@ -573,9 +584,10 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
             repository_url,
             encrypted_token,
             branch,
+            commit_sha,
             created_at,
             updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         `,
         [
           repositoryId,
@@ -583,6 +595,7 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
           input.repositoryUrl,
           input.githubToken ? encryptSecret(input.githubToken) : null,
           input.branch ?? null,
+          null,
           now,
           now,
         ],
@@ -662,6 +675,7 @@ export async function getStoredDeploymentById(
         r.repository_url,
         r.encrypted_token,
         r.branch,
+        r.commit_sha,
         d.app_name,
         d.app_slug,
         d.subdomain,
@@ -755,6 +769,11 @@ type DeploymentUpdate = Partial<{
   deployedAt: string | null;
 }>;
 
+type DeploymentRepositoryUpdate = Partial<{
+  branch: string | null;
+  commitSha: string | null;
+}>;
+
 export async function updateDeploymentRecord(
   deploymentId: string,
   update: DeploymentUpdate,
@@ -796,6 +815,42 @@ export async function updateDeploymentRecord(
 
   await queryRows(
     `UPDATE deployments SET ${assignments.join(", ")} WHERE id = $${values.length}`,
+    values,
+  );
+}
+
+export async function updateDeploymentRepositorySettingsById(
+  deploymentId: string,
+  update: DeploymentRepositoryUpdate,
+) {
+  const entries = Object.entries(update).filter(
+    ([, value]) => value !== undefined,
+  );
+
+  if (entries.length === 0) {
+    return;
+  }
+
+  const columnMap: Record<string, string> = {
+    branch: "branch",
+    commitSha: "commit_sha",
+  };
+  const values = entries.map(([, value]) => value);
+  const assignments = entries.map(
+    ([key], index) => `${columnMap[key]} = $${index + 1}`,
+  );
+
+  values.push(new Date().toISOString());
+  assignments.push(`updated_at = $${values.length}`);
+  values.push(deploymentId);
+
+  await queryRows(
+    `
+      UPDATE repositories AS r
+      SET ${assignments.join(", ")}
+      FROM deployments AS d
+      WHERE d.repository_id = r.id AND d.id = $${values.length}
+    `,
     values,
   );
 }

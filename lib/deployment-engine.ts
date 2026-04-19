@@ -8,6 +8,12 @@ import { stringify } from "yaml";
 
 import { getAppConfig } from "@/lib/app-config";
 import {
+  listGitHubBranches,
+  listGitHubCommits,
+  parseGitHubRepositoryReference,
+  type GitHubCommit,
+} from "@/lib/github";
+import {
   completeOperation,
   createDeploymentRecord,
   createOperation,
@@ -15,6 +21,7 @@ import {
   getLatestDeploymentOperation,
   getStoredDeploymentById,
   readDeploymentSecretToken,
+  updateDeploymentRepositorySettingsById,
   updateDeploymentRecord,
   type OperationType,
   type StoredDeployment,
@@ -40,6 +47,31 @@ type ReadComposeLogsOptions = {
   includeAllServices?: boolean;
   tail?: number;
   timestamps?: boolean;
+};
+
+export type DeploymentSourceCommit = {
+  authorName: string | null;
+  committedAt: string | null;
+  message: string;
+  sha: string;
+  shortSha: string;
+  url: string | null;
+};
+
+export type DeploymentSourceState = {
+  branches: string[];
+  browserError: string | null;
+  commits: DeploymentSourceCommit[];
+  configuredBranch: string | null;
+  configuredCommitSha: string | null;
+  currentBranch: string | null;
+  currentCommit: DeploymentSourceCommit | null;
+  repository: {
+    fullName: string;
+    name: string;
+    owner: string;
+    url: string;
+  } | null;
 };
 
 function parseDeploymentEnvVariables(
@@ -339,6 +371,29 @@ async function cloneRepository(deployment: StoredDeployment) {
   return await runCommand("git", args);
 }
 
+async function checkoutPinnedCommit(deployment: StoredDeployment) {
+  if (!deployment.commitSha) {
+    return "";
+  }
+
+  const fetchOutput = await runCommand(
+    "git",
+    ["fetch", "--depth", "1", "origin", deployment.commitSha],
+    {
+      cwd: deployment.workspacePath,
+    },
+  );
+  const checkoutOutput = await runCommand(
+    "git",
+    ["checkout", "--detach", deployment.commitSha],
+    {
+      cwd: deployment.workspacePath,
+    },
+  );
+
+  return [fetchOutput, checkoutOutput].filter(Boolean).join("\n");
+}
+
 async function deployWorkspace(
   deployment: StoredDeployment,
   syncWithGit: boolean,
@@ -348,6 +403,10 @@ async function deployWorkspace(
   const shouldClone =
     syncWithGit || !(await pathExists(deployment.workspacePath));
   const cloneOutput = shouldClone ? await cloneRepository(deployment) : "";
+  const checkoutOutput =
+    shouldClone && deployment.commitSha
+      ? await checkoutPinnedCommit(deployment)
+      : "";
   const runtimeFiles = await detectRuntimeFiles(deployment);
 
   await updateDeploymentRecord(deployment.id, {
@@ -373,9 +432,79 @@ async function deployWorkspace(
   }
 
   return (
-    truncateOutput([cloneOutput, composeOutput].filter(Boolean).join("\n\n")) ??
-    ""
+    truncateOutput(
+      [cloneOutput, checkoutOutput, composeOutput].filter(Boolean).join("\n\n"),
+    ) ?? ""
   );
+}
+
+function mapSourceCommit(
+  commit: Pick<
+    GitHubCommit,
+    "authorName" | "committedAt" | "message" | "sha" | "url"
+  >,
+): DeploymentSourceCommit {
+  return {
+    authorName: commit.authorName,
+    committedAt: commit.committedAt,
+    message: commit.message,
+    sha: commit.sha,
+    shortSha: commit.sha.slice(0, 7),
+    url: commit.url,
+  };
+}
+
+async function readWorkspaceBranch(workspacePath: string) {
+  if (!(await pathExists(workspacePath))) {
+    return null;
+  }
+
+  try {
+    const branch = await runCommand("git", ["branch", "--show-current"], {
+      cwd: workspacePath,
+    });
+
+    return branch.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function readWorkspaceCommit(
+  deployment: StoredDeployment,
+): Promise<DeploymentSourceCommit | null> {
+  if (!(await pathExists(deployment.workspacePath))) {
+    return null;
+  }
+
+  try {
+    const output = await runCommand(
+      "git",
+      ["log", "-1", "--pretty=format:%H%n%s%n%cI%n%an"],
+      {
+        cwd: deployment.workspacePath,
+      },
+    );
+    const [sha = "", message = "", committedAt = "", authorName = ""] =
+      output.split("\n");
+
+    if (!sha) {
+      return null;
+    }
+
+    const repository = parseGitHubRepositoryReference(deployment.repositoryUrl);
+
+    return {
+      authorName: authorName || null,
+      committedAt: committedAt || null,
+      message: message || "Commit",
+      sha,
+      shortSha: sha.slice(0, 7),
+      url: repository ? `${repository.webUrl}/commit/${sha}` : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function detectRuntimeFiles(
@@ -612,7 +741,7 @@ async function readComposeLogs(
 ) {
   const serviceName = options.includeAllServices
     ? null
-    : runtimeFiles.serviceName ?? deployment.serviceName;
+    : (runtimeFiles.serviceName ?? deployment.serviceName);
 
   return await runComposeCommand(deployment, runtimeFiles, [
     "logs",
@@ -745,6 +874,8 @@ export async function fetchDeploymentFromGitById(
 export async function updateDeploymentSettingsById(input: {
   deploymentId: string;
   appName: string;
+  branch: FormDataEntryValue | string | null;
+  commitSha: FormDataEntryValue | string | null;
   subdomain: string;
   port: string;
   envVariables: FormDataEntryValue | string | null;
@@ -752,6 +883,8 @@ export async function updateDeploymentSettingsById(input: {
   const parsed = updateDeploymentSettingsSchema.parse({
     deploymentId: input.deploymentId,
     appName: input.appName,
+    branch: normalizeStringInput(input.branch),
+    commitSha: normalizeStringInput(input.commitSha),
     subdomain: normalizeDomainInput(input.subdomain),
     port: input.port,
     envVariables: normalizeStringInput(input.envVariables),
@@ -764,6 +897,10 @@ export async function updateDeploymentSettingsById(input: {
       port: parsed.port,
       envVariables: parsed.envVariables ?? null,
     });
+    await updateDeploymentRepositorySettingsById(parsed.deploymentId, {
+      branch: parsed.branch ?? null,
+      commitSha: parsed.commitSha ?? null,
+    });
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) {
       throw new Error(
@@ -774,11 +911,102 @@ export async function updateDeploymentSettingsById(input: {
     throw error;
   }
 
-  const result = await redeployDeploymentById(parsed.deploymentId);
+  const result = await fetchDeploymentFromGitById(parsed.deploymentId);
 
   return {
     appName: parsed.appName,
     domain: result.domain,
+  };
+}
+
+export async function readDeploymentSourceState(input: {
+  branch?: string | null;
+  deploymentId: string;
+}): Promise<DeploymentSourceState> {
+  const deployment = await getStoredDeploymentById(input.deploymentId);
+  const currentBranch = await readWorkspaceBranch(deployment.workspacePath);
+  const currentCommit = await readWorkspaceCommit(deployment);
+  const repository = parseGitHubRepositoryReference(deployment.repositoryUrl);
+  const requestedBranch = normalizeStringInput(input.branch);
+
+  let branches: string[] = [];
+  let commits: DeploymentSourceCommit[] = [];
+  let browserError: string | null = null;
+
+  if (repository) {
+    const token = await resolveDeploymentGitToken(deployment.id);
+
+    if (token) {
+      try {
+        branches = await listGitHubBranches(
+          token,
+          repository.owner,
+          repository.name,
+        );
+        const branchForCommits =
+          requestedBranch ?? deployment.branch ?? currentBranch ?? branches[0];
+
+        commits = (
+          await listGitHubCommits(
+            token,
+            repository.owner,
+            repository.name,
+            branchForCommits,
+          )
+        ).map(mapSourceCommit);
+      } catch (error) {
+        browserError =
+          error instanceof Error
+            ? error.message
+            : "Unable to load repository source details.";
+      }
+    } else {
+      browserError = "No GitHub token is configured for this deployment.";
+    }
+  } else {
+    browserError =
+      "Only GitHub repositories support branch and commit browsing.";
+  }
+
+  let resolvedCurrentCommit = currentCommit;
+
+  if (!resolvedCurrentCommit && deployment.commitSha) {
+    const matchingCommit = commits.find(
+      (commit) => commit.sha === deployment.commitSha,
+    );
+
+    if (matchingCommit) {
+      resolvedCurrentCommit = matchingCommit;
+    } else {
+      resolvedCurrentCommit = {
+        authorName: null,
+        committedAt: null,
+        message: "Pinned commit",
+        sha: deployment.commitSha,
+        shortSha: deployment.commitSha.slice(0, 7),
+        url: repository
+          ? `${repository.webUrl}/commit/${deployment.commitSha}`
+          : null,
+      };
+    }
+  }
+
+  return {
+    branches,
+    browserError,
+    commits,
+    configuredBranch: deployment.branch,
+    configuredCommitSha: deployment.commitSha,
+    currentBranch,
+    currentCommit: resolvedCurrentCommit,
+    repository: repository
+      ? {
+          fullName: repository.fullName,
+          name: repository.name,
+          owner: repository.owner,
+          url: repository.webUrl,
+        }
+      : null,
   };
 }
 
@@ -914,6 +1142,8 @@ export async function readDeploymentContainerLogTail(
     const runtimeFiles = await detectRuntimeFiles(deployment);
     return await readComposeLogs(deployment, runtimeFiles, options);
   } catch (error) {
-    return error instanceof Error ? error.message : "Unable to read container logs.";
+    return error instanceof Error
+      ? error.message
+      : "Unable to read container logs.";
   }
 }

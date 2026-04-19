@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const repositoryUrlPattern = /^https:\/\/[^\s/]+\/.+/;
+const commitShaPattern = /^[0-9a-f]{7,40}$/i;
 const slugPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const serviceNamePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
@@ -73,6 +74,17 @@ export const updateDeploymentSettingsSchema = deploymentActionSchema.extend({
     .trim()
     .min(2, "App name is too short.")
     .max(60, "App name is too long."),
+  branch: z.preprocess(
+    normalizeOptionalString,
+    z.string().min(1).max(120).optional(),
+  ),
+  commitSha: z.preprocess(
+    normalizeOptionalString,
+    z
+      .string()
+      .regex(commitShaPattern, "Commit must be a valid git SHA.")
+      .optional(),
+  ),
   subdomain: z
     .string()
     .trim()

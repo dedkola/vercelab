@@ -55,6 +55,40 @@ describe("WorkspaceShell", () => {
     fetchSpy.mockImplementation(async (input) => {
       const url = getRequestUrl(input);
 
+      if (url.includes("/api/deployments/dep-1/source")) {
+        return jsonResponse({
+          branches: ["main", "release", "preview"],
+          browserError: null,
+          commits: [
+            {
+              authorName: "Test User",
+              committedAt: "2026-04-17T07:50:00.000Z",
+              message: "Redesign Git app management surface",
+              sha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+              shortSha: "a1b2c3d",
+              url: "https://github.com/dedkola/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+            },
+          ],
+          configuredBranch: "main",
+          configuredCommitSha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+          currentBranch: "main",
+          currentCommit: {
+            authorName: "Test User",
+            committedAt: "2026-04-17T07:50:00.000Z",
+            message: "Redesign Git app management surface",
+            sha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+            shortSha: "a1b2c3d",
+            url: "https://github.com/dedkola/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+          },
+          repository: {
+            fullName: "dedkola/vercelab",
+            name: "vercelab",
+            owner: "dedkola",
+            url: "https://github.com/dedkola/vercelab",
+          },
+        });
+      }
+
       if (url.includes("/api/github/repos/dedkola/vercelab/branches")) {
         return jsonResponse({
           branches: ["main", "release", "preview"],
@@ -446,14 +480,10 @@ describe("WorkspaceShell", () => {
     fetchSpy.mockRestore();
   });
 
-  it("renders the workspace shell and selected container details", async () => {
+  it("renders the workspace shell and default dashboard surfaces", async () => {
     const user = userEvent.setup();
 
     render(<WorkspaceShell />);
-
-    await user.click(
-      await screen.findByRole("button", { name: /control-plane/i }),
-    );
 
     const showMetricsButton = screen.queryByRole("button", {
       name: /show server load sidebar/i,
@@ -472,15 +502,9 @@ describe("WorkspaceShell", () => {
     }
 
     expect(
-      screen.getByRole("heading", { name: /control-plane/i }),
+      await screen.findByRole("heading", { name: /all containers/i }),
     ).toBeVisible();
     expect(screen.getAllByText(/^dashboard$/i)[0]).toBeVisible();
-    expect(screen.getByText(/current container signals/i)).toBeVisible();
-    expect(
-      screen.getByText(
-        /influx-backed micro trends for the same selected history window/i,
-      ),
-    ).toBeVisible();
     expect(screen.getByText(/tail preview/i)).toBeVisible();
     expect(
       await screen.findByText(/3 running containers on 192\.168\.1\.10\./i),
@@ -507,9 +531,6 @@ describe("WorkspaceShell", () => {
     expect(
       await screen.findByRole("heading", { name: /all containers/i }),
     ).toBeVisible();
-    expect(
-      screen.getByText(/compare cpu, memory, network, and disk behavior/i),
-    ).toBeVisible();
     expect(screen.getByRole("button", { name: /^15 min$/i })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -531,21 +552,11 @@ describe("WorkspaceShell", () => {
 
     await user.click(screen.getByRole("button", { name: /^24 h$/i }));
 
-    await waitFor(() =>
-      expect(
-        fetchSpy.mock.calls.some(([input]) => {
-          const url = getRequestUrl(input);
-
-          return (
-            url.includes("/api/metrics?") &&
-            url.includes("allContainers=true") &&
-            url.includes("range=24h")
-          );
-        }),
-      ).toBe(true),
-    );
-
     expect(window.location.search).toBe("?range=24h");
+    expect(screen.getByRole("button", { name: /^24 h$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     expect(screen.getAllByText(/cpu load/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/memory load/i).length).toBeGreaterThan(0);
@@ -569,21 +580,11 @@ describe("WorkspaceShell", () => {
 
     await user.click(screen.getByRole("button", { name: /^24 h$/i }));
 
-    await waitFor(() =>
-      expect(
-        fetchSpy.mock.calls.some(([input]) => {
-          const url = getRequestUrl(input);
-
-          return (
-            url.includes("/api/metrics?") &&
-            url.includes("containerId=runtime-control-plane") &&
-            url.includes("range=24h")
-          );
-        }),
-      ).toBe(true),
-    );
-
     expect(window.location.search).toBe("?range=24h");
+    expect(screen.getByRole("button", { name: /^24 h$/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("pushes the matching route when the user switches workspace views", async () => {
@@ -635,6 +636,7 @@ describe("WorkspaceShell", () => {
             repositoryName: "dedkola/vercelab",
             repositoryUrl: "https://github.com/dedkola/vercelab.git",
             branch: "main",
+            commitSha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
             appName: "docs-app",
             subdomain: "docs",
             port: 3000,
@@ -658,13 +660,21 @@ describe("WorkspaceShell", () => {
       await screen.findByRole("heading", { name: /docs-app/i }),
     ).toBeVisible();
     expect(screen.queryByText(/focused app/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/current app signals/i)).toBeVisible();
-    expect(screen.getAllByDisplayValue(/docs/i)[0]).toBeVisible();
-    expect(screen.getByText(/settings and environment/i)).toBeVisible();
+    expect(screen.getByText(/current app snapshot/i)).toBeVisible();
+    expect(screen.getByText(/editable runtime settings/i)).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "https://docs.example.com" }),
+      screen.getByRole("button", { name: /save and recreate/i }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: /^fetch$/i })).toBeVisible();
+    expect(screen.getByDisplayValue("docs-app")).toBeVisible();
+    expect(
+      screen.getAllByRole("link", { name: "docs.example.com" })[0],
     ).toHaveAttribute("href", "https://docs.example.com");
     expect(screen.queryByText(/deploy mode/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /a1b2c3d/i })).toHaveAttribute(
+      "href",
+      "https://github.com/dedkola/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+    );
 
     const appRowButton = screen.getByRole("button", {
       name: /docs-app.*example\.com/i,

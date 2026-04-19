@@ -9,7 +9,6 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type FormEvent,
-  type ReactNode,
 } from "react";
 import { GitBranch, Home, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +32,10 @@ import { WorkspaceHeader } from "@/components/workspace/workspace-header";
 import { WorkspaceRail } from "@/components/workspace/workspace-rail";
 import { SectionLabel } from "@/components/workspace/workspace-ui";
 import {
+  fetchDeploymentFromGitAction,
+  redeployDeploymentAction,
+  removeDeploymentAction,
+  stopDeploymentAction,
   updateDeploymentAction,
   type DeploymentActionResult,
 } from "@/app/actions";
@@ -171,7 +174,6 @@ const MAX_LIST_WIDTH_PX = 420;
 const MIN_LOGS_WIDTH_PX = 300;
 const MAX_LOGS_WIDTH_PX = 520;
 const POLL_INTERVAL_MS = 5000;
-const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 const ALL_CONTAINERS_ID = "__all-containers__";
 const STABLE_TIME_ZONE = "UTC";
 const ALL_CONTAINERS_RANGE_OPTIONS = DASHBOARD_RANGE_OPTIONS.filter(
@@ -1837,17 +1839,6 @@ function formatDeploymentStatus(status: DeploymentSummary["status"]) {
   }
 }
 
-function formatDeploymentMode(mode: DeploymentSummary["composeMode"]) {
-  switch (mode) {
-    case "compose":
-      return "Compose";
-    case "dockerfile":
-      return "Dockerfile";
-    default:
-      return "Auto";
-  }
-}
-
 function formatDeploymentDomain(
   deployment: Pick<DeploymentSummary, "subdomain">,
   baseDomain?: string,
@@ -1864,205 +1855,6 @@ function formatDeploymentHref(
   baseDomain?: string,
 ) {
   return `https://${formatDeploymentDomain(deployment, baseDomain)}`;
-}
-
-function renderTextWithLinks(text: string): ReactNode {
-  const segments = text.split(URL_PATTERN);
-
-  return segments.map((segment, index) => {
-    if (!segment) {
-      return null;
-    }
-
-    if (!segment.match(URL_PATTERN)) {
-      return <span key={`text-${index}`}>{segment}</span>;
-    }
-
-    const trailingPunctuationMatch = segment.match(/[),.!?:;]+$/);
-    const trailingPunctuation = trailingPunctuationMatch?.[0] ?? "";
-    const href = trailingPunctuation
-      ? segment.slice(0, -trailingPunctuation.length)
-      : segment;
-
-    return (
-      <span key={`link-${index}`}>
-        <a
-          className="font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
-          href={href}
-          rel="noreferrer"
-          target="_blank"
-        >
-          {href}
-        </a>
-        {trailingPunctuation}
-      </span>
-    );
-  });
-}
-
-function getRepositoryPathName(repositoryUrl: string) {
-  return repositoryUrl
-    .replace(/^https?:\/\/github\.com\//i, "")
-    .replace(/^git@github\.com:/i, "")
-    .replace(/\.git$/i, "");
-}
-
-function getDeploymentTone(status: DeploymentSummary["status"]): MetricTone {
-  switch (status) {
-    case "running":
-      return "emerald";
-    case "failed":
-    case "deploying":
-      return "amber";
-    default:
-      return "slate";
-  }
-}
-
-function getDeploymentSeed(
-  status: DeploymentSummary["status"],
-  fallback: number,
-) {
-  switch (status) {
-    case "running":
-      return fallback + 18;
-    case "deploying":
-      return fallback + 30;
-    case "failed":
-      return fallback + 42;
-    case "stopped":
-      return fallback + 8;
-    case "removing":
-      return fallback + 14;
-  }
-}
-
-function buildDeploymentOverviewMetrics(
-  deployment: DeploymentSummary,
-): MetricCard[] {
-  const statusTone = getDeploymentTone(deployment.status);
-
-  return [
-    {
-      title: "Deployment state",
-      value: formatDeploymentStatus(deployment.status),
-      caption: "Latest persisted lifecycle state for this app.",
-      delta: formatRelativeTime(deployment.updatedAt),
-      points: createFlatSeries(getDeploymentSeed(deployment.status, 34)),
-      tone: statusTone,
-    },
-    {
-      title: "Runtime port",
-      value: String(deployment.port),
-      caption: "Public traffic is forwarded to this container port.",
-      delta: formatDeploymentMode(deployment.composeMode),
-      points: createFlatSeries(getDeploymentSeed(deployment.status, 22)),
-      tone: "amber",
-    },
-    {
-      title: "Source branch",
-      value: deployment.branch ?? "Default",
-      caption: `${deployment.repositoryName} remains the active Git source.`,
-      delta: deployment.serviceName ?? "Auto service",
-      points: createFlatSeries(26),
-      tone: "slate",
-    },
-    {
-      title: "Secret source",
-      value: deployment.tokenStored ? "Stored token" : "Server token",
-      caption: "Git credentials follow the existing encrypted deployment path.",
-      delta: deployment.tokenStored ? "Encrypted" : "Shared config",
-      points: createFlatSeries(deployment.tokenStored ? 48 : 24),
-      tone: deployment.tokenStored ? "emerald" : "slate",
-    },
-  ];
-}
-
-function buildDeploymentSignals(
-  deployment: DeploymentSummary,
-  baseDomain?: string,
-): ContainerSignal[] {
-  return [
-    {
-      label: "Public route",
-      value: formatDeploymentDomain(deployment, baseDomain),
-      delta: `:${deployment.port}`,
-      caption: "The current hostname mapped through the shared edge proxy.",
-      tone: "emerald",
-      points: createFlatSeries(58),
-    },
-    {
-      label: "Rollout cadence",
-      value: deployment.deployedAt
-        ? formatRelativeTime(deployment.deployedAt)
-        : "Not live yet",
-      delta: formatRelativeTime(deployment.updatedAt),
-      caption:
-        "Deployment freshness based on the latest persisted rollout and update timestamps.",
-      tone: getDeploymentTone(deployment.status),
-      points: createFlatSeries(getDeploymentSeed(deployment.status, 28)),
-    },
-    {
-      label: "Source and mode",
-      value: formatDeploymentMode(deployment.composeMode),
-      delta: deployment.branch ?? "Default",
-      caption:
-        "Repository branch selection and packaging mode for the active app.",
-      tone: "slate",
-      points: createFlatSeries(32),
-    },
-  ];
-}
-
-function buildDeploymentTimeline(
-  deployment: DeploymentSummary,
-  baseDomain?: string,
-) {
-  return [
-    {
-      label: "Latest summary",
-      detail:
-        deployment.lastOperationSummary ??
-        "No operation summary has been recorded for this deployment yet.",
-    },
-    {
-      label: "Public address",
-      detail: `https://${formatDeploymentDomain(deployment, baseDomain)}`,
-    },
-    {
-      label: "Project wiring",
-      detail: [
-        deployment.projectName,
-        deployment.serviceName ?? "auto-detect service",
-      ].join(" / "),
-    },
-  ];
-}
-
-function parseDeploymentEnvVariables(envVariables: string | null) {
-  if (!envVariables) {
-    return [];
-  }
-
-  return envVariables
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith("#"))
-    .map((line) => {
-      const separatorIndex = line.indexOf("=");
-
-      if (separatorIndex === -1) {
-        return {
-          key: line,
-          value: "",
-        };
-      }
-
-      return {
-        key: line.slice(0, separatorIndex),
-        value: line.slice(separatorIndex + 1),
-      };
-    });
 }
 
 function createDraftFromRepository(
@@ -2128,7 +1920,6 @@ export function WorkspaceShell({
   const [appLogTab, setAppLogTab] = useState<LogTab>("build");
   const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(true);
   const [isCreateAppPending, setIsCreateAppPending] = useState(false);
-  const [updatingAppId, setUpdatingAppId] = useState<string | null>(null);
   const [draftApp, setDraftApp] = useState<DraftAppState>(
     createEmptyDraftAppState,
   );
@@ -2263,41 +2054,9 @@ export function WorkspaceShell({
     deployments.find((deployment) => deployment.id === selectedAppId) ??
     deployments[0] ??
     null;
-  const deploymentOverviewMetrics = useMemo(
-    () =>
-      selectedDeployment
-        ? buildDeploymentOverviewMetrics(selectedDeployment)
-        : [],
-    [selectedDeployment],
-  );
-  const deploymentSignals = useMemo(
-    () =>
-      selectedDeployment
-        ? buildDeploymentSignals(selectedDeployment, baseDomain)
-        : [],
-    [baseDomain, selectedDeployment],
-  );
-  const deploymentTimeline = useMemo(
-    () =>
-      selectedDeployment
-        ? buildDeploymentTimeline(selectedDeployment, baseDomain)
-        : [],
-    [baseDomain, selectedDeployment],
-  );
-  const deploymentEnvironment = useMemo(
-    () =>
-      selectedDeployment
-        ? parseDeploymentEnvVariables(selectedDeployment.envVariables)
-        : [],
-    [selectedDeployment],
-  );
   const selectedDeploymentHref = selectedDeployment
     ? formatDeploymentHref(selectedDeployment, baseDomain)
     : null;
-  const summaryIncludesDeploymentHref = Boolean(
-    selectedDeploymentHref !== null &&
-    selectedDeployment?.lastOperationSummary?.includes(selectedDeploymentHref),
-  );
   const selectedRepositoryValue = selectedRepository
     ? String(selectedRepository.id)
     : "";
@@ -2899,22 +2658,47 @@ export function WorkspaceShell({
     }
   }
 
-  async function handleUpdateApp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleSaveApp(formData: FormData) {
     if (!selectedDeployment) {
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
-    setUpdatingAppId(selectedDeployment.id);
+    const result = await updateDeploymentAction(formData);
+    handleDeploymentActionResult(result);
+  }
 
-    try {
-      const result = await updateDeploymentAction(formData);
-      handleDeploymentActionResult(result);
-    } finally {
-      setUpdatingAppId(null);
+  async function runDeploymentAction(
+    action: (formData: FormData) => Promise<DeploymentActionResult>,
+  ) {
+    if (!selectedDeployment) {
+      return;
     }
+
+    const formData = new FormData();
+    formData.set("deploymentId", selectedDeployment.id);
+
+    const result = await action(formData);
+    handleDeploymentActionResult(result);
+  }
+
+  async function handleStartApp() {
+    await runDeploymentAction(redeployDeploymentAction);
+  }
+
+  async function handleStopApp() {
+    await runDeploymentAction(stopDeploymentAction);
+  }
+
+  async function handleFetchApp() {
+    await runDeploymentAction(fetchDeploymentFromGitAction);
+  }
+
+  async function handleRecreateApp() {
+    await runDeploymentAction(redeployDeploymentAction);
+  }
+
+  async function handleDeleteApp() {
+    await runDeploymentAction(removeDeploymentAction);
   }
 
   function handleToggleCreateAppPanel() {
@@ -3050,21 +2834,6 @@ export function WorkspaceShell({
   const selectedDeploymentDomain = selectedDeployment
     ? formatDeploymentDomain(selectedDeployment, baseDomain)
     : "";
-  const selectedDeploymentModeLabel = selectedDeployment
-    ? formatDeploymentMode(selectedDeployment.composeMode)
-    : "Auto";
-  const selectedDeploymentSummary = selectedDeployment?.lastOperationSummary
-    ? renderTextWithLinks(selectedDeployment.lastOperationSummary)
-    : null;
-  const credentialSourceLabel = selectedDeployment?.tokenStored
-    ? "Encrypted"
-    : "Shared";
-  const credentialSourceText = selectedDeployment?.tokenStored
-    ? "This app stores a dedicated encrypted Git token."
-    : "This app currently relies on the server-level GitHub token.";
-  const selectedRepositoryPathName = selectedDeployment
-    ? getRepositoryPathName(selectedDeployment.repositoryUrl)
-    : "";
 
   return (
     <section
@@ -3167,24 +2936,18 @@ export function WorkspaceShell({
           ) : selectedDeployment ? (
             <GitAppPageMainContent
               baseDomain={baseDomain}
-              credentialSourceLabel={credentialSourceLabel}
-              credentialSourceText={credentialSourceText}
               deployment={selectedDeployment}
-              deploymentEnvironment={deploymentEnvironment}
               deploymentHref={selectedDeploymentHref}
-              deploymentModeLabel={selectedDeploymentModeLabel}
-              deploymentOverviewMetrics={deploymentOverviewMetrics}
-              deploymentSignals={deploymentSignals}
               deploymentStatusLabel={selectedDeploymentStatusLabel}
               deploymentStatusVariant={selectedDeploymentStatusVariant}
-              deploymentSummary={selectedDeploymentSummary}
-              deploymentTimeline={deploymentTimeline}
-              isUpdating={updatingAppId === selectedDeployment.id}
+              onDeleteAction={handleDeleteApp}
+              onFetchAction={handleFetchApp}
               onRefreshAction={() => router.refresh()}
-              onUpdateAppAction={handleUpdateApp}
+              onRecreateAction={handleRecreateApp}
+              onSaveSettingsAction={handleSaveApp}
+              onStartAction={handleStartApp}
+              onStopAction={handleStopApp}
               publicDomainLabel={selectedDeploymentDomain}
-              repositoryPathName={selectedRepositoryPathName}
-              summaryIncludesDeploymentHref={summaryIncludesDeploymentHref}
             />
           ) : (
             <div className="flex h-full items-center justify-center">

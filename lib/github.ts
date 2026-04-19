@@ -12,6 +12,21 @@ export type GitHubRepository = {
   updatedAt: string;
 };
 
+export type GitHubCommit = {
+  authorName: string | null;
+  committedAt: string | null;
+  message: string;
+  sha: string;
+  url: string;
+};
+
+export type GitHubRepositoryReference = {
+  fullName: string;
+  name: string;
+  owner: string;
+  webUrl: string;
+};
+
 type GitHubRepositoryResponse = {
   id: number;
   name: string;
@@ -27,7 +42,20 @@ type GitHubRepositoryResponse = {
   };
 };
 
+type GitHubCommitResponse = {
+  sha: string;
+  html_url: string;
+  commit: {
+    message: string;
+    author?: {
+      date?: string | null;
+      name?: string | null;
+    } | null;
+  };
+};
+
 const GITHUB_API_BASE = "https://api.github.com";
+const COMMITS_PAGE_SIZE = 25;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 5;
 
@@ -49,6 +77,39 @@ function getGitHubErrorMessage(status: number) {
       return "GitHub refused the request. The token may be missing scope or the rate limit was hit.";
     default:
       return `GitHub repository request failed with status ${status}.`;
+  }
+}
+
+export function parseGitHubRepositoryReference(
+  repositoryUrl: string,
+): GitHubRepositoryReference | null {
+  try {
+    const parsed = new URL(repositoryUrl);
+    const hostname = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+
+    if (hostname !== "github.com") {
+      return null;
+    }
+
+    const pathSegments = parsed.pathname
+      .replace(/\.git$/i, "")
+      .split("/")
+      .filter(Boolean);
+
+    if (pathSegments.length < 2) {
+      return null;
+    }
+
+    const [owner, name] = pathSegments;
+
+    return {
+      fullName: `${owner}/${name}`,
+      name,
+      owner,
+      webUrl: `https://github.com/${owner}/${name}`,
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -139,4 +200,45 @@ export async function listGitHubBranches(
   }
 
   return branches;
+}
+
+export async function listGitHubCommits(
+  token: string,
+  owner: string,
+  repo: string,
+  refName?: string,
+): Promise<GitHubCommit[]> {
+  const searchParams = new URLSearchParams({
+    per_page: String(COMMITS_PAGE_SIZE),
+  });
+
+  if (refName) {
+    searchParams.set("sha", refName);
+  }
+
+  const response = await fetch(
+    `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?${searchParams.toString()}`,
+    {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(getGitHubErrorMessage(response.status));
+  }
+
+  const commits = (await response.json()) as GitHubCommitResponse[];
+
+  return commits.map((commit) => ({
+    authorName: commit.commit.author?.name ?? null,
+    committedAt: commit.commit.author?.date ?? null,
+    message: commit.commit.message.split("\n")[0] ?? "Commit",
+    sha: commit.sha,
+    url: commit.html_url,
+  }));
 }
