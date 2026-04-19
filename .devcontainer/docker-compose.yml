@@ -2,6 +2,7 @@ name: vercelab-devcontainer
 
 services:
   devcontainer:
+    container_name: vercelab-ui
     build:
       context: .
       dockerfile: Dockerfile
@@ -40,6 +41,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    container_name: vercelab-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: vercelab
@@ -58,6 +60,7 @@ services:
 
   influxdb:
     image: influxdb:3-core
+    container_name: vercelab-influxdb
     restart: unless-stopped
     command:
       - influxdb3
