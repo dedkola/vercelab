@@ -6,13 +6,7 @@ import type { MetricCard } from "@/components/workspace-shell";
 import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -156,7 +150,6 @@ export function HostMetricsSidebar({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <CardTitle>{metric.title}</CardTitle>
-                        <CardDescription>{metric.caption}</CardDescription>
                       </div>
                       <Badge className={cn("shadow-none", toneClasses.badge)}>
                         {metric.delta}

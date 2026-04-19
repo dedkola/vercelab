@@ -70,9 +70,6 @@ export function DashboardLeftSidebar({
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
               <SectionLabel icon="cloud" text="Containers" />
-              <div className="text-xs text-muted-foreground">
-                Live Docker runtime state for the current host.
-              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {runningContainersCount !== null ? (
@@ -121,9 +118,6 @@ export function DashboardLeftSidebar({
                 <div>
                   <div className="text-sm font-semibold tracking-tight text-foreground">
                     All containers
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Grouped load charts across the whole system.
                   </div>
                 </div>
                 <Badge className="border-border/60 bg-background/80 text-foreground">

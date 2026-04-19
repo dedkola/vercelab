@@ -5,13 +5,7 @@ import type { ContainerStats } from "@/lib/system-metrics";
 import type { DashboardRange } from "@/lib/metrics-range";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import {
@@ -49,7 +43,6 @@ type DashboardMainContentProps = {
     label: string;
     value: DashboardRange;
   }>;
-  runtimeNotice: string | null;
   runtimePillLabel: string;
   sampleContextLabel: string;
   selectedContainer: PreviewContainer;
@@ -369,7 +362,6 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>{chart.title}</CardTitle>
-            <CardDescription>{chart.description}</CardDescription>
           </div>
           <Badge className={badgeClassName}>{chart.delta}</Badge>
         </div>
@@ -430,7 +422,6 @@ export function DashboardMainContent({
   projectOrRegionLabel,
   range,
   rangeOptions,
-  runtimeNotice,
   runtimePillLabel,
   sampleContextLabel,
   selectedContainer,
@@ -492,21 +483,11 @@ export function DashboardMainContent({
         </div>
       </section>
 
-      {runtimeNotice ? (
-        <div className="rounded-[1.35rem] border border-emerald-200/70 bg-linear-to-r from-emerald-50/80 via-background to-background px-4 py-3 text-sm text-muted-foreground shadow-[0_22px_52px_-42px_rgba(16,185,129,0.24)]">
-          {runtimeNotice}
-        </div>
-      ) : null}
-
       <section className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-linear-to-r from-background via-muted/12 to-background shadow-[0_24px_64px_-52px_rgba(15,23,42,0.24)]">
         <div className="flex flex-col gap-4 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <div className="text-sm font-semibold tracking-tight text-foreground">
               History window
-            </div>
-            <div className="mt-1 text-sm leading-6 text-muted-foreground">
-              Focused container charts read from the selected Influx history
-              window instead of only the latest live buckets.
             </div>
           </div>
 
@@ -543,9 +524,6 @@ export function DashboardMainContent({
         <Card className="overflow-hidden border-border/70 bg-card/92">
           <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
             <CardTitle>Current container signals</CardTitle>
-            <CardDescription>
-              Influx-backed micro trends for the same selected history window.
-            </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-4 pt-4">
             {focusedMetricCharts.map((chart) => {
@@ -601,9 +579,6 @@ export function DashboardMainContent({
         <Card className="overflow-hidden border-border/70 bg-card/92">
           <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
             <CardTitle>Runtime overview</CardTitle>
-            <CardDescription>
-              Topology, endpoints, and rollout notes for the selected workload.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -675,9 +650,6 @@ export function DashboardMainContent({
       <Card className="overflow-hidden border-border/70 bg-card/92">
         <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
           <CardTitle>Environment and mounts</CardTitle>
-          <CardDescription>
-            Config, volumes, and attached context for the selected container.
-          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 pt-4 lg:grid-cols-2">
           <div className="space-y-3">

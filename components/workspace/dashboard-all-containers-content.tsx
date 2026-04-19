@@ -2,13 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DashboardRange } from "@/lib/metrics-range";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
@@ -213,7 +207,6 @@ function AggregateChartCard({ chart }: { chart: AllContainersMetricChart }) {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1">
             <CardTitle>{chart.title}</CardTitle>
-            <CardDescription>{chart.description}</CardDescription>
           </div>
           <Badge className={chartClasses.badge}>{chart.summaryLabel}</Badge>
         </div>
@@ -270,10 +263,6 @@ export function DashboardAllContainersContent({
               <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
                 All containers
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Compare CPU, memory, network, and disk behavior for every live
-                container in the current system from the same time window.
-              </p>
             </div>
           </div>
 

@@ -6,13 +6,7 @@ import type { ContainerSignal, MetricCard } from "@/components/workspace-shell";
 import type { DeploymentSummary } from "@/lib/persistence";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
@@ -121,7 +115,6 @@ export function GitAppPageMainContent({
             >
               <CardHeader className="border-b border-border/60">
                 <CardTitle>{metric.title}</CardTitle>
-                <CardDescription>{metric.caption}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 pt-3">
                 <div
@@ -150,9 +143,6 @@ export function GitAppPageMainContent({
         <Card className="overflow-hidden border-border/70 bg-card/92">
           <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
             <CardTitle>Current app signals</CardTitle>
-            <CardDescription>
-              Rollout, routing, and source state for the selected GitHub app.
-            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 pt-4 lg:grid-cols-3">
             {deploymentSignals.map((signal) => {
@@ -199,9 +189,6 @@ export function GitAppPageMainContent({
         <Card className="overflow-hidden border-border/70 bg-card/92">
           <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
             <CardTitle>Deployment overview</CardTitle>
-            <CardDescription>
-              Source, route, and lifecycle context for the selected app.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -286,9 +273,6 @@ export function GitAppPageMainContent({
       <Card className="overflow-hidden border-border/70 bg-card/92">
         <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
           <CardTitle>Settings and environment</CardTitle>
-          <CardDescription>
-            Editable deployment fields paired with runtime environment details.
-          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 pt-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <form

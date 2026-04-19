@@ -3016,9 +3016,6 @@ export function WorkspaceShell({
     selectedRuntimeContainer?.projectName ?? selectedContainer.region;
   const serviceOrPortLabel =
     selectedRuntimeContainer?.serviceName ?? selectedContainer.port;
-  const runtimeNotice = selectedRuntimeContainer
-    ? "Live runtime data for this container is coming from the current metrics snapshot. Sections without runtime inspect or log queries still fall back to preview scaffold data when available."
-    : null;
   const sampleContextLabel = selectedRuntimeContainer
     ? buildRuntimeSummary(selectedRuntimeContainer)
     : selectedContainer.summary;
@@ -3161,7 +3158,6 @@ export function WorkspaceShell({
                 projectOrRegionLabel={projectOrRegionLabel}
                 range={dashboardRange}
                 rangeOptions={ALL_CONTAINERS_RANGE_OPTIONS}
-                runtimeNotice={runtimeNotice}
                 runtimePillLabel={runtimePillLabel}
                 sampleContextLabel={sampleContextLabel}
                 selectedContainer={selectedContainer}
