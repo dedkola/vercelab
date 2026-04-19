@@ -84,7 +84,6 @@ export type ContainerMetricPanel = {
   labels: string[];
   series: ContainerMetricSeries[];
   stats: ChartStat[];
-  summaryValue: string;
   timestamps: string[];
   title: string;
 };
@@ -564,10 +563,6 @@ function getGlobalPeak(series: ContainerMetricSeries[]) {
   );
 
   return getPeak(points);
-}
-
-function getLatestSeriesTotal(series: ContainerMetricSeries[]) {
-  return series.reduce((sum, item) => sum + (item.latestRaw ?? 0), 0);
 }
 
 export function formatClock(value: string) {
@@ -1233,11 +1228,6 @@ export function buildContainerMetricPanels(
               : formatPercent(getGlobalPeak(cpuSeries.series)!, 1),
         },
       ],
-      summaryValue: selectedCpuSeries
-        ? selectedCpuSeries.latestValue
-        : snapshot
-          ? formatPercent(snapshot.containers.cpuPercent, 1)
-          : formatPercent(getLatestSeriesTotal(cpuSeries.series), 1),
       timestamps: cpuSeries.timestamps,
       title: "CPU by container",
     },
@@ -1266,11 +1256,6 @@ export function buildContainerMetricPanels(
               : formatBytes(getGlobalPeak(memorySeries.series)!),
         },
       ],
-      summaryValue: selectedMemorySeries
-        ? selectedMemorySeries.latestValue
-        : snapshot
-          ? formatBytes(snapshot.containers.memoryUsedBytes)
-          : formatBytes(getLatestSeriesTotal(memorySeries.series)),
       timestamps: memorySeries.timestamps,
       title: "Memory by container",
     },
@@ -1299,16 +1284,6 @@ export function buildContainerMetricPanels(
               : formatBytesPerSecond(getGlobalPeak(networkSeries.series)!),
         },
       ],
-      summaryValue: selectedNetworkSeries
-        ? selectedNetworkSeries.latestValue
-        : snapshot
-          ? formatBytesPerSecond(
-              snapshot.containers.all.reduce(
-                (sum, container) => sum + container.networkTotalBytesPerSecond,
-                0,
-              ),
-            )
-          : formatBytesPerSecond(getLatestSeriesTotal(networkSeries.series)),
       timestamps: networkSeries.timestamps,
       title: "Network by container",
     },

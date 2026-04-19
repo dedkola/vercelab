@@ -564,14 +564,7 @@ function ContainerMetricCard({ panel }: { panel: ContainerMetricPanel }) {
   return (
     <Card className="overflow-hidden border-border/70 bg-card/94 shadow-[0_30px_80px_-62px_rgba(15,23,42,0.34)]">
       <CardHeader className="gap-4 border-b border-border/60 bg-linear-to-r from-muted/44 via-background to-background pb-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <CardTitle>{panel.title}</CardTitle>
-          <div className="rounded-[1.2rem] border border-border/60 bg-background/84 px-4 py-3 shadow-[0_20px_44px_-36px_rgba(15,23,42,0.22)]">
-            <div className="text-2xl font-semibold tracking-tight text-foreground">
-              {panel.summaryValue}
-            </div>
-          </div>
-        </div>
+        <CardTitle>{panel.title}</CardTitle>
 
         <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           {panel.stats.map((stat) => (
