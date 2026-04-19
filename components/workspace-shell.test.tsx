@@ -451,6 +451,10 @@ describe("WorkspaceShell", () => {
 
     render(<WorkspaceShell />);
 
+    await user.click(
+      await screen.findByRole("button", { name: /control-plane/i }),
+    );
+
     const showMetricsButton = screen.queryByRole("button", {
       name: /show server load sidebar/i,
     });
@@ -499,12 +503,6 @@ describe("WorkspaceShell", () => {
     const user = userEvent.setup();
 
     render(<WorkspaceShell />);
-
-    await user.click(
-      await screen.findByRole("button", {
-        name: /all containers/i,
-      }),
-    );
 
     expect(
       await screen.findByRole("heading", { name: /all containers/i }),
@@ -560,6 +558,10 @@ describe("WorkspaceShell", () => {
     const user = userEvent.setup();
 
     render(<WorkspaceShell />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /control-plane/i }),
+    );
 
     expect(screen.getByRole("button", { name: /^15 min$/i })).toHaveAttribute(
       "aria-pressed",

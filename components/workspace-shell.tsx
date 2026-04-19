@@ -2114,11 +2114,8 @@ export function WorkspaceShell({
   const [dashboardRange, setDashboardRange] = useState<DashboardRange>(
     initialDashboardRange,
   );
-  const [selectedContainerId, setSelectedContainerId] = useState(
-    initialSnapshot?.containers.all[0]?.name ??
-      PREVIEW_CONTAINERS[0]?.name ??
-      "",
-  );
+  const [selectedContainerId, setSelectedContainerId] =
+    useState(ALL_CONTAINERS_ID);
   const [deployments, setDeployments] =
     useState<DeploymentSummary[]>(deploymentSeed);
   const [selectedAppId, setSelectedAppId] = useState(
