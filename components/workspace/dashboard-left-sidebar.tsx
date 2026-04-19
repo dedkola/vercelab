@@ -149,7 +149,7 @@ export function DashboardLeftSidebar({
         </div>
 
         <ScrollArea className="h-full">
-          <div className="space-y-3 p-3">
+          <div className="w-full space-y-3 p-3">
             <div className="space-y-2">
               <button
                 aria-label="All containers"
