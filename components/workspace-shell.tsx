@@ -1015,6 +1015,24 @@ function getLatestSeriesTotal(points: number[]) {
   return points.length ? points[points.length - 1]! : null;
 }
 
+function formatManagedContainerLabel(label: string) {
+  const normalized = label.trim().toLowerCase();
+
+  if (normalized === "vercelab-ui") {
+    return "Vercelab UI";
+  }
+
+  if (normalized === "vercelab-influxdb") {
+    return "Vercelab InfluxDB";
+  }
+
+  if (normalized === "vercelab-postgres") {
+    return "Vercelab PostgreSQL";
+  }
+
+  return label;
+}
+
 function buildAggregateHistoryContainers(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
@@ -1033,7 +1051,7 @@ function buildAggregateHistoryContainers(
         history:
           historyById.get(runtime.id) ?? historyByName.get(runtime.name) ?? [],
         id: runtime.id,
-        label: runtime.name,
+        label: formatManagedContainerLabel(runtime.name),
       }));
   }
 
@@ -1044,7 +1062,7 @@ function buildAggregateHistoryContainers(
     .map((series) => ({
       history: series.points,
       id: series.containerId,
-      label: series.containerName,
+      label: formatManagedContainerLabel(series.containerName),
     }));
 }
 

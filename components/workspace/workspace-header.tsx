@@ -13,7 +13,6 @@ type WorkspaceHeaderProps = {
 };
 
 export function WorkspaceHeader({
-  activeViewDescription,
   activeViewLabel,
   activeViewStatusLabel,
   onResetLayoutAction,
@@ -32,9 +31,6 @@ export function WorkspaceHeader({
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold tracking-tight text-foreground">
             {title}
-          </div>
-          <div className="truncate text-xs text-muted-foreground">
-            {activeViewDescription}
           </div>
         </div>
       </div>

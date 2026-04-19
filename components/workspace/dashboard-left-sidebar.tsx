@@ -13,7 +13,7 @@ import {
   HostMetricsSidebar,
   type HostMetricsSidebarProps,
 } from "./host-metrics-sidebar";
-import { ResizeHandle, SectionLabel, usePixelWidthRef } from "./workspace-ui";
+import { ResizeHandle, SectionLabel } from "./workspace-ui";
 
 function getContainerAriaLabel(container: ContainerListEntry) {
   if (container.runtime?.health && container.runtime.health !== "none") {
@@ -25,6 +25,57 @@ function getContainerAriaLabel(container: ContainerListEntry) {
   }
 
   return `${container.display.name} ${container.display.status}`;
+}
+
+function formatContainerStatusLabel(container: ContainerListEntry) {
+  if (container.runtime?.health === "unhealthy") {
+    return "Unhealthy";
+  }
+
+  if (container.runtime?.health === "starting") {
+    return "Starting";
+  }
+
+  if (container.runtime) {
+    return (
+      container.runtime.status.charAt(0).toUpperCase() +
+      container.runtime.status.slice(1)
+    );
+  }
+
+  return (
+    container.display.status.charAt(0).toUpperCase() +
+    container.display.status.slice(1)
+  );
+}
+
+function getContainerStatusVariant(
+  container: ContainerListEntry,
+): "success" | "warning" | "default" {
+  if (container.runtime?.health === "unhealthy") {
+    return "warning";
+  }
+
+  if (container.runtime?.health === "starting") {
+    return "warning";
+  }
+
+  if (container.runtime) {
+    return container.runtime.status === "running" ? "success" : "default";
+  }
+
+  switch (container.display.status) {
+    case "running":
+      return "success";
+    case "degraded":
+      return "warning";
+    default:
+      return "default";
+  }
+}
+
+function getContainerSecondaryLabel(container: ContainerListEntry) {
+  return container.runtime?.projectName ?? container.display.stack;
 }
 
 type DashboardLeftSidebarProps = {
@@ -56,15 +107,13 @@ export function DashboardLeftSidebar({
   searchQuery,
   visibleCount,
 }: DashboardLeftSidebarProps) {
-  const listPanelRef = usePixelWidthRef<HTMLElement>(listWidth);
-
   return (
     <>
       <HostMetricsSidebar {...hostMetricsProps} />
 
       <aside
         className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
-        ref={listPanelRef}
+        style={{ width: `${listWidth}px` }}
       >
         <div className="space-y-3 border-b border-border/60 px-3 py-3">
           <div className="flex items-center justify-between gap-3">
@@ -101,71 +150,87 @@ export function DashboardLeftSidebar({
 
         <ScrollArea className="h-full">
           <div className="space-y-3 p-3">
-            <button
-              aria-label="All containers"
-              className={cn(
-                "w-full rounded-[1.15rem] border px-3.5 py-3 text-left transition-all duration-200",
-                "shadow-[0_16px_42px_-38px_rgba(15,23,42,0.22)] hover:-translate-y-px hover:bg-background/95",
-                isAllContainersSelected ||
-                  activeContainerId === "__all-containers__"
-                  ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
-                  : "border-border/70 bg-background/85",
-              )}
-              onClick={onAllContainersSelectAction}
-              type="button"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold tracking-tight text-foreground">
-                    All containers
-                  </div>
-                </div>
-                <Badge className="border-border/60 bg-background/80 text-foreground">
-                  {containers.length}
-                </Badge>
-              </div>
-            </button>
-
-            {containers.length ? (
-              containers.map((container) => (
-                <button
-                  aria-label={getContainerAriaLabel(container)}
-                  className={cn(
-                    "w-full rounded-[1.15rem] border px-3.5 py-3 text-left transition-all duration-200",
-                    "shadow-[0_16px_42px_-38px_rgba(15,23,42,0.22)] hover:-translate-y-px hover:bg-background/95",
-                    activeContainerId === container.display.name
-                      ? "border-emerald-200/80 bg-linear-to-br from-emerald-50/80 via-background to-background shadow-[0_26px_60px_-44px_rgba(16,185,129,0.26)]"
-                      : "border-border/70 bg-background/85",
-                  )}
-                  key={container.display.id}
-                  onClick={() =>
-                    onContainerSelectAction(container.display.name)
-                  }
-                  type="button"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "h-2 w-2 shrink-0 rounded-full",
-                        container.dotClassName,
-                      )}
-                    />
-                    <div className="truncate text-sm font-semibold tracking-tight text-foreground">
-                      {container.display.name}
+            <div className="space-y-2">
+              <button
+                aria-label="All containers"
+                className={cn(
+                  "w-full rounded-[1.1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                  isAllContainersSelected ||
+                    activeContainerId === "__all-containers__"
+                    ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/90 via-background to-background shadow-[0_18px_42px_-34px_rgba(16,185,129,0.24)]"
+                    : "border-border/70 bg-background/85 hover:bg-background/95",
+                )}
+                onClick={onAllContainersSelectAction}
+                type="button"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold tracking-tight text-foreground">
+                      All containers
                     </div>
                   </div>
-                </button>
-              ))
-            ) : (
-              <div className="rounded-[1.35rem] border border-dashed border-border/80 bg-background/70 px-4 py-10 text-center shadow-[0_18px_46px_-40px_rgba(15,23,42,0.2)]">
-                <div className="text-sm font-semibold tracking-tight text-foreground">
+                  <Badge className="border-border/60 bg-background/80 text-foreground">
+                    {containers.length}
+                  </Badge>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                  <span className="truncate">Aggregate host view</span>
+                  <span>
+                    {runningContainersCount !== null
+                      ? `${runningContainersCount} running`
+                      : "Host view"}
+                  </span>
+                </div>
+              </button>
+
+              {containers.length ? (
+                containers.map((container) => (
+                  <button
+                    aria-label={getContainerAriaLabel(container)}
+                    className={cn(
+                      "w-full rounded-[1.1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                      activeContainerId === container.display.name
+                        ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/90 via-background to-background shadow-[0_18px_42px_-34px_rgba(16,185,129,0.24)]"
+                        : "border-border/70 bg-background/85 hover:bg-background/95",
+                    )}
+                    key={container.display.id}
+                    onClick={() =>
+                      onContainerSelectAction(container.display.name)
+                    }
+                    type="button"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "h-2 w-2 rounded-full",
+                              container.dotClassName,
+                            )}
+                          />
+                          <span className="truncate text-sm font-semibold tracking-tight text-foreground">
+                            {container.display.name}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge variant={getContainerStatusVariant(container)}>
+                        {formatContainerStatusLabel(container)}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                      <span className="truncate">
+                        {getContainerSecondaryLabel(container)}
+                      </span>
+                      <span>{container.display.uptime}</span>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-6 text-sm text-muted-foreground">
                   No matching containers
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Try a broader search term to repopulate the preview list.
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </ScrollArea>
       </aside>

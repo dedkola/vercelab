@@ -15,7 +15,6 @@ import {
   ResizeHandle,
   SectionLabel,
   Sparkline,
-  usePixelWidthRef,
 } from "./workspace-ui";
 
 export type HostMetricsStatus = {
@@ -53,8 +52,6 @@ export function HostMetricsSidebar({
   throughputLabel,
   width,
 }: HostMetricsSidebarProps) {
-  const panelRef = usePixelWidthRef<HTMLElement>(width);
-
   if (isCollapsed) {
     return (
       <aside className="flex w-11 shrink-0 items-start border-r border-border/70 bg-linear-to-b from-background via-muted/26 to-background px-1.5 py-2 shadow-[20px_0_54px_-44px_rgba(15,23,42,0.3)]">
@@ -76,7 +73,7 @@ export function HostMetricsSidebar({
     <>
       <aside
         className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/14 to-background shadow-[22px_0_72px_-58px_rgba(15,23,42,0.34)] transition-[width] duration-300"
-        ref={panelRef}
+        style={{ width: `${width}px` }}
       >
         <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-3">
           <SectionLabel icon="network" text="Server load" />

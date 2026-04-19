@@ -24,7 +24,7 @@ import {
   HostMetricsSidebar,
   type HostMetricsSidebarProps,
 } from "./host-metrics-sidebar";
-import { ResizeHandle, SectionLabel, usePixelWidthRef } from "./workspace-ui";
+import { ResizeHandle, SectionLabel } from "./workspace-ui";
 
 type SelectOption = {
   description?: string;
@@ -100,7 +100,6 @@ export function GitAppPageLeftSidebar({
   selectedRepositoryValue,
   totalAppsCount,
 }: GitAppPageLeftSidebarProps) {
-  const listPanelRef = usePixelWidthRef<HTMLElement>(listWidth);
   const isCreateDisabled =
     isCreateAppPending ||
     repositoryState.isLoading ||
@@ -116,7 +115,7 @@ export function GitAppPageLeftSidebar({
 
       <aside
         className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
-        ref={listPanelRef}
+        style={{ width: `${listWidth}px` }}
       >
         <div className="space-y-3 border-b border-border/60 px-3 py-3">
           <div className="flex items-center justify-between gap-3">

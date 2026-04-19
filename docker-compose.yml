@@ -3,6 +3,7 @@ name: vercelab
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: vercelab-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${VERCELAB_POSTGRES_USER:-vercelab}
@@ -25,6 +26,7 @@ services:
 
   influxdb:
     image: influxdb:3-core
+    container_name: vercelab-influxdb
     restart: unless-stopped
     command:
       - influxdb3
@@ -69,6 +71,7 @@ services:
       - proxy
 
   control-plane:
+    container_name: vercelab-ui
     build:
       context: .
     restart: unless-stopped
