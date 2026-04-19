@@ -8,12 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-import {
-  getToneClasses,
-  SectionLabel,
-  Sparkline,
-  usePercentWidthRef,
-} from "./workspace-ui";
+import { getToneClasses, Sparkline, usePercentWidthRef } from "./workspace-ui";
 
 type FocusedMetricLegend = {
   label: string;
@@ -434,16 +429,11 @@ export function DashboardMainContent({
     <div className="space-y-4">
       <section className="overflow-hidden rounded-[1.5rem] border border-border/70 bg-linear-to-r from-background via-muted/12 to-background shadow-[0_24px_72px_-56px_rgba(15,23,42,0.32)]">
         <div className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-            <SectionLabel icon="monitor" text="Focused container" />
-            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-              <h1 className="max-w-full truncate text-lg font-semibold tracking-tight text-foreground md:text-xl">
-                {selectedContainer.name}
-              </h1>
-              <Badge variant={selectedStatusVariant}>
-                {selectedStatusLabel}
-              </Badge>
-            </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+            <h1 className="max-w-full truncate text-lg font-semibold tracking-tight text-foreground md:text-xl">
+              {selectedContainer.name}
+            </h1>
+            <Badge variant={selectedStatusVariant}>{selectedStatusLabel}</Badge>
           </div>
 
           <div className="flex flex-wrap gap-2 lg:max-w-2xl lg:justify-end">

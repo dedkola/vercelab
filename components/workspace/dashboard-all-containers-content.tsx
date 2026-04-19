@@ -7,8 +7,6 @@ import { cn } from "@/lib/utils";
 import type { DashboardRange } from "@/lib/metrics-range";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
-import { SectionLabel } from "./workspace-ui";
-
 type AggregateChartLine = {
   id: string;
   label: string;
@@ -255,7 +253,6 @@ export function DashboardAllContainersContent({
         <div className="flex flex-col gap-4 px-4 py-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <SectionLabel icon="network" text="Grouped containers" />
               <Badge variant="secondary">{trackedContainers} tracked</Badge>
               <Badge variant="secondary">{runningContainers} running</Badge>
             </div>

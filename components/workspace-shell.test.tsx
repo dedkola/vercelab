@@ -507,7 +507,6 @@ describe("WorkspaceShell", () => {
     expect(
       await screen.findByRole("heading", { name: /all containers/i }),
     ).toBeVisible();
-    expect(screen.getByText(/grouped containers/i)).toBeVisible();
     expect(
       screen.getByText(/compare cpu, memory, network, and disk behavior/i),
     ).toBeVisible();

@@ -79,12 +79,7 @@ export function HostMetricsSidebar({
         ref={panelRef}
       >
         <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-3">
-          <div className="space-y-1">
-            <SectionLabel icon="network" text="Server load" />
-            <div className="text-xs text-muted-foreground">
-              Realtime host signals from InfluxDB.
-            </div>
-          </div>
+          <SectionLabel icon="network" text="Server load" />
           <Button
             aria-label="Hide server load sidebar"
             className="h-7 w-7"
