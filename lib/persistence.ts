@@ -185,6 +185,36 @@ type DashboardTrendRow = {
 let pool: Pool | undefined;
 let initPromise: Promise<void> | undefined;
 const trendLabelFormatter = new Intl.DateTimeFormat("en", { weekday: "short" });
+const deploymentSummarySelect = `
+  SELECT
+    d.id,
+    r.name AS repository_name,
+    r.repository_url,
+    r.branch,
+    r.commit_sha,
+    d.app_name,
+    d.subdomain,
+    d.port,
+    d.env_variables,
+    d.service_name,
+    d.status,
+    d.compose_mode,
+    d.project_name,
+    d.last_output,
+    d.updated_at,
+    d.deployed_at,
+    (r.encrypted_token IS NOT NULL) AS token_stored,
+    (
+      SELECT summary
+      FROM operations o
+      WHERE o.deployment_id = d.id
+      ORDER BY o.created_at DESC
+      LIMIT 1
+    ) AS last_operation_summary
+  FROM deployments d
+  INNER JOIN repositories r ON r.id = d.repository_id
+  ORDER BY d.updated_at DESC
+`;
 
 function toSlug(value: string): string {
   return value
@@ -236,6 +266,29 @@ function mapStoredDeployment(row: StoredDeploymentRow): StoredDeployment {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deployedAt: row.deployed_at,
+  };
+}
+
+function mapDeploymentSummary(row: DeploymentSummaryRow): DeploymentSummary {
+  return {
+    id: row.id,
+    repositoryName: row.repository_name,
+    repositoryUrl: row.repository_url,
+    branch: row.branch,
+    commitSha: row.commit_sha,
+    appName: row.app_name,
+    subdomain: row.subdomain,
+    port: row.port,
+    envVariables: row.env_variables,
+    serviceName: row.service_name,
+    status: row.status,
+    composeMode: row.compose_mode,
+    projectName: row.project_name,
+    lastOutput: row.last_output,
+    lastOperationSummary: row.last_operation_summary,
+    updatedAt: row.updated_at,
+    deployedAt: row.deployed_at,
+    tokenStored: row.token_stored,
   };
 }
 
@@ -408,38 +461,17 @@ export async function getDatabaseHealth() {
   };
 }
 
+async function queryDeploymentSummaryRows() {
+  return queryRows<DeploymentSummaryRow>(deploymentSummarySelect);
+}
+
+export async function listDeploymentSummaries(): Promise<DeploymentSummary[]> {
+  return (await queryDeploymentSummaryRows()).map(mapDeploymentSummary);
+}
+
 export async function listWorkspaceData(): Promise<WorkspaceData> {
-  const rows = await queryRows<DeploymentSummaryRow>(
-    `
-      SELECT
-        d.id,
-        r.name AS repository_name,
-        r.repository_url,
-        r.branch,
-        r.commit_sha,
-        d.app_name,
-        d.subdomain,
-        d.port,
-        d.env_variables,
-        d.service_name,
-        d.status,
-        d.compose_mode,
-        d.project_name,
-        d.last_output,
-        d.updated_at,
-        d.deployed_at,
-        (r.encrypted_token IS NOT NULL) AS token_stored,
-        (
-          SELECT summary
-          FROM operations o
-          WHERE o.deployment_id = d.id
-          ORDER BY o.created_at DESC
-          LIMIT 1
-        ) AS last_operation_summary
-      FROM deployments d
-      INNER JOIN repositories r ON r.id = d.repository_id
-      ORDER BY d.updated_at DESC
-    `,
+  const deployments = (await queryDeploymentSummaryRows()).map(
+    mapDeploymentSummary,
   );
 
   const activityRows = await queryRows<DashboardActivityRow>(
@@ -482,7 +514,7 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
     10,
   );
 
-  const stats = rows.reduce(
+  const stats = deployments.reduce(
     (accumulator, deployment) => {
       accumulator.totalDeployments += 1;
 
@@ -508,39 +540,22 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
   )
     .map((status) => ({
       status,
-      count: rows.filter((row) => row.status === status).length,
+      count: deployments.filter((deployment) => deployment.status === status)
+        .length,
     }))
     .filter((entry) => entry.count > 0);
 
   const modeDistribution = (["dockerfile", "compose", "unknown"] as const)
     .map((mode) => ({
       mode,
-      count: rows.filter((row) => (row.compose_mode ?? "unknown") === mode)
-        .length,
+      count: deployments.filter(
+        (deployment) => (deployment.composeMode ?? "unknown") === mode,
+      ).length,
     }))
     .filter((entry) => entry.count > 0);
 
   return {
-    deployments: rows.map((row) => ({
-      id: row.id,
-      repositoryName: row.repository_name,
-      repositoryUrl: row.repository_url,
-      branch: row.branch,
-      commitSha: row.commit_sha,
-      appName: row.app_name,
-      subdomain: row.subdomain,
-      port: row.port,
-      envVariables: row.env_variables,
-      serviceName: row.service_name,
-      status: row.status,
-      composeMode: row.compose_mode,
-      projectName: row.project_name,
-      lastOutput: row.last_output,
-      lastOperationSummary: row.last_operation_summary,
-      updatedAt: row.updated_at,
-      deployedAt: row.deployed_at,
-      tokenStored: row.token_stored,
-    })),
+    deployments,
     stats: {
       totalDeployments: stats.totalDeployments,
       runningDeployments: stats.runningDeployments,

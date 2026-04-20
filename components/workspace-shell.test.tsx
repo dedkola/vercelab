@@ -13,6 +13,7 @@ import {
 import { WorkspaceShell } from "@/components/workspace-shell";
 
 const pushMock = vi.fn();
+const prefetchMock = vi.fn();
 const refreshMock = vi.fn();
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
@@ -40,6 +41,7 @@ function getRequestUrl(input: Parameters<typeof fetch>[0]) {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
+    prefetch: prefetchMock,
     refresh: refreshMock,
   }),
 }));
@@ -49,6 +51,7 @@ describe("WorkspaceShell", () => {
 
   beforeEach(() => {
     pushMock.mockReset();
+    prefetchMock.mockReset();
     refreshMock.mockReset();
     window.history.replaceState(null, "", "/");
 
@@ -753,6 +756,32 @@ describe("WorkspaceShell", () => {
     );
 
     expect(pushMock).toHaveBeenCalledWith("/git-app-page?range=24h");
+  });
+
+  it("prefetches the inactive workspace view and keeps the selected range", async () => {
+    window.history.replaceState(null, "", "/?range=24h");
+
+    render(<WorkspaceShell initialDashboardRange="24h" />);
+
+    await waitFor(() => {
+      expect(prefetchMock).toHaveBeenCalledWith("/git-app-page?range=24h");
+    });
+  });
+
+  it("skips live metrics polling on the git app page first paint", async () => {
+    render(<WorkspaceShell initialView="git-app-page" />);
+
+    await waitFor(() => {
+      expect(
+        fetchSpy.mock.calls.some(([input]) => getRequestUrl(input) === "/api/github/repos"),
+      ).toBe(true);
+    });
+
+    expect(
+      fetchSpy.mock.calls.some(([input]) =>
+        getRequestUrl(input).includes("/api/metrics?"),
+      ),
+    ).toBe(false);
   });
 
   it("renders the git app page with editable deployment details", async () => {

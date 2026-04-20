@@ -9,7 +9,10 @@ import {
   normalizeDashboardRange,
   type DashboardRange,
 } from "@/lib/metrics-range";
-import { listWorkspaceData, type DeploymentSummary } from "@/lib/persistence";
+import {
+  listDeploymentSummaries,
+  type DeploymentSummary,
+} from "@/lib/persistence";
 import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
 
 type MetricsDashboardSearchParams = Promise<{
@@ -38,10 +41,10 @@ export async function loadMetricsDashboardData(
   const { bucketSeconds, limit } = getDashboardHistorySettings(
     initialDashboardRange,
   );
-  const initialSnapshot = await getMetricsSnapshot().catch(() => null);
-  const initialDeployments = await listWorkspaceData()
-    .then((workspaceData) => workspaceData.deployments)
-    .catch(() => [] as DeploymentSummary[]);
+  const [initialSnapshot, initialDeployments] = await Promise.all([
+    getMetricsSnapshot().catch(() => null),
+    listDeploymentSummaries().catch(() => [] as DeploymentSummary[]),
+  ]);
 
   if (!initialSnapshot) {
     return {

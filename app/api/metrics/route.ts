@@ -2,6 +2,7 @@ import { getMetricsSnapshot } from "@/lib/system-metrics";
 import {
   type AllContainersMetricsHistorySeries,
   type ContainerMetricsHistoryPoint,
+  type MetricsHistoryPoint,
   getAllContainersMetricsHistoryFromInflux,
   getContainerMetricsHistoryFromInflux,
   getMetricsHistoryFromInflux,
@@ -13,12 +14,25 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type MetricsApiResponse = {
+  snapshot: Awaited<ReturnType<typeof getMetricsSnapshot>>;
+  history?: MetricsHistoryPoint[];
+  containerHistory?: ContainerMetricsHistoryPoint[];
+  allContainerHistory?: AllContainersMetricsHistorySeries[];
+};
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const allContainers = url.searchParams.get("allContainers") === "true";
+  const includeHistory = url.searchParams.get("includeHistory") !== "false";
+  const includeContainerHistory =
+    url.searchParams.get("includeContainerHistory") === "true";
+  const includeAllContainerHistory =
+    url.searchParams.get("includeAllContainerHistory") === "true";
   const mode = url.searchParams.get("mode");
   const containerId = url.searchParams.get("containerId")?.trim() ?? "";
   const containerName = url.searchParams.get("containerName")?.trim() ?? "";
+  const isCurrentMode = mode === "current";
 
   const maxPoints = 240;
   const currentModeLimit = 48;
@@ -28,32 +42,35 @@ export async function GET(request: Request) {
   const { bucketSeconds: rangeBucketSeconds, limit: rangeLimit } =
     getDashboardHistorySettings(range, maxPoints);
 
-  const historyLimit = mode === "current" ? currentModeLimit : rangeLimit;
-  const historyBucketSeconds =
-    mode === "current" ? currentModeBucketSeconds : rangeBucketSeconds;
+  const historyLimit = isCurrentMode ? currentModeLimit : rangeLimit;
+  const historyBucketSeconds = isCurrentMode
+    ? currentModeBucketSeconds
+    : rangeBucketSeconds;
 
   const snapshot = await getMetricsSnapshot();
   const [history, containerHistory, allContainerHistory] = await Promise.all([
-    getMetricsHistoryFromInflux({
-      hostIp: snapshot.hostIp,
-      limit: historyLimit,
-      bucketSeconds: historyBucketSeconds,
-    }).catch((error) => {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to read metrics history from InfluxDB.";
+    includeHistory
+      ? getMetricsHistoryFromInflux({
+          hostIp: snapshot.hostIp,
+          limit: historyLimit,
+          bucketSeconds: historyBucketSeconds,
+        }).catch((error) => {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Unable to read metrics history from InfluxDB.";
 
-      console.error(`[metrics] ${message}`);
-      return [];
-    }),
-    containerId || containerName
+          console.error(`[metrics] ${message}`);
+          return [] as MetricsHistoryPoint[];
+        })
+      : Promise.resolve(undefined),
+    includeContainerHistory || containerId || containerName
       ? getContainerMetricsHistoryFromInflux({
           hostIp: snapshot.hostIp,
           containerId: containerId || undefined,
           containerName: containerName || undefined,
-          limit: rangeLimit,
-          bucketSeconds: rangeBucketSeconds,
+          limit: historyLimit,
+          bucketSeconds: historyBucketSeconds,
         }).catch((error) => {
           const message =
             error instanceof Error
@@ -61,14 +78,14 @@ export async function GET(request: Request) {
               : "Unable to read container history from InfluxDB.";
 
           console.error(`[metrics] ${message}`);
-          return [];
+          return [] as ContainerMetricsHistoryPoint[];
         })
-      : Promise.resolve([] as ContainerMetricsHistoryPoint[]),
-    allContainers
+      : Promise.resolve(undefined),
+    includeAllContainerHistory || allContainers
       ? getAllContainersMetricsHistoryFromInflux({
           hostIp: snapshot.hostIp,
-          limit: rangeLimit,
-          bucketSeconds: rangeBucketSeconds,
+          limit: historyLimit,
+          bucketSeconds: historyBucketSeconds,
         }).catch((error) => {
           const message =
             error instanceof Error
@@ -78,13 +95,24 @@ export async function GET(request: Request) {
           console.error(`[metrics] ${message}`);
           return [] as AllContainersMetricsHistorySeries[];
         })
-      : Promise.resolve([] as AllContainersMetricsHistorySeries[]),
+      : Promise.resolve(undefined),
   ]);
 
-  return Response.json({
+  const payload: MetricsApiResponse = {
     snapshot,
-    history,
-    containerHistory,
-    allContainerHistory,
-  });
+  };
+
+  if (history) {
+    payload.history = history;
+  }
+
+  if (containerHistory) {
+    payload.containerHistory = containerHistory;
+  }
+
+  if (allContainerHistory) {
+    payload.allContainerHistory = allContainerHistory;
+  }
+
+  return Response.json(payload);
 }

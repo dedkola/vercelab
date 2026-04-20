@@ -13,3 +13,11 @@ Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
   configurable: true,
   value() {},
 });
+
+class IntersectionObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+vi.stubGlobal("IntersectionObserver", IntersectionObserverMock);

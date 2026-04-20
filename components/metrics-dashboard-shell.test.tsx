@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   afterAll,
@@ -11,8 +11,10 @@ import {
 } from "vitest";
 
 import { MetricsDashboardShell } from "@/components/metrics-dashboard-shell";
+import type { MetricsSnapshot } from "@/lib/system-metrics";
 
 const pushMock = vi.fn();
+const prefetchMock = vi.fn();
 const refreshMock = vi.fn();
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
@@ -40,6 +42,7 @@ function getRequestUrl(input: Parameters<typeof fetch>[0]) {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
+    prefetch: prefetchMock,
     refresh: refreshMock,
   }),
 }));
@@ -383,7 +386,9 @@ describe("MetricsDashboardShell", () => {
   };
 
   beforeEach(() => {
+    vi.useRealTimers();
     pushMock.mockReset();
+    prefetchMock.mockReset();
     refreshMock.mockReset();
     window.history.replaceState(null, "", "/");
 
@@ -391,6 +396,7 @@ describe("MetricsDashboardShell", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     fetchSpy.mockReset();
   });
 
@@ -403,8 +409,9 @@ describe("MetricsDashboardShell", () => {
       <MetricsDashboardShell
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
+        initialDeployments={[]}
         initialHistory={payload.history}
-        initialSnapshot={payload.snapshot}
+        initialSnapshot={payload.snapshot as unknown as MetricsSnapshot}
       />,
     );
 
@@ -431,31 +438,53 @@ describe("MetricsDashboardShell", () => {
     expect(screen.getAllByTestId("echart-surface").length).toBe(7);
   });
 
-  it("polls range-aware metrics and stores the selected range in the URL", async () => {
+  it("avoids an immediate duplicate fetch after hydration and polls the light payload", async () => {
+    vi.useFakeTimers();
+
+    render(
+      <MetricsDashboardShell
+        initialAllContainerHistory={payload.allContainerHistory}
+        initialDashboardRange="15m"
+        initialDeployments={[]}
+        initialHistory={payload.history}
+        initialSnapshot={payload.snapshot as unknown as MetricsSnapshot}
+      />,
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9999);
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    const url = getRequestUrl(fetchSpy.mock.calls[0]![0]);
+    expect(url).toContain("/api/metrics?");
+    expect(url).toContain("mode=current");
+    expect(url).toContain("range=15m");
+    expect(url).not.toContain("allContainers=true");
+  });
+
+  it("fetches live and heavy history payloads separately when the user changes range", async () => {
     const user = userEvent.setup();
 
     render(
       <MetricsDashboardShell
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
+        initialDeployments={[]}
         initialHistory={payload.history}
-        initialSnapshot={payload.snapshot}
+        initialSnapshot={payload.snapshot as unknown as MetricsSnapshot}
       />,
     );
 
-    await waitFor(() =>
-      expect(
-        fetchSpy.mock.calls.some(([input]) => {
-          const url = getRequestUrl(input);
-
-          return (
-            url.includes("/api/metrics?") &&
-            url.includes("allContainers=true") &&
-            url.includes("range=15m")
-          );
-        }),
-      ).toBe(true),
-    );
+    expect(fetchSpy).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /^24 h$/i }));
 
@@ -468,12 +497,61 @@ describe("MetricsDashboardShell", () => {
 
           return (
             url.includes("/api/metrics?") &&
-            url.includes("allContainers=true") &&
-            url.includes("range=24h")
+            url.includes("mode=current") &&
+            url.includes("range=24h") &&
+            !url.includes("allContainers=true")
           );
         }),
       ).toBe(true),
     );
+
+    await waitFor(() =>
+      expect(
+        fetchSpy.mock.calls.some(([input]) => {
+          const url = getRequestUrl(input);
+
+          return (
+            url.includes("/api/metrics?") &&
+            url.includes("allContainers=true") &&
+            url.includes("range=24h") &&
+            !url.includes("mode=current")
+          );
+        }),
+      ).toBe(true),
+    );
+  });
+
+  it("loads heavy container history on mount when SSR did not provide it", async () => {
+    render(
+      <MetricsDashboardShell
+        initialAllContainerHistory={[]}
+        initialDashboardRange="15m"
+        initialDeployments={[]}
+        initialHistory={payload.history}
+        initialSnapshot={payload.snapshot as unknown as MetricsSnapshot}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchSpy.mock.calls.some(([input]) => {
+          const url = getRequestUrl(input);
+
+          return (
+            url.includes("/api/metrics?") &&
+            url.includes("allContainers=true") &&
+            url.includes("range=15m") &&
+            !url.includes("mode=current")
+          );
+        }),
+      ).toBe(true),
+    );
+
+    expect(
+      fetchSpy.mock.calls.some(([input]) =>
+        getRequestUrl(input).includes("mode=current"),
+      ),
+    ).toBe(false);
   });
 
   it("keeps fleet charts visible when focusing a container and routes rail clicks back to linked pages", async () => {
@@ -483,8 +561,9 @@ describe("MetricsDashboardShell", () => {
       <MetricsDashboardShell
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
+        initialDeployments={[]}
         initialHistory={payload.history}
-        initialSnapshot={payload.snapshot}
+        initialSnapshot={payload.snapshot as unknown as MetricsSnapshot}
       />,
     );
 
@@ -622,7 +701,7 @@ describe("MetricsDashboardShell", () => {
           cpuPercent: 24,
           diskReadBytesPerSecond: 70_000,
           diskWriteBytesPerSecond: 84_000,
-          loadAverage: [0.42, 0.46, 0.5],
+          loadAverage: [0.42, 0.46, 0.5] as [number, number, number],
           memoryPercent: 61,
           memoryTotalBytes: 64 * 1024 ** 3,
           memoryUsedBytes: Math.round(39 * 1024 ** 3),
@@ -661,7 +740,7 @@ describe("MetricsDashboardShell", () => {
           },
         ]}
         initialHistory={labelPayload.history}
-        initialSnapshot={labelPayload.snapshot}
+        initialSnapshot={labelPayload.snapshot as unknown as MetricsSnapshot}
       />,
     );
 

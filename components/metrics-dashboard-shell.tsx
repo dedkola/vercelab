@@ -58,7 +58,10 @@ const MIN_LIST_WIDTH_PX = 260;
 const MAX_LIST_WIDTH_PX = 420;
 const MIN_LOGS_WIDTH_PX = 300;
 const MAX_LOGS_WIDTH_PX = 520;
-const POLL_INTERVAL_MS = 5000;
+const LIVE_POLL_INTERVAL_MS = 10000;
+const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
+const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
+const VISIBILITY_REFRESH_DELAY_MS = 750;
 
 const WORKSPACE_RAIL_ITEMS: Array<{
   description: string;
@@ -101,6 +104,28 @@ function getStorage() {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function buildMetricsRequestUrl(
+  searchParams: Record<string, string | undefined>,
+) {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (typeof value === "string") {
+      params.set(key, value);
+    }
+  }
+
+  return "/api/metrics?" + params.toString();
+}
+
+function isDocumentHidden() {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  return document.visibilityState === "hidden";
 }
 
 function useStoredPanelWidth(
@@ -181,6 +206,10 @@ export function MetricsDashboardShell({
     AllContainersMetricsHistorySeries[]
   >(initialAllContainerHistory);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [containerHistoryError, setContainerHistoryError] = useState<string | null>(null);
+  const [isContainerHistoryLoading, setIsContainerHistoryLoading] = useState(
+    initialSnapshot !== null && initialAllContainerHistory.length === 0,
+  );
   const dragStateRef = useRef<{
     kind: "metrics" | "list" | "logs" | null;
     startWidth: number;
@@ -190,6 +219,13 @@ export function MetricsDashboardShell({
     startWidth: 0,
     startX: 0,
   });
+  const hasMountedLivePollingRef = useRef(false);
+  const hasMountedContainerHistoryRef = useRef(false);
+  const livePollInFlightRef = useRef(false);
+  const containerHistoryInFlightRef = useRef(false);
+  const loadedContainerHistoryRangeRef = useRef<string | null>(
+    initialAllContainerHistory.length ? initialDashboardRange : null,
+  );
   const serverMetrics = useMemo(
     () => buildLiveServerMetrics(sidebarSnapshot, sidebarHistory),
     [sidebarHistory, sidebarSnapshot],
@@ -299,40 +335,85 @@ export function MetricsDashboardShell({
 
   useEffect(() => {
     let active = true;
+    let timeoutId: number | null = null;
+    let abortController: AbortController | null = null;
+    let errorBackoffMs = LIVE_POLL_INTERVAL_MS;
 
-    const poll = async () => {
+    const scheduleNextPoll = (delayMs: number) => {
+      if (!active) {
+        return;
+      }
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      timeoutId = window.setTimeout(() => {
+        void pollLiveMetrics();
+      }, delayMs);
+    };
+
+    const pollLiveMetrics = async () => {
+      if (!active) {
+        return;
+      }
+
+      if (livePollInFlightRef.current) {
+        scheduleNextPoll(errorBackoffMs);
+        return;
+      }
+
+      if (isDocumentHidden()) {
+        scheduleNextPoll(HIDDEN_LIVE_POLL_INTERVAL_MS);
+        return;
+      }
+
+      livePollInFlightRef.current = true;
+      abortController = new AbortController();
+
       try {
-        const searchParams = new URLSearchParams({
-          allContainers: "true",
-          range: dashboardRange,
-        });
         const response = await fetch(
-          `/api/metrics?${searchParams.toString()}`,
+          buildMetricsRequestUrl({
+            includeHistory: "true",
+            mode: "current",
+            range: dashboardRange,
+          }),
           {
             cache: "no-store",
+            signal: abortController.signal,
           },
         );
 
         if (!response.ok) {
-          throw new Error(`Metrics request failed with ${response.status}.`);
+          throw new Error(
+            "Metrics request failed with " + response.status + ".",
+          );
         }
 
         const payload = (await response.json()) as {
-          allContainerHistory?: AllContainersMetricsHistorySeries[];
           history?: MetricsHistoryPoint[];
-          snapshot: MetricsSnapshot;
+          snapshot?: MetricsSnapshot | null;
         };
 
         if (!active) {
           return;
         }
 
-        setSidebarSnapshot(payload.snapshot);
-        setSidebarHistory(payload.history ?? []);
-        setAllContainerHistory(payload.allContainerHistory ?? []);
+        if (payload.snapshot) {
+          setSidebarSnapshot(payload.snapshot);
+        }
+
+        if (Array.isArray(payload.history)) {
+          setSidebarHistory(payload.history);
+        }
+
         setMetricsError(null);
+        errorBackoffMs = LIVE_POLL_INTERVAL_MS;
       } catch (error) {
-        if (!active) {
+        if (
+          !active ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
           return;
         }
 
@@ -341,20 +422,163 @@ export function MetricsDashboardShell({
             ? error.message
             : "Unable to load live metrics.",
         );
+        errorBackoffMs = Math.min(
+          errorBackoffMs * 2,
+          LIVE_POLL_ERROR_BACKOFF_MAX_MS,
+        );
+      } finally {
+        livePollInFlightRef.current = false;
+        abortController = null;
+        scheduleNextPoll(errorBackoffMs);
       }
     };
 
-    void poll();
+    const shouldPollImmediately = hasMountedLivePollingRef.current
+      ? true
+      : !(initialSnapshot && initialHistory.length > 0);
 
-    const intervalId = window.setInterval(() => {
-      void poll();
-    }, POLL_INTERVAL_MS);
+    hasMountedLivePollingRef.current = true;
+    scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      scheduleNextPoll(VISIBILITY_REFRESH_DELAY_MS);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       active = false;
-      window.clearInterval(intervalId);
+      livePollInFlightRef.current = false;
+      abortController?.abort();
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [dashboardRange]);
+  }, [dashboardRange, initialHistory.length, initialSnapshot]);
+
+  useEffect(() => {
+    const requestedRange = dashboardRange;
+    const hasHistoryForRange =
+      loadedContainerHistoryRangeRef.current === requestedRange;
+
+    if (hasHistoryForRange) {
+      setIsContainerHistoryLoading(false);
+      setContainerHistoryError(null);
+
+      if (!hasMountedContainerHistoryRef.current) {
+        hasMountedContainerHistoryRef.current = true;
+      }
+
+      return;
+    }
+
+    let active = true;
+    const abortController = new AbortController();
+    const shouldFetchImmediately = hasMountedContainerHistoryRef.current
+      ? true
+      : allContainerHistory.length === 0;
+
+    hasMountedContainerHistoryRef.current = true;
+
+    if (!shouldFetchImmediately) {
+      return;
+    }
+
+    setIsContainerHistoryLoading(true);
+
+    const loadContainerHistory = async () => {
+      if (!active || containerHistoryInFlightRef.current) {
+        return;
+      }
+
+      containerHistoryInFlightRef.current = true;
+
+      try {
+        const response = await fetch(
+          buildMetricsRequestUrl({
+            allContainers: "true",
+            includeAllContainerHistory: "true",
+            includeHistory: "false",
+            range: requestedRange,
+          }),
+          {
+            cache: "no-store",
+            signal: abortController.signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Metrics request failed with " + response.status + ".",
+          );
+        }
+
+        const payload = (await response.json()) as {
+          allContainerHistory?: AllContainersMetricsHistorySeries[];
+          history?: MetricsHistoryPoint[];
+          snapshot?: MetricsSnapshot | null;
+        };
+
+        if (!active) {
+          return;
+        }
+
+        if (payload.snapshot && !sidebarSnapshot) {
+          setSidebarSnapshot(payload.snapshot);
+        }
+
+        if (Array.isArray(payload.history) && sidebarHistory.length === 0) {
+          setSidebarHistory(payload.history);
+        }
+
+        if (Array.isArray(payload.allContainerHistory)) {
+          setAllContainerHistory(payload.allContainerHistory);
+          loadedContainerHistoryRangeRef.current = requestedRange;
+        }
+
+        setContainerHistoryError(null);
+      } catch (error) {
+        if (
+          !active ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
+          return;
+        }
+
+        setContainerHistoryError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load container history.",
+        );
+      } finally {
+        containerHistoryInFlightRef.current = false;
+
+        if (active) {
+          setIsContainerHistoryLoading(false);
+        }
+      }
+    };
+
+    void loadContainerHistory();
+
+    return () => {
+      active = false;
+      abortController.abort();
+      containerHistoryInFlightRef.current = false;
+    };
+  }, [
+    allContainerHistory.length,
+    dashboardRange,
+    sidebarHistory.length,
+    sidebarSnapshot,
+  ]);
 
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
@@ -559,7 +783,9 @@ export function MetricsDashboardShell({
         <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
           <MetricsDashboardMainContent
             allContainerHistory={allContainerHistory}
+            containerHistoryStatusText={containerHistoryError}
             deployments={initialDeployments}
+            isAllContainerHistoryLoading={isContainerHistoryLoading}
             onRangeChangeAction={setDashboardRange}
             range={dashboardRange}
             rangeOptions={METRICS_DASHBOARD_RANGE_OPTIONS}

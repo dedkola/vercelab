@@ -168,6 +168,9 @@ const DEFAULT_LIST_WIDTH_PX = 304;
 const DEFAULT_LOGS_WIDTH_PX = 340;
 const EMPTY_DEPLOYMENTS: DeploymentSummary[] = [];
 const EMPTY_CONTAINER_HISTORY: ContainerMetricsHistoryPoint[] = [];
+const EMPTY_CONTAINER_LIST: ContainerListEntry[] = [];
+const EMPTY_FOCUSED_METRIC_CHARTS: FocusedMetricChart[] = [];
+const EMPTY_ALL_CONTAINERS_METRIC_CHARTS: AllContainersMetricChart[] = [];
 
 const MIN_METRICS_WIDTH_PX = 216;
 const MAX_METRICS_WIDTH_PX = 420;
@@ -175,7 +178,10 @@ const MIN_LIST_WIDTH_PX = 260;
 const MAX_LIST_WIDTH_PX = 420;
 const MIN_LOGS_WIDTH_PX = 300;
 const MAX_LOGS_WIDTH_PX = 520;
-const POLL_INTERVAL_MS = 5000;
+const LIVE_POLL_INTERVAL_MS = 10000;
+const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
+const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
+const VISIBILITY_REFRESH_DELAY_MS = 750;
 const ALL_CONTAINERS_ID = "__all-containers__";
 const STABLE_TIME_ZONE = "UTC";
 const ALL_CONTAINERS_RANGE_OPTIONS = DASHBOARD_RANGE_OPTIONS.filter(
@@ -1693,6 +1699,28 @@ function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
   return `${pathname}?${searchParams.toString()}`;
 }
 
+function buildMetricsRequestUrl(
+  searchParams: Record<string, string | undefined>,
+) {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (typeof value === "string") {
+      params.set(key, value);
+    }
+  }
+
+  return `/api/metrics?${params.toString()}`;
+}
+
+function isDocumentHidden() {
+  if (typeof document === "undefined") {
+    return false;
+  }
+
+  return document.visibilityState === "hidden";
+}
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -1954,6 +1982,11 @@ export function WorkspaceShell({
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const branchCacheRef = useRef<Record<string, string[]>>({});
   const branchRequestIdRef = useRef(0);
+  const hasMountedLivePollingRef = useRef(false);
+  const hasMountedDetailedHistoryRef = useRef(false);
+  const livePollInFlightRef = useRef(false);
+  const detailedHistoryInFlightRef = useRef(false);
+  const loadedDetailedHistoryKeyRef = useRef<string | null>(null);
   const dragStateRef = useRef<{
     kind: "metrics" | "list" | "logs" | null;
     startWidth: number;
@@ -1968,8 +2001,11 @@ export function WorkspaceShell({
     [sidebarHistory, sidebarSnapshot],
   );
   const workspaceContainers = useMemo(
-    () => buildContainerListEntries(sidebarSnapshot, deployments),
-    [deployments, sidebarSnapshot],
+    () =>
+      activeView === "dashboard"
+        ? buildContainerListEntries(sidebarSnapshot, deployments)
+        : EMPTY_CONTAINER_LIST,
+    [activeView, deployments, sidebarSnapshot],
   );
   const metricsStatus = metricsError
     ? {
@@ -1984,6 +2020,14 @@ export function WorkspaceShell({
             "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
           helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from Influx-backed history.`,
         }
+      : sidebarSnapshot && activeView !== "dashboard"
+        ? {
+            badgeLabel: "Snapshot only",
+            badgeClassName:
+              "border-amber-200/80 bg-amber-50/90 text-amber-700",
+            helperText:
+              "Git App Page keeps the sidebar light and refreshes detailed charts only on the dashboard.",
+          }
       : sidebarSnapshot
         ? {
             badgeLabel: "Snapshot only",
@@ -1998,6 +2042,10 @@ export function WorkspaceShell({
           };
 
   const filteredContainers = useMemo(() => {
+    if (activeView !== "dashboard") {
+      return EMPTY_CONTAINER_LIST;
+    }
+
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     if (!normalizedQuery) {
@@ -2007,7 +2055,7 @@ export function WorkspaceShell({
     return workspaceContainers.filter((container) =>
       container.searchText.includes(normalizedQuery),
     );
-  }, [searchQuery, workspaceContainers]);
+  }, [activeView, searchQuery, workspaceContainers]);
   const repositoryOptions = useMemo(
     () => buildRepositoryOptions(repositoryState.repositories),
     [repositoryState.repositories],
@@ -2108,28 +2156,74 @@ export function WorkspaceShell({
     selectedContainerHistoryKey === selectedRuntimeContainerKey
       ? selectedContainerHistory
       : EMPTY_CONTAINER_HISTORY;
-  const focusedMetricCharts = useMemo(
-    () =>
-      buildFocusedMetricCharts(
-        selectedRuntimeContainer,
-        activeSelectedContainerHistory,
-        selectedContainer,
-      ),
-    [
+  const focusedMetricCharts = useMemo(() => {
+    if (activeView !== "dashboard") {
+      return EMPTY_FOCUSED_METRIC_CHARTS;
+    }
+
+    return buildFocusedMetricCharts(
+      selectedRuntimeContainer,
       activeSelectedContainerHistory,
       selectedContainer,
-      selectedRuntimeContainer,
-    ],
-  );
-  const allContainersMetricCharts = useMemo(
-    () =>
-      buildAllContainersMetricCharts(
-        dashboardRange,
-        sidebarSnapshot,
-        allContainerHistory,
-      ),
-    [allContainerHistory, dashboardRange, sidebarSnapshot],
-  );
+    );
+  }, [
+    activeSelectedContainerHistory,
+    activeView,
+    selectedContainer,
+    selectedRuntimeContainer,
+  ]);
+  const allContainersMetricCharts = useMemo(() => {
+    if (activeView !== "dashboard") {
+      return EMPTY_ALL_CONTAINERS_METRIC_CHARTS;
+    }
+
+    return buildAllContainersMetricCharts(
+      dashboardRange,
+      sidebarSnapshot,
+      allContainerHistory,
+    );
+  }, [activeView, allContainerHistory, dashboardRange, sidebarSnapshot]);
+  const detailedHistoryRequest = useMemo(() => {
+    if (activeView !== "dashboard") {
+      return null;
+    }
+
+    if (isAllContainersSelected) {
+      return {
+        key: `all:${dashboardRange}`,
+        searchParams: {
+          allContainers: "true",
+          includeAllContainerHistory: "true",
+          includeHistory: "false",
+          range: dashboardRange,
+        } satisfies Record<string, string>,
+        target: "all-containers" as const,
+      };
+    }
+
+    if (!selectedRuntimeContainerId || !selectedRuntimeContainerName) {
+      return null;
+    }
+
+    return {
+      key: `${selectedRuntimeContainerKey ?? selectedRuntimeContainerId}:${dashboardRange}`,
+      searchParams: {
+        containerId: selectedRuntimeContainerId,
+        containerName: selectedRuntimeContainerName,
+        includeContainerHistory: "true",
+        includeHistory: "false",
+        range: dashboardRange,
+      } satisfies Record<string, string>,
+      target: "container" as const,
+    };
+  }, [
+    activeView,
+    dashboardRange,
+    isAllContainersSelected,
+    selectedRuntimeContainerId,
+    selectedRuntimeContainerKey,
+    selectedRuntimeContainerName,
+  ]);
 
   useEffect(() => {
     setDeployments(deploymentSeed);
@@ -2173,31 +2267,59 @@ export function WorkspaceShell({
 
   useEffect(() => {
     let active = true;
-    const activeHistoryKey =
-      !isAllContainersSelected &&
-      selectedRuntimeContainerId &&
-      selectedRuntimeContainerName
-        ? `${selectedRuntimeContainerId}:${selectedRuntimeContainerName}`
-        : null;
+    let timeoutId: number | null = null;
+    let abortController: AbortController | null = null;
+    let errorBackoffMs = LIVE_POLL_INTERVAL_MS;
 
-    const poll = async () => {
+    const scheduleNextPoll = (delayMs: number) => {
+      if (!active) {
+        return;
+      }
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      timeoutId = window.setTimeout(() => {
+        void pollLiveMetrics();
+      }, delayMs);
+    };
+
+    const pollLiveMetrics = async () => {
+      if (!active) {
+        return;
+      }
+
+      if (livePollInFlightRef.current) {
+        scheduleNextPoll(errorBackoffMs);
+        return;
+      }
+
+      if (isDocumentHidden()) {
+        scheduleNextPoll(HIDDEN_LIVE_POLL_INTERVAL_MS);
+        return;
+      }
+
+      livePollInFlightRef.current = true;
+      abortController = new AbortController();
+
       try {
-        const searchParams = new URLSearchParams({
-          mode: "current",
-          range: dashboardRange,
-        });
-
-        if (isAllContainersSelected) {
-          searchParams.set("allContainers", "true");
-        } else if (selectedRuntimeContainerId && selectedRuntimeContainerName) {
-          searchParams.set("containerId", selectedRuntimeContainerId);
-          searchParams.set("containerName", selectedRuntimeContainerName);
-        }
-
         const response = await fetch(
-          `/api/metrics?${searchParams.toString()}`,
+          buildMetricsRequestUrl(
+            activeView === "dashboard"
+              ? {
+                  includeHistory: "true",
+                  mode: "current",
+                  range: dashboardRange,
+                }
+              : {
+                  includeHistory: "false",
+                  mode: "current",
+                },
+          ),
           {
             cache: "no-store",
+            signal: abortController.signal,
           },
         );
 
@@ -2206,31 +2328,29 @@ export function WorkspaceShell({
         }
 
         const payload = (await response.json()) as {
-          allContainerHistory?: AllContainersMetricsHistorySeries[];
-          containerHistory?: ContainerMetricsHistoryPoint[];
-          snapshot: MetricsSnapshot;
-          history: MetricsHistoryPoint[];
+          history?: MetricsHistoryPoint[];
+          snapshot?: MetricsSnapshot | null;
         };
 
         if (!active) {
           return;
         }
 
-        setSidebarSnapshot(payload.snapshot);
-        setSidebarHistory(payload.history ?? []);
+        if (payload.snapshot) {
+          setSidebarSnapshot(payload.snapshot);
+        }
 
-        if (isAllContainersSelected) {
-          setAllContainerHistory(payload.allContainerHistory ?? []);
-          setSelectedContainerHistory([]);
-          setSelectedContainerHistoryKey(null);
-        } else {
-          setSelectedContainerHistory(payload.containerHistory ?? []);
-          setSelectedContainerHistoryKey(activeHistoryKey);
+        if (Array.isArray(payload.history)) {
+          setSidebarHistory(payload.history);
         }
 
         setMetricsError(null);
+        errorBackoffMs = LIVE_POLL_INTERVAL_MS;
       } catch (error) {
-        if (!active) {
+        if (
+          !active ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
           return;
         }
 
@@ -2241,23 +2361,140 @@ export function WorkspaceShell({
 
         console.error(message);
         setMetricsError(message);
+        errorBackoffMs = Math.min(
+          errorBackoffMs * 2,
+          LIVE_POLL_ERROR_BACKOFF_MAX_MS,
+        );
+      } finally {
+        livePollInFlightRef.current = false;
+        abortController = null;
+        scheduleNextPoll(errorBackoffMs);
       }
     };
 
-    void poll();
-    const intervalId = window.setInterval(() => {
-      void poll();
-    }, POLL_INTERVAL_MS);
+    const shouldPollImmediately =
+      activeView === "dashboard"
+        ? hasMountedLivePollingRef.current
+          ? true
+          : !(initialSnapshot && initialHistory.length > 0)
+        : false;
+
+    hasMountedLivePollingRef.current = true;
+    scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      scheduleNextPoll(VISIBILITY_REFRESH_DELAY_MS);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       active = false;
-      window.clearInterval(intervalId);
+      livePollInFlightRef.current = false;
+      abortController?.abort();
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeView, dashboardRange, initialHistory.length, initialSnapshot]);
+
+  useEffect(() => {
+    if (!detailedHistoryRequest) {
+      return;
+    }
+
+    if (loadedDetailedHistoryKeyRef.current === detailedHistoryRequest.key) {
+      if (!hasMountedDetailedHistoryRef.current) {
+        hasMountedDetailedHistoryRef.current = true;
+      }
+
+      return;
+    }
+
+    let active = true;
+    const abortController = new AbortController();
+    const shouldFetchImmediately = hasMountedDetailedHistoryRef.current
+      ? true
+      : detailedHistoryRequest.target === "all-containers"
+        ? allContainerHistory.length === 0
+        : selectedContainerHistory.length === 0;
+
+    hasMountedDetailedHistoryRef.current = true;
+
+    if (!shouldFetchImmediately) {
+      return;
+    }
+
+    const loadDetailedHistory = async () => {
+      if (!active || detailedHistoryInFlightRef.current) {
+        return;
+      }
+
+      detailedHistoryInFlightRef.current = true;
+
+      try {
+        const response = await fetch(
+          buildMetricsRequestUrl(detailedHistoryRequest.searchParams),
+          {
+            cache: "no-store",
+            signal: abortController.signal,
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Metrics request failed with ${response.status}.`);
+        }
+
+        const payload = (await response.json()) as {
+          allContainerHistory?: AllContainersMetricsHistorySeries[];
+          containerHistory?: ContainerMetricsHistoryPoint[];
+        };
+
+        if (!active) {
+          return;
+        }
+
+        if (detailedHistoryRequest.target === "all-containers") {
+          setAllContainerHistory(payload.allContainerHistory ?? []);
+          setSelectedContainerHistory([]);
+          setSelectedContainerHistoryKey(null);
+        } else {
+          setSelectedContainerHistory(payload.containerHistory ?? []);
+          setSelectedContainerHistoryKey(selectedRuntimeContainerKey);
+        }
+
+        loadedDetailedHistoryKeyRef.current = detailedHistoryRequest.key;
+      } catch (error) {
+        if (
+          !active ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
+          return;
+        }
+      } finally {
+        detailedHistoryInFlightRef.current = false;
+      }
+    };
+
+    void loadDetailedHistory();
+
+    return () => {
+      active = false;
+      abortController.abort();
+      detailedHistoryInFlightRef.current = false;
     };
   }, [
-    dashboardRange,
-    isAllContainersSelected,
-    selectedRuntimeContainerId,
-    selectedRuntimeContainerName,
+    allContainerHistory.length,
+    detailedHistoryRequest,
+    selectedContainerHistory.length,
+    selectedRuntimeContainerKey,
   ]);
 
   useEffect(() => {
@@ -2769,7 +3006,8 @@ export function WorkspaceShell({
     onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) =>
       handleResizeStart("metrics", event),
     showStateWarning: Boolean(
-      (sidebarSnapshot && !sidebarHistory.length) || metricsError,
+      (activeView === "dashboard" && sidebarSnapshot && !sidebarHistory.length) ||
+        metricsError,
     ),
     summaryLabel: sidebarSnapshot
       ? `${sidebarSnapshot.containers.running} running containers on ${sidebarSnapshot.hostIp}.`
