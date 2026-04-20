@@ -517,16 +517,6 @@ function SystemMetricCard({ panel }: { panel: SystemMetricPanel }) {
         <div className="text-3xl font-semibold tracking-tight text-foreground">
           {panel.currentValue}
         </div>
-        <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-          {panel.stats.map((stat) => (
-            <div
-              className="rounded-full border border-border/60 bg-background/84 px-2.5 py-1"
-              key={`${panel.id}-${stat.label}`}
-            >
-              {stat.label} {stat.value}
-            </div>
-          ))}
-        </div>
       </CardHeader>
       <CardContent className="pt-4">
         {panel.primaryValues.length ? (
