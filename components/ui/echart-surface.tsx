@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 import type { EChartsCoreOption, EChartsType, SetOptionOpts } from "echarts";
@@ -12,7 +12,17 @@ type EChartSurfaceProps = {
   setOptionOptions?: SetOptionOpts;
 };
 
-export function EChartSurface({
+let echartsModulePromise: Promise<typeof import("echarts")> | null = null;
+
+function loadECharts() {
+  if (!echartsModulePromise) {
+    echartsModulePromise = import("echarts");
+  }
+
+  return echartsModulePromise;
+}
+
+export const EChartSurface = memo(function EChartSurface({
   ariaLabel,
   className,
   option,
@@ -24,6 +34,32 @@ export function EChartSurface({
   const setOptionOptionsRef = useRef(setOptionOptions);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const warmCharts = () => {
+      void loadECharts();
+    };
+
+    if ("requestIdleCallback" in window) {
+      const handle = window.requestIdleCallback(warmCharts, {
+        timeout: 1500,
+      });
+
+      return () => {
+        window.cancelIdleCallback(handle);
+      };
+    }
+
+    const timeoutId = globalThis.setTimeout(warmCharts, 250);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
     const element = elementRef.current;
 
     if (!element) {
@@ -32,9 +68,14 @@ export function EChartSurface({
 
     let active = true;
     let resizeObserver: ResizeObserver | null = null;
+    let intersectionObserver: IntersectionObserver | null = null;
 
-    async function mountChart() {
-      const echarts = await import("echarts");
+    const initializeChart = async () => {
+      if (!active || chartRef.current) {
+        return;
+      }
+
+      const echarts = await loadECharts();
 
       if (!active || !element) {
         return;
@@ -49,12 +90,30 @@ export function EChartSurface({
         instance.resize();
       });
       resizeObserver.observe(element);
-    }
+    };
 
-    void mountChart();
+    if (typeof IntersectionObserver !== "function") {
+      void initializeChart();
+    } else {
+      intersectionObserver = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) {
+            return;
+          }
+
+          intersectionObserver?.disconnect();
+          intersectionObserver = null;
+          void initializeChart();
+        },
+        { rootMargin: "240px 0px" },
+      );
+
+      intersectionObserver.observe(element);
+    }
 
     return () => {
       active = false;
+      intersectionObserver?.disconnect();
       resizeObserver?.disconnect();
       chartRef.current?.dispose();
       chartRef.current = null;
@@ -75,4 +134,4 @@ export function EChartSurface({
       role="img"
     />
   );
-}
+});

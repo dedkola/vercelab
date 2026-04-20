@@ -10,7 +10,10 @@ import {
   normalizeDashboardRange,
   type DashboardRange,
 } from "@/lib/metrics-range";
-import { listWorkspaceData, type DeploymentSummary } from "@/lib/persistence";
+import {
+  listDeploymentSummaries,
+  type DeploymentSummary,
+} from "@/lib/persistence";
 import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
 
 type WorkspaceView = "dashboard" | "git-app-page";
@@ -28,6 +31,10 @@ export type WorkspaceShellData = {
   initialHistory: MetricsHistoryPoint[];
   initialView: WorkspaceView;
   initialSnapshot: MetricsSnapshot | null;
+};
+
+type WorkspaceShellDataOptions = {
+  includeMetricsHistory?: boolean;
 };
 
 function getSearchParamValue(value: string | string[] | undefined) {
@@ -53,42 +60,49 @@ function getInitialView(
 export async function loadWorkspaceShellData(
   searchParams?: WorkspaceShellSearchParams,
   defaultView: WorkspaceView = "dashboard",
+  options?: WorkspaceShellDataOptions,
 ): Promise<WorkspaceShellData> {
   const params = searchParams ? await searchParams : undefined;
   const initialDashboardRange = normalizeDashboardRange(
     getSearchParamValue(params?.range),
   );
-  const {
-    bucketSeconds: initialContainerHistoryBucketSeconds,
-    limit: initialContainerHistoryLimit,
-  } = getDashboardHistorySettings(initialDashboardRange);
-  const initialSnapshot = await getMetricsSnapshot().catch(() => null);
+  const includeMetricsHistory = options?.includeMetricsHistory ?? true;
+  const [initialSnapshot, initialDeployments] = await Promise.all([
+    getMetricsSnapshot().catch(() => null),
+    listDeploymentSummaries().catch(() => [] as DeploymentSummary[]),
+  ]);
   const initialFocusedContainer = initialSnapshot?.containers.all[0] ?? null;
-  const [initialHistory, initialContainerHistory] = initialSnapshot
-    ? await Promise.all([
-        getMetricsHistoryFromInflux({
-          hostIp: initialSnapshot.hostIp,
-          limit: 48,
-          bucketSeconds: 5,
-        }).catch(() => []),
-        initialFocusedContainer
-          ? getContainerMetricsHistoryFromInflux({
-              hostIp: initialSnapshot.hostIp,
-              containerId: initialFocusedContainer.id,
-              containerName: initialFocusedContainer.name,
-              limit: initialContainerHistoryLimit,
-              bucketSeconds: initialContainerHistoryBucketSeconds,
-            }).catch(() => [])
-          : Promise.resolve([] as ContainerMetricsHistoryPoint[]),
-      ])
-    : ([[], []] as [MetricsHistoryPoint[], ContainerMetricsHistoryPoint[]]);
-  const workspaceData = await listWorkspaceData();
+  const [initialHistory, initialContainerHistory] =
+    includeMetricsHistory && initialSnapshot
+      ? await Promise.all([
+          getMetricsHistoryFromInflux({
+            hostIp: initialSnapshot.hostIp,
+            limit: 48,
+            bucketSeconds: 5,
+          }).catch(() => [] as MetricsHistoryPoint[]),
+          initialFocusedContainer
+            ? (() => {
+                const { bucketSeconds, limit } = getDashboardHistorySettings(
+                  initialDashboardRange,
+                );
+
+                return getContainerMetricsHistoryFromInflux({
+                  hostIp: initialSnapshot.hostIp,
+                  containerId: initialFocusedContainer.id,
+                  containerName: initialFocusedContainer.name,
+                  limit,
+                  bucketSeconds,
+                }).catch(() => [] as ContainerMetricsHistoryPoint[]);
+              })()
+            : Promise.resolve([] as ContainerMetricsHistoryPoint[]),
+        ])
+      : ([[], []] as [MetricsHistoryPoint[], ContainerMetricsHistoryPoint[]]);
 
   return {
     baseDomain: getAppConfig().baseDomain,
     initialContainerHistory,
     initialDashboardRange,
-    initialDeployments: workspaceData.deployments,
+    initialDeployments,
     initialHistory,
     initialView: getInitialView(params?.page, defaultView),
     initialSnapshot,

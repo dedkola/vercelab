@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 import { EChartSurface } from "@/components/ui/echart-surface";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,9 @@ import type { EChartsCoreOption } from "echarts";
 
 type MetricsDashboardMainContentProps = {
   allContainerHistory: AllContainersMetricsHistorySeries[];
+  containerHistoryStatusText?: string | null;
   deployments: DeploymentSummary[];
+  isAllContainerHistoryLoading?: boolean;
   onRangeChangeAction: (range: DashboardRange) => void;
   range: DashboardRange;
   rangeOptions: ReadonlyArray<{
@@ -102,6 +104,8 @@ function createTooltipShell(title: string, rows: string) {
 function createTooltipRow(label: string, value: string, color?: string) {
   return `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:12px; line-height:1.5;"><span style="display:flex; align-items:center; gap:8px; color:#cbd5e1;"><span style="width:9px; height:9px; border-radius:999px; background:${color ?? "#94a3b8"};"></span>${label}</span><strong style="font-size:12px; color:#f8fafc;">${value}</strong></div>`;
 }
+
+const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
 
 function EmptyChartState({ message }: { message: string }) {
   return (
@@ -498,8 +502,13 @@ function buildContainerChartOption(
   };
 }
 
-function SystemMetricCard({ panel }: { panel: SystemMetricPanel }) {
+const SystemMetricCard = memo(function SystemMetricCard({
+  panel,
+}: {
+  panel: SystemMetricPanel;
+}) {
   const style = SYSTEM_STYLES[panel.id];
+  const option = useMemo(() => buildSystemChartOption(panel), [panel]);
 
   return (
     <Card
@@ -523,8 +532,8 @@ function SystemMetricCard({ panel }: { panel: SystemMetricPanel }) {
           <EChartSurface
             ariaLabel={`${panel.title} chart`}
             className="h-44"
-            option={buildSystemChartOption(panel)}
-            setOptionOptions={{ lazyUpdate: true }}
+            option={option}
+            setOptionOptions={CHART_SET_OPTION_OPTIONS}
           />
         ) : (
           <EmptyChartState message="Waiting for recent samples for this metric." />
@@ -532,9 +541,17 @@ function SystemMetricCard({ panel }: { panel: SystemMetricPanel }) {
       </CardContent>
     </Card>
   );
-}
+});
 
-function ContainerMetricCard({ panel }: { panel: ContainerMetricPanel }) {
+const ContainerMetricCard = memo(function ContainerMetricCard({
+  panel,
+  loadingMessage,
+}: {
+  loadingMessage: string;
+  panel: ContainerMetricPanel;
+}) {
+  const option = useMemo(() => buildContainerChartOption(panel), [panel]);
+
   return (
     <Card className="overflow-hidden border-border/70 bg-card/94 shadow-[0_30px_80px_-62px_rgba(15,23,42,0.34)]">
       <CardHeader className="gap-4 border-b border-border/60 bg-linear-to-r from-muted/44 via-background to-background pb-4">
@@ -558,20 +575,22 @@ function ContainerMetricCard({ panel }: { panel: ContainerMetricPanel }) {
           <EChartSurface
             ariaLabel={`${panel.title} chart`}
             className="h-96"
-            option={buildContainerChartOption(panel)}
-            setOptionOptions={{ lazyUpdate: true }}
+            option={option}
+            setOptionOptions={CHART_SET_OPTION_OPTIONS}
           />
         ) : (
-          <EmptyChartState message="Waiting for InfluxDB buckets for the selected range." />
+          <EmptyChartState message={loadingMessage} />
         )}
       </CardContent>
     </Card>
   );
-}
+});
 
 export function MetricsDashboardMainContent({
   allContainerHistory,
+  containerHistoryStatusText,
   deployments,
+  isAllContainerHistoryLoading = false,
   onRangeChangeAction,
   range,
   rangeOptions,
@@ -595,6 +614,11 @@ export function MetricsDashboardMainContent({
     [allContainerHistory, deployments, selectedContainerId, snapshot],
   );
   const rangeLabel = formatDashboardRangeLabel(range);
+  const containerEmptyStateMessage = containerHistoryStatusText
+    ? containerHistoryStatusText
+    : isAllContainerHistoryLoading
+      ? "Refreshing container history for the selected range."
+      : "Waiting for InfluxDB buckets for the selected range.";
   const trackedContainers =
     snapshot?.containers.all.length ?? allContainerHistory.length;
   const runningContainers = snapshot?.containers.running ?? trackedContainers;
@@ -674,15 +698,28 @@ export function MetricsDashboardMainContent({
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm font-semibold tracking-tight text-foreground">
             Container load explorer
           </div>
+
+          {isAllContainerHistoryLoading || containerHistoryStatusText ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {isAllContainerHistoryLoading ? (
+                <Badge variant="secondary">Refreshing history…</Badge>
+              ) : null}
+              {containerHistoryStatusText ? <span>{containerHistoryStatusText}</span> : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="space-y-4">
           {containerPanels.map((panel) => (
-            <ContainerMetricCard key={panel.id} panel={panel} />
+            <ContainerMetricCard
+              key={panel.id}
+              loadingMessage={containerEmptyStateMessage}
+              panel={panel}
+            />
           ))}
         </div>
       </section>

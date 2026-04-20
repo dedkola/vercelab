@@ -1,6 +1,8 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
 
 import type { WorkspaceView } from "@/components/workspace-shell";
 import { cn } from "@/lib/utils";
@@ -18,11 +20,51 @@ type WorkspaceRailProps = {
   onViewChangeAction: (view: WorkspaceView) => void;
 };
 
+function getWorkspaceRailHref(view: WorkspaceView) {
+  const pathname = view === "dashboard" ? "/" : "/git-app-page";
+
+  if (typeof window === "undefined") {
+    return pathname;
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const range = searchParams.get("range");
+
+  if (!range) {
+    return pathname;
+  }
+
+  const nextSearchParams = new URLSearchParams({
+    range,
+  });
+
+  return `${pathname}?${nextSearchParams.toString()}`;
+}
+
 export function WorkspaceRail({
   activeView,
   items,
   onViewChangeAction,
 }: WorkspaceRailProps) {
+  const router = useRouter();
+
+  const prefetchView = useCallback(
+    (view: WorkspaceView) => {
+      if (view === activeView) {
+        return;
+      }
+
+      void router.prefetch(getWorkspaceRailHref(view));
+    },
+    [activeView, router],
+  );
+
+  useEffect(() => {
+    items.forEach((item) => {
+      prefetchView(item.id);
+    });
+  }, [items, prefetchView]);
+
   return (
     <aside className="flex w-14 shrink-0 flex-col items-center gap-3 border-r border-border/70 bg-linear-to-b from-background via-muted/22 to-background px-2 py-3 shadow-[16px_0_48px_-44px_rgba(15,23,42,0.26)]">
       <div className="flex w-full flex-col gap-2 pt-1">
@@ -41,6 +83,8 @@ export function WorkspaceRail({
               )}
               key={item.id}
               onClick={() => onViewChangeAction(item.id)}
+              onFocus={() => prefetchView(item.id)}
+              onMouseEnter={() => prefetchView(item.id)}
               title={item.description}
               type="button"
             >
