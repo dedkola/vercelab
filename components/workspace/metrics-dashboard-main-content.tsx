@@ -340,26 +340,8 @@ function buildContainerChartOption(
   return {
     animation: false,
     color: panel.series.map((series) => series.color),
-    dataZoom: [
-      {
-        filterMode: "none",
-        moveHandleSize: 0,
-        throttle: 30,
-        type: "inside",
-      },
-      {
-        backgroundColor: "rgba(226,232,240,0.58)",
-        borderColor: "transparent",
-        bottom: 18,
-        fillerColor: "rgba(16,185,129,0.16)",
-        handleSize: "80%",
-        height: 18,
-        moveHandleSize: 0,
-        type: "slider",
-      },
-    ],
     grid: {
-      bottom: 66,
+      bottom: 34,
       containLabel: true,
       left: 14,
       right: 18,
