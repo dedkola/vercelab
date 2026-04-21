@@ -11,12 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SystemMetricPanel } from "@/lib/metrics-dashboard-metrics";
 import { cn } from "@/lib/utils";
 
-import {
-  getToneClasses,
-  ResizeHandle,
-  SectionLabel,
-  Sparkline,
-} from "./workspace-ui";
+import { getToneClasses, ResizeHandle, Sparkline } from "./workspace-ui";
 import { SystemMetricCard } from "./system-metric-card";
 
 export type HostMetricsStatus = {
@@ -42,18 +37,12 @@ export type HostMetricsSidebarProps = {
 };
 
 export function HostMetricsSidebar({
-  cpuHeadroomLabel,
   isCollapsed,
-  memoryHeadroomLabel,
   metricCards,
-  metricsStatus,
   onCollapseAction,
   onExpandAction,
   onResizeStartAction,
-  showStateWarning,
-  summaryLabel,
   systemPanels,
-  throughputLabel,
   width,
 }: HostMetricsSidebarProps) {
   if (isCollapsed) {
@@ -76,76 +65,28 @@ export function HostMetricsSidebar({
   return (
     <>
       <aside
-        className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/14 to-background shadow-[22px_0_72px_-58px_rgba(15,23,42,0.34)] transition-[width] duration-300"
+        className="relative flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/14 to-background shadow-[22px_0_72px_-58px_rgba(15,23,42,0.34)] transition-[width] duration-300"
         style={{ width: `${width}px` }}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-3">
-          <SectionLabel icon="network" text="Server load" />
-          <Button
-            aria-label="Hide server load sidebar"
-            className="h-7 w-7"
-            onClick={onCollapseAction}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <Icon name="chevron-left" className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <Button
+          aria-label="Hide server load sidebar"
+          className="absolute right-3 top-3 z-10 h-7 w-7 bg-background/88 shadow-[0_12px_24px_-18px_rgba(15,23,42,0.45)]"
+          onClick={onCollapseAction}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          <Icon name="chevron-left" className="h-3.5 w-3.5" />
+        </Button>
 
         <ScrollArea className="h-full">
-          <div className="space-y-4 p-3">
-            <div className="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/16 to-background px-4 py-4 shadow-[0_22px_54px_-44px_rgba(15,23,42,0.32)]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold tracking-tight text-foreground">
-                    Host summary
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {summaryLabel}
-                  </div>
-                </div>
-                <Badge className={metricsStatus.badgeClassName}>
-                  {metricsStatus.badgeLabel}
-                </Badge>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-2.5">
-                  <div className="text-muted-foreground">CPU headroom</div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">
-                    {cpuHeadroomLabel}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-2.5">
-                  <div className="text-muted-foreground">Memory headroom</div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">
-                    {memoryHeadroomLabel}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 text-[11px] text-muted-foreground">
-                {throughputLabel}
-              </div>
-            </div>
-
-            {showStateWarning ? (
-              <div className="rounded-[1.2rem] border border-amber-200/80 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-800 shadow-[0_18px_44px_-40px_rgba(217,119,6,0.35)]">
-                {metricsStatus.helperText}
-              </div>
-            ) : null}
-
+          <div className="space-y-4 p-3 pt-12">
             {systemPanels?.length ? (
-              <section className="space-y-3">
-                <div className="text-sm font-semibold tracking-tight text-foreground">
-                  Host overview
-                </div>
-
-                <div className="space-y-4">
-                  {systemPanels.map((panel) => (
-                    <SystemMetricCard key={panel.id} panel={panel} />
-                  ))}
-                </div>
-              </section>
+              <div className="space-y-4">
+                {systemPanels.map((panel) => (
+                  <SystemMetricCard key={panel.id} panel={panel} />
+                ))}
+              </div>
             ) : (
               metricCards.map((metric) => {
                 const toneClasses = getToneClasses(metric.tone);
