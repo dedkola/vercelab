@@ -68,6 +68,12 @@ type GitAppPageLeftSidebarProps = {
   totalAppsCount: number;
 };
 
+function formatSidebarAppStatusLabel(
+  statusVariant: GitAppPageListItem["statusVariant"],
+) {
+  return statusVariant === "success" ? "Up" : "Dn";
+}
+
 export function GitAppPageLeftSidebar({
   appItems,
   appSearchQuery,
@@ -300,41 +306,51 @@ export function GitAppPageLeftSidebar({
               ) : null}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {appItems.length ? (
                 appItems.map((deployment) => (
                   <button
+                    aria-label={`${deployment.appName} ${deployment.statusLabel}`}
                     className={cn(
-                      "w-full rounded-[1.1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                      "w-full rounded-md border px-2.5 py-1.5 text-left transition-colors duration-200",
                       deployment.isActive
-                        ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/90 via-background to-background shadow-[0_18px_42px_-34px_rgba(16,185,129,0.24)]"
-                        : "border-border/70 bg-background/85 hover:bg-background/95",
+                        ? "border-emerald-300/80 bg-emerald-50/75"
+                        : "border-border/70 bg-background/85 hover:bg-muted/55",
                     )}
                     key={deployment.id}
                     onClick={() => onSelectAppAction(deployment.id)}
                     type="button"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "h-2 w-2 rounded-full",
-                              deployment.dotClassName,
-                            )}
-                          />
-                          <span className="truncate text-sm font-semibold tracking-tight text-foreground">
-                            {deployment.appName}
-                          </span>
-                        </div>
-                      </div>
-                      <Badge variant={deployment.statusVariant}>
-                        {deployment.statusLabel}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                      <span className="truncate">{deployment.domain}</span>
-                      <span>{deployment.relativeUpdatedAt}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            deployment.dotClassName,
+                          )}
+                        />
+                        <span className="truncate text-xs font-medium tracking-tight text-foreground">
+                          {deployment.appName}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                          deployment.statusVariant === "success"
+                            ? "text-emerald-700"
+                            : deployment.statusVariant === "warning"
+                              ? "text-amber-700"
+                              : "text-muted-foreground",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            deployment.dotClassName,
+                          )}
+                        />
+                        {formatSidebarAppStatusLabel(deployment.statusVariant)}
+                      </span>
                     </div>
                   </button>
                 ))

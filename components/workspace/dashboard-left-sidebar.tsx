@@ -25,10 +25,10 @@ function getContainerAriaLabel(container: ContainerListEntry) {
 
 function formatContainerStatusLabel(container: ContainerListEntry) {
   if (container.runtime) {
-    return container.runtime.status === "running" ? "Up" : "Dw";
+    return container.runtime.status === "running" ? "Up" : "Dn";
   }
 
-  return container.display.status === "running" ? "Up" : "Dw";
+  return container.display.status === "running" ? "Up" : "Dn";
 }
 
 function getContainerStatusVariant(
