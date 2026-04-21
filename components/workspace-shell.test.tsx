@@ -786,7 +786,7 @@ describe("WorkspaceShell", () => {
     });
   });
 
-  it("skips live metrics polling on the git app page first paint", async () => {
+  it("loads live sidebar history on the git app page first paint", async () => {
     render(<WorkspaceShell initialView="git-app-page" />);
 
     await waitFor(() => {
@@ -797,11 +797,20 @@ describe("WorkspaceShell", () => {
       ).toBe(true);
     });
 
-    expect(
-      fetchSpy.mock.calls.some(([input]) =>
-        getRequestUrl(input).includes("/api/metrics?"),
-      ),
-    ).toBe(false);
+    await waitFor(() => {
+      expect(
+        fetchSpy.mock.calls.some(([input]) => {
+          const url = getRequestUrl(input);
+
+          return (
+            url.includes("/api/metrics?") &&
+            url.includes("mode=current") &&
+            url.includes("includeHistory=true") &&
+            !url.includes("range=")
+          );
+        }),
+      ).toBe(true);
+    });
   });
 
   it("renders the git app page with editable deployment details", async () => {

@@ -2020,27 +2020,18 @@ export function WorkspaceShell({
             "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
           helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from recent live history.`,
         }
-      : sidebarSnapshot && activeView !== "dashboard"
+      : sidebarSnapshot
         ? {
             badgeLabel: "Snapshot only",
             badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
             helperText:
-              "Git App Page keeps the sidebar light and refreshes detailed charts only on the dashboard.",
+              "Waiting for recent history samples to populate the charts.",
           }
-        : sidebarSnapshot
-          ? {
-              badgeLabel: "Snapshot only",
-              badgeClassName:
-                "border-amber-200/80 bg-amber-50/90 text-amber-700",
-              helperText:
-                "Waiting for InfluxDB history samples to populate the charts.",
-            }
-          : {
-              badgeLabel: "Connecting",
-              badgeClassName:
-                "border-border/60 bg-background/80 text-foreground",
-              helperText: "Loading current host metrics.",
-            };
+        : {
+            badgeLabel: "Connecting",
+            badgeClassName: "border-border/60 bg-background/80 text-foreground",
+            helperText: "Loading current host metrics.",
+          };
 
   const filteredContainers = useMemo(() => {
     if (activeView !== "dashboard") {
@@ -2306,17 +2297,10 @@ export function WorkspaceShell({
 
       try {
         const response = await fetch(
-          buildMetricsRequestUrl(
-            activeView === "dashboard"
-              ? {
-                  includeHistory: "true",
-                  mode: "current",
-                }
-              : {
-                  includeHistory: "false",
-                  mode: "current",
-                },
-          ),
+          buildMetricsRequestUrl({
+            includeHistory: "true",
+            mode: "current",
+          }),
           {
             cache: "no-store",
             signal: abortController.signal,
@@ -2372,12 +2356,9 @@ export function WorkspaceShell({
       }
     };
 
-    const shouldPollImmediately =
-      activeView === "dashboard"
-        ? hasMountedLivePollingRef.current
-          ? true
-          : !(initialSnapshot && initialHistory.length > 0)
-        : false;
+    const shouldPollImmediately = hasMountedLivePollingRef.current
+      ? true
+      : !(initialSnapshot && initialHistory.length > 0);
 
     hasMountedLivePollingRef.current = true;
     scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);
@@ -2403,7 +2384,7 @@ export function WorkspaceShell({
 
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeView, dashboardRange, initialHistory.length, initialSnapshot]);
+  }, [activeView, initialHistory.length, initialSnapshot]);
 
   useEffect(() => {
     if (!detailedHistoryRequest) {
@@ -3006,10 +2987,7 @@ export function WorkspaceShell({
     onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) =>
       handleResizeStart("metrics", event),
     showStateWarning: Boolean(
-      (activeView === "dashboard" &&
-        sidebarSnapshot &&
-        !sidebarHistory.length) ||
-      metricsError,
+      (sidebarSnapshot && !sidebarHistory.length) || metricsError,
     ),
     summaryLabel: sidebarSnapshot
       ? `${sidebarSnapshot.containers.running} running containers on ${sidebarSnapshot.hostIp}.`
