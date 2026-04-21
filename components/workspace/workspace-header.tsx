@@ -1,14 +1,18 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+
+type WorkspaceHeaderStatusPill = {
+  label: string;
+};
 
 type WorkspaceHeaderProps = {
   activeViewDescription: string;
   activeViewLabel: string;
   activeViewStatusLabel: string;
   onResetLayoutAction: () => void;
+  statusPills?: WorkspaceHeaderStatusPill[];
   title: string;
 };
 
@@ -16,8 +20,17 @@ export function WorkspaceHeader({
   activeViewLabel,
   activeViewStatusLabel,
   onResetLayoutAction,
+  statusPills,
   title,
 }: WorkspaceHeaderProps) {
+  const headerItems = statusPills?.length
+    ? statusPills
+    : [
+        { label: activeViewStatusLabel },
+        { label: activeViewLabel },
+        { label: "Shared shell" },
+      ];
+
   return (
     <header className="flex h-15 shrink-0 items-center justify-between gap-4 border-b border-border/70 bg-linear-to-r from-background/98 via-muted/40 to-background/96 px-4 shadow-[0_20px_48px_-38px_rgba(15,23,42,0.45)] backdrop-blur-xl">
       <div className="flex min-w-0 items-center gap-3">
@@ -35,16 +48,20 @@ export function WorkspaceHeader({
         </div>
       </div>
 
-      <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex">
-        <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
-          {activeViewStatusLabel}
-        </Badge>
-        <Badge className="border-amber-200/80 bg-amber-50/90 text-amber-700">
-          {activeViewLabel}
-        </Badge>
-        <Badge className="border-border/60 bg-background/80 text-foreground">
-          Shared shell
-        </Badge>
+      <div className="hidden min-w-0 flex-1 items-center justify-center overflow-hidden xl:flex">
+        <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-medium tracking-tight text-muted-foreground/85">
+          {headerItems.map((item, index) => (
+            <div className="flex min-w-0 items-center gap-3" key={item.label}>
+              {index > 0 ? (
+                <span
+                  aria-hidden="true"
+                  className="h-1 w-1 shrink-0 rounded-full bg-border/90"
+                />
+              ) : null}
+              <span className="truncate whitespace-nowrap">{item.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">

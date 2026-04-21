@@ -106,6 +106,23 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function formatHeaderPillLabel(panel: {
+  currentCaption: string;
+  id: "cpu" | "memory" | "network" | "disk";
+  stats: Array<{ label: string; value: string }>;
+}) {
+  if (panel.id === "network" || panel.id === "disk") {
+    const primaryStat = panel.stats[0];
+    const secondaryStat = panel.stats[1];
+
+    if (primaryStat && secondaryStat) {
+      return `${primaryStat.label} ${primaryStat.value} / ${secondaryStat.label} ${secondaryStat.value}`;
+    }
+  }
+
+  return panel.currentCaption;
+}
+
 function buildMetricsRequestUrl(
   searchParams: Record<string, string | undefined>,
 ) {
@@ -231,6 +248,13 @@ export function MetricsDashboardShell({
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
     [sidebarHistory, sidebarSnapshot],
+  );
+  const headerStatusPills = useMemo(
+    () =>
+      systemPanels.map((panel) => ({
+        label: formatHeaderPillLabel(panel),
+      })),
+    [systemPanels],
   );
   const workspaceContainers = useMemo(
     () =>
@@ -755,6 +779,7 @@ export function MetricsDashboardShell({
         activeViewLabel="Dashboard"
         activeViewStatusLabel="Live metrics"
         onResetLayoutAction={handleResetLayout}
+        statusPills={headerStatusPills}
         title="Metrics dashboard"
       />
 

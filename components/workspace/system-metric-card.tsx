@@ -4,7 +4,6 @@ import { memo, useMemo } from "react";
 import type { EChartsCoreOption } from "echarts";
 
 import { EChartSurface } from "@/components/ui/echart-surface";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SystemMetricPanel } from "@/lib/metrics-dashboard-metrics";
 import {
@@ -325,10 +324,7 @@ export const SystemMetricCard = memo(function SystemMetricCard({
       )}
     >
       <CardHeader className="space-y-2 border-b border-border/60 pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <CardTitle>{panel.title}</CardTitle>
-          <Badge className={style.badge}>{panel.currentCaption}</Badge>
-        </div>
+        <CardTitle>{panel.title}</CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
         {panel.primaryValues.length ? (
