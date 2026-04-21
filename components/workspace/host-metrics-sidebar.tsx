@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { SystemMetricPanel } from "@/lib/metrics-dashboard-metrics";
 import { cn } from "@/lib/utils";
 
 import {
@@ -16,6 +17,7 @@ import {
   SectionLabel,
   Sparkline,
 } from "./workspace-ui";
+import { SystemMetricCard } from "./system-metric-card";
 
 export type HostMetricsStatus = {
   badgeClassName: string;
@@ -34,6 +36,7 @@ export type HostMetricsSidebarProps = {
   onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
   showStateWarning: boolean;
   summaryLabel: string;
+  systemPanels?: SystemMetricPanel[];
   throughputLabel: string;
   width: number;
 };
@@ -49,6 +52,7 @@ export function HostMetricsSidebar({
   onResizeStartAction,
   showStateWarning,
   summaryLabel,
+  systemPanels,
   throughputLabel,
   width,
 }: HostMetricsSidebarProps) {
@@ -130,33 +134,47 @@ export function HostMetricsSidebar({
               </div>
             ) : null}
 
-            {metricCards.map((metric) => {
-              const toneClasses = getToneClasses(metric.tone);
+            {systemPanels?.length ? (
+              <section className="space-y-3">
+                <div className="text-sm font-semibold tracking-tight text-foreground">
+                  Host overview
+                </div>
 
-              return (
-                <Card
-                  className="overflow-hidden border-border/70 bg-linear-to-br from-background/96 via-muted/16 to-background shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]"
-                  key={metric.title}
-                >
-                  <CardHeader className="space-y-2 border-b border-border/60 pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle>{metric.title}</CardTitle>
+                <div className="space-y-4">
+                  {systemPanels.map((panel) => (
+                    <SystemMetricCard key={panel.id} panel={panel} />
+                  ))}
+                </div>
+              </section>
+            ) : (
+              metricCards.map((metric) => {
+                const toneClasses = getToneClasses(metric.tone);
+
+                return (
+                  <Card
+                    className="overflow-hidden border-border/70 bg-linear-to-br from-background/96 via-muted/16 to-background shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]"
+                    key={metric.title}
+                  >
+                    <CardHeader className="space-y-2 border-b border-border/60 pb-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <CardTitle>{metric.title}</CardTitle>
+                        </div>
+                        <Badge className={cn("shadow-none", toneClasses.badge)}>
+                          {metric.delta}
+                        </Badge>
                       </div>
-                      <Badge className={cn("shadow-none", toneClasses.badge)}>
-                        {metric.delta}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-3">
-                    <div className="text-xl font-semibold tracking-tight text-foreground">
-                      {metric.value}
-                    </div>
-                    <Sparkline points={metric.points} tone={metric.tone} />
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardHeader>
+                    <CardContent className="space-y-3 pt-3">
+                      <div className="text-xl font-semibold tracking-tight text-foreground">
+                        {metric.value}
+                      </div>
+                      <Sparkline points={metric.points} tone={metric.tone} />
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </ScrollArea>
       </aside>

@@ -8,22 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DashboardRange } from "@/lib/metrics-range";
-import type {
-  AllContainersMetricsHistorySeries,
-  MetricsHistoryPoint,
-} from "@/lib/influx-metrics";
+import type { AllContainersMetricsHistorySeries } from "@/lib/influx-metrics";
 import type { DeploymentSummary } from "@/lib/persistence";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 import {
   buildContainerMetricPanels,
-  buildSystemMetricPanels,
   formatAxisValue,
   formatDashboardRangeLabel,
   formatDetailedTimestamp,
   formatLoadAverage,
   formatMetricValue,
   type ContainerMetricPanel,
-  type SystemMetricPanel,
 } from "@/lib/metrics-dashboard-metrics";
 
 import { SectionLabel } from "./workspace-ui";
@@ -43,7 +38,6 @@ type MetricsDashboardMainContentProps = {
   selectedContainerId: string | null;
   selectedContainerName: string | null;
   snapshot: MetricsSnapshot | null;
-  history: MetricsHistoryPoint[];
 };
 
 type TooltipPoint = {
@@ -53,41 +47,6 @@ type TooltipPoint = {
   marker?: string;
   seriesName?: string;
 };
-
-const SYSTEM_STYLES = {
-  cpu: {
-    badge: "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
-    border: "border-emerald-200/70",
-    chartTone: "rgba(15, 118, 110, 0.96)",
-    grid: "rgba(15, 118, 110, 0.12)",
-    surface: "from-emerald-50/88 via-background to-background",
-    tooltipAccent: "#0f766e",
-  },
-  disk: {
-    badge: "border-rose-200/80 bg-rose-50/90 text-rose-700",
-    border: "border-rose-200/70",
-    chartTone: "rgba(225, 29, 72, 0.94)",
-    grid: "rgba(225, 29, 72, 0.12)",
-    surface: "from-rose-50/88 via-background to-background",
-    tooltipAccent: "#e11d48",
-  },
-  memory: {
-    badge: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-    border: "border-amber-200/70",
-    chartTone: "rgba(217, 119, 6, 0.96)",
-    grid: "rgba(217, 119, 6, 0.12)",
-    surface: "from-amber-50/88 via-background to-background",
-    tooltipAccent: "#d97706",
-  },
-  network: {
-    badge: "border-sky-200/80 bg-sky-50/90 text-sky-700",
-    border: "border-sky-200/70",
-    chartTone: "rgba(2, 132, 199, 0.96)",
-    grid: "rgba(2, 132, 199, 0.12)",
-    surface: "from-sky-50/88 via-background to-background",
-    tooltipAccent: "#0284c7",
-  },
-} as const;
 
 function getLabelInterval(length: number) {
   if (length <= 6) {
@@ -113,226 +72,6 @@ function EmptyChartState({ message }: { message: string }) {
       {message}
     </div>
   );
-}
-
-function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
-  const style = SYSTEM_STYLES[panel.id];
-  const axisInterval = getLabelInterval(panel.labels.length);
-
-  const common = {
-    animation: false,
-    grid: {
-      bottom: 26,
-      containLabel: true,
-      left: 8,
-      right: 8,
-      top: 16,
-    },
-    tooltip: {
-      backgroundColor: "transparent",
-      borderWidth: 0,
-      extraCssText: "box-shadow:none;",
-      formatter: (value: unknown) => {
-        const params = Array.isArray(value)
-          ? (value as TooltipPoint[])
-          : [value as TooltipPoint];
-        const index = params[0]?.dataIndex ?? 0;
-        const title = formatDetailedTimestamp(
-          panel.timestamps[index] ??
-            panel.labels[index] ??
-            new Date().toISOString(),
-        );
-        const rows = [
-          createTooltipRow(
-            panel.title,
-            formatMetricValue(panel.primaryValues[index] ?? 0, panel.format),
-            style.tooltipAccent,
-          ),
-        ];
-
-        if (panel.secondaryValues?.length) {
-          rows.push(
-            createTooltipRow(
-              panel.id === "network" ? "Egress" : "Write",
-              formatMetricValue(
-                panel.secondaryValues[index] ?? 0,
-                panel.format,
-              ),
-              panel.id === "network" ? "#475569" : "#fb7185",
-            ),
-          );
-        }
-
-        return createTooltipShell(title, rows.join(""));
-      },
-      padding: 0,
-      trigger: "axis",
-      axisPointer: {
-        lineStyle: {
-          color: style.chartTone,
-          width: 1,
-        },
-        type: "line",
-      },
-    },
-    xAxis: {
-      axisLabel: {
-        color: "rgba(71,85,105,0.88)",
-        fontSize: 10,
-        interval: axisInterval,
-        margin: 12,
-      },
-      axisLine: {
-        lineStyle: {
-          color: "rgba(148,163,184,0.24)",
-        },
-      },
-      axisTick: {
-        show: false,
-      },
-      boundaryGap: panel.variant === "bars" || panel.variant === "banded",
-      data: panel.labels,
-      type: "category",
-    },
-    yAxis: {
-      axisLabel: {
-        color: "rgba(100,116,139,0.82)",
-        fontSize: 10,
-        formatter: (value: number) => formatAxisValue(value, panel.format),
-      },
-      axisLine: {
-        show: false,
-      },
-      axisTick: {
-        show: false,
-      },
-      splitLine: {
-        lineStyle: {
-          color: style.grid,
-          type: "dashed",
-        },
-      },
-      type: "value",
-    },
-  } satisfies EChartsCoreOption;
-
-  if (panel.variant === "area") {
-    return {
-      ...common,
-      series: [
-        {
-          areaStyle: {
-            color: {
-              colorStops: [
-                {
-                  color: "rgba(16,185,129,0.34)",
-                  offset: 0,
-                },
-                {
-                  color: "rgba(16,185,129,0.03)",
-                  offset: 1,
-                },
-              ],
-              type: "linear",
-              x: 0,
-              x2: 0,
-              y: 0,
-              y2: 1,
-            },
-          },
-          data: panel.primaryValues,
-          itemStyle: {
-            color: "#0f766e",
-          },
-          lineStyle: {
-            color: "#0f766e",
-            width: 3,
-          },
-          showSymbol: false,
-          smooth: true,
-          type: "line",
-        },
-      ],
-    };
-  }
-
-  if (panel.variant === "bars") {
-    return {
-      ...common,
-      series: [
-        {
-          barWidth: "56%",
-          data: panel.primaryValues,
-          itemStyle: {
-            borderRadius: [8, 8, 0, 0],
-            color: "rgba(245, 158, 11, 0.78)",
-          },
-          type: "bar",
-        },
-      ],
-    };
-  }
-
-  if (panel.variant === "dual-line") {
-    return {
-      ...common,
-      series: [
-        {
-          data: panel.primaryValues,
-          itemStyle: {
-            color: "#0284c7",
-          },
-          lineStyle: {
-            color: "#0284c7",
-            width: 2.8,
-          },
-          showSymbol: false,
-          smooth: true,
-          type: "line",
-        },
-        {
-          data: panel.secondaryValues ?? [],
-          itemStyle: {
-            color: "#475569",
-          },
-          lineStyle: {
-            color: "#475569",
-            type: "dashed",
-            width: 2.2,
-          },
-          showSymbol: false,
-          smooth: true,
-          type: "line",
-        },
-      ],
-    };
-  }
-
-  return {
-    ...common,
-    series: [
-      {
-        barGap: "30%",
-        barWidth: "34%",
-        data: panel.primaryValues,
-        itemStyle: {
-          borderRadius: [8, 8, 0, 0],
-          color: "rgba(244, 63, 94, 0.72)",
-        },
-        type: "bar",
-      },
-      {
-        barGap: "30%",
-        barWidth: "34%",
-        data: panel.secondaryValues ?? [],
-        itemStyle: {
-          borderRadius: [8, 8, 0, 0],
-          color: "rgba(251, 146, 60, 0.58)",
-        },
-        type: "bar",
-      },
-    ],
-  };
 }
 
 function buildContainerChartOption(
@@ -502,47 +241,6 @@ function buildContainerChartOption(
   };
 }
 
-const SystemMetricCard = memo(function SystemMetricCard({
-  panel,
-}: {
-  panel: SystemMetricPanel;
-}) {
-  const style = SYSTEM_STYLES[panel.id];
-  const option = useMemo(() => buildSystemChartOption(panel), [panel]);
-
-  return (
-    <Card
-      className={cn(
-        "overflow-hidden border bg-linear-to-br shadow-[0_26px_68px_-54px_rgba(15,23,42,0.3)]",
-        style.border,
-        style.surface,
-      )}
-    >
-      <CardHeader className="space-y-3 border-b border-border/60 pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <CardTitle>{panel.title}</CardTitle>
-          <Badge className={style.badge}>{panel.currentCaption}</Badge>
-        </div>
-        <div className="text-3xl font-semibold tracking-tight text-foreground">
-          {panel.currentValue}
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4">
-        {panel.primaryValues.length ? (
-          <EChartSurface
-            ariaLabel={`${panel.title} chart`}
-            className="h-44"
-            option={option}
-            setOptionOptions={CHART_SET_OPTION_OPTIONS}
-          />
-        ) : (
-          <EmptyChartState message="Waiting for recent samples for this metric." />
-        )}
-      </CardContent>
-    </Card>
-  );
-});
-
 const ContainerMetricCard = memo(function ContainerMetricCard({
   panel,
   loadingMessage,
@@ -597,12 +295,7 @@ export function MetricsDashboardMainContent({
   selectedContainerId,
   selectedContainerName,
   snapshot,
-  history,
 }: MetricsDashboardMainContentProps) {
-  const systemPanels = useMemo(
-    () => buildSystemMetricPanels(snapshot, history),
-    [history, snapshot],
-  );
   const containerPanels = useMemo(
     () =>
       buildContainerMetricPanels(
@@ -684,20 +377,6 @@ export function MetricsDashboardMainContent({
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold tracking-tight text-foreground">
-            Host overview
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-          {systemPanels.map((panel) => (
-            <SystemMetricCard key={panel.id} panel={panel} />
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm font-semibold tracking-tight text-foreground">
             Container load explorer
@@ -708,7 +387,9 @@ export function MetricsDashboardMainContent({
               {isAllContainerHistoryLoading ? (
                 <Badge variant="secondary">Refreshing history…</Badge>
               ) : null}
-              {containerHistoryStatusText ? <span>{containerHistoryStatusText}</span> : null}
+              {containerHistoryStatusText ? (
+                <span>{containerHistoryStatusText}</span>
+              ) : null}
             </div>
           ) : null}
         </div>

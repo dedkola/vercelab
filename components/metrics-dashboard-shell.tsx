@@ -28,7 +28,7 @@ import {
   ALL_CONTAINERS_ID,
   buildAggregateLogs,
   buildContainerListEntries,
-  buildLiveServerMetrics,
+  buildSystemMetricPanels,
   formatBytes,
   formatBytesPerSecond,
   formatClock,
@@ -228,8 +228,8 @@ export function MetricsDashboardShell({
   const loadedContainerHistoryRangeRef = useRef<string | null>(
     initialAllContainerHistory.length ? initialDashboardRange : null,
   );
-  const serverMetrics = useMemo(
-    () => buildLiveServerMetrics(sidebarSnapshot, sidebarHistory),
+  const systemPanels = useMemo(
+    () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
     [sidebarHistory, sidebarSnapshot],
   );
   const workspaceContainers = useMemo(
@@ -712,7 +712,7 @@ export function MetricsDashboardShell({
           1,
         )
       : "--",
-    metricCards: serverMetrics,
+    metricCards: [],
     metricsStatus,
     onCollapseAction: () => setIsMetricsCollapsed(true),
     onExpandAction: () => setIsMetricsCollapsed(false),
@@ -724,6 +724,7 @@ export function MetricsDashboardShell({
     summaryLabel: sidebarSnapshot
       ? `${sidebarSnapshot.containers.running} running containers on ${sidebarSnapshot.hostIp}.`
       : "Waiting for the first host snapshot.",
+    systemPanels,
     throughputLabel: sidebarSnapshot
       ? `Load avg ${formatLoadAverage(sidebarSnapshot.system.loadAverage)} • ${formatBytesPerSecond(sidebarSnapshot.network.rxBytesPerSecond)} down / ${formatBytesPerSecond(sidebarSnapshot.network.txBytesPerSecond)} up`
       : metricsStatus.helperText,
@@ -797,7 +798,6 @@ export function MetricsDashboardShell({
               isAllContainersSelected ? null : selectedContainerName
             }
             snapshot={sidebarSnapshot}
-            history={sidebarHistory}
           />
         </main>
 
