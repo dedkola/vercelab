@@ -28,25 +28,11 @@ function getContainerAriaLabel(container: ContainerListEntry) {
 }
 
 function formatContainerStatusLabel(container: ContainerListEntry) {
-  if (container.runtime?.health === "unhealthy") {
-    return "Unhealthy";
-  }
-
-  if (container.runtime?.health === "starting") {
-    return "Starting";
-  }
-
   if (container.runtime) {
-    return (
-      container.runtime.status.charAt(0).toUpperCase() +
-      container.runtime.status.slice(1)
-    );
+    return container.runtime.status === "running" ? "Up" : "Dw";
   }
 
-  return (
-    container.display.status.charAt(0).toUpperCase() +
-    container.display.status.slice(1)
-  );
+  return container.display.status === "running" ? "Up" : "Dw";
 }
 
 function getContainerStatusVariant(
@@ -72,10 +58,6 @@ function getContainerStatusVariant(
     default:
       return "default";
   }
-}
-
-function getContainerSecondaryLabel(container: ContainerListEntry) {
-  return container.sidebarSecondaryLabel;
 }
 
 type DashboardLeftSidebarProps = {
@@ -150,35 +132,25 @@ export function DashboardLeftSidebar({
 
         <ScrollArea className="h-full">
           <div className="w-full space-y-3 p-3">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <button
                 aria-label="All containers"
                 className={cn(
-                  "w-full rounded-[1.1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                  "w-full rounded-md border px-2.5 py-1.5 text-left transition-colors duration-200",
                   isAllContainersSelected ||
                     activeContainerId === "__all-containers__"
-                    ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/90 via-background to-background shadow-[0_18px_42px_-34px_rgba(16,185,129,0.24)]"
-                    : "border-border/70 bg-background/85 hover:bg-background/95",
+                    ? "border-emerald-300/80 bg-emerald-50/75"
+                    : "border-border/70 bg-background/85 hover:bg-muted/55",
                 )}
                 onClick={onAllContainersSelectAction}
                 type="button"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold tracking-tight text-foreground">
-                      All containers
-                    </div>
-                  </div>
-                  <Badge className="border-border/60 bg-background/80 text-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-xs font-semibold tracking-tight text-foreground">
+                    All
+                  </span>
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border/70 bg-background px-1.5 text-[10px] font-semibold text-foreground">
                     {containers.length}
-                  </Badge>
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                  <span className="truncate">Aggregate host view</span>
-                  <span>
-                    {runningContainersCount !== null
-                      ? `${runningContainersCount} running`
-                      : "Host view"}
                   </span>
                 </div>
               </button>
@@ -188,10 +160,10 @@ export function DashboardLeftSidebar({
                   <button
                     aria-label={getContainerAriaLabel(container)}
                     className={cn(
-                      "w-full rounded-[1.1rem] border px-3 py-2.5 text-left transition-all duration-200",
+                      "w-full rounded-md border px-2.5 py-1.5 text-left transition-colors duration-200",
                       activeContainerId === container.display.id
-                        ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/90 via-background to-background shadow-[0_18px_42px_-34px_rgba(16,185,129,0.24)]"
-                        : "border-border/70 bg-background/85 hover:bg-background/95",
+                        ? "border-emerald-300/80 bg-emerald-50/75"
+                        : "border-border/70 bg-background/85 hover:bg-muted/55",
                     )}
                     key={container.display.id}
                     onClick={() =>
@@ -199,29 +171,36 @@ export function DashboardLeftSidebar({
                     }
                     type="button"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "h-2 w-2 rounded-full",
-                              container.dotClassName,
-                            )}
-                          />
-                          <span className="truncate text-sm font-semibold tracking-tight text-foreground">
-                            {container.sidebarName}
-                          </span>
-                        </div>
-                      </div>
-                      <Badge variant={getContainerStatusVariant(container)}>
-                        {formatContainerStatusLabel(container)}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                      <span className="truncate">
-                        {getContainerSecondaryLabel(container)}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            container.dotClassName,
+                          )}
+                        />
+                        <span className="truncate text-xs font-medium tracking-tight text-foreground">
+                          {container.sidebarName}
+                        </span>
                       </span>
-                      <span>{container.display.uptime}</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                          getContainerStatusVariant(container) === "success"
+                            ? "text-emerald-700"
+                            : getContainerStatusVariant(container) === "warning"
+                              ? "text-amber-700"
+                              : "text-muted-foreground",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            container.dotClassName,
+                          )}
+                        />
+                        {formatContainerStatusLabel(container)}
+                      </span>
                     </div>
                   </button>
                 ))
