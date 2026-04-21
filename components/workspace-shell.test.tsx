@@ -696,6 +696,24 @@ describe("WorkspaceShell", () => {
     expect(screen.getAllByText(/disk i\/o/i).length).toBeGreaterThan(0);
   });
 
+  it("keeps the left sidebar live poll pinned to the current window", async () => {
+    render(<WorkspaceShell initialDashboardRange="24h" />);
+
+    await waitFor(() =>
+      expect(
+        fetchSpy.mock.calls.some(([input]) => {
+          const url = getRequestUrl(input);
+
+          return (
+            url.includes("/api/metrics?") &&
+            url.includes("mode=current") &&
+            !url.includes("range=")
+          );
+        }),
+      ).toBe(true),
+    );
+  });
+
   it("lets the user change the focused container history window and stores it in the URL", async () => {
     const user = userEvent.setup();
 
@@ -773,7 +791,9 @@ describe("WorkspaceShell", () => {
 
     await waitFor(() => {
       expect(
-        fetchSpy.mock.calls.some(([input]) => getRequestUrl(input) === "/api/github/repos"),
+        fetchSpy.mock.calls.some(
+          ([input]) => getRequestUrl(input) === "/api/github/repos",
+        ),
       ).toBe(true);
     });
 

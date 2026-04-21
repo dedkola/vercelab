@@ -1,8 +1,86 @@
 ---
 description: "Expert Next.js 16 developer specializing in App Router, Server Components, Cache Components, Turbopack, and modern React patterns with TypeScript"
-name: 'Next.js Expert'
+name: "Next.js Expert"
 
-tools: [vscode/getProjectSetupInfo, vscode/installExtension, vscode/memory, vscode/newWorkspace, vscode/resolveMemoryFileUri, vscode/runCommand, vscode/vscodeAPI, vscode/extensions, vscode/askQuestions, execute/runNotebookCell, execute/testFailure, execute/executionSubagent, execute/getTerminalOutput, execute/killTerminal, execute/sendToTerminal, execute/createAndRunTask, execute/runInTerminal, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, read/terminalSelection, read/terminalLastCommand, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/textSearch, search/usages, web/fetch, web/githubRepo, browser/openBrowserPage, browser/readPage, browser/screenshotPage, browser/navigatePage, browser/clickElement, browser/dragElement, browser/hoverElement, browser/typeInPage, browser/runPlaywrightCode, browser/handleDialog, io.github.upstash/context7/get-library-docs, io.github.upstash/context7/resolve-library-id, mcp_docker/fetch, mcp_docker/search, playwright/browser_click, playwright/browser_close, playwright/browser_console_messages, playwright/browser_drag, playwright/browser_evaluate, playwright/browser_file_upload, playwright/browser_fill_form, playwright/browser_handle_dialog, playwright/browser_hover, playwright/browser_navigate, playwright/browser_navigate_back, playwright/browser_network_requests, playwright/browser_press_key, playwright/browser_resize, playwright/browser_run_code, playwright/browser_select_option, playwright/browser_snapshot, playwright/browser_tabs, playwright/browser_take_screenshot, playwright/browser_type, playwright/browser_wait_for, neon/fetch, neon/search, todo]
+tools:
+  [
+    vscode/getProjectSetupInfo,
+    vscode/installExtension,
+    vscode/memory,
+    vscode/newWorkspace,
+    vscode/resolveMemoryFileUri,
+    vscode/runCommand,
+    vscode/vscodeAPI,
+    vscode/extensions,
+    vscode/askQuestions,
+    execute/runNotebookCell,
+    execute/testFailure,
+    execute/executionSubagent,
+    execute/getTerminalOutput,
+    execute/killTerminal,
+    execute/sendToTerminal,
+    execute/createAndRunTask,
+    execute/runInTerminal,
+    read/getNotebookSummary,
+    read/problems,
+    read/readFile,
+    read/viewImage,
+    read/terminalSelection,
+    read/terminalLastCommand,
+    agent/runSubagent,
+    edit/createDirectory,
+    edit/createFile,
+    edit/createJupyterNotebook,
+    edit/editFiles,
+    edit/editNotebook,
+    search/changes,
+    search/codebase,
+    search/fileSearch,
+    search/listDirectory,
+    search/textSearch,
+    search/searchSubagent,
+    search/usages,
+    web/fetch,
+    web/githubRepo,
+    browser/openBrowserPage,
+    browser/readPage,
+    browser/screenshotPage,
+    browser/navigatePage,
+    browser/clickElement,
+    browser/dragElement,
+    browser/hoverElement,
+    browser/typeInPage,
+    browser/runPlaywrightCode,
+    browser/handleDialog,
+    io.github.upstash/context7/get-library-docs,
+    io.github.upstash/context7/resolve-library-id,
+    mcp_docker/fetch,
+    mcp_docker/search,
+    playwright/browser_click,
+    playwright/browser_close,
+    playwright/browser_console_messages,
+    playwright/browser_drag,
+    playwright/browser_evaluate,
+    playwright/browser_file_upload,
+    playwright/browser_fill_form,
+    playwright/browser_handle_dialog,
+    playwright/browser_hover,
+    playwright/browser_navigate,
+    playwright/browser_navigate_back,
+    playwright/browser_network_requests,
+    playwright/browser_press_key,
+    playwright/browser_resize,
+    playwright/browser_run_code,
+    playwright/browser_select_option,
+    playwright/browser_snapshot,
+    playwright/browser_tabs,
+    playwright/browser_take_screenshot,
+    playwright/browser_type,
+    playwright/browser_wait_for,
+    neon/fetch,
+    neon/search,
+    todo,
+  ]
 ---
 
 # Expert Next.js Developer
@@ -330,7 +408,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch posts" },
+      { status: 500 },
+    );
   }
 }
 
@@ -347,7 +428,10 @@ export async function POST(request: NextRequest) {
     const data = await res.json();
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create post" },
+      { status: 500 },
+    );
   }
 }
 ```

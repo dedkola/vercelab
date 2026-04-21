@@ -206,7 +206,9 @@ export function MetricsDashboardShell({
     AllContainersMetricsHistorySeries[]
   >(initialAllContainerHistory);
   const [metricsError, setMetricsError] = useState<string | null>(null);
-  const [containerHistoryError, setContainerHistoryError] = useState<string | null>(null);
+  const [containerHistoryError, setContainerHistoryError] = useState<
+    string | null
+  >(null);
   const [isContainerHistoryLoading, setIsContainerHistoryLoading] = useState(
     initialSnapshot !== null && initialAllContainerHistory.length === 0,
   );
@@ -261,7 +263,7 @@ export function MetricsDashboardShell({
           badgeClassName:
             "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
           badgeLabel: "Live",
-          helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from the ${dashboardRange} history window.`,
+          helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from recent live history.`,
         }
       : sidebarSnapshot
         ? {
@@ -376,7 +378,6 @@ export function MetricsDashboardShell({
           buildMetricsRequestUrl({
             includeHistory: "true",
             mode: "current",
-            range: dashboardRange,
           }),
           {
             cache: "no-store",

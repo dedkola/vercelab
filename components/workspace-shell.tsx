@@ -2018,28 +2018,29 @@ export function WorkspaceShell({
           badgeLabel: "Live",
           badgeClassName:
             "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
-          helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from Influx-backed history.`,
+          helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from recent live history.`,
         }
       : sidebarSnapshot && activeView !== "dashboard"
         ? {
             badgeLabel: "Snapshot only",
-            badgeClassName:
-              "border-amber-200/80 bg-amber-50/90 text-amber-700",
+            badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
             helperText:
               "Git App Page keeps the sidebar light and refreshes detailed charts only on the dashboard.",
           }
-      : sidebarSnapshot
-        ? {
-            badgeLabel: "Snapshot only",
-            badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-            helperText:
-              "Waiting for InfluxDB history samples to populate the charts.",
-          }
-        : {
-            badgeLabel: "Connecting",
-            badgeClassName: "border-border/60 bg-background/80 text-foreground",
-            helperText: "Loading current host metrics.",
-          };
+        : sidebarSnapshot
+          ? {
+              badgeLabel: "Snapshot only",
+              badgeClassName:
+                "border-amber-200/80 bg-amber-50/90 text-amber-700",
+              helperText:
+                "Waiting for InfluxDB history samples to populate the charts.",
+            }
+          : {
+              badgeLabel: "Connecting",
+              badgeClassName:
+                "border-border/60 bg-background/80 text-foreground",
+              helperText: "Loading current host metrics.",
+            };
 
   const filteredContainers = useMemo(() => {
     if (activeView !== "dashboard") {
@@ -2310,7 +2311,6 @@ export function WorkspaceShell({
               ? {
                   includeHistory: "true",
                   mode: "current",
-                  range: dashboardRange,
                 }
               : {
                   includeHistory: "false",
@@ -3006,8 +3006,10 @@ export function WorkspaceShell({
     onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) =>
       handleResizeStart("metrics", event),
     showStateWarning: Boolean(
-      (activeView === "dashboard" && sidebarSnapshot && !sidebarHistory.length) ||
-        metricsError,
+      (activeView === "dashboard" &&
+        sidebarSnapshot &&
+        !sidebarHistory.length) ||
+      metricsError,
     ),
     summaryLabel: sidebarSnapshot
       ? `${sidebarSnapshot.containers.running} running containers on ${sidebarSnapshot.hostIp}.`

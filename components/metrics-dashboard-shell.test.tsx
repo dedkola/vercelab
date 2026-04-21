@@ -467,7 +467,7 @@ describe("MetricsDashboardShell", () => {
     const url = getRequestUrl(fetchSpy.mock.calls[0]![0]);
     expect(url).toContain("/api/metrics?");
     expect(url).toContain("mode=current");
-    expect(url).toContain("range=15m");
+    expect(url).not.toContain("range=");
     expect(url).not.toContain("allContainers=true");
   });
 
@@ -498,7 +498,7 @@ describe("MetricsDashboardShell", () => {
           return (
             url.includes("/api/metrics?") &&
             url.includes("mode=current") &&
-            url.includes("range=24h") &&
+            !url.includes("range=") &&
             !url.includes("allContainers=true")
           );
         }),
