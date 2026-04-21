@@ -59,6 +59,10 @@ const SYSTEM_STYLES = {
 
 const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
 
+function stripMeridiem(label: string) {
+  return label.replace(/\s?(AM|PM)$/i, "");
+}
+
 function getLabelInterval(length: number) {
   if (length <= 6) {
     return 0;
@@ -146,6 +150,7 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
     xAxis: {
       axisLabel: {
         color: "rgba(71,85,105,0.88)",
+        formatter: (value: string) => stripMeridiem(value),
         fontSize: 10,
         interval: axisInterval,
         margin: 12,
@@ -319,13 +324,10 @@ export const SystemMetricCard = memo(function SystemMetricCard({
         style.surface,
       )}
     >
-      <CardHeader className="space-y-3 border-b border-border/60 pb-4">
+      <CardHeader className="space-y-2 border-b border-border/60 pb-3">
         <div className="flex items-start justify-between gap-3">
           <CardTitle>{panel.title}</CardTitle>
           <Badge className={style.badge}>{panel.currentCaption}</Badge>
-        </div>
-        <div className="text-3xl font-semibold tracking-tight text-foreground">
-          {panel.currentValue}
         </div>
       </CardHeader>
       <CardContent className="pt-4">
