@@ -12,6 +12,14 @@ import { cn } from "@/lib/utils";
 import { ResizeHandle, SectionLabel } from "./workspace-ui";
 
 function getContainerAriaLabel(container: ContainerListEntry) {
+  if (container.deploymentStatus) {
+    if (container.runtime?.health && container.runtime.health !== "none") {
+      return `${container.sidebarName} ${container.deploymentStatus} ${container.runtime.health}`;
+    }
+
+    return `${container.sidebarName} ${container.deploymentStatus}`;
+  }
+
   if (container.runtime?.health && container.runtime.health !== "none") {
     return `${container.sidebarName} ${container.runtime.health}`;
   }
@@ -24,6 +32,10 @@ function getContainerAriaLabel(container: ContainerListEntry) {
 }
 
 function formatContainerStatusLabel(container: ContainerListEntry) {
+  if (container.deploymentStatus) {
+    return container.deploymentStatus === "running" ? "Up" : "Dn";
+  }
+
   if (container.runtime) {
     return container.runtime.status === "running" ? "Up" : "Dn";
   }
@@ -34,6 +46,18 @@ function formatContainerStatusLabel(container: ContainerListEntry) {
 function getContainerStatusVariant(
   container: ContainerListEntry,
 ): "success" | "warning" | "default" {
+  if (container.deploymentStatus) {
+    switch (container.deploymentStatus) {
+      case "running":
+        return "success";
+      case "failed":
+      case "deploying":
+        return "warning";
+      default:
+        return "default";
+    }
+  }
+
   if (container.runtime?.health === "unhealthy") {
     return "warning";
   }
@@ -53,6 +77,19 @@ function getContainerStatusVariant(
       return "warning";
     default:
       return "default";
+  }
+}
+
+function getStatusDotClassName(
+  variant: "success" | "warning" | "default",
+) {
+  switch (variant) {
+    case "success":
+      return "bg-emerald-500";
+    case "warning":
+      return "bg-amber-500";
+    default:
+      return "bg-slate-400";
   }
 }
 
@@ -148,54 +185,59 @@ export function DashboardLeftSidebar({
               </button>
 
               {containers.length ? (
-                containers.map((container) => (
-                  <button
-                    aria-label={getContainerAriaLabel(container)}
-                    className={cn(
-                      "w-full rounded-md border px-2.5 py-1.5 text-left transition-colors duration-200",
-                      activeContainerId === container.display.id
-                        ? "border-emerald-300/80 bg-emerald-50/75"
-                        : "border-border/70 bg-background/85 hover:bg-muted/55",
-                    )}
-                    key={container.display.id}
-                    onClick={() =>
-                      onContainerSelectAction(container.display.id)
-                    }
-                    type="button"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex min-w-0 items-center gap-2">
-                        <span
-                          className={cn(
-                            "h-1.5 w-1.5 shrink-0 rounded-full",
-                            container.dotClassName,
-                          )}
-                        />
-                        <span className="truncate text-xs font-medium tracking-tight text-foreground">
-                          {container.sidebarName}
+                containers.map((container) => {
+                  const statusVariant = getContainerStatusVariant(container);
+                  const statusDotClassName = getStatusDotClassName(statusVariant);
+
+                  return (
+                    <button
+                      aria-label={getContainerAriaLabel(container)}
+                      className={cn(
+                        "w-full rounded-md border px-2.5 py-1.5 text-left transition-colors duration-200",
+                        activeContainerId === container.display.id
+                          ? "border-emerald-300/80 bg-emerald-50/75"
+                          : "border-border/70 bg-background/85 hover:bg-muted/55",
+                      )}
+                      key={container.display.id}
+                      onClick={() =>
+                        onContainerSelectAction(container.display.id)
+                      }
+                      type="button"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex min-w-0 items-center gap-2">
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              statusDotClassName,
+                            )}
+                          />
+                          <span className="truncate text-xs font-medium tracking-tight text-foreground">
+                            {container.sidebarName}
+                          </span>
                         </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
-                          getContainerStatusVariant(container) === "success"
-                            ? "text-emerald-700"
-                            : getContainerStatusVariant(container) === "warning"
-                              ? "text-amber-700"
-                              : "text-muted-foreground",
-                        )}
-                      >
                         <span
                           className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            container.dotClassName,
+                            "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                            statusVariant === "success"
+                              ? "text-emerald-700"
+                              : statusVariant === "warning"
+                                ? "text-amber-700"
+                                : "text-muted-foreground",
                           )}
-                        />
-                        {formatContainerStatusLabel(container)}
-                      </span>
-                    </div>
-                  </button>
-                ))
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              statusDotClassName,
+                            )}
+                          />
+                          {formatContainerStatusLabel(container)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
               ) : (
                 <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-6 text-sm text-muted-foreground">
                   No matching containers

@@ -90,6 +90,7 @@ export type ContainerMetricPanel = {
 };
 
 type ContainerDescriptor = {
+  deploymentStatus: DeploymentSummary["status"] | null;
   history: ContainerMetricsHistoryPoint[];
   id: string;
   label: string;
@@ -318,6 +319,20 @@ function resolveHistoricalContainerLabel(
   }
 
   return formatManagedContainerLabel(containerName);
+}
+
+function mapDeploymentStatusToPreviewStatus(
+  deploymentStatus: DeploymentSummary["status"] | null,
+): PreviewContainerStatus {
+  if (deploymentStatus === "running") {
+    return "running";
+  }
+
+  if (deploymentStatus === "failed" || deploymentStatus === "deploying") {
+    return "degraded";
+  }
+
+  return "idle";
 }
 
 function buildRuntimeSummary(runtime: ContainerStats) {
@@ -568,25 +583,45 @@ function buildContainerDescriptors(
   if (snapshot?.containers.all.length) {
     return [...snapshot.containers.all]
       .sort((left, right) => left.name.localeCompare(right.name))
-      .map((runtime) => ({
-        history:
-          historyById.get(runtime.id) ?? historyByName.get(runtime.name) ?? [],
-        id: runtime.id,
-        label: resolveRuntimeContainerLabel(runtime, deployments),
-        runtime,
-      })) satisfies ContainerDescriptor[];
+      .map((runtime) => {
+        const projectName = runtime.projectName?.trim() ?? "";
+        const deployment = projectName
+          ? findDeploymentByProjectName(deployments, projectName)
+          : null;
+
+        return {
+          deploymentStatus: deployment?.status ?? null,
+          history:
+            historyById.get(runtime.id) ??
+            historyByName.get(runtime.name) ??
+            [],
+          id: runtime.id,
+          label: resolveRuntimeContainerLabel(runtime, deployments),
+          runtime,
+        };
+      }) satisfies ContainerDescriptor[];
   }
 
   return [...allContainerHistory]
     .sort((left, right) =>
       left.containerName.localeCompare(right.containerName),
     )
-    .map((series) => ({
-      history: series.points,
-      id: series.containerId,
-      label: resolveHistoricalContainerLabel(series.containerName, deployments),
-      runtime: null,
-    })) satisfies ContainerDescriptor[];
+    .map((series) => {
+      const parsedContainerName = parseComposeContainerName(
+        series.containerName,
+      );
+      const deployment = parsedContainerName
+        ? findDeploymentByProjectName(deployments, parsedContainerName.projectName)
+        : null;
+
+      return {
+        deploymentStatus: deployment?.status ?? null,
+        history: series.points,
+        id: series.containerId,
+        label: resolveHistoricalContainerLabel(series.containerName, deployments),
+        runtime: null,
+      };
+    }) satisfies ContainerDescriptor[];
 }
 
 function alignContainerSeries(
@@ -891,6 +926,7 @@ export function buildContainerListEntries(
   return descriptors.map((descriptor) => {
     if (descriptor.runtime) {
       return {
+        deploymentStatus: descriptor.deploymentStatus,
         display: buildDisplayContainer(
           descriptor.runtime,
           descriptor.history,
@@ -962,7 +998,7 @@ export function buildContainerListEntries(
       restarts: 0,
       signals: [],
       stack: "runtime",
-      status: "running" as const,
+      status: mapDeploymentStatusToPreviewStatus(descriptor.deploymentStatus),
       summary: `${descriptor.label} has historical samples but no live runtime metadata.`,
       tags: [],
       timeline: [],
@@ -974,6 +1010,7 @@ export function buildContainerListEntries(
     } satisfies PreviewContainer;
 
     return {
+      deploymentStatus: descriptor.deploymentStatus,
       display,
       dotClassName: getStatusDotClassName(display.status),
       preview: null,

@@ -122,6 +122,7 @@ export type PreviewContainer = {
 };
 
 export type ContainerListEntry = {
+  deploymentStatus: DeploymentSummary["status"] | null;
   display: PreviewContainer;
   dotClassName: string;
   preview: PreviewContainer | null;
@@ -1380,6 +1381,7 @@ function buildContainerSidebarMetadata(
 ) {
   if (!runtime?.projectName) {
     return {
+      deploymentStatus: null,
       sidebarName: formatManagedContainerLabel(display.name),
       sidebarSecondaryLabel: runtime
         ? (runtime.projectName ?? display.stack)
@@ -1393,6 +1395,7 @@ function buildContainerSidebarMetadata(
 
   if (!matchingDeployment) {
     return {
+      deploymentStatus: null,
       sidebarName: formatManagedContainerLabel(display.name),
       sidebarSecondaryLabel: runtime.projectName,
     };
@@ -1402,6 +1405,7 @@ function buildContainerSidebarMetadata(
     runtime.serviceName?.trim() || matchingDeployment.serviceName?.trim() || "";
 
   return {
+    deploymentStatus: null,
     sidebarName: serviceLabel
       ? `${matchingDeployment.appName} / ${serviceLabel}`
       : matchingDeployment.appName,
@@ -1446,6 +1450,7 @@ function buildContainerListEntries(
 
   if (!runtimeContainers.length) {
     return PREVIEW_CONTAINERS.map((preview) => ({
+      deploymentStatus: null,
       display: preview,
       dotClassName: getStatusDotClassName(preview.status),
       preview,
@@ -1468,6 +1473,7 @@ function buildContainerListEntries(
     );
 
     return {
+      deploymentStatus: sidebarMetadata.deploymentStatus,
       display,
       dotClassName: getRuntimeDotClassName(runtime),
       preview,
