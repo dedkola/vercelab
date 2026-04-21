@@ -26,7 +26,10 @@ import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-si
 import { GitAppPageLeftSidebar } from "@/components/workspace/git-app-page-left-sidebar";
 import { GitAppPageMainContent } from "@/components/workspace/git-app-page-main-content";
 import { GitAppPageRightSidebar } from "@/components/workspace/git-app-page-right-sidebar";
-import { type HostMetricsSidebarProps } from "@/components/workspace/host-metrics-sidebar";
+import {
+  HostMetricsSidebar,
+  type HostMetricsSidebarProps,
+} from "@/components/workspace/host-metrics-sidebar";
 import { WorkspaceFooter } from "@/components/workspace/workspace-footer";
 import { WorkspaceHeader } from "@/components/workspace/workspace-header";
 import { WorkspaceRail } from "@/components/workspace/workspace-rail";
@@ -47,6 +50,7 @@ import type {
   ContainerMetricsHistoryPoint,
   MetricsHistoryPoint,
 } from "@/lib/influx-metrics";
+import { buildSystemMetricPanels } from "@/lib/metrics-dashboard-metrics";
 import {
   DASHBOARD_RANGE_OPTIONS,
   type DashboardRange,
@@ -766,117 +770,6 @@ function getLatestDelta(
   }
 
   return formatSignedDelta(delta, formatter);
-}
-
-function getUsageTone(
-  value: number,
-  thresholds = { calm: 35, elevated: 75 },
-): MetricTone {
-  if (value >= thresholds.elevated) {
-    return "amber";
-  }
-
-  if (value <= thresholds.calm) {
-    return "emerald";
-  }
-
-  return "slate";
-}
-
-function buildLiveServerMetrics(
-  snapshot: MetricsSnapshot | null,
-  history: MetricsHistoryPoint[],
-): MetricCard[] {
-  if (!snapshot) {
-    return [
-      {
-        title: "CPU pressure",
-        value: "--",
-        caption: "Waiting for live host samples.",
-        delta: "Connecting",
-        points: [],
-        tone: "slate",
-      },
-      {
-        title: "Memory footprint",
-        value: "--",
-        caption: "Waiting for InfluxDB history.",
-        delta: "Connecting",
-        points: [],
-        tone: "slate",
-      },
-      {
-        title: "Network throughput",
-        value: "--",
-        caption: "Recent ingress and egress will appear here.",
-        delta: "Connecting",
-        points: [],
-        tone: "slate",
-      },
-      {
-        title: "Container demand",
-        value: "--",
-        caption: "Aggregate container pressure will appear here.",
-        delta: "Connecting",
-        points: [],
-        tone: "slate",
-      },
-    ];
-  }
-
-  const cpuPoints = history.map((point) => point.cpu);
-  const memoryPoints = history.map((point) => point.memory);
-  const networkPoints = history.map((point) => point.networkTotal);
-  const containersCpuPoints = history.map((point) => point.containersCpu);
-
-  return [
-    {
-      title: "CPU pressure",
-      value: formatPercent(snapshot.system.cpuPercent),
-      caption: `Load avg ${formatLoadAverage(snapshot.system.loadAverage)}.`,
-      delta: getLatestDelta(cpuPoints, (delta) => formatPercent(delta, 1)),
-      points: cpuPoints,
-      tone: getUsageTone(snapshot.system.cpuPercent),
-    },
-    {
-      title: "Memory footprint",
-      value: formatPercent(snapshot.system.memoryPercent),
-      caption: `${formatBytes(snapshot.system.memoryUsedBytes)} of ${formatBytes(snapshot.system.memoryTotalBytes)} in use.`,
-      delta: getLatestDelta(memoryPoints, (delta) => formatPercent(delta, 1)),
-      points: memoryPoints,
-      tone: getUsageTone(snapshot.system.memoryPercent, {
-        calm: 45,
-        elevated: 80,
-      }),
-    },
-    {
-      title: "Network throughput",
-      value: formatBytesPerSecond(
-        snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond,
-      ),
-      caption: `${snapshot.network.interfaces.length} active interfaces tracked.`,
-      delta: getLatestDelta(
-        networkPoints,
-        (delta) => formatBytesPerSecond(delta),
-        1024,
-      ),
-      points: networkPoints,
-      tone: "slate",
-    },
-    {
-      title: "Container demand",
-      value: formatPercent(snapshot.containers.cpuPercent),
-      caption: `${snapshot.containers.running} running containers using ${formatBytes(snapshot.containers.memoryUsedBytes)}.`,
-      delta: getLatestDelta(containersCpuPoints, (delta) =>
-        formatPercent(delta, 1),
-      ),
-      points: containersCpuPoints,
-      tone: getUsageTone(snapshot.containers.cpuPercent, {
-        calm: 20,
-        elevated: 70,
-      }),
-    },
-  ];
 }
 
 function formatRuntimeHealthLabel(health: ContainerStats["health"]) {
@@ -1996,8 +1889,8 @@ export function WorkspaceShell({
     startWidth: 0,
     startX: 0,
   });
-  const serverMetrics = useMemo(
-    () => buildLiveServerMetrics(sidebarSnapshot, sidebarHistory),
+  const systemPanels = useMemo(
+    () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
     [sidebarHistory, sidebarSnapshot],
   );
   const workspaceContainers = useMemo(
@@ -2980,7 +2873,7 @@ export function WorkspaceShell({
           1,
         )
       : "--",
-    metricCards: serverMetrics,
+    metricCards: [],
     metricsStatus,
     onCollapseAction: () => setIsMetricsCollapsed(true),
     onExpandAction: () => setIsMetricsCollapsed(false),
@@ -2992,6 +2885,7 @@ export function WorkspaceShell({
     summaryLabel: sidebarSnapshot
       ? `${sidebarSnapshot.containers.running} running containers on ${sidebarSnapshot.hostIp}.`
       : "Waiting for the first host snapshot.",
+    systemPanels,
     throughputLabel: sidebarSnapshot
       ? `Load avg ${formatLoadAverage(sidebarSnapshot.system.loadAverage)} • ${formatBytesPerSecond(sidebarSnapshot.network.rxBytesPerSecond)} down / ${formatBytesPerSecond(sidebarSnapshot.network.txBytesPerSecond)} up`
       : metricsStatus.helperText,
@@ -3074,11 +2968,12 @@ export function WorkspaceShell({
           onViewChangeAction={handleViewChange}
         />
 
+        <HostMetricsSidebar {...hostMetricsProps} />
+
         {activeView === "dashboard" ? (
           <DashboardLeftSidebar
             activeContainerId={activeContainerId}
             containers={filteredContainers}
-            hostMetricsProps={hostMetricsProps}
             isAllContainersSelected={isAllContainersSelected}
             listWidth={listWidth}
             onAllContainersSelectAction={() =>
@@ -3102,7 +2997,6 @@ export function WorkspaceShell({
             branchHelperText={branchHelperText}
             branchOptions={branchOptions}
             draftApp={draftApp}
-            hostMetricsProps={hostMetricsProps}
             isBranchLoading={branchState.isLoading}
             isCreateAppExpanded={isCreateAppExpanded}
             isCreateAppPending={isCreateAppPending}

@@ -13,7 +13,10 @@ import { GitBranch, Home, type LucideIcon } from "lucide-react";
 
 import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
 import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-sidebar";
-import { type HostMetricsSidebarProps } from "@/components/workspace/host-metrics-sidebar";
+import {
+  HostMetricsSidebar,
+  type HostMetricsSidebarProps,
+} from "@/components/workspace/host-metrics-sidebar";
 import { MetricsDashboardMainContent } from "@/components/workspace/metrics-dashboard-main-content";
 import { WorkspaceFooter } from "@/components/workspace/workspace-footer";
 import { WorkspaceHeader } from "@/components/workspace/workspace-header";
@@ -790,10 +793,11 @@ export function MetricsDashboardShell({
           onViewChangeAction={handleViewChange}
         />
 
+        <HostMetricsSidebar {...hostMetricsProps} />
+
         <DashboardLeftSidebar
           activeContainerId={activeContainerId}
           containers={filteredContainers}
-          hostMetricsProps={hostMetricsProps}
           isAllContainersSelected={isAllContainersSelected}
           listWidth={listWidth}
           onAllContainersSelectAction={() =>

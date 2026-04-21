@@ -27,7 +27,8 @@ vi.mock("@/lib/system-metrics", () => ({
 }));
 
 vi.mock("@/lib/influx-metrics", () => ({
-  getContainerMetricsHistoryFromInflux: getContainerMetricsHistoryFromInfluxMock,
+  getContainerMetricsHistoryFromInflux:
+    getContainerMetricsHistoryFromInfluxMock,
   getMetricsHistoryFromInflux: getMetricsHistoryFromInfluxMock,
 }));
 
@@ -41,7 +42,7 @@ describe("loadWorkspaceShellData", () => {
     });
   });
 
-  it("skips initial metrics history for git app page first paint", async () => {
+  it("loads initial metrics history for git app page first paint by default", async () => {
     listDeploymentSummariesMock.mockResolvedValue([
       {
         id: "dep-1",
@@ -115,22 +116,44 @@ describe("loadWorkspaceShellData", () => {
         ],
       },
     });
-
-    const result = await loadWorkspaceShellData(
-      undefined,
-      "git-app-page",
+    getMetricsHistoryFromInfluxMock.mockResolvedValue([
       {
-        includeMetricsHistory: false,
+        containersCpu: 8,
+        containersMemory: 16,
+        cpu: 12,
+        diskRead: 120,
+        diskWrite: 88,
+        memory: 31,
+        networkIn: 240,
+        networkOut: 120,
+        networkTotal: 360,
+        timestamp: "2026-04-17T08:00:00.000Z",
       },
-    );
+    ]);
+    getContainerMetricsHistoryFromInfluxMock.mockResolvedValue([
+      {
+        cpuPercent: 8,
+        diskRead: 0,
+        diskTotal: 0,
+        diskWrite: 0,
+        memoryPercent: 16,
+        memoryUsedBytes: 512,
+        networkIn: 120,
+        networkOut: 80,
+        networkTotal: 200,
+        timestamp: "2026-04-17T08:00:00.000Z",
+      },
+    ]);
+
+    const result = await loadWorkspaceShellData(undefined, "git-app-page");
 
     expect(listDeploymentSummariesMock).toHaveBeenCalledTimes(1);
-    expect(getMetricsHistoryFromInfluxMock).not.toHaveBeenCalled();
-    expect(getContainerMetricsHistoryFromInfluxMock).not.toHaveBeenCalled();
+    expect(getMetricsHistoryFromInfluxMock).toHaveBeenCalledTimes(1);
+    expect(getContainerMetricsHistoryFromInfluxMock).toHaveBeenCalledTimes(1);
     expect(result.baseDomain).toBe("apps.example.com");
     expect(result.initialView).toBe("git-app-page");
-    expect(result.initialHistory).toEqual([]);
-    expect(result.initialContainerHistory).toEqual([]);
+    expect(result.initialHistory).toHaveLength(1);
+    expect(result.initialContainerHistory).toHaveLength(1);
     expect(result.initialDeployments).toHaveLength(1);
   });
 });

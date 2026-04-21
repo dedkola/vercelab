@@ -9,10 +9,6 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-import {
-  HostMetricsSidebar,
-  type HostMetricsSidebarProps,
-} from "./host-metrics-sidebar";
 import { ResizeHandle, SectionLabel } from "./workspace-ui";
 
 function getContainerAriaLabel(container: ContainerListEntry) {
@@ -63,7 +59,6 @@ function getContainerStatusVariant(
 type DashboardLeftSidebarProps = {
   activeContainerId: string;
   containers: ContainerListEntry[];
-  hostMetricsProps: HostMetricsSidebarProps;
   isAllContainersSelected: boolean;
   listWidth: number;
   onAllContainersSelectAction: () => void;
@@ -78,7 +73,6 @@ type DashboardLeftSidebarProps = {
 export function DashboardLeftSidebar({
   activeContainerId,
   containers,
-  hostMetricsProps,
   isAllContainersSelected,
   listWidth,
   onAllContainersSelectAction,
@@ -91,8 +85,6 @@ export function DashboardLeftSidebar({
 }: DashboardLeftSidebarProps) {
   return (
     <>
-      <HostMetricsSidebar {...hostMetricsProps} />
-
       <aside
         className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
         style={{ width: `${listWidth}px` }}

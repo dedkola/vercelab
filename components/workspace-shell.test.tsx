@@ -46,6 +46,22 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+vi.mock("@/components/ui/echart-surface", () => ({
+  EChartSurface: ({
+    ariaLabel,
+    className,
+  }: {
+    ariaLabel: string;
+    className?: string;
+  }) => (
+    <div
+      aria-label={ariaLabel}
+      className={className}
+      data-testid="echart-surface"
+    />
+  ),
+}));
+
 describe("WorkspaceShell", () => {
   const fetchSpy = vi.spyOn(global, "fetch");
 
@@ -787,7 +803,19 @@ describe("WorkspaceShell", () => {
   });
 
   it("loads live sidebar history on the git app page first paint", async () => {
+    const user = userEvent.setup();
+
     render(<WorkspaceShell initialView="git-app-page" />);
+
+    const showMetricsButton = screen.queryByRole("button", {
+      name: /show server load sidebar/i,
+    });
+
+    if (showMetricsButton) {
+      await user.click(showMetricsButton);
+    }
+
+    expect(screen.getAllByText(/^host cpu$/i)[0]).toBeVisible();
 
     await waitFor(() => {
       expect(

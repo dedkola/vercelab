@@ -20,10 +20,6 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-import {
-  HostMetricsSidebar,
-  type HostMetricsSidebarProps,
-} from "./host-metrics-sidebar";
 import { ResizeHandle, SectionLabel } from "./workspace-ui";
 
 type SelectOption = {
@@ -51,7 +47,6 @@ type GitAppPageLeftSidebarProps = {
   branchHelperText: string | null;
   branchOptions: SelectOption[];
   draftApp: DraftAppState;
-  hostMetricsProps: HostMetricsSidebarProps;
   isBranchLoading: boolean;
   isCreateAppExpanded: boolean;
   isCreateAppPending: boolean;
@@ -81,7 +76,6 @@ export function GitAppPageLeftSidebar({
   branchHelperText,
   branchOptions,
   draftApp,
-  hostMetricsProps,
   isBranchLoading,
   isCreateAppExpanded,
   isCreateAppPending,
@@ -111,8 +105,6 @@ export function GitAppPageLeftSidebar({
 
   return (
     <>
-      <HostMetricsSidebar {...hostMetricsProps} />
-
       <aside
         className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
         style={{ width: `${listWidth}px` }}

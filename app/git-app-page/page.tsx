@@ -21,9 +21,7 @@ type GitAppPageRouteProps = {
 export default async function GitAppPageRoute({
   searchParams,
 }: GitAppPageRouteProps) {
-  const pageData = await loadWorkspaceShellData(searchParams, "git-app-page", {
-    includeMetricsHistory: false,
-  });
+  const pageData = await loadWorkspaceShellData(searchParams, "git-app-page");
 
   return <WorkspaceShell {...pageData} />;
 }
