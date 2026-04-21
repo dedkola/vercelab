@@ -26,6 +26,7 @@ import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-si
 import { GitAppPageLeftSidebar } from "@/components/workspace/git-app-page-left-sidebar";
 import { GitAppPageMainContent } from "@/components/workspace/git-app-page-main-content";
 import { GitAppPageRightSidebar } from "@/components/workspace/git-app-page-right-sidebar";
+import { useOptionalWorkspaceChrome } from "@/components/workspace/workspace-chrome-shell";
 import {
   HostMetricsSidebar,
   type HostMetricsSidebarProps,
@@ -134,6 +135,7 @@ export type ContainerListEntry = {
 
 type WorkspaceShellProps = {
   baseDomain?: string;
+  embedded?: boolean;
   initialContainerHistory?: ContainerMetricsHistoryPoint[];
   initialDashboardRange?: DashboardRange;
   initialDeployments?: DeploymentSummary[];
@@ -1801,6 +1803,7 @@ function createDraftFromRepository(
 
 export function WorkspaceShell({
   baseDomain,
+  embedded = false,
   initialContainerHistory = [],
   initialDashboardRange = "15m",
   initialDeployments,
@@ -1809,6 +1812,8 @@ export function WorkspaceShell({
   initialSnapshot = null,
 }: WorkspaceShellProps) {
   const router = useRouter();
+  const sharedChrome = useOptionalWorkspaceChrome();
+  const isEmbedded = embedded && sharedChrome !== null;
   const deploymentSeed = initialDeployments ?? EMPTY_DEPLOYMENTS;
   const [metricsWidth, setMetricsWidth] = useStoredPanelWidth(
     METRICS_PANEL_STORAGE_KEY,
@@ -1947,16 +1952,19 @@ export function WorkspaceShell({
       container.searchText.includes(normalizedQuery),
     );
   }, [activeView, searchQuery, workspaceContainers]);
+  const effectiveRepositoryState = isEmbedded
+    ? sharedChrome.repositoryState
+    : repositoryState;
   const repositoryOptions = useMemo(
-    () => buildRepositoryOptions(repositoryState.repositories),
-    [repositoryState.repositories],
+    () => buildRepositoryOptions(effectiveRepositoryState.repositories),
+    [effectiveRepositoryState.repositories],
   );
   const selectedRepository = useMemo(
     () =>
-      repositoryState.repositories.find(
+      effectiveRepositoryState.repositories.find(
         (repository) => repository.cloneUrl === draftApp.repositoryUrl,
       ) ?? null,
-    [draftApp.repositoryUrl, repositoryState.repositories],
+    [draftApp.repositoryUrl, effectiveRepositoryState.repositories],
   );
   const branchOptions = useMemo(
     () =>
@@ -2121,10 +2129,18 @@ export function WorkspaceShell({
   }, [deploymentSeed]);
 
   useEffect(() => {
+    if (isEmbedded) {
+      return;
+    }
+
     setDashboardRange(initialDashboardRange);
-  }, [initialDashboardRange]);
+  }, [initialDashboardRange, isEmbedded]);
 
   useEffect(() => {
+    if (isEmbedded) {
+      return;
+    }
+
     if (typeof window === "undefined") {
       return;
     }
@@ -2143,7 +2159,7 @@ export function WorkspaceShell({
     if (nextHref !== currentHref) {
       window.history.replaceState(window.history.state, "", nextHref);
     }
-  }, [dashboardRange]);
+  }, [dashboardRange, isEmbedded]);
 
   useEffect(() => {
     if (!deployments.length) {
@@ -2157,6 +2173,10 @@ export function WorkspaceShell({
   }, [deployments, selectedAppId]);
 
   useEffect(() => {
+    if (isEmbedded) {
+      return;
+    }
+
     let active = true;
     let timeoutId: number | null = null;
     let abortController: AbortController | null = null;
@@ -2283,7 +2303,7 @@ export function WorkspaceShell({
 
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeView, initialHistory.length, initialSnapshot]);
+  }, [activeView, initialHistory.length, initialSnapshot, isEmbedded]);
 
   useEffect(() => {
     if (!detailedHistoryRequest) {
@@ -2442,7 +2462,7 @@ export function WorkspaceShell({
         setIsLogsCollapsed(true);
       }
 
-      if (window.innerWidth < 1120) {
+      if (!isEmbedded && window.innerWidth < 960) {
         setIsMetricsCollapsed(true);
       }
     }
@@ -2453,7 +2473,7 @@ export function WorkspaceShell({
     return () => {
       window.removeEventListener("resize", syncResponsivePanels);
     };
-  }, []);
+  }, [isEmbedded]);
 
   function handleResizeStart(
     kind: "metrics" | "list" | "logs",
@@ -2476,17 +2496,31 @@ export function WorkspaceShell({
     document.body.style.cursor = "col-resize";
   }
 
+  const handleLocalResetLayout = useCallback(() => {
+    const storage = getStorage();
+
+    storage?.removeItem(LIST_PANEL_STORAGE_KEY);
+    storage?.removeItem(LOGS_PANEL_STORAGE_KEY);
+    setListWidth(DEFAULT_LIST_WIDTH_PX);
+    setLogsWidth(DEFAULT_LOGS_WIDTH_PX);
+    setIsLogsCollapsed(false);
+  }, [setListWidth, setLogsWidth]);
+
+  useEffect(() => {
+    if (!isEmbedded) {
+      return;
+    }
+
+    return sharedChrome.registerResetHandler(handleLocalResetLayout);
+  }, [handleLocalResetLayout, isEmbedded, sharedChrome]);
+
   function handleResetLayout() {
     const storage = getStorage();
 
     storage?.removeItem(METRICS_PANEL_STORAGE_KEY);
-    storage?.removeItem(LIST_PANEL_STORAGE_KEY);
-    storage?.removeItem(LOGS_PANEL_STORAGE_KEY);
     setMetricsWidth(DEFAULT_METRICS_WIDTH_PX);
-    setListWidth(DEFAULT_LIST_WIDTH_PX);
-    setLogsWidth(DEFAULT_LOGS_WIDTH_PX);
     setIsMetricsCollapsed(false);
-    setIsLogsCollapsed(false);
+    handleLocalResetLayout();
   }
 
   const handleViewChange = useCallback(
@@ -2543,19 +2577,23 @@ export function WorkspaceShell({
     }
   }, []);
 
+  const loadRepositoriesAction = isEmbedded
+    ? sharedChrome.loadRepositories
+    : loadRepositories;
+
   useEffect(() => {
     if (
       activeView === "git-app-page" &&
-      !repositoryState.hasLoaded &&
-      !repositoryState.isLoading
+      !effectiveRepositoryState.hasLoaded &&
+      !effectiveRepositoryState.isLoading
     ) {
-      void loadRepositories();
+      void loadRepositoriesAction();
     }
   }, [
     activeView,
-    loadRepositories,
-    repositoryState.hasLoaded,
-    repositoryState.isLoading,
+    effectiveRepositoryState.hasLoaded,
+    effectiveRepositoryState.isLoading,
+    loadRepositoriesAction,
   ]);
 
   const loadBranches = useCallback(async (repository: GitHubRepository) => {
@@ -2823,8 +2861,12 @@ export function WorkspaceShell({
     setIsCreateAppExpanded((current) => {
       const next = !current;
 
-      if (next && !repositoryState.hasLoaded && !repositoryState.isLoading) {
-        void loadRepositories();
+      if (
+        next &&
+        !effectiveRepositoryState.hasLoaded &&
+        !effectiveRepositoryState.isLoading
+      ) {
+        void loadRepositoriesAction();
       }
 
       return next;
@@ -2832,7 +2874,7 @@ export function WorkspaceShell({
   }
 
   function handleRepositorySelect(value: string) {
-    const repository = repositoryState.repositories.find(
+    const repository = effectiveRepositoryState.repositories.find(
       (item) => String(item.id) === value,
     );
 
@@ -2953,6 +2995,151 @@ export function WorkspaceShell({
   const selectedDeploymentDomain = selectedDeployment
     ? formatDeploymentDomain(selectedDeployment, baseDomain)
     : "";
+  const workspacePanels = (
+    <>
+      {activeView === "dashboard" ? (
+        <DashboardLeftSidebar
+          activeContainerId={activeContainerId}
+          containers={filteredContainers}
+          isAllContainersSelected={isAllContainersSelected}
+          listWidth={listWidth}
+          onAllContainersSelectAction={() =>
+            setSelectedContainerId(ALL_CONTAINERS_ID)
+          }
+          onContainerSelectAction={setSelectedContainerId}
+          onListResizeStartAction={(event) => handleResizeStart("list", event)}
+          onSearchQueryChangeAction={setSearchQuery}
+          runningContainersCount={sidebarSnapshot?.containers.running ?? null}
+          searchQuery={searchQuery}
+          visibleCount={filteredContainers.length}
+        />
+      ) : (
+        <GitAppPageLeftSidebar
+          appItems={gitSidebarAppItems}
+          appSearchQuery={appSearchQuery}
+          baseDomain={baseDomain}
+          branchError={branchState.error}
+          branchHelperText={branchHelperText}
+          branchOptions={branchOptions}
+          draftApp={draftApp}
+          isBranchLoading={branchState.isLoading}
+          isCreateAppExpanded={isCreateAppExpanded}
+          isCreateAppPending={isCreateAppPending}
+          listWidth={listWidth}
+          liveAppsCount={liveAppsCount}
+          onAppSearchQueryChangeAction={setAppSearchQuery}
+          onCreateAppAction={handleCreateApp}
+          onDraftChangeAction={handleDraftAppChange}
+          onListResizeStartAction={(event) => handleResizeStart("list", event)}
+          onRepositorySelectAction={handleRepositorySelect}
+          onSelectAppAction={setSelectedAppId}
+          onToggleCreateAppAction={handleToggleCreateAppPanel}
+          repositoryOptions={repositoryOptions}
+          repositoryState={effectiveRepositoryState}
+          selectedRepositorySummary={selectedRepositorySummary}
+          selectedRepositoryValue={selectedRepositoryValue}
+          totalAppsCount={deployments.length}
+        />
+      )}
+
+      <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
+        {activeView === "dashboard" ? (
+          isAllContainersSelected ? (
+            <DashboardAllContainersContent
+              charts={allContainersMetricCharts}
+              onRangeChangeAction={setDashboardRange}
+              range={dashboardRange}
+              rangeOptions={ALL_CONTAINERS_RANGE_OPTIONS}
+              snapshot={sidebarSnapshot}
+            />
+          ) : (
+            <DashboardMainContent
+              focusedMetricCharts={focusedMetricCharts}
+              healthOrNodeLabel={healthOrNodeLabel}
+              onRangeChangeAction={setDashboardRange}
+              projectOrRegionLabel={projectOrRegionLabel}
+              range={dashboardRange}
+              rangeOptions={ALL_CONTAINERS_RANGE_OPTIONS}
+              runtimePillLabel={runtimePillLabel}
+              sampleContextLabel={sampleContextLabel}
+              selectedContainer={selectedContainer}
+              selectedRuntimeContainer={selectedRuntimeContainer}
+              selectedStatusLabel={selectedContainerStatusLabel}
+              selectedStatusVariant={selectedContainerStatusVariant}
+              serviceOrPortLabel={serviceOrPortLabel}
+            />
+          )
+        ) : selectedDeployment ? (
+          <GitAppPageMainContent
+            baseDomain={baseDomain}
+            deployment={selectedDeployment}
+            deploymentHref={selectedDeploymentHref}
+            deploymentStatusLabel={selectedDeploymentStatusLabel}
+            deploymentStatusVariant={selectedDeploymentStatusVariant}
+            onDeleteAction={handleDeleteApp}
+            onFetchAction={handleFetchApp}
+            onRefreshAction={() => router.refresh()}
+            onRecreateAction={handleRecreateApp}
+            onSaveSettingsAction={handleSaveApp}
+            onStartAction={handleStartApp}
+            onStopAction={handleStopApp}
+            publicDomainLabel={selectedDeploymentDomain}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <div className="max-w-lg rounded-[1.75rem] border border-border/70 bg-background/86 px-6 py-8 text-center shadow-[0_28px_72px_-48px_rgba(15,23,42,0.3)]">
+              <SectionLabel icon="github" text="Git App Page" />
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
+                Add your first app
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Open the compact create panel in the sidebar to pick a
+                repository and start a live deployment.
+              </p>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {activeView === "dashboard" ? (
+        <DashboardRightSidebar
+          activeLogView={dashboardLogView}
+          isCollapsed={isLogsCollapsed}
+          isAggregateSelection={isAllContainersSelected}
+          logOptions={LOG_VIEW_OPTIONS}
+          logs={previewLogs}
+          onCollapseAction={() => setIsLogsCollapsed(true)}
+          onExpandAction={() => setIsLogsCollapsed(false)}
+          onLogViewChangeAction={setDashboardLogView}
+          onResizeStartAction={(event) => handleResizeStart("logs", event)}
+          selectedContainerName={aggregateLogsTargetName}
+          selectedContainerRegion={aggregateLogsTargetRegion}
+          selectedContainerStatusLabel={aggregateLogsStatusLabel}
+          selectedContainerStatusVariant={aggregateLogsStatusVariant}
+          selectedPreviewAvailable={
+            !isAllContainersSelected && Boolean(selectedPreviewContainer)
+          }
+          width={logsWidth}
+        />
+      ) : (
+        <GitAppPageRightSidebar
+          activeLogTab={appLogTab}
+          deploymentId={selectedDeployment?.id ?? null}
+          deployments={deployments}
+          isCollapsed={isLogsCollapsed}
+          onCollapseAction={() => setIsLogsCollapsed(true)}
+          onExpandAction={() => setIsLogsCollapsed(false)}
+          onLogTabChangeAction={setAppLogTab}
+          onResizeStartAction={(event) => handleResizeStart("logs", event)}
+          width={logsWidth}
+        />
+      )}
+    </>
+  );
+
+  if (isEmbedded) {
+    return workspacePanels;
+  }
 
   return (
     <section
@@ -2975,148 +3162,7 @@ export function WorkspaceShell({
         />
 
         <HostMetricsSidebar {...hostMetricsProps} />
-
-        {activeView === "dashboard" ? (
-          <DashboardLeftSidebar
-            activeContainerId={activeContainerId}
-            containers={filteredContainers}
-            isAllContainersSelected={isAllContainersSelected}
-            listWidth={listWidth}
-            onAllContainersSelectAction={() =>
-              setSelectedContainerId(ALL_CONTAINERS_ID)
-            }
-            onContainerSelectAction={setSelectedContainerId}
-            onListResizeStartAction={(event) =>
-              handleResizeStart("list", event)
-            }
-            onSearchQueryChangeAction={setSearchQuery}
-            runningContainersCount={sidebarSnapshot?.containers.running ?? null}
-            searchQuery={searchQuery}
-            visibleCount={filteredContainers.length}
-          />
-        ) : (
-          <GitAppPageLeftSidebar
-            appItems={gitSidebarAppItems}
-            appSearchQuery={appSearchQuery}
-            baseDomain={baseDomain}
-            branchError={branchState.error}
-            branchHelperText={branchHelperText}
-            branchOptions={branchOptions}
-            draftApp={draftApp}
-            isBranchLoading={branchState.isLoading}
-            isCreateAppExpanded={isCreateAppExpanded}
-            isCreateAppPending={isCreateAppPending}
-            listWidth={listWidth}
-            liveAppsCount={liveAppsCount}
-            onAppSearchQueryChangeAction={setAppSearchQuery}
-            onCreateAppAction={handleCreateApp}
-            onDraftChangeAction={handleDraftAppChange}
-            onListResizeStartAction={(event) =>
-              handleResizeStart("list", event)
-            }
-            onRepositorySelectAction={handleRepositorySelect}
-            onSelectAppAction={setSelectedAppId}
-            onToggleCreateAppAction={handleToggleCreateAppPanel}
-            repositoryOptions={repositoryOptions}
-            repositoryState={repositoryState}
-            selectedRepositorySummary={selectedRepositorySummary}
-            selectedRepositoryValue={selectedRepositoryValue}
-            totalAppsCount={deployments.length}
-          />
-        )}
-
-        <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
-          {activeView === "dashboard" ? (
-            isAllContainersSelected ? (
-              <DashboardAllContainersContent
-                charts={allContainersMetricCharts}
-                onRangeChangeAction={setDashboardRange}
-                range={dashboardRange}
-                rangeOptions={ALL_CONTAINERS_RANGE_OPTIONS}
-                snapshot={sidebarSnapshot}
-              />
-            ) : (
-              <DashboardMainContent
-                focusedMetricCharts={focusedMetricCharts}
-                healthOrNodeLabel={healthOrNodeLabel}
-                onRangeChangeAction={setDashboardRange}
-                projectOrRegionLabel={projectOrRegionLabel}
-                range={dashboardRange}
-                rangeOptions={ALL_CONTAINERS_RANGE_OPTIONS}
-                runtimePillLabel={runtimePillLabel}
-                sampleContextLabel={sampleContextLabel}
-                selectedContainer={selectedContainer}
-                selectedRuntimeContainer={selectedRuntimeContainer}
-                selectedStatusLabel={selectedContainerStatusLabel}
-                selectedStatusVariant={selectedContainerStatusVariant}
-                serviceOrPortLabel={serviceOrPortLabel}
-              />
-            )
-          ) : selectedDeployment ? (
-            <GitAppPageMainContent
-              baseDomain={baseDomain}
-              deployment={selectedDeployment}
-              deploymentHref={selectedDeploymentHref}
-              deploymentStatusLabel={selectedDeploymentStatusLabel}
-              deploymentStatusVariant={selectedDeploymentStatusVariant}
-              onDeleteAction={handleDeleteApp}
-              onFetchAction={handleFetchApp}
-              onRefreshAction={() => router.refresh()}
-              onRecreateAction={handleRecreateApp}
-              onSaveSettingsAction={handleSaveApp}
-              onStartAction={handleStartApp}
-              onStopAction={handleStopApp}
-              publicDomainLabel={selectedDeploymentDomain}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <div className="max-w-lg rounded-[1.75rem] border border-border/70 bg-background/86 px-6 py-8 text-center shadow-[0_28px_72px_-48px_rgba(15,23,42,0.3)]">
-                <SectionLabel icon="github" text="Git App Page" />
-                <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
-                  Add your first app
-                </h1>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Open the compact create panel in the sidebar to pick a
-                  repository and start a live deployment.
-                </p>
-              </div>
-            </div>
-          )}
-        </main>
-
-        {activeView === "dashboard" ? (
-          <DashboardRightSidebar
-            activeLogView={dashboardLogView}
-            isCollapsed={isLogsCollapsed}
-            isAggregateSelection={isAllContainersSelected}
-            logOptions={LOG_VIEW_OPTIONS}
-            logs={previewLogs}
-            onCollapseAction={() => setIsLogsCollapsed(true)}
-            onExpandAction={() => setIsLogsCollapsed(false)}
-            onLogViewChangeAction={setDashboardLogView}
-            onResizeStartAction={(event) => handleResizeStart("logs", event)}
-            selectedContainerName={aggregateLogsTargetName}
-            selectedContainerRegion={aggregateLogsTargetRegion}
-            selectedContainerStatusLabel={aggregateLogsStatusLabel}
-            selectedContainerStatusVariant={aggregateLogsStatusVariant}
-            selectedPreviewAvailable={
-              !isAllContainersSelected && Boolean(selectedPreviewContainer)
-            }
-            width={logsWidth}
-          />
-        ) : (
-          <GitAppPageRightSidebar
-            activeLogTab={appLogTab}
-            deploymentId={selectedDeployment?.id ?? null}
-            deployments={deployments}
-            isCollapsed={isLogsCollapsed}
-            onCollapseAction={() => setIsLogsCollapsed(true)}
-            onExpandAction={() => setIsLogsCollapsed(false)}
-            onLogTabChangeAction={setAppLogTab}
-            onResizeStartAction={(event) => handleResizeStart("logs", event)}
-            width={logsWidth}
-          />
-        )}
+        {workspacePanels}
       </div>
 
       <WorkspaceFooter

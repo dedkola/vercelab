@@ -21,5 +21,5 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   const pageData = await loadMetricsDashboardData(searchParams);
 
-  return <MetricsDashboardShell {...pageData} />;
+  return <MetricsDashboardShell {...pageData} embedded />;
 }

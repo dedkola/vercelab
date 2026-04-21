@@ -18,6 +18,7 @@ type WorkspaceRailProps = {
   activeView: WorkspaceView;
   items: WorkspaceRailItem[];
   onViewChangeAction: (view: WorkspaceView) => void;
+  onViewPrefetchAction?: (view: WorkspaceView) => void;
 };
 
 function getWorkspaceRailHref(view: WorkspaceView) {
@@ -45,6 +46,7 @@ export function WorkspaceRail({
   activeView,
   items,
   onViewChangeAction,
+  onViewPrefetchAction,
 }: WorkspaceRailProps) {
   const router = useRouter();
 
@@ -55,8 +57,9 @@ export function WorkspaceRail({
       }
 
       void router.prefetch(getWorkspaceRailHref(view));
+      onViewPrefetchAction?.(view);
     },
-    [activeView, router],
+    [activeView, onViewPrefetchAction, router],
   );
 
   useEffect(() => {

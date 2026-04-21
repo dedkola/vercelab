@@ -37,12 +37,17 @@ export type HostMetricsSidebarProps = {
 };
 
 export function HostMetricsSidebar({
+  cpuHeadroomLabel,
   isCollapsed,
+  memoryHeadroomLabel,
   metricCards,
+  metricsStatus,
   onCollapseAction,
   onExpandAction,
   onResizeStartAction,
+  summaryLabel,
   systemPanels,
+  throughputLabel,
   width,
 }: HostMetricsSidebarProps) {
   if (isCollapsed) {
@@ -81,6 +86,45 @@ export function HostMetricsSidebar({
 
         <ScrollArea className="h-full">
           <div className="space-y-4 p-3 pt-12">
+            <Card className="overflow-hidden border-border/70 bg-linear-to-br from-background/96 via-muted/16 to-background shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
+              <CardHeader className="space-y-3 border-b border-border/60 pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle>Host overview</CardTitle>
+                  </div>
+                  <Badge
+                    className={cn("shadow-none", metricsStatus.badgeClassName)}
+                  >
+                    {metricsStatus.badgeLabel}
+                  </Badge>
+                </div>
+                <div className="text-sm leading-6 text-foreground">
+                  {summaryLabel}
+                </div>
+                <div className="text-xs leading-5 text-muted-foreground">
+                  {throughputLabel}
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-3 pt-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    CPU headroom
+                  </div>
+                  <div className="mt-1 text-sm font-semibold tracking-tight text-foreground">
+                    {cpuHeadroomLabel}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border/60 bg-background/80 px-3 py-2">
+                  <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Memory headroom
+                  </div>
+                  <div className="mt-1 text-sm font-semibold tracking-tight text-foreground">
+                    {memoryHeadroomLabel}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {systemPanels?.length ? (
               <div className="space-y-4">
                 {systemPanels.map((panel) => (

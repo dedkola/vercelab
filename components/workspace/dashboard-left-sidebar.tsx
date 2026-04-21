@@ -80,9 +80,7 @@ function getContainerStatusVariant(
   }
 }
 
-function getStatusDotClassName(
-  variant: "success" | "warning" | "default",
-) {
+function getStatusDotClassName(variant: "success" | "warning" | "default") {
   switch (variant) {
     case "success":
       return "bg-emerald-500";
@@ -187,7 +185,8 @@ export function DashboardLeftSidebar({
               {containers.length ? (
                 containers.map((container) => {
                   const statusVariant = getContainerStatusVariant(container);
-                  const statusDotClassName = getStatusDotClassName(statusVariant);
+                  const statusDotClassName =
+                    getStatusDotClassName(statusVariant);
 
                   return (
                     <button
@@ -205,15 +204,20 @@ export function DashboardLeftSidebar({
                       type="button"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex min-w-0 items-center gap-2">
+                        <span className="inline-flex min-w-0 items-start gap-2">
                           <span
                             className={cn(
-                              "h-1.5 w-1.5 shrink-0 rounded-full",
+                              "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
                               statusDotClassName,
                             )}
                           />
-                          <span className="truncate text-xs font-medium tracking-tight text-foreground">
-                            {container.sidebarName}
+                          <span className="min-w-0">
+                            <span className="block truncate text-xs font-medium tracking-tight text-foreground">
+                              {container.sidebarName}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                              {container.sidebarSecondaryLabel}
+                            </span>
                           </span>
                         </span>
                         <span

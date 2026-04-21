@@ -310,7 +310,7 @@ export function GitAppPageLeftSidebar({
               {appItems.length ? (
                 appItems.map((deployment) => (
                   <button
-                    aria-label={`${deployment.appName} ${deployment.statusLabel}`}
+                    aria-label={`${deployment.appName} ${deployment.domain} ${deployment.statusLabel}`}
                     className={cn(
                       "w-full rounded-md border px-2.5 py-1.5 text-left transition-colors duration-200",
                       deployment.isActive
@@ -322,15 +322,20 @@ export function GitAppPageLeftSidebar({
                     type="button"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex min-w-0 items-center gap-2">
+                      <span className="inline-flex min-w-0 items-start gap-2">
                         <span
                           className={cn(
-                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
                             deployment.dotClassName,
                           )}
                         />
-                        <span className="truncate text-xs font-medium tracking-tight text-foreground">
-                          {deployment.appName}
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-medium tracking-tight text-foreground">
+                            {deployment.appName}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                            {deployment.domain}
+                          </span>
                         </span>
                       </span>
                       <span
