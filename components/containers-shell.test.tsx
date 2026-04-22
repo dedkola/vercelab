@@ -195,7 +195,7 @@ describe("ContainersShell", () => {
     expect(screen.getAllByText(/platform ui/i)[0]).toBeVisible();
   });
 
-  it("runs allowed lifecycle actions and refreshes the route", async () => {
+  it("runs allowed lifecycle actions and refreshes local snapshot state", async () => {
     const user = userEvent.setup();
 
     render(
@@ -219,7 +219,13 @@ describe("ContainersShell", () => {
       );
     });
 
-    expect(refreshMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith("/api/metrics?mode=current", {
+        cache: "no-store",
+      });
+    });
+
+    expect(refreshMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /^stop$/i })).toBeNull();
   });
 
@@ -253,6 +259,89 @@ describe("ContainersShell", () => {
       );
     });
 
-    expect(refreshMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith("/api/metrics?mode=current", {
+        cache: "no-store",
+      });
+    });
+
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it("removes a deleted container from the list without a page refresh", async () => {
+    const user = userEvent.setup();
+    const removableSnapshot = {
+      ...runtimeSnapshot,
+      containers: {
+        ...runtimeSnapshot.containers,
+        all: [
+          {
+            ...runtimeSnapshot.containers.all[0],
+            id: "runtime-web-app",
+            name: "web-app",
+            projectName: "manual-stack",
+            routedHost: "web-app.myhomelan.com",
+            serviceName: "web",
+          },
+        ],
+      },
+    } as const;
+    let currentSnapshot = removableSnapshot;
+
+    fetchSpy.mockImplementation(async (input, init) => {
+      const url = getRequestUrl(input);
+
+      if (url.startsWith("/api/containers/runtime-web-app/logs")) {
+        return jsonResponse({ output: "2026-04-22T11:10:00.000Z listening" });
+      }
+
+      if (url === "/api/metrics?mode=current") {
+        return jsonResponse({ snapshot: currentSnapshot });
+      }
+
+      if (url === "/api/containers/runtime-web-app/actions" && init?.method === "POST") {
+        currentSnapshot = {
+          ...removableSnapshot,
+          containers: {
+            ...removableSnapshot.containers,
+            all: [],
+            cpuPercent: 0,
+            memoryPercent: 0,
+            memoryUsedBytes: 0,
+            running: 0,
+            statusBreakdown: {
+              healthy: 0,
+              stopped: 0,
+              unhealthy: 0,
+            },
+            total: 0,
+          },
+        };
+
+        return jsonResponse({ updatedAt: "2026-04-22T11:12:00.000Z" });
+      }
+
+      return jsonResponse({});
+    });
+
+    render(
+      <ContainersShell
+        initialAllContainerHistory={[]}
+        initialDeployments={[]}
+        initialSnapshot={removableSnapshot}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^remove$/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", {
+          name: /web-app/i,
+        }),
+      ).toBeNull();
+    });
+
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 });

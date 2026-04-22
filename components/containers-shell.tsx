@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -21,6 +21,7 @@ import type {
 } from "@/components/workspace-shell";
 import {
   readStoredContainerAliases,
+  subscribeToStoredContainerAliases,
   writeStoredContainerAliases,
 } from "@/lib/container-preferences";
 import type { ContainersData } from "@/lib/containers-data";
@@ -36,6 +37,7 @@ import {
   getStatusBadgeVariant,
   LOG_VIEW_OPTIONS,
 } from "@/lib/metrics-dashboard-metrics";
+import type { MetricsSnapshot } from "@/lib/system-metrics";
 
 const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
 const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
@@ -48,6 +50,7 @@ const MAX_LOGS_WIDTH_PX = 520;
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LOG_TAIL_LINES = 150;
+const POST_ACTION_REFRESH_DELAYS_MS = [0, 700, 1800] as const;
 
 type CatalogSearchResult = {
   description: string | null;
@@ -168,7 +171,6 @@ export function ContainersShell({
   initialDeployments = [],
   initialSnapshot = null,
 }: ContainersShellProps) {
-  const router = useRouter();
   const [listWidth, setListWidth] = useStoredPanelWidth(
     LIST_PANEL_STORAGE_KEY,
     DEFAULT_LIST_WIDTH_PX,
@@ -216,6 +218,7 @@ export function ContainersShell({
     null,
   );
   const [actionError, setActionError] = useState<string | null>(null);
+  const postActionRefreshTimeoutIdsRef = useRef<number[]>([]);
   const dragStateRef = useRef<{
     kind: "list" | "logs" | null;
     startWidth: number;
@@ -226,8 +229,51 @@ export function ContainersShell({
     startX: 0,
   });
 
+  const refreshSnapshotNow = useCallback(async () => {
+    const response = await fetch("/api/metrics?mode=current", {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Metrics request failed with ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      snapshot?: MetricsSnapshot | null;
+    };
+
+    if (payload.snapshot) {
+      setSnapshot(payload.snapshot);
+    }
+
+    return payload.snapshot ?? null;
+  }, []);
+
+  const scheduleBackgroundSnapshotRefresh = useCallback(() => {
+    for (const timeoutId of postActionRefreshTimeoutIdsRef.current) {
+      window.clearTimeout(timeoutId);
+    }
+
+    postActionRefreshTimeoutIdsRef.current = POST_ACTION_REFRESH_DELAYS_MS.map(
+      (delayMs) =>
+        window.setTimeout(() => {
+          void refreshSnapshotNow().catch(() => undefined);
+        }, delayMs),
+    );
+  }, [refreshSnapshotNow]);
+
   useEffect(() => {
     setAliases(readStoredContainerAliases());
+
+    return subscribeToStoredContainerAliases(setAliases);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of postActionRefreshTimeoutIdsRef.current) {
+        window.clearTimeout(timeoutId);
+      }
+    };
   }, []);
 
   const containers = useMemo(() => {
@@ -664,7 +710,7 @@ export function ContainersShell({
 
       setCreateSuccess(payload.message ?? "Container started.");
       setIsCreatePanelOpen(false);
-      router.refresh();
+      scheduleBackgroundSnapshotRefresh();
     } catch (error) {
       setCreateError(
         error instanceof Error ? error.message : "Unable to create container.",
@@ -699,7 +745,7 @@ export function ContainersShell({
         throw new Error(payload.error ?? "Container action failed.");
       }
 
-      router.refresh();
+      scheduleBackgroundSnapshotRefresh();
     } catch (error) {
       setActionError(
         error instanceof Error ? error.message : "Container action failed.",

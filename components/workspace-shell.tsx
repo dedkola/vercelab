@@ -44,7 +44,10 @@ import {
   type DeploymentActionResult,
 } from "@/app/actions";
 import type { LogTab } from "./git-log-panel";
-import { readStoredContainerAliases } from "@/lib/container-preferences";
+import {
+  readStoredContainerAliases,
+  subscribeToStoredContainerAliases,
+} from "@/lib/container-preferences";
 import { getContainerTone } from "@/lib/container-tone";
 import type { GitHubRepository } from "@/lib/github";
 import type {
@@ -1963,6 +1966,8 @@ export function WorkspaceShell({
 
   useEffect(() => {
     setAliases(readStoredContainerAliases());
+
+    return subscribeToStoredContainerAliases(setAliases);
   }, []);
 
   const workspaceContainers = useMemo(

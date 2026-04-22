@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   afterAll,
@@ -567,6 +567,39 @@ describe("WorkspaceShell", () => {
     );
 
     render(<WorkspaceShell />);
+
+    expect(
+      await screen.findByRole("button", {
+        name: /platform ui.*healthy/i,
+      }),
+    ).toBeVisible();
+  });
+
+  it("updates dashboard aliases live when alias storage changes after mount", async () => {
+    render(<WorkspaceShell />);
+
+    expect(
+      await screen.findByRole("button", {
+        name: /control-plane.*healthy/i,
+      }),
+    ).toBeVisible();
+
+    const nextAliases = JSON.stringify({
+      "runtime-control-plane": "Platform UI",
+    });
+
+    await act(async () => {
+      window.localStorage.setItem(
+        "vercelab:containers-friendly-labels",
+        nextAliases,
+      );
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "vercelab:containers-friendly-labels",
+          newValue: nextAliases,
+        }),
+      );
+    });
 
     expect(
       await screen.findByRole("button", {
