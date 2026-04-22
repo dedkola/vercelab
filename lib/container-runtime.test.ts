@@ -95,4 +95,24 @@ describe("container runtime helpers", () => {
     expect(result.availableActions).toEqual(["restart", "stop", "remove"]);
     expect(result.canEditAlias).toBe(true);
   });
+
+  it("allows alias editing for unmanaged live runtimes", () => {
+    const baseEntry = createEntry();
+    const result = getContainerInventoryMeta({
+      ...baseEntry,
+      runtime: {
+        ...baseEntry.runtime!,
+        name: "web-app",
+        projectName: "manual-stack",
+        serviceName: "web",
+      },
+      sidebarName: "web-app",
+      sidebarSecondaryLabel: "manual-stack",
+    });
+
+    expect(result.kind).toBe("unmanaged");
+    expect(result.availableActions).toEqual(["restart", "stop", "remove"]);
+    expect(result.canEditAlias).toBe(true);
+    expect(result.note).toContain("set a local label");
+  });
 });

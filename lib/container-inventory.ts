@@ -90,8 +90,8 @@ export function getContainerInventoryMeta(
       entry.runtime.status === "running"
         ? ["restart", "stop", "remove"]
         : ["start", "remove"],
-    canEditAlias: false,
+    canEditAlias: true,
     kind: "unmanaged",
-    note: "External runtime container. You can inspect logs and basic lifecycle state here before import flows are added.",
+    note: "External runtime container. You can inspect logs, manage lifecycle state, and set a local label on this page.",
   };
 }
