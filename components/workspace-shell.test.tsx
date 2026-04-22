@@ -608,6 +608,50 @@ describe("WorkspaceShell", () => {
     ).toBeVisible();
   });
 
+  it("reflects aliased runtime names in the git app page list", async () => {
+    window.localStorage.setItem(
+      "vercelab:containers-friendly-labels",
+      JSON.stringify({
+        "runtime-control-plane": "Platform UI",
+      }),
+    );
+
+    render(
+      <WorkspaceShell
+        baseDomain="example.com"
+        initialDeployments={[
+          {
+            id: "dep-1",
+            repositoryName: "dedkola/vercelab",
+            repositoryUrl: "https://github.com/dedkola/vercelab.git",
+            branch: "main",
+            commitSha: null,
+            appName: "control-plane-app",
+            subdomain: "control-plane-app",
+            port: 3000,
+            envVariables: null,
+            serviceName: "control-plane",
+            status: "running",
+            composeMode: "dockerfile",
+            projectName: "vercelab",
+            lastOutput: "Deployment is healthy.",
+            lastOperationSummary: "Running.",
+            updatedAt: "2026-04-17T08:00:00.000Z",
+            deployedAt: "2026-04-17T07:55:00.000Z",
+            tokenStored: true,
+          },
+        ]}
+        initialView="git-app-page"
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /platform ui.*control-plane-app\.example\.com.*running/i,
+      }),
+    ).toBeVisible();
+  });
+
   it("shows app names for managed containers and raw names for docker containers in the sidebar", async () => {
     fetchSpy.mockImplementation(async (input) => {
       const url = getRequestUrl(input);

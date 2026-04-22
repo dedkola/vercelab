@@ -1822,6 +1822,37 @@ function formatDeploymentHref(
   return `https://${formatDeploymentDomain(deployment, baseDomain)}`;
 }
 
+function resolveDeploymentDisplayName(
+  deployment: DeploymentSummary,
+  snapshot: MetricsSnapshot | null,
+  aliases: Record<string, string>,
+) {
+  const matchingRuntimes = (snapshot?.containers.all ?? []).filter(
+    (runtime) => runtime.projectName === deployment.projectName,
+  );
+
+  if (!matchingRuntimes.length) {
+    return deployment.appName;
+  }
+
+  const deploymentServiceName = deployment.serviceName?.trim() ?? "";
+  const preferredRuntime = deploymentServiceName
+    ? (matchingRuntimes.find(
+        (runtime) => (runtime.serviceName?.trim() ?? "") === deploymentServiceName,
+      ) ?? null)
+    : matchingRuntimes.length === 1
+      ? matchingRuntimes[0]
+      : null;
+
+  if (!preferredRuntime) {
+    return deployment.appName;
+  }
+
+  const alias = aliases[preferredRuntime.id]?.trim();
+
+  return alias || deployment.appName;
+}
+
 function createDraftFromRepository(
   repository: GitHubRepository,
 ): DraftAppState {
@@ -2064,6 +2095,16 @@ export function WorkspaceShell({
         : [],
     [branchState.branchesByRepositoryId, selectedRepository],
   );
+  const deploymentDisplayNames = useMemo(
+    () =>
+      new Map(
+        deployments.map((deployment) => [
+          deployment.id,
+          resolveDeploymentDisplayName(deployment, sidebarSnapshot, aliases),
+        ]),
+      ),
+    [aliases, deployments, sidebarSnapshot],
+  );
   const filteredDeployments = useMemo(() => {
     const normalizedQuery = appSearchQuery.trim().toLowerCase();
 
@@ -2073,6 +2114,7 @@ export function WorkspaceShell({
 
     return deployments.filter((deployment) =>
       [
+        deploymentDisplayNames.get(deployment.id) ?? deployment.appName,
         deployment.appName,
         deployment.repositoryName,
         deployment.repositoryUrl,
@@ -2083,7 +2125,7 @@ export function WorkspaceShell({
         .toLowerCase()
         .includes(normalizedQuery),
     );
-  }, [appSearchQuery, deployments]);
+  }, [appSearchQuery, deploymentDisplayNames, deployments]);
   const selectedDeployment =
     filteredDeployments.find((deployment) => deployment.id === selectedAppId) ??
     deployments.find((deployment) => deployment.id === selectedAppId) ??
@@ -3076,7 +3118,7 @@ export function WorkspaceShell({
     (deployment) => deployment.status === "running",
   ).length;
   const gitSidebarAppItems = filteredDeployments.map((deployment) => ({
-    appName: deployment.appName,
+    appName: deploymentDisplayNames.get(deployment.id) ?? deployment.appName,
     domain: formatDeploymentDomain(deployment, baseDomain),
     dotClassName: getDeploymentStatusDotClassName(deployment.status),
     id: deployment.id,
