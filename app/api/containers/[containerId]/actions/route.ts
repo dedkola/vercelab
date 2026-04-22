@@ -2,6 +2,8 @@ import { getMetricsSnapshot } from "@/lib/system-metrics";
 import {
   type ContainerAction,
   isSystemContainer,
+} from "@/lib/container-inventory";
+import {
   runContainerAction,
 } from "@/lib/container-runtime";
 

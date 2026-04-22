@@ -21,7 +21,7 @@ import type { ContainersData } from "@/lib/containers-data";
 import {
   type ContainerAction,
   getContainerInventoryMeta,
-} from "@/lib/container-runtime";
+} from "@/lib/container-inventory";
 import {
   ALL_CONTAINERS_ID,
   buildAggregateLogs,

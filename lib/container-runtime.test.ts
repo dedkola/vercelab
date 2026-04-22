@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { ContainerListEntry } from "@/components/workspace-shell";
-import { getContainerInventoryMeta, isSystemContainer } from "@/lib/container-runtime";
+import {
+  getContainerInventoryMeta,
+  isSystemContainer,
+} from "@/lib/container-inventory";
 
 function createEntry(overrides?: Partial<ContainerListEntry>): ContainerListEntry {
   return {

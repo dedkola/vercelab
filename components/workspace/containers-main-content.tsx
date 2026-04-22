@@ -6,7 +6,7 @@ import type { ContainerListEntry } from "@/components/workspace-shell";
 import type {
   ContainerAction,
   ContainerInventoryMeta,
-} from "@/lib/container-runtime";
+} from "@/lib/container-inventory";
 import {
   formatBytes,
   formatBytesPerSecond,
@@ -61,8 +61,8 @@ function getActionLabel(action: ContainerAction) {
 
 function getActionVariant(action: ContainerAction) {
   return action === "remove"
-    ? ("destructive" as const)
-    : ("outline" as const);
+    ? ("danger" as const)
+    : ("default" as const);
 }
 
 export function ContainersMainContent({
