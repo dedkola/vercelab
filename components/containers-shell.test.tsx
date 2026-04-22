@@ -116,6 +116,24 @@ describe("ContainersShell", () => {
         return jsonResponse({ updatedAt: "2026-04-22T11:11:00.000Z" });
       }
 
+      if (url.startsWith("/api/containers/catalog?query=") && !init?.method) {
+        return jsonResponse({
+          results: [
+            {
+              description: "Official NGINX image",
+              isOfficial: true,
+              name: "nginx",
+              pullCount: 1200000,
+              starCount: 9000,
+            },
+          ],
+        });
+      }
+
+      if (url === "/api/containers/create" && init?.method === "POST") {
+        return jsonResponse({ message: "Started web-app." }, { status: 201 });
+      }
+
       return jsonResponse({});
     });
     window.localStorage.clear();
@@ -160,10 +178,10 @@ describe("ContainersShell", () => {
       />,
     );
 
-    const aliasInput = await screen.findByLabelText(/friendly label/i);
+    const aliasInput = await screen.findByLabelText(/^label$/i);
     await user.clear(aliasInput);
     await user.type(aliasInput, "Platform UI");
-    await user.click(screen.getByRole("button", { name: /save label/i }));
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
 
     expect(
       window.localStorage.getItem("vercelab:containers-friendly-labels"),
@@ -197,5 +215,38 @@ describe("ContainersShell", () => {
 
     expect(refreshMock).toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /^stop$/i })).toBeNull();
+  });
+
+  it("creates a new container from the add panel", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ContainersShell
+        initialAllContainerHistory={[]}
+        initialDeployments={[]}
+        initialSnapshot={runtimeSnapshot}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /^add$/i }));
+    await user.clear(screen.getByLabelText(/container image reference/i));
+    await user.type(
+      screen.getByLabelText(/container image reference/i),
+      "nginx:latest",
+    );
+    await user.type(screen.getByLabelText(/container name/i), "web-app");
+    await user.click(screen.getByRole("button", { name: /^create$/i }));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/containers/create",
+        expect.objectContaining({
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        }),
+      );
+    });
+
+    expect(refreshMock).toHaveBeenCalled();
   });
 });

@@ -10,6 +10,8 @@ import {
 } from "react";
 
 import { ContainersMainContent } from "@/components/workspace/containers-main-content";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
 import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-sidebar";
 import type {
@@ -43,6 +45,16 @@ const MAX_LOGS_WIDTH_PX = 520;
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LOG_TAIL_LINES = 150;
+
+type CatalogSearchResult = {
+  description: string | null;
+  isOfficial: boolean;
+  name: string;
+  pullCount: number;
+  starCount: number;
+};
+
+type CreateMode = "image" | "compose";
 
 function getStorage() {
   if (typeof window === "undefined") {
@@ -158,6 +170,13 @@ function writeStoredAliases(aliases: Record<string, string>) {
   getStorage()?.setItem(ALIAS_STORAGE_KEY, JSON.stringify(aliases));
 }
 
+function formatCompactCount(value: number) {
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Math.max(0, value));
+}
+
 type ContainersShellProps = ContainersData;
 
 export function ContainersShell({
@@ -187,10 +206,28 @@ export function ContainersShell({
     useState<DashboardLogView>("live");
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [runtimeLogs, setRuntimeLogs] = useState<Record<string, LogLine[]>>({});
-  const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState<string | null>(null);
   const [aliases, setAliases] = useState<Record<string, string>>({});
   const [aliasDraft, setAliasDraft] = useState("");
+  const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
+  const [createMode, setCreateMode] = useState<CreateMode>("image");
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogResults, setCatalogResults] = useState<CatalogSearchResult[]>(
+    [],
+  );
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [imageReference, setImageReference] = useState("nginx:latest");
+  const [newContainerName, setNewContainerName] = useState("");
+  const [newContainerPorts, setNewContainerPorts] = useState("");
+  const [newContainerEnvVariables, setNewContainerEnvVariables] = useState("");
+  const [composeStackName, setComposeStackName] = useState("");
+  const [composeContent, setComposeContent] = useState(
+    "services:\n  app:\n    image: nginx:latest\n    ports:\n      - \"8080:80\"",
+  );
+  const [createPending, setCreatePending] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<ContainerAction | null>(
     null,
   );
@@ -388,7 +425,6 @@ export function ContainersShell({
 
     if (isAllContainersSelected || !selectedRuntime) {
       setLogsError(null);
-      setLogsLoading(false);
       return;
     }
 
@@ -419,8 +455,6 @@ export function ContainersShell({
         schedule(HIDDEN_LIVE_POLL_INTERVAL_MS);
         return;
       }
-
-      setLogsLoading(true);
       abortController = new AbortController();
 
       try {
@@ -467,7 +501,6 @@ export function ContainersShell({
         );
       } finally {
         if (active) {
-          setLogsLoading(false);
           schedule(LIVE_POLL_INTERVAL_MS);
         }
 
@@ -568,6 +601,95 @@ export function ContainersShell({
     writeStoredAliases(nextAliases);
   };
 
+  const handleCatalogSearch = async () => {
+    const query = catalogQuery.trim();
+
+    if (query.length < 2) {
+      setCatalogResults([]);
+      setCatalogError("Type at least 2 characters to search images.");
+      return;
+    }
+
+    setCatalogLoading(true);
+    setCatalogError(null);
+
+    try {
+      const response = await fetch(
+        `/api/containers/catalog?query=${encodeURIComponent(query)}`,
+        {
+          cache: "no-store",
+        },
+      );
+      const payload = (await response.json()) as {
+        error?: string;
+        results?: CatalogSearchResult[];
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to search image catalog.");
+      }
+
+      setCatalogResults(payload.results ?? []);
+    } catch (error) {
+      setCatalogError(
+        error instanceof Error
+          ? error.message
+          : "Unable to search image catalog.",
+      );
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const handleCreateContainer = async () => {
+    setCreatePending(true);
+    setCreateError(null);
+    setCreateSuccess(null);
+
+    try {
+      const body =
+        createMode === "image"
+          ? {
+              containerName: newContainerName,
+              envVariables: newContainerEnvVariables,
+              image: imageReference,
+              mode: "image" as const,
+              ports: newContainerPorts,
+            }
+          : {
+              composeContent,
+              mode: "compose" as const,
+              stackName: composeStackName,
+            };
+
+      const response = await fetch("/api/containers/create", {
+        body: JSON.stringify(body),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        message?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to create container.");
+      }
+
+      setCreateSuccess(payload.message ?? "Container started.");
+      setIsCreatePanelOpen(false);
+      router.refresh();
+    } catch (error) {
+      setCreateError(
+        error instanceof Error ? error.message : "Unable to create container.",
+      );
+    } finally {
+      setCreatePending(false);
+    }
+  };
+
   const handleRunAction = async (action: ContainerAction) => {
     if (!selectedEntry?.runtime) {
       return;
@@ -603,6 +725,130 @@ export function ContainersShell({
     }
   };
 
+  const createPanel = (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button
+          onClick={() => setCreateMode("image")}
+          size="xs"
+          type="button"
+          variant={createMode === "image" ? "default" : "secondary"}
+        >
+          Image
+        </Button>
+        <Button
+          onClick={() => setCreateMode("compose")}
+          size="xs"
+          type="button"
+          variant={createMode === "compose" ? "default" : "secondary"}
+        >
+          Compose
+        </Button>
+      </div>
+
+      {createMode === "image" ? (
+        <div className="space-y-2.5">
+          <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+            <Input
+              aria-label="Search images"
+              onChange={(event) => setCatalogQuery(event.target.value)}
+              placeholder="Search Docker Hub images"
+              value={catalogQuery}
+            />
+            <Button
+              disabled={catalogLoading}
+              onClick={handleCatalogSearch}
+              size="xs"
+              type="button"
+            >
+              {catalogLoading ? "Searching..." : "Search"}
+            </Button>
+          </div>
+
+          {catalogResults.length ? (
+            <div className="max-h-36 space-y-1 overflow-auto rounded-md border border-border/60 bg-background/70 p-1.5">
+              {catalogResults.map((result) => (
+                <button
+                  className="flex w-full items-center justify-between gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-xs transition hover:border-border/70 hover:bg-muted/20"
+                  key={result.name}
+                  onClick={() => {
+                    setImageReference(`${result.name}:latest`);
+                    setNewContainerName(result.name.split("/").at(-1) ?? "");
+                  }}
+                  type="button"
+                >
+                  <span className="truncate font-medium text-foreground">
+                    {result.name}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {formatCompactCount(result.pullCount)} pulls · {formatCompactCount(result.starCount)} stars
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="grid gap-2 md:grid-cols-2">
+            <Input
+              aria-label="Container image reference"
+              onChange={(event) => setImageReference(event.target.value)}
+              placeholder="ghcr.io/org/image:tag or nginx:latest"
+              value={imageReference}
+            />
+            <Input
+              aria-label="Container name"
+              onChange={(event) => setNewContainerName(event.target.value)}
+              placeholder="Container name"
+              value={newContainerName}
+            />
+            <Input
+              aria-label="Port mappings"
+              onChange={(event) => setNewContainerPorts(event.target.value)}
+              placeholder="8080:80, 8443:443"
+              value={newContainerPorts}
+            />
+            <Input
+              aria-label="Environment variables"
+              onChange={(event) => setNewContainerEnvVariables(event.target.value)}
+              placeholder="KEY=VALUE (comma or newline separated)"
+              value={newContainerEnvVariables}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          <Input
+            aria-label="Compose stack name"
+            onChange={(event) => setComposeStackName(event.target.value)}
+            placeholder="Stack name"
+            value={composeStackName}
+          />
+          <textarea
+            aria-label="Compose content"
+            className="min-h-44 w-full rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-emerald-300/80"
+            onChange={(event) => setComposeContent(event.target.value)}
+            placeholder="Paste docker compose yaml"
+            value={composeContent}
+          />
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground">
+          {catalogError ?? createError ?? createSuccess ?? ""}
+        </div>
+        <Button
+          disabled={createPending}
+          onClick={handleCreateContainer}
+          size="xs"
+          type="button"
+        >
+          {createPending ? "Creating..." : "Create"}
+        </Button>
+      </div>
+    </div>
+  );
+
   const liveRailLogs =
     logsError && dashboardLogView === "live" && !isAllContainersSelected
       ? [
@@ -613,16 +859,7 @@ export function ContainersShell({
             timestamp: createLogTimestamp(new Date().toISOString()),
           } satisfies LogLine,
         ]
-      : logsLoading && dashboardLogView === "live" && !isAllContainersSelected
-        ? [
-            {
-              id: "containers-live-log-loading",
-              level: "info",
-              message: "Refreshing docker logs...",
-              timestamp: createLogTimestamp(new Date().toISOString()),
-            } satisfies LogLine,
-          ]
-        : previewLogs;
+      : previewLogs;
 
   return (
     <div className="flex min-w-0 flex-1 overflow-hidden">
@@ -646,9 +883,17 @@ export function ContainersShell({
         actionError={actionError}
         actionPending={actionPending}
         aliasDraft={aliasDraft}
+        createPanel={createPanel}
         inventoryMeta={inventoryMeta}
+        isCreatePanelOpen={isCreatePanelOpen}
         onAliasDraftChangeAction={setAliasDraft}
         onAliasSaveAction={handleAliasSave}
+        onToggleCreatePanelAction={() => {
+          setIsCreatePanelOpen((current) => !current);
+          setCatalogError(null);
+          setCreateError(null);
+          setCreateSuccess(null);
+        }}
         onRunAction={handleRunAction}
         runtimeEntry={selectedEntry}
       />
