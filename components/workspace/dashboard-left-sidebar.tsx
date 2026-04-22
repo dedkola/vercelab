@@ -204,21 +204,8 @@ export function DashboardLeftSidebar({
                       type="button"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex min-w-0 items-start gap-2">
-                          <span
-                            className={cn(
-                              "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
-                              statusDotClassName,
-                            )}
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-xs font-medium tracking-tight text-foreground">
-                              {container.sidebarName}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                              {container.sidebarSecondaryLabel}
-                            </span>
-                          </span>
+                        <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
+                          {container.sidebarName}
                         </span>
                         <span
                           className={cn(

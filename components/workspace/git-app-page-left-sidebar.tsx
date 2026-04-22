@@ -322,21 +322,8 @@ export function GitAppPageLeftSidebar({
                     type="button"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex min-w-0 items-start gap-2">
-                        <span
-                          className={cn(
-                            "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
-                            deployment.dotClassName,
-                          )}
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate text-xs font-medium tracking-tight text-foreground">
-                            {deployment.appName}
-                          </span>
-                          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                            {deployment.domain}
-                          </span>
-                        </span>
+                      <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
+                        {deployment.appName}
                       </span>
                       <span
                         className={cn(
