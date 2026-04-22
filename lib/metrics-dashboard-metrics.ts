@@ -21,6 +21,36 @@ import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 
 const STABLE_TIME_ZONE = "UTC";
 
+// Reuse formatter instances — `new Intl.DateTimeFormat` is expensive to construct
+// and these are called on every poll cycle (every 10 s) across many data points.
+const CLOCK_FORMATTER = new Intl.DateTimeFormat("en", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: STABLE_TIME_ZONE,
+});
+
+const DETAILED_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en", {
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  month: "short",
+  timeZone: STABLE_TIME_ZONE,
+});
+
+const TIME_LABEL_FORMATTER = new Intl.DateTimeFormat("en", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: STABLE_TIME_ZONE,
+});
+
+const DATE_TIME_LABEL_FORMATTER = new Intl.DateTimeFormat("en", {
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  month: "short",
+  timeZone: STABLE_TIME_ZONE,
+});
+
 const SERIES_COLORS = [
   "#0f766e",
   "#0284c7",
@@ -160,20 +190,7 @@ function buildTimeLabels(timestamps: string[]) {
     !Number.isFinite(last) ||
     last - first >= 24 * 60 * 60 * 1000;
 
-  const formatter = new Intl.DateTimeFormat("en", {
-    ...(showDate
-      ? {
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          month: "short",
-        }
-      : {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-    timeZone: STABLE_TIME_ZONE,
-  });
+  const formatter = showDate ? DATE_TIME_LABEL_FORMATTER : TIME_LABEL_FORMATTER;
 
   return timestamps.map((timestamp) => formatter.format(new Date(timestamp)));
 }
@@ -724,21 +741,11 @@ function getGlobalPeak(series: ContainerMetricSeries[]) {
 }
 
 export function formatClock(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: STABLE_TIME_ZONE,
-  }).format(new Date(value));
+  return CLOCK_FORMATTER.format(new Date(value));
 }
 
 export function formatDetailedTimestamp(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    timeZone: STABLE_TIME_ZONE,
-  }).format(new Date(value));
+  return DETAILED_TIMESTAMP_FORMATTER.format(new Date(value));
 }
 
 export function formatLoadAverage(

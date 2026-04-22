@@ -307,37 +307,61 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
   };
 }
 
-export const SystemMetricCard = memo(function SystemMetricCard({
-  panel,
-}: {
-  panel: SystemMetricPanel;
-}) {
-  const style = SYSTEM_STYLES[panel.id];
-  const option = useMemo(() => buildSystemChartOption(panel), [panel]);
+function arePanelDataEqual(prev: SystemMetricPanel, next: SystemMetricPanel) {
+  if (prev.id !== next.id || prev.currentValue !== next.currentValue) {
+    return false;
+  }
 
-  return (
-    <Card
-      className={cn(
-        "overflow-hidden border bg-linear-to-br shadow-[0_26px_68px_-54px_rgba(15,23,42,0.3)]",
-        style.border,
-        style.surface,
-      )}
-    >
-      <CardHeader className="space-y-2 border-b border-border/60 pb-3">
-        <CardTitle>{panel.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-4">
-        {panel.primaryValues.length ? (
-          <EChartSurface
-            ariaLabel={`${panel.title} chart`}
-            className="h-44"
-            option={option}
-            setOptionOptions={CHART_SET_OPTION_OPTIONS}
-          />
-        ) : (
-          <EmptyChartState message="Waiting for recent samples for this metric." />
+  if (prev.primaryValues.length !== next.primaryValues.length) {
+    return false;
+  }
+
+  for (let i = 0; i < prev.primaryValues.length; i++) {
+    if (prev.primaryValues[i] !== next.primaryValues[i]) {
+      return false;
+    }
+  }
+
+  const prevSecLen = prev.secondaryValues?.length ?? 0;
+  const nextSecLen = next.secondaryValues?.length ?? 0;
+
+  if (prevSecLen !== nextSecLen) {
+    return false;
+  }
+
+  return !prev.secondaryValues?.some((v, i) => v !== next.secondaryValues![i]);
+}
+
+export const SystemMetricCard = memo(
+  function SystemMetricCard({ panel }: { panel: SystemMetricPanel }) {
+    const style = SYSTEM_STYLES[panel.id];
+    const option = useMemo(() => buildSystemChartOption(panel), [panel]);
+
+    return (
+      <Card
+        className={cn(
+          "overflow-hidden border bg-linear-to-br shadow-[0_26px_68px_-54px_rgba(15,23,42,0.3)]",
+          style.border,
+          style.surface,
         )}
-      </CardContent>
-    </Card>
-  );
-});
+      >
+        <CardHeader className="space-y-2 border-b border-border/60 pb-3">
+          <CardTitle>{panel.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {panel.primaryValues.length ? (
+            <EChartSurface
+              ariaLabel={`${panel.title} chart`}
+              className="h-44"
+              option={option}
+              setOptionOptions={CHART_SET_OPTION_OPTIONS}
+            />
+          ) : (
+            <EmptyChartState message="Waiting for recent samples for this metric." />
+          )}
+        </CardContent>
+      </Card>
+    );
+  },
+  (prev, next) => arePanelDataEqual(prev.panel, next.panel),
+);
