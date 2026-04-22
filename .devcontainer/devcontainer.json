@@ -58,7 +58,7 @@
     "VERCELAB_INFLUXDB_URL": "http://influxdb:8181",
     "VERCELAB_INFLUXDB_DATABASE": "vercelab_metrics",
     "VERCELAB_BASE_DOMAIN": "localhost",
-    "VERCELAB_PROXY_NETWORK": "vercelab_proxy",
+    "VERCELAB_PROXY_NETWORK": "vercelab_devcontainer_net",
     "VERCELAB_ENCRYPTION_SECRET": "devcontainer-local-secret-change-me"
   }
 }

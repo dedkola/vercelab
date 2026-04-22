@@ -1,5 +1,17 @@
 name: vercelab-devcontainer
 
+# ──────────────────────────────────────────────────────────────────────────────
+# This compose file is ONLY for devcontainer (VS Code / GitHub Codespaces).
+# It is fully self-contained: Postgres, InfluxDB, and Explorer all run here.
+#
+# For host macOS development (pnpm dev), use docker-compose.dev.yml instead.
+# The two stacks use different networks and container names on purpose so they
+# can run simultaneously without conflict:
+#
+#   devcontainer  →  network: vercelab_devcontainer_net  (internal only)
+#   docker-compose.dev.yml  →  network: vercelab_dev_proxy  (+ host port binds)
+# ──────────────────────────────────────────────────────────────────────────────
+
 services:
   devcontainer:
     container_name: vercelab-ui
@@ -30,7 +42,9 @@ services:
       VERCELAB_INFLUXDB_DATABASE: vercelab_metrics
       VERCELAB_INFLUXDB_EXPLORER_URL: http://localhost:8888
       VERCELAB_BASE_DOMAIN: localhost
-      VERCELAB_PROXY_NETWORK: vercelab_proxy
+      # Intentionally different from docker-compose.dev.yml (vercelab_dev_proxy)
+      # to keep the two stacks isolated.
+      VERCELAB_PROXY_NETWORK: vercelab_devcontainer_net
       VERCELAB_ENCRYPTION_SECRET: devcontainer-local-secret-change-me
     networks:
       - devnet
@@ -102,6 +116,9 @@ services:
 
 networks:
   devnet:
+    # Explicit name prevents compose from prepending the project name, making
+    # it predictable and clearly separate from vercelab_dev_proxy.
+    name: vercelab_devcontainer_net
     driver: bridge
 
 volumes:
