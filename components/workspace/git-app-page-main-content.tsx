@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ExternalLink,
   GitBranch,
@@ -283,7 +283,7 @@ export function GitAppPageMainContent({
   const [envRows, setEnvRows] = useState<EnvVariableDraft[]>(() =>
     buildEnvVariableDrafts(deployment.envVariables),
   );
-  const [isSourceLoading, setIsSourceLoading] = useState(true);
+  const [isSourceLoading, setIsSourceLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [port, setPort] = useState(String(deployment.port));
   const [sourceData, setSourceData] = useState<DeploymentSourcePayload | null>(
@@ -292,6 +292,93 @@ export function GitAppPageMainContent({
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState(deployment.subdomain);
   const deferredBranch = useDeferredValue(branchValue);
+
+  // Tracks whether the user has triggered the first source load.
+  // We never auto-fetch on page load — the fetch only starts when the user
+  // opens the branch combobox for the first time.
+  const sourceRequestedRef = useRef(false);
+  const [sourceRequested, setSourceRequested] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const fetchSourceData = useCallback(
+    (branch: string) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const searchParams = new URLSearchParams();
+
+      if (branch.trim().length > 0) {
+        searchParams.set("branch", branch.trim());
+      }
+
+      const requestUrl = `/api/deployments/${deployment.id}/source${searchParams.size ? `?${searchParams.toString()}` : ""}`;
+
+      async function run() {
+        setIsSourceLoading(true);
+        setSourceError(null);
+
+        try {
+          const response = await fetch(requestUrl, {
+            signal: controller.signal,
+          });
+          const payload = (await response.json()) as
+            | DeploymentSourcePayload
+            | { error?: string };
+
+          if (!response.ok) {
+            const errorMessage =
+              typeof payload === "object" &&
+              payload !== null &&
+              "error" in payload &&
+              typeof payload.error === "string"
+                ? payload.error
+                : "Unable to load repository source details.";
+
+            throw new Error(errorMessage);
+          }
+
+          setSourceData(payload as DeploymentSourcePayload);
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          setSourceData(null);
+          setSourceError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load repository source details.",
+          );
+        } finally {
+          if (!controller.signal.aborted) {
+            setIsSourceLoading(false);
+          }
+        }
+      }
+
+      void run();
+    },
+    [deployment.id],
+  );
+
+  // Re-fetch when the selected branch changes — but only after the first
+  // load has already been requested (i.e. the user opened the combobox once).
+  useEffect(() => {
+    if (!sourceRequestedRef.current) {
+      return;
+    }
+
+    fetchSourceData(deferredBranch);
+  }, [deferredBranch, deployment.updatedAt, fetchSourceData]);
+
+  // Clean up any in-flight request when the deployment changes.
+  useEffect(() => {
+    return () => {
+      sourceRequestedRef.current = false;
+      abortControllerRef.current?.abort();
+    };
+  }, [deployment.id]);
   const repositoryDescriptor = sourceData?.repository
     ? {
         fullName: sourceData.repository.fullName,
@@ -325,64 +412,6 @@ export function GitAppPageMainContent({
     deployment.port,
     deployment.subdomain,
   ]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const searchParams = new URLSearchParams();
-
-    if (deferredBranch.trim().length > 0) {
-      searchParams.set("branch", deferredBranch.trim());
-    }
-
-    const requestUrl = `/api/deployments/${deployment.id}/source${searchParams.size ? `?${searchParams.toString()}` : ""}`;
-
-    async function loadSourceData() {
-      setIsSourceLoading(true);
-      setSourceError(null);
-
-      try {
-        const response = await fetch(requestUrl, {
-          signal: controller.signal,
-        });
-        const payload = (await response.json()) as
-          | DeploymentSourcePayload
-          | { error?: string };
-
-        if (!response.ok) {
-          const errorMessage =
-            typeof payload === "object" &&
-            payload !== null &&
-            "error" in payload &&
-            typeof payload.error === "string"
-              ? payload.error
-              : "Unable to load repository source details.";
-
-          throw new Error(errorMessage);
-        }
-
-        setSourceData(payload as DeploymentSourcePayload);
-      } catch (error) {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        setSourceData(null);
-        setSourceError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load repository source details.",
-        );
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsSourceLoading(false);
-        }
-      }
-    }
-
-    void loadSourceData();
-
-    return () => controller.abort();
-  }, [deferredBranch, deployment.id, deployment.updatedAt]);
 
   const branchOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -500,6 +529,17 @@ export function GitAppPageMainContent({
   function handleBranchSelect(value: string) {
     setBranchValue(value);
     setCommitSha("");
+  }
+
+  function handleBranchComboboxOpen(open: boolean) {
+    if (!open || sourceRequestedRef.current) {
+      return;
+    }
+
+    // First time the user opens the branch dropdown — kick off the lazy fetch.
+    sourceRequestedRef.current = true;
+    setSourceRequested(true);
+    fetchSourceData(branchValue);
   }
 
   function handleCommitSelect(value: string) {
@@ -807,14 +847,17 @@ export function GitAppPageMainContent({
                   <Combobox
                     ariaLabel="Saved branch"
                     buttonClassName="h-9 rounded-lg bg-background px-3 text-sm shadow-none"
-                    disabled={isSourceLoading || branchOptions.length === 0}
+                    disabled={isSourceLoading}
                     emptyText={branchBrowserError ?? "No branches available"}
+                    onOpenChangeAction={handleBranchComboboxOpen}
                     onValueChangeAction={handleBranchSelect}
                     options={branchOptions}
                     placeholder={
                       isSourceLoading
                         ? "Loading branches..."
-                        : "Select a branch"
+                        : sourceRequested
+                          ? "Select a branch"
+                          : "Click to load branches"
                     }
                     searchPlaceholder="Search branches"
                     value={branchValue}

@@ -24,7 +24,14 @@ export async function GET(
       deploymentId,
     });
 
-    return Response.json(payload);
+    return Response.json(payload, {
+      headers: {
+        // Cache in the browser for 30 s so quick page switches don't re-hit
+        // the GitHub API. The response is deployment-specific (private) and
+        // the client refetches whenever branch / updatedAt changes anyway.
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+      },
+    });
   } catch (error) {
     return Response.json(
       {

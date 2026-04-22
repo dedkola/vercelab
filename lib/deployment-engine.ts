@@ -924,8 +924,13 @@ export async function readDeploymentSourceState(input: {
   deploymentId: string;
 }): Promise<DeploymentSourceState> {
   const deployment = await getStoredDeploymentById(input.deploymentId);
-  const currentBranch = await readWorkspaceBranch(deployment.workspacePath);
-  const currentCommit = await readWorkspaceCommit(deployment);
+
+  // Run independent local git reads in parallel
+  const [currentBranch, currentCommit] = await Promise.all([
+    readWorkspaceBranch(deployment.workspacePath),
+    readWorkspaceCommit(deployment),
+  ]);
+
   const repository = parseGitHubRepositoryReference(deployment.repositoryUrl);
   const requestedBranch = normalizeStringInput(input.branch);
 
@@ -938,22 +943,42 @@ export async function readDeploymentSourceState(input: {
 
     if (token) {
       try {
-        branches = await listGitHubBranches(
-          token,
-          repository.owner,
-          repository.name,
-        );
-        const branchForCommits =
-          requestedBranch ?? deployment.branch ?? currentBranch ?? branches[0];
+        // If the branch is already known from the request, run both GitHub API
+        // calls in parallel. Only fall back to sequential when we need
+        // branches[0] as the default.
+        const knownBranch =
+          requestedBranch ?? deployment.branch ?? currentBranch;
 
-        commits = (
-          await listGitHubCommits(
+        if (knownBranch) {
+          [branches, commits] = await Promise.all([
+            listGitHubBranches(token, repository.owner, repository.name),
+            listGitHubCommits(
+              token,
+              repository.owner,
+              repository.name,
+              knownBranch,
+            ).then((list) => list.map(mapSourceCommit)),
+          ]);
+        } else {
+          // Unknown branch — fetch branches first so we can use branches[0]
+          branches = await listGitHubBranches(
             token,
             repository.owner,
             repository.name,
-            branchForCommits,
-          )
-        ).map(mapSourceCommit);
+          );
+          const branchForCommits = branches[0];
+
+          if (branchForCommits) {
+            commits = (
+              await listGitHubCommits(
+                token,
+                repository.owner,
+                repository.name,
+                branchForCommits,
+              )
+            ).map(mapSourceCommit);
+          }
+        }
       } catch (error) {
         browserError =
           error instanceof Error

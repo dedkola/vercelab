@@ -30,6 +30,7 @@ type ComboboxProps = {
   buttonClassName?: string;
   emptyText: string;
   onValueChangeAction: (value: string) => void;
+  onOpenChangeAction?: (open: boolean) => void;
   options: ComboboxOption[];
   placeholder: string;
   searchPlaceholder: string;
@@ -42,6 +43,7 @@ export function Combobox({
   buttonClassName,
   emptyText,
   onValueChangeAction,
+  onOpenChangeAction: onOpenChangeProp,
   options,
   placeholder,
   searchPlaceholder,
@@ -49,11 +51,16 @@ export function Combobox({
   disabled,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    onOpenChangeProp?.(next);
+  }
   const selectedOption =
     options.find((option) => option.value === value) ?? null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           aria-label={ariaLabel}
