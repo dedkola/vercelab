@@ -8,7 +8,9 @@ export default async function WorkspaceLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const chromeData = await loadWorkspaceChromeData();
+  const chromeData = await loadWorkspaceChromeData({
+    includeMetricsSnapshot: false,
+  });
 
   return (
     <WorkspaceChromeShell {...chromeData}>{children}</WorkspaceChromeShell>

@@ -11,9 +11,16 @@ export type WorkspaceChromeData = {
   initialSnapshot: MetricsSnapshot | null;
 };
 
-export async function loadWorkspaceChromeData(): Promise<WorkspaceChromeData> {
+type WorkspaceChromeDataOptions = {
+  includeMetricsSnapshot?: boolean;
+};
+
+export async function loadWorkspaceChromeData(
+  options?: WorkspaceChromeDataOptions,
+): Promise<WorkspaceChromeData> {
+  const includeMetricsSnapshot = options?.includeMetricsSnapshot ?? true;
   const influxExplorerUrl = getAppConfig().metrics.influxExplorerUrl;
-  const initialSnapshot = await getMetricsSnapshot().catch(() => null);
+  const initialSnapshot = includeMetricsSnapshot ? await getMetricsSnapshot().catch(() => null) : null;
 
   if (!initialSnapshot) {
     return {
