@@ -19,7 +19,9 @@ type HomeProps = {
 };
 
 export default async function Home({ searchParams }: HomeProps) {
-  const pageData = await loadMetricsDashboardData(searchParams);
+  const pageData = await loadMetricsDashboardData(searchParams, {
+    includeMetricsSnapshot: false,
+  });
 
   return <MetricsDashboardShell {...pageData} embedded />;
 }

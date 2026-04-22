@@ -14,9 +14,18 @@ export type ContainersData = {
   initialSnapshot: MetricsSnapshot | null;
 };
 
-export async function loadContainersData(): Promise<ContainersData> {
+type ContainersDataOptions = {
+  includeMetricsSnapshot?: boolean;
+};
+
+export async function loadContainersData(
+  options?: ContainersDataOptions,
+): Promise<ContainersData> {
+  const includeMetricsSnapshot = options?.includeMetricsSnapshot ?? true;
+  const snapshotPromise = includeMetricsSnapshot ? getMetricsSnapshot().catch(() => null) : Promise.resolve(null);
+
   const [initialSnapshot, initialDeployments] = await Promise.all([
-    getMetricsSnapshot().catch(() => null),
+    snapshotPromise,
     listDeploymentSummaries().catch(() => [] as DeploymentSummary[]),
   ]);
 

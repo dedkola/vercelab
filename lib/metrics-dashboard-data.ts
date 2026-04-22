@@ -29,17 +29,23 @@ export type MetricsDashboardData = {
   initialSnapshot: MetricsSnapshot | null;
 };
 
+type MetricsDashboardDataOptions = {
+  includeMetricsSnapshot?: boolean;
+};
+
 function getSearchParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
 export async function loadMetricsDashboardData(
   searchParams?: MetricsDashboardSearchParams,
+  options?: MetricsDashboardDataOptions,
 ): Promise<MetricsDashboardData> {
   const params = searchParams ? await searchParams : undefined;
   const initialDashboardRange = normalizeDashboardRange(
     getSearchParamValue(params?.range),
   );
+  const includeMetricsSnapshot = options?.includeMetricsSnapshot ?? true;
   const { bucketSeconds, limit } = getDashboardHistorySettings(
     initialDashboardRange,
   );
@@ -50,7 +56,7 @@ export async function loadMetricsDashboardData(
   );
 
   // Start snapshot fetch, then chain InfluxDB queries off it without waiting for deployments
-  const snapshotPromise = getMetricsSnapshot().catch(() => null);
+  const snapshotPromise = includeMetricsSnapshot ? getMetricsSnapshot().catch(() => null) : Promise.resolve(null);
 
   const influxPromise = snapshotPromise.then((snapshot) => {
     if (!snapshot) {

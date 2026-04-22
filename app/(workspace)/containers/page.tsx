@@ -12,7 +12,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ContainersPage() {
-  const pageData = await loadContainersData();
+  const pageData = await loadContainersData({
+    includeMetricsSnapshot: false,
+  });
 
   return <ContainersShell {...pageData} />;
 }
