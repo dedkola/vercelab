@@ -374,12 +374,10 @@ export function WorkspaceChromeShell({
   }, []);
 
   const handleViewPrefetch = useCallback(
-    (view: WorkspaceView) => {
-      if (view === "git-app-page") {
-        void loadRepositories();
-      }
+    (_view: WorkspaceView) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Repos are loaded lazily on Add button press — no prefetch needed.
     },
-    [loadRepositories],
+    [],
   );
 
   const handleViewChange = useCallback(
@@ -388,13 +386,9 @@ export function WorkspaceChromeShell({
         return;
       }
 
-      if (view === "git-app-page") {
-        void loadRepositories();
-      }
-
       router.push(getWorkspaceViewHref(view, dashboardRange));
     },
-    [activeView, dashboardRange, loadRepositories, router],
+    [activeView, dashboardRange, router],
   );
 
   const workspaceRailItems = useMemo(() => {
@@ -625,11 +619,8 @@ export function WorkspaceChromeShell({
     };
   }, [setMetricsWidth]);
 
-  useEffect(() => {
-    if (activeView === "git-app-page") {
-      void loadRepositories();
-    }
-  }, [activeView, loadRepositories]);
+  // Repositories are loaded lazily — only when the Add button is pressed.
+  // No auto-fetch on view activation.
 
   useEffect(() => {
     function syncResponsivePanels() {

@@ -2722,20 +2722,8 @@ export function WorkspaceShell({
     ? sharedChrome.loadRepositories
     : loadRepositories;
 
-  useEffect(() => {
-    if (
-      activeView === "git-app-page" &&
-      !effectiveRepositoryState.hasLoaded &&
-      !effectiveRepositoryState.isLoading
-    ) {
-      void loadRepositoriesAction();
-    }
-  }, [
-    activeView,
-    effectiveRepositoryState.hasLoaded,
-    effectiveRepositoryState.isLoading,
-    loadRepositoriesAction,
-  ]);
+  // Repositories are fetched lazily — only when the create-app panel is opened
+  // (see handleToggleCreateAppPanel). No auto-fetch on page/view load.
 
   const loadBranches = useCallback(async (repository: GitHubRepository) => {
     const repositoryId = String(repository.id);
