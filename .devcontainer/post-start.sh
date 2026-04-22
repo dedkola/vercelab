@@ -6,6 +6,8 @@ readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 readonly DEVCONTAINER_COMPOSE_FILE="${REPO_ROOT}/.devcontainer/docker-compose.yml"
 readonly ENV_LOCAL_FILE="${REPO_ROOT}/.env.local"
+readonly EXPLORER_CONFIG_DIR="${REPO_ROOT}/.devcontainer/influxdb-explorer-config"
+readonly EXPLORER_CONFIG_FILE="${EXPLORER_CONFIG_DIR}/config.json"
 readonly INFLUX_HOST="http://127.0.0.1:8181"
 readonly INFLUX_RECOVERY_HOST="http://127.0.0.1:8182"
 
@@ -36,6 +38,22 @@ write_env_local_value() {
 
   printf '%s=%s\n' "${key}" "${value}" >>"${temp_file}"
   mv "${temp_file}" "${ENV_LOCAL_FILE}"
+}
+
+write_explorer_config() {
+  local token="$1"
+  local database_name="$2"
+
+  mkdir -p "${EXPLORER_CONFIG_DIR}"
+
+  cat >"${EXPLORER_CONFIG_FILE}" <<EOF
+{
+  "DEFAULT_INFLUX_SERVER": "http://influxdb:8181",
+  "DEFAULT_INFLUX_DATABASE": "${database_name}",
+  "DEFAULT_API_TOKEN": "${token}",
+  "DEFAULT_SERVER_NAME": "Vercelab InfluxDB"
+}
+EOF
 }
 
 run_influx_command() {
@@ -97,6 +115,7 @@ main() {
   fi
 
   write_env_local_value "VERCELAB_INFLUXDB_TOKEN" "${token}"
+  write_env_local_value "VERCELAB_INFLUXDB_EXPLORER_URL" "http://localhost:8888"
 
   list_output="$(run_influx_command "influxdb3 show databases --host '${INFLUX_HOST}' --token '${token}' --format json" || true)"
 
@@ -115,6 +134,10 @@ main() {
   if ! grep -Fq "\"name\":\"${db_name}\"" <<<"${list_output}"; then
     run_influx_command "influxdb3 create database --host '${INFLUX_HOST}' --token '${token}' --retention-period '${retention_period}' '${db_name}'" >/dev/null || true
   fi
+
+  write_explorer_config "${token}" "${db_name}"
+
+  docker compose -f "${DEVCONTAINER_COMPOSE_FILE}" up -d --no-deps influxdb-explorer >/dev/null 2>&1 || true
 
   log "Influx bootstrap complete. Token is stored in .env.local for local dev."
 }

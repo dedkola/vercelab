@@ -427,7 +427,7 @@ ensure_path_inside_root() {
 }
 
 gather_configuration() {
-  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_host_root existing_host_lan_ip existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_secret existing_github_token default_base_domain default_host_lan_ip
+  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_influx_explorer_host existing_influx_explorer_url existing_host_root existing_host_lan_ip existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_influx_explorer_data_dir existing_influx_explorer_config_dir existing_influx_explorer_session_secret existing_secret existing_github_token default_base_domain default_host_lan_ip
 
   existing_node_env="$(read_env_value NODE_ENV)"
   existing_runtime_host="$(read_env_value HOSTNAME)"
@@ -435,6 +435,8 @@ gather_configuration() {
 
   existing_base_domain="$(read_env_value VERCELAB_BASE_DOMAIN)"
   existing_admin_host="$(read_env_value VERCELAB_ADMIN_HOST)"
+  existing_influx_explorer_host="$(read_env_value VERCELAB_INFLUXDB_EXPLORER_HOST)"
+  existing_influx_explorer_url="$(read_env_value VERCELAB_INFLUXDB_EXPLORER_URL)"
   existing_host_root="$(read_env_value VERCELAB_HOST_ROOT)"
   existing_host_lan_ip="$(read_env_value VERCELAB_HOST_LAN_IP)"
   existing_data_root="$(read_env_value VERCELAB_DATA_ROOT)"
@@ -457,6 +459,9 @@ gather_configuration() {
   existing_influx_token="$(read_env_value VERCELAB_INFLUXDB_TOKEN)"
   existing_influx_retention_days="$(read_env_value VERCELAB_INFLUXDB_RETENTION_DAYS)"
   existing_influx_data_dir="$(read_env_value VERCELAB_INFLUXDB_DATA_DIR)"
+  existing_influx_explorer_data_dir="$(read_env_value VERCELAB_INFLUXDB_EXPLORER_DATA_DIR)"
+  existing_influx_explorer_config_dir="$(read_env_value VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR)"
+  existing_influx_explorer_session_secret="$(read_env_value VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET)"
   existing_secret="$(read_env_value VERCELAB_ENCRYPTION_SECRET)"
   existing_github_token="$(read_env_value VERCELAB_GITHUB_TOKEN)"
 
@@ -472,6 +477,8 @@ gather_configuration() {
 
   VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-${existing_admin_host:-}}"
   VERCELAB_ADMIN_HOST="${VERCELAB_ADMIN_HOST:-$(prompt_with_default "Dashboard host" "dash.${VERCELAB_BASE_DOMAIN}")}"
+  VERCELAB_INFLUXDB_EXPLORER_HOST="${VERCELAB_INFLUXDB_EXPLORER_HOST:-${existing_influx_explorer_host:-influx.${VERCELAB_BASE_DOMAIN}}}"
+  VERCELAB_INFLUXDB_EXPLORER_URL="${VERCELAB_INFLUXDB_EXPLORER_URL:-${existing_influx_explorer_url:-https://${VERCELAB_INFLUXDB_EXPLORER_HOST}}}"
 
   VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-${existing_host_root:-$DEFAULT_HOST_ROOT}}"
   VERCELAB_HOST_LAN_IP="${VERCELAB_HOST_LAN_IP:-${existing_host_lan_ip:-$default_host_lan_ip}}"
@@ -484,6 +491,8 @@ gather_configuration() {
   VERCELAB_LOCKS_DIR="${VERCELAB_LOCKS_DIR:-${existing_locks_dir:-${VERCELAB_DATA_ROOT}/locks}}"
   VERCELAB_POSTGRES_DATA_DIR="${VERCELAB_POSTGRES_DATA_DIR:-${existing_postgres_data_dir:-${VERCELAB_DATA_ROOT}/postgres}}"
   VERCELAB_INFLUXDB_DATA_DIR="${VERCELAB_INFLUXDB_DATA_DIR:-${existing_influx_data_dir:-${VERCELAB_DATA_ROOT}/influxdb}}"
+  VERCELAB_INFLUXDB_EXPLORER_DATA_DIR="${VERCELAB_INFLUXDB_EXPLORER_DATA_DIR:-${existing_influx_explorer_data_dir:-${VERCELAB_DATA_ROOT}/influxdb-explorer}}"
+  VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR="${VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR:-${existing_influx_explorer_config_dir:-${VERCELAB_DATA_ROOT}/influxdb-explorer-config}}"
 
   VERCELAB_PROXY_NETWORK="${VERCELAB_PROXY_NETWORK:-${existing_proxy_network:-vercelab_proxy}}"
   VERCELAB_PROXY_ENTRYPOINT="${VERCELAB_PROXY_ENTRYPOINT:-${existing_proxy_entrypoint:-websecure}}"
@@ -497,10 +506,12 @@ gather_configuration() {
   VERCELAB_INFLUXDB_DATABASE="${VERCELAB_INFLUXDB_DATABASE:-${existing_influx_database:-vercelab_metrics}}"
   VERCELAB_INFLUXDB_TOKEN="${VERCELAB_INFLUXDB_TOKEN:-${existing_influx_token:-}}"
   VERCELAB_INFLUXDB_RETENTION_DAYS="${VERCELAB_INFLUXDB_RETENTION_DAYS:-${existing_influx_retention_days:-90}}"
+  VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET="${VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET:-${existing_influx_explorer_session_secret:-$(openssl rand -hex 32)}}"
   VERCELAB_ENCRYPTION_SECRET="${VERCELAB_ENCRYPTION_SECRET:-${existing_secret:-}}"
 
   validate_domain "$VERCELAB_BASE_DOMAIN" "VERCELAB_BASE_DOMAIN"
   validate_domain "$VERCELAB_ADMIN_HOST" "VERCELAB_ADMIN_HOST"
+  validate_domain "$VERCELAB_INFLUXDB_EXPLORER_HOST" "VERCELAB_INFLUXDB_EXPLORER_HOST"
   validate_absolute_path "$VERCELAB_DATA_ROOT" "VERCELAB_DATA_ROOT"
   validate_absolute_path "$VERCELAB_HOST_ROOT" "VERCELAB_HOST_ROOT"
   validate_absolute_path "$VERCELAB_TRAEFIK_DYNAMIC_DIR" "VERCELAB_TRAEFIK_DYNAMIC_DIR"
@@ -510,12 +521,15 @@ gather_configuration() {
   validate_absolute_path "$VERCELAB_LOCKS_DIR" "VERCELAB_LOCKS_DIR"
   validate_absolute_path "$VERCELAB_POSTGRES_DATA_DIR" "VERCELAB_POSTGRES_DATA_DIR"
   validate_absolute_path "$VERCELAB_INFLUXDB_DATA_DIR" "VERCELAB_INFLUXDB_DATA_DIR"
+  validate_absolute_path "$VERCELAB_INFLUXDB_EXPLORER_DATA_DIR" "VERCELAB_INFLUXDB_EXPLORER_DATA_DIR"
+  validate_absolute_path "$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR" "VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR"
   validate_absolute_path "$VERCELAB_DOCKER_SOCKET_PATH" "VERCELAB_DOCKER_SOCKET_PATH"
   if [[ -n "$VERCELAB_HOST_LAN_IP" ]]; then
     validate_ipv4 "$VERCELAB_HOST_LAN_IP" "VERCELAB_HOST_LAN_IP"
   fi
 
   [[ "$VERCELAB_ADMIN_HOST" == "$VERCELAB_BASE_DOMAIN" || "$VERCELAB_ADMIN_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] || fail "VERCELAB_ADMIN_HOST must be inside VERCELAB_BASE_DOMAIN."
+  [[ "$VERCELAB_INFLUXDB_EXPLORER_HOST" == "$VERCELAB_BASE_DOMAIN" || "$VERCELAB_INFLUXDB_EXPLORER_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] || fail "VERCELAB_INFLUXDB_EXPLORER_HOST must be inside VERCELAB_BASE_DOMAIN."
   [[ "$VERCELAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCELAB_DATABASE_PROVIDER must be postgres."
 
   ensure_path_inside_root "$VERCELAB_DATA_ROOT" "VERCELAB_DATA_ROOT"
@@ -526,6 +540,8 @@ gather_configuration() {
   ensure_path_inside_root "$VERCELAB_LOCKS_DIR" "VERCELAB_LOCKS_DIR"
   ensure_path_inside_root "$VERCELAB_POSTGRES_DATA_DIR" "VERCELAB_POSTGRES_DATA_DIR"
   ensure_path_inside_root "$VERCELAB_INFLUXDB_DATA_DIR" "VERCELAB_INFLUXDB_DATA_DIR"
+  ensure_path_inside_root "$VERCELAB_INFLUXDB_EXPLORER_DATA_DIR" "VERCELAB_INFLUXDB_EXPLORER_DATA_DIR"
+  ensure_path_inside_root "$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR" "VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR"
 
   if [[ -z "$VERCELAB_POSTGRES_URL" ]]; then
     fail "Set VERCELAB_POSTGRES_URL for the postgres provider."
@@ -552,11 +568,29 @@ prepare_host_directories() {
     "$VERCELAB_LOGS_DIR" \
     "$VERCELAB_LOCKS_DIR" \
     "$VERCELAB_POSTGRES_DATA_DIR" \
-    "$VERCELAB_INFLUXDB_DATA_DIR"
+    "$VERCELAB_INFLUXDB_DATA_DIR" \
+    "$VERCELAB_INFLUXDB_EXPLORER_DATA_DIR" \
+    "$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR"
 
   # InfluxDB 3 runs as uid/gid 1500 in the official image.
   # Pre-setting ownership avoids permission errors on first boot.
   run_privileged chown -R 1500:1500 "$VERCELAB_INFLUXDB_DATA_DIR"
+  run_privileged chown -R 1500:1500 "$VERCELAB_INFLUXDB_EXPLORER_DATA_DIR"
+}
+
+write_influx_explorer_config() {
+  local config_file="$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR/config.json"
+
+  run_privileged tee "$config_file" >/dev/null <<EOF
+{
+  "DEFAULT_INFLUX_SERVER": "http://influxdb:8181",
+  "DEFAULT_INFLUX_DATABASE": "$VERCELAB_INFLUXDB_DATABASE",
+  "DEFAULT_API_TOKEN": "$VERCELAB_INFLUXDB_TOKEN",
+  "DEFAULT_SERVER_NAME": "Vercelab InfluxDB"
+}
+EOF
+
+  run_privileged chmod 644 "$config_file"
 }
 
 validate_docker_socket() {
@@ -632,6 +666,8 @@ VERCELAB_LOGS_DIR=$VERCELAB_LOGS_DIR
 VERCELAB_LOCKS_DIR=$VERCELAB_LOCKS_DIR
 VERCELAB_POSTGRES_DATA_DIR=$VERCELAB_POSTGRES_DATA_DIR
 VERCELAB_INFLUXDB_DATA_DIR=$VERCELAB_INFLUXDB_DATA_DIR
+VERCELAB_INFLUXDB_EXPLORER_DATA_DIR=$VERCELAB_INFLUXDB_EXPLORER_DATA_DIR
+VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR=$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR
 VERCELAB_DOCKER_SOCKET_PATH=$VERCELAB_DOCKER_SOCKET_PATH
 
 VERCELAB_DATABASE_PROVIDER=$VERCELAB_DATABASE_PROVIDER
@@ -642,6 +678,9 @@ VERCELAB_POSTGRES_DB=$VERCELAB_POSTGRES_DB
 
 VERCELAB_INFLUXDB_URL=$VERCELAB_INFLUXDB_URL
 VERCELAB_INFLUXDB_DATABASE=$VERCELAB_INFLUXDB_DATABASE
+VERCELAB_INFLUXDB_EXPLORER_HOST=$VERCELAB_INFLUXDB_EXPLORER_HOST
+VERCELAB_INFLUXDB_EXPLORER_URL=$VERCELAB_INFLUXDB_EXPLORER_URL
+VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET=$VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET
 VERCELAB_INFLUXDB_TOKEN=$VERCELAB_INFLUXDB_TOKEN
 VERCELAB_INFLUXDB_RETENTION_DAYS=$VERCELAB_INFLUXDB_RETENTION_DAYS
 
@@ -691,12 +730,13 @@ ensure_influx_bootstrap() {
 
     VERCELAB_INFLUXDB_TOKEN="$generated_token"
     write_env_file
+    write_influx_explorer_config
 
     log "Generated VERCELAB_INFLUXDB_TOKEN and persisted it to .env"
 
     (
       cd "$REPO_ROOT"
-      "${DOCKER_CMD[@]}" compose up -d --no-deps control-plane
+      "${DOCKER_CMD[@]}" compose up -d --no-deps control-plane influxdb-explorer
     )
   fi
 
@@ -719,10 +759,11 @@ ensure_influx_bootstrap() {
 
     VERCELAB_INFLUXDB_TOKEN="$generated_token"
     write_env_file
+    write_influx_explorer_config
 
     (
       cd "$REPO_ROOT"
-      "${DOCKER_CMD[@]}" compose up -d --no-deps control-plane
+      "${DOCKER_CMD[@]}" compose up -d --no-deps control-plane influxdb-explorer
     )
 
     database_list_json="$(
@@ -741,6 +782,13 @@ ensure_influx_bootstrap() {
       "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 create database --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --retention-period '$retention_period' '$VERCELAB_INFLUXDB_DATABASE'"
     ) || fail "Unable to create InfluxDB database $VERCELAB_INFLUXDB_DATABASE."
   fi
+
+  write_influx_explorer_config
+
+  (
+    cd "$REPO_ROOT"
+    "${DOCKER_CMD[@]}" compose up -d --no-deps influxdb-explorer
+  )
 }
 
 print_configuration_review() {
@@ -757,6 +805,7 @@ print_configuration_review() {
   printf '%b Domains & Routing%b\n' "$C_YELLOW" "$C_RESET"
   printf '   VERCELAB_BASE_DOMAIN     : %s\n' "$VERCELAB_BASE_DOMAIN"
   printf '   VERCELAB_ADMIN_HOST      : %s\n' "$VERCELAB_ADMIN_HOST"
+  printf '   VERCELAB_INFLUX_EXPLORER : %s\n' "$VERCELAB_INFLUXDB_EXPLORER_HOST"
   printf '   VERCELAB_PROXY_NETWORK   : %s\n' "$VERCELAB_PROXY_NETWORK"
   printf '   VERCELAB_PROXY_ENTRYPOINT: %s\n' "$VERCELAB_PROXY_ENTRYPOINT"
   printf '\n'
@@ -768,6 +817,8 @@ print_configuration_review() {
   printf '   VERCELAB_LOCKS_DIR       : %s\n' "$VERCELAB_LOCKS_DIR"
   printf '   VERCELAB_POSTGRES_DATA_DIR: %s\n' "$VERCELAB_POSTGRES_DATA_DIR"
   printf '   VERCELAB_INFLUXDB_DATA_DIR: %s\n' "$VERCELAB_INFLUXDB_DATA_DIR"
+  printf '   VERCELAB_INFLUX_EXPLORER_DATA: %s\n' "$VERCELAB_INFLUXDB_EXPLORER_DATA_DIR"
+  printf '   VERCELAB_INFLUX_EXPLORER_CFG : %s\n' "$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR"
   printf '   VERCELAB_DOCKER_SOCKET   : %s\n' "$VERCELAB_DOCKER_SOCKET_PATH"
   printf '\n'
   printf '%b Databases%b\n' "$C_YELLOW" "$C_RESET"
@@ -791,6 +842,7 @@ print_configuration_review() {
 print_summary() {
   local dashboard_url="https://$VERCELAB_ADMIN_HOST"
   local health_url="$dashboard_url/api/health"
+  local influx_explorer_url="$VERCELAB_INFLUXDB_EXPLORER_URL"
   local wildcard_example_url="https://demo.$VERCELAB_BASE_DOMAIN"
 
   printf '\n'
@@ -798,6 +850,7 @@ print_summary() {
   printf '%b                    Vercelab Setup Complete                 %b\n' "$C_BOLD" "$C_RESET"
   printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
   printf ' %bDashboard%b   : %s\n' "$C_YELLOW" "$C_RESET" "$dashboard_url"
+  printf ' %bInflux UI%b   : %s\n' "$C_YELLOW" "$C_RESET" "$influx_explorer_url"
   printf ' %bHealth API%b  : %s\n' "$C_YELLOW" "$C_RESET" "$health_url"
   printf ' %bApp Example%b : %s\n' "$C_YELLOW" "$C_RESET" "$wildcard_example_url"
   printf '\n'
@@ -829,6 +882,7 @@ main() {
   write_env_file
   write_tls_config
   ensure_certificate
+  write_influx_explorer_config
   start_stack
   ensure_influx_bootstrap
   print_summary

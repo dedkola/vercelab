@@ -28,6 +28,7 @@ services:
       VERCELAB_POSTGRES_URL: postgresql://vercelab:vercelab@postgres:5432/vercelab
       VERCELAB_INFLUXDB_URL: http://influxdb:8181
       VERCELAB_INFLUXDB_DATABASE: vercelab_metrics
+      VERCELAB_INFLUXDB_EXPLORER_URL: http://localhost:8888
       VERCELAB_BASE_DOMAIN: localhost
       VERCELAB_PROXY_NETWORK: vercelab_proxy
       VERCELAB_ENCRYPTION_SECRET: devcontainer-local-secret-change-me
