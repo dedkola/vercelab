@@ -16,7 +16,7 @@ import {
 } from "@/lib/persistence";
 import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
 
-type WorkspaceView = "dashboard" | "git-app-page";
+type WorkspaceView = "dashboard" | "git-app-page" | "containers";
 
 type WorkspaceShellSearchParams = Promise<{
   page?: string | string[];
@@ -47,6 +47,8 @@ function getInitialView(
   defaultView: WorkspaceView,
 ): WorkspaceView {
   switch (getSearchParamValue(pageValue)) {
+    case "containers":
+      return "containers";
     case "git-app-page":
     case "apps":
       return "git-app-page";

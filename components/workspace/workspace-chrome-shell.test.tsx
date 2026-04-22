@@ -97,10 +97,14 @@ describe("WorkspaceChromeShell", () => {
 
     await waitFor(() => {
       expect(prefetchMock).toHaveBeenCalledWith("/git-app-page");
+      expect(prefetchMock).toHaveBeenCalledWith("/containers");
     });
 
     await user.click(screen.getByRole("button", { name: "Git App Page" }));
     expect(pushMock).toHaveBeenCalledWith("/git-app-page");
+
+    await user.click(screen.getByRole("button", { name: "Containers" }));
+    expect(pushMock).toHaveBeenCalledWith("/containers");
 
     await user.click(
       screen.getByRole("button", { name: "Influx Explorer" }),

@@ -62,7 +62,7 @@ import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
 export type MetricTone = "emerald" | "amber" | "slate";
 export type PreviewContainerStatus = "running" | "degraded" | "idle";
 export type DashboardLogView = "live" | "events" | "alerts";
-export type WorkspaceView = "dashboard" | "git-app-page";
+export type WorkspaceView = "dashboard" | "git-app-page" | "containers";
 
 export type MetricCard = {
   title: string;

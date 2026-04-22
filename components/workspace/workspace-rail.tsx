@@ -25,7 +25,12 @@ type WorkspaceRailProps = {
 };
 
 function getWorkspaceRailHref(view: WorkspaceView) {
-  const pathname = view === "dashboard" ? "/" : "/git-app-page";
+  const pathname =
+    view === "dashboard"
+      ? "/"
+      : view === "git-app-page"
+        ? "/git-app-page"
+        : "/containers";
 
   if (typeof window === "undefined") {
     return pathname;

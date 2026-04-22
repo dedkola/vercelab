@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, GitBranch, Home, type LucideIcon } from "lucide-react";
+import { Activity, Box, GitBranch, Home, type LucideIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
@@ -87,6 +87,12 @@ const WORKSPACE_PAGES: Array<{
     id: "git-app-page",
     label: "Git App Page",
   },
+  {
+    description: "Container inventory, runtime logs, and lifecycle controls",
+    iconComponent: Box,
+    id: "containers",
+    label: "Containers",
+  },
 ];
 
 const WorkspaceChromeContext =
@@ -147,7 +153,12 @@ function formatHeaderPillLabel(panel: {
 }
 
 function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
-  const pathname = view === "git-app-page" ? "/git-app-page" : "/";
+  const pathname =
+    view === "git-app-page"
+      ? "/git-app-page"
+      : view === "containers"
+        ? "/containers"
+        : "/";
 
   if (range === "15m") {
     return pathname;
@@ -249,7 +260,11 @@ export function WorkspaceChromeShell({
   const resetHandlersRef = useRef(new Set<ResetHandler>());
 
   const activeView =
-    pathname === "/git-app-page" ? "git-app-page" : "dashboard";
+    pathname === "/git-app-page"
+      ? "git-app-page"
+      : pathname === "/containers"
+        ? "containers"
+        : "dashboard";
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
     [sidebarHistory, sidebarSnapshot],
@@ -648,13 +663,23 @@ export function WorkspaceChromeShell({
     WORKSPACE_PAGES.find((page) => page.id === activeView) ??
     WORKSPACE_PAGES[0]!;
   const activeViewTitle =
-    activeView === "dashboard" ? "Metrics dashboard" : "Git App Page";
+    activeView === "dashboard"
+      ? "Metrics dashboard"
+      : activeView === "git-app-page"
+        ? "Git App Page"
+        : "Containers";
   const activeViewDescription =
     activeView === "dashboard"
       ? "Live host and container observability inside the shared workspace shell."
-      : "Create, review, and edit live deployments in the same shared workspace shell.";
+      : activeView === "git-app-page"
+        ? "Create, review, and edit live deployments in the same shared workspace shell."
+        : "Runtime inventory, protected system services, and per-container log inspection.";
   const activeViewStatusLabel =
-    activeView === "dashboard" ? "Live runtime" : "Live deployments";
+    activeView === "dashboard"
+      ? "Live runtime"
+      : activeView === "git-app-page"
+        ? "Live deployments"
+        : "Live containers";
   const hostMetricsProps = {
     cpuHeadroomLabel: sidebarSnapshot
       ? formatPercent(Math.max(0, 100 - sidebarSnapshot.system.cpuPercent))
