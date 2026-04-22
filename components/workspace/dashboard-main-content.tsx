@@ -584,9 +584,14 @@ export function DashboardMainContent({
                     key={endpoint.name}
                   >
                     <div className="flex items-center justify-between gap-3 text-sm">
-                      <div className="font-semibold text-foreground">
-                        {endpoint.name}
-                      </div>
+                      <a
+                        className="truncate font-semibold text-emerald-700 underline decoration-emerald-300 underline-offset-2"
+                        href={endpoint.url ?? endpoint.name}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        {endpoint.url ?? endpoint.name}
+                      </a>
                       <div className="text-xs text-muted-foreground">
                         {endpoint.latency} - {endpoint.uptime}
                       </div>
@@ -596,7 +601,7 @@ export function DashboardMainContent({
                 ))
               ) : (
                 <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-4 text-sm text-muted-foreground">
-                  No live endpoint inspection is wired for this container yet.
+                  No Traefik route detected for this container yet.
                 </div>
               )}
             </div>

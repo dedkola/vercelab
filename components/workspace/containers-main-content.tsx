@@ -214,6 +214,30 @@ export function ContainersMainContent({
                   {runtime?.serviceName ?? "Unknown"}
                 </dd>
               </div>
+              <div className="rounded-md border border-border/60 bg-muted/16 px-2.5 py-2 md:col-span-2">
+                <dt className="uppercase tracking-[0.12em] text-muted-foreground">
+                  Access
+                </dt>
+                <dd className="mt-1 flex flex-wrap gap-2 text-sm font-medium text-foreground">
+                  {runtimeEntry?.display.endpoints.length ? (
+                    runtimeEntry.display.endpoints.map((endpoint) => (
+                      <a
+                        className="truncate text-emerald-700 underline decoration-emerald-300 underline-offset-2"
+                        href={endpoint.url ?? endpoint.name}
+                        key={endpoint.name}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        {endpoint.url ?? endpoint.name}
+                      </a>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground">
+                      No Traefik route detected
+                    </span>
+                  )}
+                </dd>
+              </div>
             </dl>
           </section>
 

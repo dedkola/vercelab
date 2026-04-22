@@ -343,7 +343,27 @@ function buildRuntimeSummary(runtime: ContainerStats) {
       : "standalone runtime",
   ].filter(Boolean);
 
-  return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.`;
+  const routeSuffix = runtime.routedHost
+    ? ` Available at https://${runtime.routedHost}.`
+    : "";
+
+  return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.${routeSuffix}`;
+}
+
+function buildRuntimeEndpoints(runtime: ContainerStats) {
+  if (!runtime.routedHost) {
+    return [] as PreviewContainer["endpoints"];
+  }
+
+  return [
+    {
+      load: Math.max(8, Math.min(100, Math.round(runtime.cpuPercent))),
+      latency: "HTTPS",
+      name: `https://${runtime.routedHost}`,
+      uptime: formatRuntimeHealthLabel(runtime.health),
+      url: `https://${runtime.routedHost}`,
+    },
+  ] satisfies PreviewContainer["endpoints"];
 }
 
 function getPreviewStatus(runtime: ContainerStats): PreviewContainerStatus {
@@ -483,7 +503,7 @@ function buildDisplayContainer(
     deployedAt: snapshot
       ? formatDetailedTimestamp(snapshot.timestamp)
       : "Unknown",
-    endpoints: [],
+    endpoints: buildRuntimeEndpoints(runtime),
     environment: [],
     id: runtime.id,
     image: runtime.serviceName
@@ -493,7 +513,9 @@ function buildDisplayContainer(
     memory: formatBytes(runtime.memoryBytes),
     name: runtime.name,
     node: snapshot?.hostIp ?? "Current host",
-    port: runtime.serviceName ?? "Internal",
+    port: runtime.routedHost
+      ? `https://${runtime.routedHost}`
+      : (runtime.serviceName ?? "Internal"),
     region: snapshot?.hostIp ?? "Current host",
     requestRate: formatBytesPerSecond(runtime.networkTotalBytesPerSecond),
     restarts: 0,
@@ -547,6 +569,12 @@ function buildDisplayContainer(
       runtime.health !== "none" ? runtime.health : null,
     ].filter((value): value is string => Boolean(value)),
     timeline: [
+      runtime.routedHost
+        ? {
+            detail: `HTTPS route active at https://${runtime.routedHost}.`,
+            label: "Access",
+          }
+        : null,
       {
         detail: `Health ${formatRuntimeHealthLabel(runtime.health)} • status ${runtime.status}.`,
         label: "Runtime state",
@@ -559,7 +587,7 @@ function buildDisplayContainer(
         detail: `Net ${formatBytesPerSecond(runtime.networkTotalBytesPerSecond)} • disk ${formatBytesPerSecond(runtime.diskTotalBytesPerSecond)}.`,
         label: "I/O profile",
       },
-    ],
+    ].filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
     uptime: snapshot
       ? `Updated ${formatClock(snapshot.timestamp)}`
       : "Live sample",

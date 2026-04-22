@@ -44,6 +44,7 @@ import {
   type DeploymentActionResult,
 } from "@/app/actions";
 import type { LogTab } from "./git-log-panel";
+import { readStoredContainerAliases } from "@/lib/container-preferences";
 import { getContainerTone } from "@/lib/container-tone";
 import type { GitHubRepository } from "@/lib/github";
 import type {
@@ -87,6 +88,7 @@ type Endpoint = {
   latency: string;
   uptime: string;
   load: number;
+  url?: string;
 };
 
 export type LogLine = {
@@ -845,7 +847,27 @@ function buildRuntimeSummary(runtime: ContainerStats) {
       : "standalone runtime",
   ].filter(Boolean);
 
-  return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.`;
+  const routeSuffix = runtime.routedHost
+    ? ` Available at https://${runtime.routedHost}.`
+    : "";
+
+  return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.${routeSuffix}`;
+}
+
+function buildRuntimeEndpoints(runtime: ContainerStats): Endpoint[] {
+  if (!runtime.routedHost) {
+    return [];
+  }
+
+  return [
+    {
+      load: Math.max(8, Math.min(100, Math.round(runtime.cpuPercent))),
+      latency: "HTTPS",
+      name: `https://${runtime.routedHost}`,
+      uptime: formatRuntimeHealthLabel(runtime.health),
+      url: `https://${runtime.routedHost}`,
+    },
+  ];
 }
 
 function buildRuntimeContainerMetricsKey(
@@ -1285,6 +1307,12 @@ function buildRuntimeTimeline(
   snapshot: MetricsSnapshot | null,
 ) {
   return [
+    runtime.routedHost
+      ? {
+          label: "Access",
+          detail: `HTTPS route active at https://${runtime.routedHost}.`,
+        }
+      : null,
     {
       label: "Runtime state",
       detail: `${formatRuntimeStatusLabel(runtime)} at ${snapshot ? formatClock(snapshot.timestamp) : "the latest sample"}.`,
@@ -1302,7 +1330,7 @@ function buildRuntimeTimeline(
               .join(" / ")
           : "No compose metadata was exposed for this container.",
     },
-  ];
+  ].filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 }
 
 function buildDisplayContainer(
@@ -1335,7 +1363,7 @@ function buildDisplayContainer(
       tags: [],
       volumes: [],
       environment: [],
-      endpoints: [],
+      endpoints: buildRuntimeEndpoints(runtime),
       activity: createFlatSeries(runtime.cpuPercent),
       signals: [],
       timeline: buildRuntimeTimeline(runtime, snapshot),
@@ -1357,15 +1385,18 @@ function buildDisplayContainer(
     uptime: snapshot
       ? `Updated ${formatClock(snapshot.timestamp)}`
       : base.uptime,
+    port: runtime.routedHost ? `https://${runtime.routedHost}` : base.port,
     cpu: formatPercent(runtime.cpuPercent, 1),
     memory: formatBytes(runtime.memoryBytes),
     region: snapshot?.hostIp ?? base.region,
+    endpoints: buildRuntimeEndpoints(runtime),
     tags: Array.from(
       new Set(
         [
           ...base.tags,
           runtime.projectName,
           runtime.serviceName,
+          runtime.routedHost ? "traefik" : null,
           runtime.status,
           runtime.health !== "none" ? runtime.health : null,
         ].filter((value): value is string => Boolean(value)),
@@ -1908,6 +1939,7 @@ export function WorkspaceShell({
   const [selectedContainerHistoryKey, setSelectedContainerHistoryKey] =
     useState<string | null>(initialSelectedContainerHistoryKey);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [aliases, setAliases] = useState<Record<string, string>>({});
   const branchCacheRef = useRef<Record<string, string[]>>({});
   const branchRequestIdRef = useRef(0);
   const hasMountedLivePollingRef = useRef(false);
@@ -1928,12 +1960,38 @@ export function WorkspaceShell({
     () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
     [sidebarHistory, sidebarSnapshot],
   );
+
+  useEffect(() => {
+    setAliases(readStoredContainerAliases());
+  }, []);
+
   const workspaceContainers = useMemo(
-    () =>
-      activeView === "dashboard"
-        ? buildContainerListEntries(sidebarSnapshot, deployments)
-        : EMPTY_CONTAINER_LIST,
-    [activeView, deployments, sidebarSnapshot],
+    () => {
+      if (activeView !== "dashboard") {
+        return EMPTY_CONTAINER_LIST;
+      }
+
+      return buildContainerListEntries(sidebarSnapshot, deployments).map(
+        (entry) => {
+          const alias = aliases[entry.display.id]?.trim();
+
+          if (!alias) {
+            return entry;
+          }
+
+          return {
+            ...entry,
+            display: {
+              ...entry.display,
+              name: alias,
+            },
+            searchText: `${alias} ${entry.searchText}`.toLowerCase(),
+            sidebarName: alias,
+          } satisfies ContainerListEntry;
+        },
+      );
+    },
+    [activeView, aliases, deployments, sidebarSnapshot],
   );
   const metricsStatus = metricsError
     ? {
@@ -2104,8 +2162,20 @@ export function WorkspaceShell({
       dashboardRange,
       sidebarSnapshot,
       allContainerHistory,
-    );
-  }, [activeView, allContainerHistory, dashboardRange, sidebarSnapshot]);
+    ).map((chart) => ({
+      ...chart,
+      series: chart.series.map((series) => {
+        const alias = aliases[series.id]?.trim();
+
+        return alias
+          ? {
+              ...series,
+              label: alias,
+            }
+          : series;
+      }),
+    }));
+  }, [activeView, aliases, allContainerHistory, dashboardRange, sidebarSnapshot]);
   const detailedHistoryRequest = useMemo(() => {
     if (activeView !== "dashboard") {
       return null;

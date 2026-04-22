@@ -46,6 +46,7 @@ const runtimeSnapshot = {
         networkTotalBytesPerSecond: 52_000,
         networkTxBytesPerSecond: 12_000,
         projectName: "vercelab",
+        routedHost: "control-plane.myhomelan.com",
         serviceName: "control-plane",
         status: "running",
       },
@@ -165,6 +166,11 @@ describe("ContainersShell", () => {
 
     expect(await screen.findByText(/server booted/i)).toBeVisible();
     expect(screen.getByText(/protected system service/i)).toBeVisible();
+    expect(
+      screen.getByRole("link", {
+        name: /https:\/\/control-plane\.myhomelan\.com/i,
+      }),
+    ).toBeVisible();
   });
 
   it("stores friendly labels locally for protected containers", async () => {

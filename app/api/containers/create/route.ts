@@ -41,7 +41,9 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          message: `Started ${created.containerName}.`,
+          message: created.url
+            ? `Started ${created.containerName} at ${created.url}.`
+            : `Started ${created.containerName}.`,
           ...created,
         },
         {
@@ -58,7 +60,9 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          message: `Started compose stack ${created.stackName}.`,
+          message: created.urls?.length
+            ? `Started compose stack ${created.stackName}. Routes: ${created.urls.join(", ")}.`
+            : `Started compose stack ${created.stackName}.`,
           ...created,
         },
         {

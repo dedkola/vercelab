@@ -19,6 +19,10 @@ import type {
   DashboardLogView,
   LogLine,
 } from "@/components/workspace-shell";
+import {
+  readStoredContainerAliases,
+  writeStoredContainerAliases,
+} from "@/lib/container-preferences";
 import type { ContainersData } from "@/lib/containers-data";
 import {
   type ContainerAction,
@@ -35,7 +39,6 @@ import {
 
 const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
 const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
-const ALIAS_STORAGE_KEY = "vercelab:containers-friendly-labels";
 const DEFAULT_LIST_WIDTH_PX = 304;
 const DEFAULT_LOGS_WIDTH_PX = 340;
 const MIN_LIST_WIDTH_PX = 260;
@@ -151,25 +154,6 @@ function formatContainerLogLines(output: string, containerId: string): LogLine[]
     });
 }
 
-function readStoredAliases() {
-  const rawValue = getStorage()?.getItem(ALIAS_STORAGE_KEY);
-
-  if (!rawValue) {
-    return {} as Record<string, string>;
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue) as Record<string, string>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {} as Record<string, string>;
-  }
-}
-
-function writeStoredAliases(aliases: Record<string, string>) {
-  getStorage()?.setItem(ALIAS_STORAGE_KEY, JSON.stringify(aliases));
-}
-
 function formatCompactCount(value: number) {
   return new Intl.NumberFormat("en", {
     notation: "compact",
@@ -243,7 +227,7 @@ export function ContainersShell({
   });
 
   useEffect(() => {
-    setAliases(readStoredAliases());
+    setAliases(readStoredContainerAliases());
   }, []);
 
   const containers = useMemo(() => {
@@ -598,7 +582,7 @@ export function ContainersShell({
     };
 
     setAliases(nextAliases);
-    writeStoredAliases(nextAliases);
+    writeStoredContainerAliases(nextAliases);
   };
 
   const handleCatalogSearch = async () => {

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { getAppConfig } from "@/lib/app-config";
+import { extractTraefikHostFromLabels } from "@/lib/container-routing";
 
 type CpuCounters = {
   idle: number;
@@ -59,6 +60,7 @@ export type ContainerStats = {
   health: ContainerHealthState;
   projectName: string | null;
   serviceName: string | null;
+  routedHost?: string | null;
 };
 
 type SampleState<T> = {
@@ -910,6 +912,7 @@ async function readContainerStats(totalMemoryBytes: number) {
           health: normalizeContainerHealth(row.Status),
           projectName: labels.get("com.docker.compose.project") ?? null,
           serviceName: labels.get("com.docker.compose.service") ?? null,
+          routedHost: extractTraefikHostFromLabels(labels),
         } satisfies ContainerStats;
       })
       .sort(

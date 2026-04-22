@@ -70,6 +70,7 @@ describe("WorkspaceShell", () => {
     prefetchMock.mockReset();
     refreshMock.mockReset();
     window.history.replaceState(null, "", "/");
+    window.localStorage.clear();
 
     fetchSpy.mockImplementation(async (input) => {
       const url = getRequestUrl(input);
@@ -185,6 +186,7 @@ describe("WorkspaceShell", () => {
                 status: "running",
                 health: "healthy",
                 projectName: "vercelab",
+                routedHost: "control-plane.myhomelan.com",
                 serviceName: "control-plane",
               },
               {
@@ -532,6 +534,8 @@ describe("WorkspaceShell", () => {
   });
 
   it("shows live runtime status in the containers sidebar", async () => {
+    const user = userEvent.setup();
+
     render(<WorkspaceShell />);
 
     expect(
@@ -540,6 +544,35 @@ describe("WorkspaceShell", () => {
       }),
     ).toBeVisible();
     expect(screen.getByText(/4 visible/i)).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /control-plane.*healthy/i,
+      }),
+    );
+
+    expect(
+      screen.getByRole("link", {
+        name: /https:\/\/control-plane\.myhomelan\.com/i,
+      }),
+    ).toBeVisible();
+  });
+
+  it("applies stored container aliases in the dashboard sidebar", async () => {
+    window.localStorage.setItem(
+      "vercelab:containers-friendly-labels",
+      JSON.stringify({
+        "runtime-control-plane": "Platform UI",
+      }),
+    );
+
+    render(<WorkspaceShell />);
+
+    expect(
+      await screen.findByRole("button", {
+        name: /platform ui.*healthy/i,
+      }),
+    ).toBeVisible();
   });
 
   it("shows app names for managed containers and raw names for docker containers in the sidebar", async () => {
