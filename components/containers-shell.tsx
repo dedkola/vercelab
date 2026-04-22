@@ -939,9 +939,6 @@ export function ContainersShell({
         onLogViewChangeAction={setDashboardLogView}
         onResizeStartAction={(event) => handleResizeStart("logs", event)}
         selectedContainerName={selectedContainerName}
-        selectedContainerRegion={
-          selectedEntry?.display.region ?? snapshot?.hostIp ?? "Current host"
-        }
         selectedContainerStatusLabel={selectedContainerStatusLabel}
         selectedContainerStatusVariant={selectedContainerStatusVariant}
         selectedPreviewAvailable={!isAllContainersSelected && Boolean(selectedEntry)}
