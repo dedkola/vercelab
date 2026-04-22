@@ -36,6 +36,7 @@ export type WorkspaceShellData = {
 
 type WorkspaceShellDataOptions = {
   includeMetricsHistory?: boolean;
+  includeMetricsSnapshot?: boolean;
 };
 
 function getSearchParamValue(value: string | string[] | undefined) {
@@ -70,13 +71,14 @@ export async function loadWorkspaceShellData(
     getSearchParamValue(params?.range),
   );
   const includeMetricsHistory = options?.includeMetricsHistory ?? true;
+  const includeMetricsSnapshot = options?.includeMetricsSnapshot ?? true;
 
   // Start deployments fetch immediately — it doesn't need the snapshot
   const deploymentsPromise = listDeploymentSummaries().catch(
     () => [] as DeploymentSummary[],
   );
 
-  const snapshotPromise = getMetricsSnapshot().catch(() => null);
+  const snapshotPromise = includeMetricsSnapshot ? getMetricsSnapshot().catch(() => null) : Promise.resolve(null);
 
   // Chain InfluxDB queries off the snapshot as soon as hostIp is known,
   // without waiting for deploymentsPromise

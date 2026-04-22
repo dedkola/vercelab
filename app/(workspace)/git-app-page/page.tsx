@@ -23,6 +23,7 @@ export default async function GitAppPageRoute({
 }: GitAppPageRouteProps) {
   const pageData = await loadWorkspaceShellData(searchParams, "git-app-page", {
     includeMetricsHistory: false,
+    includeMetricsSnapshot: false,
   });
 
   return <WorkspaceShell {...pageData} embedded />;
