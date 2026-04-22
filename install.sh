@@ -576,6 +576,7 @@ prepare_host_directories() {
   # Pre-setting ownership avoids permission errors on first boot.
   run_privileged chown -R 1500:1500 "$VERCELAB_INFLUXDB_DATA_DIR"
   run_privileged chown -R 1500:1500 "$VERCELAB_INFLUXDB_EXPLORER_DATA_DIR"
+  run_privileged chown -R 1500:1500 "$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR"
 }
 
 write_influx_explorer_config() {
@@ -591,6 +592,7 @@ write_influx_explorer_config() {
 EOF
 
   run_privileged chmod 644 "$config_file"
+  run_privileged chown -R 1500:1500 "$VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR"
 }
 
 validate_docker_socket() {

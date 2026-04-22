@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, Home, type LucideIcon } from "lucide-react";
+import { Activity, GitBranch, Home, type LucideIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
@@ -206,6 +206,7 @@ export function useOptionalWorkspaceChrome() {
 
 export function WorkspaceChromeShell({
   children,
+  influxExplorerUrl,
   initialHistory = [],
   initialSnapshot = null,
 }: WorkspaceChromeData & {
@@ -380,6 +381,29 @@ export function WorkspaceChromeShell({
     },
     [activeView, dashboardRange, loadRepositories, router],
   );
+
+  const workspaceRailItems = useMemo(() => {
+    const internalItems = WORKSPACE_PAGES.map((item) => ({
+      ...item,
+      view: item.id,
+    }));
+
+    if (!influxExplorerUrl) {
+      return internalItems;
+    }
+
+    return [
+      ...internalItems,
+      {
+        description: "Open the InfluxDB Explorer UI",
+        external: true,
+        href: influxExplorerUrl,
+        iconComponent: Activity,
+        id: "influx-explorer",
+        label: "Influx Explorer",
+      },
+    ];
+  }, [influxExplorerUrl]);
 
   const handleResetLayout = useCallback(() => {
     const storage = getStorage();
@@ -705,7 +729,7 @@ export function WorkspaceChromeShell({
         <div className="flex min-w-0 flex-1 overflow-hidden">
           <WorkspaceRail
             activeView={activeView}
-            items={WORKSPACE_PAGES}
+            items={workspaceRailItems}
             onViewChangeAction={handleViewChange}
             onViewPrefetchAction={handleViewPrefetch}
           />
