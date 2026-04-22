@@ -46,6 +46,30 @@ services:
     networks:
       - proxy
 
+  influxdb-explorer:
+    image: influxdata/influxdb3-ui:1.7.0
+    container_name: vercelab-influxdb-explorer
+    restart: unless-stopped
+    command:
+      - --mode=admin
+    environment:
+      SESSION_SECRET_KEY: ${VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET:-change-me-influxdb-explorer-session-secret}
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ${VERCELAB_INFLUXDB_EXPLORER_DATA_DIR:-/opt/vercelab/data/influxdb-explorer}:/db
+      - ${VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR:-/opt/vercelab/data/influxdb-explorer-config}:/app-root/config:ro
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
+      - "traefik.http.routers.vercelab-influxdb-explorer.rule=Host(`${VERCELAB_INFLUXDB_EXPLORER_HOST:-influx.localhost}`)"
+      - traefik.http.routers.vercelab-influxdb-explorer.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vercelab-influxdb-explorer.tls=true
+      - traefik.http.services.vercelab-influxdb-explorer.loadbalancer.server.port=8080
+    networks:
+      - proxy
+
   traefik:
     image: traefik:v3.0
     restart: unless-stopped

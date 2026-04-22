@@ -80,6 +80,25 @@ services:
     networks:
       - devnet
 
+  influxdb-explorer:
+    image: influxdata/influxdb3-ui:1.7.0
+    container_name: vercelab-influxdb-explorer
+    restart: unless-stopped
+    command:
+      - --mode=admin
+    environment:
+      SESSION_SECRET_KEY: devcontainer-influxdb-explorer-session-secret
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - 8888:8080
+    volumes:
+      - influxdb-explorer-data:/db
+      - ./influxdb-explorer-config:/app-root/config:ro
+    networks:
+      - devnet
+
 networks:
   devnet:
     driver: bridge
@@ -87,3 +106,4 @@ networks:
 volumes:
   postgres-data:
   influxdb-data:
+  influxdb-explorer-data:
