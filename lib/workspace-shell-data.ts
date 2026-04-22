@@ -25,6 +25,7 @@ type WorkspaceShellSearchParams = Promise<{
 
 export type WorkspaceShellData = {
   baseDomain: string;
+  influxExplorerUrl: string | null;
   initialContainerHistory: ContainerMetricsHistoryPoint[];
   initialDashboardRange: DashboardRange;
   initialDeployments: DeploymentSummary[];
@@ -100,6 +101,7 @@ export async function loadWorkspaceShellData(
 
   return {
     baseDomain: getAppConfig().baseDomain,
+    influxExplorerUrl: getAppConfig().metrics.influxExplorerUrl,
     initialContainerHistory,
     initialDashboardRange,
     initialDeployments,

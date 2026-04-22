@@ -1,3 +1,4 @@
+import { getAppConfig } from "@/lib/app-config";
 import {
   getAllContainersMetricsHistoryFromInflux,
   getMetricsHistoryFromInflux,
@@ -20,6 +21,7 @@ type MetricsDashboardSearchParams = Promise<{
 }>;
 
 export type MetricsDashboardData = {
+  influxExplorerUrl: string | null;
   initialAllContainerHistory: AllContainersMetricsHistorySeries[];
   initialDashboardRange: DashboardRange;
   initialDeployments: DeploymentSummary[];
@@ -48,6 +50,7 @@ export async function loadMetricsDashboardData(
 
   if (!initialSnapshot) {
     return {
+      influxExplorerUrl: getAppConfig().metrics.influxExplorerUrl,
       initialAllContainerHistory: [],
       initialDashboardRange,
       initialDeployments,
@@ -70,6 +73,7 @@ export async function loadMetricsDashboardData(
   ]);
 
   return {
+    influxExplorerUrl: getAppConfig().metrics.influxExplorerUrl,
     initialAllContainerHistory,
     initialDashboardRange,
     initialDeployments,

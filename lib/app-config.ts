@@ -22,6 +22,7 @@ const envSchema = z.object({
     .trim()
     .min(1)
     .default("vercelab_metrics"),
+  VERCELAB_INFLUXDB_EXPLORER_URL: z.string().trim().url().optional(),
   VERCELAB_INFLUXDB_TOKEN: z.string().trim().optional(),
   VERCELAB_INFLUXDB_RETENTION_DAYS: z.coerce
     .number()
@@ -103,6 +104,7 @@ function buildConfig() {
     metrics: {
       influxUrl: parsed.VERCELAB_INFLUXDB_URL,
       influxDatabase: parsed.VERCELAB_INFLUXDB_DATABASE,
+      influxExplorerUrl: parsed.VERCELAB_INFLUXDB_EXPLORER_URL ?? null,
       influxToken: parsed.VERCELAB_INFLUXDB_TOKEN ?? null,
       retentionDays: parsed.VERCELAB_INFLUXDB_RETENTION_DAYS,
     },

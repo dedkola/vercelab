@@ -10,7 +10,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type FormEvent,
 } from "react";
-import { GitBranch, Home, type LucideIcon } from "lucide-react";
+import { Activity, GitBranch, Home, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
@@ -136,6 +136,7 @@ export type ContainerListEntry = {
 type WorkspaceShellProps = {
   baseDomain?: string;
   embedded?: boolean;
+  influxExplorerUrl?: string | null;
   initialContainerHistory?: ContainerMetricsHistoryPoint[];
   initialDashboardRange?: DashboardRange;
   initialDeployments?: DeploymentSummary[];
@@ -1804,6 +1805,7 @@ function createDraftFromRepository(
 export function WorkspaceShell({
   baseDomain,
   embedded = false,
+  influxExplorerUrl,
   initialContainerHistory = [],
   initialDashboardRange = "15m",
   initialDeployments,
@@ -1863,6 +1865,28 @@ export function WorkspaceShell({
     repositories: [],
     tokenConfigured: false,
   });
+  const workspaceRailItems = useMemo(() => {
+    const internalItems = WORKSPACE_PAGES.map((item) => ({
+      ...item,
+      view: item.id,
+    }));
+
+    if (!influxExplorerUrl) {
+      return internalItems;
+    }
+
+    return [
+      ...internalItems,
+      {
+        description: "Open the InfluxDB Explorer UI",
+        external: true,
+        href: influxExplorerUrl,
+        iconComponent: Activity,
+        id: "influx-explorer",
+        label: "Influx Explorer",
+      },
+    ];
+  }, [influxExplorerUrl]);
   const [branchState, setBranchState] = useState<BranchState>({
     branchesByRepositoryId: {},
     error: null,
@@ -3157,7 +3181,7 @@ export function WorkspaceShell({
       <div className="flex min-w-0 flex-1 overflow-hidden">
         <WorkspaceRail
           activeView={activeView}
-          items={WORKSPACE_PAGES}
+          items={workspaceRailItems}
           onViewChangeAction={handleViewChange}
         />
 

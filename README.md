@@ -82,6 +82,8 @@ Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `
 - `/opt/vercelab/data/locks`: deployment lock files
 - `/opt/vercelab/data/postgres`: PostgreSQL data directory
 - `/opt/vercelab/data/influxdb`: InfluxDB 3 Core data directory
+- `/opt/vercelab/data/influxdb-explorer`: InfluxDB Explorer SQLite data
+- `/opt/vercelab/data/influxdb-explorer-config`: generated Explorer connection config
 - `/opt/vercelab/traefik/dynamic/tls.yml`: Traefik TLS dynamic config
 - `/opt/vercelab/traefik/certs/wildcard.crt`: self-signed wildcard certificate
 - `/opt/vercelab/traefik/certs/wildcard.key`: private key for the wildcard certificate
@@ -94,40 +96,47 @@ Local development has a different fallback layout when you do not set production
 - `./data/postgres`
 - `./data/influxdb`
 
+Local dev also starts InfluxDB Explorer on `http://localhost:8888` and preconfigures it against the devcontainer InfluxDB instance.
+
 ## Default runtime variables
 
 These are the defaults the installer writes into `.env` unless you override them.
 
-| Variable                           | Default                                                                      | Notes                                                                                                                        |
-| ---------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                         | `production`                                                                 | Runtime mode for the control plane container                                                                                 |
-| `HOSTNAME`                         | `0.0.0.0`                                                                    | Bind address inside the container                                                                                            |
-| `PORT`                             | `3000`                                                                       | Internal port Traefik forwards to                                                                                            |
-| `VERCELAB_BASE_DOMAIN`             | auto-derived from the host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps                                                                                       |
-| `VERCELAB_ADMIN_HOST`              | `vercelab.${VERCELAB_BASE_DOMAIN}`                                           | Control plane hostname                                                                                                       |
-| `VERCELAB_HOST_LAN_IP`             | auto-derived from the host primary LAN IPv4                                  | Host LAN IPv4 shown in the dashboard and used to tag host metrics                                                            |
-| `VERCELAB_PROXY_NETWORK`           | `vercelab_proxy`                                                             | Shared Docker network for Traefik and managed apps                                                                           |
-| `VERCELAB_PROXY_ENTRYPOINT`        | `websecure`                                                                  | Traefik HTTPS entrypoint                                                                                                     |
-| `VERCELAB_HOST_ROOT`               | `/opt/vercelab`                                                              | Shared host path mounted into the control-plane container at the same absolute path                                          |
-| `VERCELAB_DATA_ROOT`               | `${VERCELAB_HOST_ROOT}/data`                                                 | Parent directory for apps, logs, locks, and the database                                                                     |
-| `VERCELAB_TRAEFIK_DYNAMIC_DIR`     | `${VERCELAB_HOST_ROOT}/traefik/dynamic`                                      | Generated Traefik dynamic config location                                                                                    |
-| `VERCELAB_TRAEFIK_CERTS_DIR`       | `${VERCELAB_HOST_ROOT}/traefik/certs`                                        | Wildcard certificate and key                                                                                                 |
-| `VERCELAB_APPS_DIR`                | `${VERCELAB_DATA_ROOT}/apps`                                                 | Cloned app repositories                                                                                                      |
-| `VERCELAB_LOGS_DIR`                | `${VERCELAB_DATA_ROOT}/logs`                                                 | Deployment logs                                                                                                              |
-| `VERCELAB_LOCKS_DIR`               | `${VERCELAB_DATA_ROOT}/locks`                                                | Deployment lock files                                                                                                        |
-| `VERCELAB_POSTGRES_DATA_DIR`       | `${VERCELAB_DATA_ROOT}/postgres`                                             | PostgreSQL data directory                                                                                                    |
-| `VERCELAB_INFLUXDB_DATA_DIR`       | `${VERCELAB_DATA_ROOT}/influxdb`                                             | InfluxDB 3 Core data directory                                                                                               |
-| `VERCELAB_DOCKER_SOCKET_PATH`      | `/var/run/docker.sock`                                                       | Host Docker socket passed into Traefik and the control plane                                                                 |
-| `VERCELAB_DATABASE_PROVIDER`       | `postgres`                                                                   | PostgreSQL is required in this stack                                                                                         |
-| `VERCELAB_POSTGRES_URL`            | `postgres://vercelab:...@postgres:5432/vercelab`                             | Control-plane relational database connection URL                                                                             |
-| `VERCELAB_POSTGRES_USER`           | `vercelab`                                                                   | Postgres container username                                                                                                  |
-| `VERCELAB_POSTGRES_PASSWORD`       | generated by installer                                                       | Postgres container password                                                                                                  |
-| `VERCELAB_POSTGRES_DB`             | `vercelab`                                                                   | Postgres database name                                                                                                       |
-| `VERCELAB_INFLUXDB_URL`            | `http://influxdb:8181`                                                       | InfluxDB 3 Core write endpoint                                                                                               |
-| `VERCELAB_INFLUXDB_DATABASE`       | `vercelab_metrics`                                                           | InfluxDB database for metrics                                                                                                |
-| `VERCELAB_INFLUXDB_TOKEN`          | auto-generated by `install.sh` when empty                                    | InfluxDB API token used for authenticated write/query access; installer also recovers/regenerates on reinstall when possible |
-| `VERCELAB_INFLUXDB_RETENTION_DAYS` | `90`                                                                         | Desired metrics retention period                                                                                             |
-| `VERCELAB_ENCRYPTION_SECRET`       | auto-generated 64-hex-character secret when unset                            | Used to encrypt stored GitHub tokens                                                                                         |
+| Variable                                    | Default                                                                      | Notes                                                                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                                                 | Runtime mode for the control plane container                                                                                 |
+| `HOSTNAME`                                  | `0.0.0.0`                                                                    | Bind address inside the container                                                                                            |
+| `PORT`                                      | `3000`                                                                       | Internal port Traefik forwards to                                                                                            |
+| `VERCELAB_BASE_DOMAIN`                      | auto-derived from the host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps                                                                                       |
+| `VERCELAB_ADMIN_HOST`                       | `vercelab.${VERCELAB_BASE_DOMAIN}`                                           | Control plane hostname                                                                                                       |
+| `VERCELAB_HOST_LAN_IP`                      | auto-derived from the host primary LAN IPv4                                  | Host LAN IPv4 shown in the dashboard and used to tag host metrics                                                            |
+| `VERCELAB_PROXY_NETWORK`                    | `vercelab_proxy`                                                             | Shared Docker network for Traefik and managed apps                                                                           |
+| `VERCELAB_PROXY_ENTRYPOINT`                 | `websecure`                                                                  | Traefik HTTPS entrypoint                                                                                                     |
+| `VERCELAB_HOST_ROOT`                        | `/opt/vercelab`                                                              | Shared host path mounted into the control-plane container at the same absolute path                                          |
+| `VERCELAB_DATA_ROOT`                        | `${VERCELAB_HOST_ROOT}/data`                                                 | Parent directory for apps, logs, locks, and the database                                                                     |
+| `VERCELAB_TRAEFIK_DYNAMIC_DIR`              | `${VERCELAB_HOST_ROOT}/traefik/dynamic`                                      | Generated Traefik dynamic config location                                                                                    |
+| `VERCELAB_TRAEFIK_CERTS_DIR`                | `${VERCELAB_HOST_ROOT}/traefik/certs`                                        | Wildcard certificate and key                                                                                                 |
+| `VERCELAB_APPS_DIR`                         | `${VERCELAB_DATA_ROOT}/apps`                                                 | Cloned app repositories                                                                                                      |
+| `VERCELAB_LOGS_DIR`                         | `${VERCELAB_DATA_ROOT}/logs`                                                 | Deployment logs                                                                                                              |
+| `VERCELAB_LOCKS_DIR`                        | `${VERCELAB_DATA_ROOT}/locks`                                                | Deployment lock files                                                                                                        |
+| `VERCELAB_POSTGRES_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/postgres`                                             | PostgreSQL data directory                                                                                                    |
+| `VERCELAB_INFLUXDB_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/influxdb`                                             | InfluxDB 3 Core data directory                                                                                               |
+| `VERCELAB_INFLUXDB_EXPLORER_DATA_DIR`       | `${VERCELAB_DATA_ROOT}/influxdb-explorer`                                    | InfluxDB 3 Explorer SQLite data directory                                                                                    |
+| `VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR`     | `${VERCELAB_DATA_ROOT}/influxdb-explorer-config`                             | Generated Explorer connection config directory                                                                               |
+| `VERCELAB_DOCKER_SOCKET_PATH`               | `/var/run/docker.sock`                                                       | Host Docker socket passed into Traefik and the control plane                                                                 |
+| `VERCELAB_DATABASE_PROVIDER`                | `postgres`                                                                   | PostgreSQL is required in this stack                                                                                         |
+| `VERCELAB_POSTGRES_URL`                     | `postgres://vercelab:...@postgres:5432/vercelab`                             | Control-plane relational database connection URL                                                                             |
+| `VERCELAB_POSTGRES_USER`                    | `vercelab`                                                                   | Postgres container username                                                                                                  |
+| `VERCELAB_POSTGRES_PASSWORD`                | generated by installer                                                       | Postgres container password                                                                                                  |
+| `VERCELAB_POSTGRES_DB`                      | `vercelab`                                                                   | Postgres database name                                                                                                       |
+| `VERCELAB_INFLUXDB_URL`                     | `http://influxdb:8181`                                                       | InfluxDB 3 Core write endpoint                                                                                               |
+| `VERCELAB_INFLUXDB_DATABASE`                | `vercelab_metrics`                                                           | InfluxDB database for metrics                                                                                                |
+| `VERCELAB_INFLUXDB_EXPLORER_HOST`           | `influx.${VERCELAB_BASE_DOMAIN}`                                             | Public hostname routed to InfluxDB Explorer through Traefik                                                                  |
+| `VERCELAB_INFLUXDB_EXPLORER_URL`            | `https://${VERCELAB_INFLUXDB_EXPLORER_HOST}`                                 | Canonical Explorer URL surfaced in the Vercelab UI                                                                           |
+| `VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET` | generated by installer                                                       | Explorer session key for persistent sessions                                                                                 |
+| `VERCELAB_INFLUXDB_TOKEN`                   | auto-generated by `install.sh` when empty                                    | InfluxDB API token used for authenticated write/query access; installer also recovers/regenerates on reinstall when possible |
+| `VERCELAB_INFLUXDB_RETENTION_DAYS`          | `90`                                                                         | Desired metrics retention period                                                                                             |
+| `VERCELAB_ENCRYPTION_SECRET`                | auto-generated 64-hex-character secret when unset                            | Used to encrypt stored GitHub tokens                                                                                         |
 
 ## Reinstall
 
@@ -153,6 +162,7 @@ Core stack container names are now pinned to:
 
 - `vercelab-ui`
 - `vercelab-influxdb`
+- `vercelab-influxdb-explorer`
 - `vercelab-postgres`
 
 If you change control-plane or UI code and want to refresh only that container, run this from the repository root:

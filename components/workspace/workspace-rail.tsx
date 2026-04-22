@@ -9,9 +9,12 @@ import { cn } from "@/lib/utils";
 
 type WorkspaceRailItem = {
   description: string;
+  external?: boolean;
+  href?: string;
   iconComponent: LucideIcon;
-  id: WorkspaceView;
+  id: string;
   label: string;
+  view?: WorkspaceView;
 };
 
 type WorkspaceRailProps = {
@@ -64,7 +67,9 @@ export function WorkspaceRail({
 
   useEffect(() => {
     items.forEach((item) => {
-      prefetchView(item.id);
+      if (item.view) {
+        prefetchView(item.view);
+      }
     });
   }, [items, prefetchView]);
 
@@ -72,7 +77,8 @@ export function WorkspaceRail({
     <aside className="flex w-14 shrink-0 flex-col items-center gap-3 border-r border-border/70 bg-linear-to-b from-background via-muted/22 to-background px-2 py-3 shadow-[16px_0_48px_-44px_rgba(15,23,42,0.26)]">
       <div className="flex w-full flex-col gap-2 pt-1">
         {items.map((item) => {
-          const isActive = item.id === activeView;
+          const isActive = item.view === activeView;
+          const isExternal = item.external && item.href;
           const PageIcon = item.iconComponent;
 
           return (
@@ -85,9 +91,26 @@ export function WorkspaceRail({
                   : "text-muted-foreground hover:text-foreground",
               )}
               key={item.id}
-              onClick={() => onViewChangeAction(item.id)}
-              onFocus={() => prefetchView(item.id)}
-              onMouseEnter={() => prefetchView(item.id)}
+              onClick={() => {
+                if (isExternal) {
+                  window.open(item.href, "_blank", "noopener,noreferrer");
+                  return;
+                }
+
+                if (item.view) {
+                  onViewChangeAction(item.view);
+                }
+              }}
+              onFocus={() => {
+                if (item.view) {
+                  prefetchView(item.view);
+                }
+              }}
+              onMouseEnter={() => {
+                if (item.view) {
+                  prefetchView(item.view);
+                }
+              }}
               title={item.description}
               type="button"
             >

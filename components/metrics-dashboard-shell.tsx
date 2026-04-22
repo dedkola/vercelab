@@ -9,7 +9,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { GitBranch, Home, type LucideIcon } from "lucide-react";
+import { Activity, GitBranch, Home, type LucideIcon } from "lucide-react";
 
 import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
 import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-sidebar";
@@ -187,6 +187,7 @@ type MetricsDashboardShellProps = MetricsDashboardData & {
 
 export function MetricsDashboardShell({
   embedded = false,
+  influxExplorerUrl,
   initialAllContainerHistory = [],
   initialDashboardRange = "15m",
   initialDeployments = [],
@@ -284,6 +285,28 @@ export function MetricsDashboardShell({
       })),
     [systemPanels],
   );
+  const workspaceRailItems = useMemo(() => {
+    const internalItems = WORKSPACE_RAIL_ITEMS.map((item) => ({
+      ...item,
+      view: item.id,
+    }));
+
+    if (!influxExplorerUrl) {
+      return internalItems;
+    }
+
+    return [
+      ...internalItems,
+      {
+        description: "Open the InfluxDB Explorer UI",
+        external: true,
+        href: influxExplorerUrl,
+        iconComponent: Activity,
+        id: "influx-explorer",
+        label: "Influx Explorer",
+      },
+    ];
+  }, [influxExplorerUrl]);
   const workspaceContainers = useMemo(
     () =>
       buildContainerListEntries(
@@ -931,7 +954,7 @@ export function MetricsDashboardShell({
       <div className="flex min-w-0 flex-1 overflow-hidden">
         <WorkspaceRail
           activeView="dashboard"
-          items={WORKSPACE_RAIL_ITEMS}
+          items={workspaceRailItems}
           onViewChangeAction={handleViewChange}
         />
 
