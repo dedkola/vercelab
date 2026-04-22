@@ -424,7 +424,6 @@ describe("MetricsDashboardShell", () => {
         /a denser operational view for host and container observability/i,
       ),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/host overview/i)).toBeVisible();
     expect(screen.getByText(/container load explorer/i)).toBeVisible();
     expect(screen.getAllByText(/^host cpu$/i)[0]).toBeVisible();
     expect(screen.getAllByText(/^host memory$/i)[0]).toBeVisible();

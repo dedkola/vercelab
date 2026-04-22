@@ -27,11 +27,7 @@ import type { GitHubRepository } from "@/lib/github";
 import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
 import {
   buildSystemMetricPanels,
-  formatBytes,
-  formatBytesPerSecond,
   formatClock,
-  formatLoadAverage,
-  formatPercent,
 } from "@/lib/metrics-dashboard-metrics";
 import {
   normalizeDashboardRange,
@@ -277,31 +273,6 @@ export function WorkspaceChromeShell({
     [systemPanels],
   );
 
-  const metricsStatus = metricsError
-    ? {
-        badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-        badgeLabel: "Retrying",
-        helperText: metricsError,
-      }
-    : sidebarSnapshot && sidebarHistory.length
-      ? {
-          badgeClassName:
-            "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
-          badgeLabel: "Live",
-          helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from recent live history.`,
-        }
-      : sidebarSnapshot
-        ? {
-            badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-            badgeLabel: "Snapshot only",
-            helperText:
-              "Waiting for recent history samples to populate the charts.",
-          }
-        : {
-            badgeClassName: "border-border/60 bg-background/80 text-foreground",
-            badgeLabel: "Connecting",
-            helperText: "Loading current host metrics.",
-          };
 
   const loadRepositories = useCallback(async () => {
     if (repositoryState.hasLoaded || repositoryState.isLoading) {
@@ -672,35 +643,12 @@ export function WorkspaceChromeShell({
         ? "Live deployments"
         : "Live containers";
   const hostMetricsProps = {
-    cpuHeadroomLabel: sidebarSnapshot
-      ? formatPercent(Math.max(0, 100 - sidebarSnapshot.system.cpuPercent))
-      : "--",
     isCollapsed: isMetricsCollapsed,
-    memoryHeadroomLabel: sidebarSnapshot
-      ? formatBytes(
-          Math.max(
-            0,
-            sidebarSnapshot.system.memoryTotalBytes -
-              sidebarSnapshot.system.memoryUsedBytes,
-          ),
-          1,
-        )
-      : "--",
     metricCards: [],
-    metricsStatus,
     onCollapseAction: () => setIsMetricsCollapsed(true),
     onExpandAction: () => setIsMetricsCollapsed(false),
     onResizeStartAction: handleResizeStart,
-    showStateWarning: Boolean(
-      (sidebarSnapshot && !sidebarHistory.length) || metricsError,
-    ),
-    summaryLabel: sidebarSnapshot
-      ? `${sidebarSnapshot.containers.running} running containers on ${sidebarSnapshot.hostIp}.`
-      : "Waiting for the first host snapshot.",
     systemPanels,
-    throughputLabel: sidebarSnapshot
-      ? `Load avg ${formatLoadAverage(sidebarSnapshot.system.loadAverage)} • ${formatBytesPerSecond(sidebarSnapshot.network.rxBytesPerSecond)} down / ${formatBytesPerSecond(sidebarSnapshot.network.txBytesPerSecond)} up`
-      : metricsStatus.helperText,
     width: metricsWidth,
   } satisfies HostMetricsSidebarProps;
 

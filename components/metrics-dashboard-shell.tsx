@@ -37,11 +37,7 @@ import {
   buildAggregateLogs,
   buildContainerListEntries,
   buildSystemMetricPanels,
-  formatBytes,
-  formatBytesPerSecond,
   formatClock,
-  formatLoadAverage,
-  formatPercent,
   formatStatusLabel,
   getStatusBadgeVariant,
   LOG_VIEW_OPTIONS,
@@ -237,7 +233,7 @@ export function MetricsDashboardShell({
     AllContainersMetricsHistorySeries[]
   >(initialAllContainerHistory);
   const [aliases, setAliases] = useState<Record<string, string>>({});
-  const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [, setMetricsError] = useState<string | null>(null);
   const [containerHistoryError, setContainerHistoryError] = useState<
     string | null
   >(null);
@@ -272,9 +268,6 @@ export function MetricsDashboardShell({
   const effectiveSidebarHistory = isEmbedded
     ? sharedChrome.sidebarHistory
     : sidebarHistory;
-  const effectiveMetricsError = isEmbedded
-    ? sharedChrome.metricsError
-    : metricsError;
   const systemPanels = useMemo(
     () =>
       buildSystemMetricPanels(
@@ -360,31 +353,6 @@ export function MetricsDashboardShell({
     ],
   );
 
-  const metricsStatus = effectiveMetricsError
-    ? {
-        badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-        badgeLabel: "Retrying",
-        helperText: effectiveMetricsError,
-      }
-    : effectiveSidebarSnapshot && effectiveSidebarHistory.length
-      ? {
-          badgeClassName:
-            "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
-          badgeLabel: "Live",
-          helperText: `Updated ${formatClock(effectiveSidebarSnapshot.timestamp)} from recent live history.`,
-        }
-      : effectiveSidebarSnapshot
-        ? {
-            badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-            badgeLabel: "Snapshot only",
-            helperText:
-              "Waiting for recent InfluxDB buckets to fill the charts.",
-          }
-        : {
-            badgeClassName: "border-border/60 bg-background/80 text-foreground",
-            badgeLabel: "Connecting",
-            helperText: "Loading current host metrics.",
-          };
 
   const filteredContainers = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -841,39 +809,13 @@ export function MetricsDashboardShell({
   );
 
   const hostMetricsProps = {
-    cpuHeadroomLabel: effectiveSidebarSnapshot
-      ? formatPercent(
-          Math.max(0, 100 - effectiveSidebarSnapshot.system.cpuPercent),
-        )
-      : "--",
     isCollapsed: isMetricsCollapsed,
-    memoryHeadroomLabel: effectiveSidebarSnapshot
-      ? formatBytes(
-          Math.max(
-            0,
-            effectiveSidebarSnapshot.system.memoryTotalBytes -
-              effectiveSidebarSnapshot.system.memoryUsedBytes,
-          ),
-          1,
-        )
-      : "--",
     metricCards: [],
-    metricsStatus,
     onCollapseAction: () => setIsMetricsCollapsed(true),
     onExpandAction: () => setIsMetricsCollapsed(false),
     onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) =>
       handleResizeStart("metrics", event),
-    showStateWarning: Boolean(
-      (effectiveSidebarSnapshot && !effectiveSidebarHistory.length) ||
-      effectiveMetricsError,
-    ),
-    summaryLabel: effectiveSidebarSnapshot
-      ? `${effectiveSidebarSnapshot.containers.running} running containers on ${effectiveSidebarSnapshot.hostIp}.`
-      : "Waiting for the first host snapshot.",
     systemPanels,
-    throughputLabel: effectiveSidebarSnapshot
-      ? `Load avg ${formatLoadAverage(effectiveSidebarSnapshot.system.loadAverage)} • ${formatBytesPerSecond(effectiveSidebarSnapshot.network.rxBytesPerSecond)} down / ${formatBytesPerSecond(effectiveSidebarSnapshot.network.txBytesPerSecond)} up`
-      : metricsStatus.helperText,
     width: metricsWidth,
   } satisfies HostMetricsSidebarProps;
   const selectedContainerStatusLabel = selectedEntry

@@ -719,11 +719,6 @@ function formatClock(value: string) {
   }).format(new Date(value));
 }
 
-function formatLoadAverage(
-  loadAverage: MetricsSnapshot["system"]["loadAverage"],
-) {
-  return loadAverage.map((value) => value.toFixed(2)).join(" / ");
-}
 
 function formatPercent(value: number, maximumFractionDigits = 0) {
   return `${value.toFixed(maximumFractionDigits)}%`;
@@ -1972,7 +1967,7 @@ export function WorkspaceShell({
   >([]);
   const [selectedContainerHistoryKey, setSelectedContainerHistoryKey] =
     useState<string | null>(initialSelectedContainerHistoryKey);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [, setMetricsError] = useState<string | null>(null);
   const [aliases, setAliases] = useState<Record<string, string>>({});
   const branchCacheRef = useRef<Record<string, string[]>>({});
   const branchRequestIdRef = useRef(0);
@@ -2029,31 +2024,6 @@ export function WorkspaceShell({
     },
     [activeView, aliases, deployments, sidebarSnapshot],
   );
-  const metricsStatus = metricsError
-    ? {
-        badgeLabel: "Retrying",
-        badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-        helperText: metricsError,
-      }
-    : sidebarSnapshot && sidebarHistory.length
-      ? {
-          badgeLabel: "Live",
-          badgeClassName:
-            "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
-          helperText: `Updated ${formatClock(sidebarSnapshot.timestamp)} from recent live history.`,
-        }
-      : sidebarSnapshot
-        ? {
-            badgeLabel: "Snapshot only",
-            badgeClassName: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-            helperText:
-              "Waiting for recent history samples to populate the charts.",
-          }
-        : {
-            badgeLabel: "Connecting",
-            badgeClassName: "border-border/60 bg-background/80 text-foreground",
-            helperText: "Loading current host metrics.",
-          };
 
   const filteredContainers = useMemo(() => {
     if (activeView !== "dashboard") {
@@ -3036,36 +3006,13 @@ export function WorkspaceShell({
     ? formatClock(sidebarSnapshot.timestamp)
     : "Waiting for metrics";
   const hostMetricsProps = {
-    cpuHeadroomLabel: sidebarSnapshot
-      ? formatPercent(Math.max(0, 100 - sidebarSnapshot.system.cpuPercent))
-      : "--",
     isCollapsed: isMetricsCollapsed,
-    memoryHeadroomLabel: sidebarSnapshot
-      ? formatBytes(
-          Math.max(
-            0,
-            sidebarSnapshot.system.memoryTotalBytes -
-              sidebarSnapshot.system.memoryUsedBytes,
-          ),
-          1,
-        )
-      : "--",
     metricCards: [],
-    metricsStatus,
     onCollapseAction: () => setIsMetricsCollapsed(true),
     onExpandAction: () => setIsMetricsCollapsed(false),
     onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) =>
       handleResizeStart("metrics", event),
-    showStateWarning: Boolean(
-      (sidebarSnapshot && !sidebarHistory.length) || metricsError,
-    ),
-    summaryLabel: sidebarSnapshot
-      ? `${sidebarSnapshot.containers.running} running containers on ${sidebarSnapshot.hostIp}.`
-      : "Waiting for the first host snapshot.",
     systemPanels,
-    throughputLabel: sidebarSnapshot
-      ? `Load avg ${formatLoadAverage(sidebarSnapshot.system.loadAverage)} • ${formatBytesPerSecond(sidebarSnapshot.network.rxBytesPerSecond)} down / ${formatBytesPerSecond(sidebarSnapshot.network.txBytesPerSecond)} up`
-      : metricsStatus.helperText,
     width: metricsWidth,
   } satisfies HostMetricsSidebarProps;
   const previewLogs = isAllContainersSelected
