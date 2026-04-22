@@ -26,6 +26,10 @@ import {
   type DashboardLogView,
   type WorkspaceView,
 } from "@/components/workspace-shell";
+import {
+  readStoredContainerAliases,
+  subscribeToStoredContainerAliases,
+} from "@/lib/container-preferences";
 import type { MetricsDashboardData } from "@/lib/metrics-dashboard-data";
 import type { DashboardRange } from "@/lib/metrics-range";
 import {
@@ -232,6 +236,7 @@ export function MetricsDashboardShell({
   const [allContainerHistory, setAllContainerHistory] = useState<
     AllContainersMetricsHistorySeries[]
   >(initialAllContainerHistory);
+  const [aliases, setAliases] = useState<Record<string, string>>({});
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [containerHistoryError, setContainerHistoryError] = useState<
     string | null
@@ -307,14 +312,37 @@ export function MetricsDashboardShell({
       },
     ];
   }, [influxExplorerUrl]);
+
+  useEffect(() => {
+    setAliases(readStoredContainerAliases());
+
+    return subscribeToStoredContainerAliases(setAliases);
+  }, []);
+
   const workspaceContainers = useMemo(
     () =>
       buildContainerListEntries(
         effectiveSidebarSnapshot,
         allContainerHistory,
         initialDeployments,
-      ),
-    [allContainerHistory, effectiveSidebarSnapshot, initialDeployments],
+      ).map((entry) => {
+        const alias = aliases[entry.display.id]?.trim();
+
+        if (!alias) {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          display: {
+            ...entry.display,
+            name: alias,
+          },
+          searchText: `${alias} ${entry.searchText}`.toLowerCase(),
+          sidebarName: alias,
+        };
+      }),
+    [aliases, allContainerHistory, effectiveSidebarSnapshot, initialDeployments],
   );
   const aggregateLogs = useMemo(
     () =>

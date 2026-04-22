@@ -391,6 +391,7 @@ describe("MetricsDashboardShell", () => {
     prefetchMock.mockReset();
     refreshMock.mockReset();
     window.history.replaceState(null, "", "/");
+    window.localStorage.clear();
 
     fetchSpy.mockImplementation(async () => jsonResponse(payload));
   });
@@ -579,6 +580,72 @@ describe("MetricsDashboardShell", () => {
     await user.click(screen.getByRole("button", { name: /git app page/i }));
 
     expect(pushMock).toHaveBeenCalledWith("/git-app-page");
+  });
+
+  it("applies stored container aliases in the dashboard sidebar list", async () => {
+    window.localStorage.setItem(
+      "vercelab:containers-friendly-labels",
+      JSON.stringify({
+        "runtime-control-plane": "Platform UI",
+      }),
+    );
+
+    render(
+      <MetricsDashboardShell
+        initialAllContainerHistory={payload.allContainerHistory}
+        initialDashboardRange="15m"
+        initialDeployments={[]}
+        initialHistory={payload.history}
+        initialSnapshot={payload.snapshot as unknown as MetricsSnapshot}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /platform ui.*healthy/i,
+      }),
+    ).toBeVisible();
+  });
+
+  it("updates dashboard sidebar aliases live when alias storage changes after mount", async () => {
+    render(
+      <MetricsDashboardShell
+        initialAllContainerHistory={payload.allContainerHistory}
+        initialDashboardRange="15m"
+        initialDeployments={[]}
+        initialHistory={payload.history}
+        initialSnapshot={payload.snapshot as unknown as MetricsSnapshot}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", {
+        name: /control-plane.*healthy/i,
+      }),
+    ).toBeVisible();
+
+    const nextAliases = JSON.stringify({
+      "runtime-control-plane": "Platform UI",
+    });
+
+    await act(async () => {
+      window.localStorage.setItem(
+        "vercelab:containers-friendly-labels",
+        nextAliases,
+      );
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "vercelab:containers-friendly-labels",
+          newValue: nextAliases,
+        }),
+      );
+    });
+
+    expect(
+      await screen.findByRole("button", {
+        name: /platform ui.*healthy/i,
+      }),
+    ).toBeVisible();
   });
 
   it("shows deployment app names and friendly system names in sidebar and charts", async () => {
