@@ -43,34 +43,36 @@ export async function loadMetricsDashboardData(
   const { bucketSeconds, limit } = getDashboardHistorySettings(
     initialDashboardRange,
   );
-  const [initialSnapshot, initialDeployments] = await Promise.all([
-    getMetricsSnapshot().catch(() => null),
-    listDeploymentSummaries().catch(() => [] as DeploymentSummary[]),
-  ]);
 
-  if (!initialSnapshot) {
-    return {
-      influxExplorerUrl: getAppConfig().metrics.influxExplorerUrl,
-      initialAllContainerHistory: [],
-      initialDashboardRange,
-      initialDeployments,
-      initialHistory: [],
-      initialSnapshot,
-    };
-  }
+  // Start deployments fetch immediately — it doesn't depend on the snapshot
+  const deploymentsPromise = listDeploymentSummaries().catch(
+    () => [] as DeploymentSummary[],
+  );
 
-  const [initialHistory, initialAllContainerHistory] = await Promise.all([
-    getMetricsHistoryFromInflux({
-      hostIp: initialSnapshot.hostIp,
-      limit,
-      bucketSeconds,
-    }).catch(() => [] as MetricsHistoryPoint[]),
-    getAllContainersMetricsHistoryFromInflux({
-      hostIp: initialSnapshot.hostIp,
-      limit,
-      bucketSeconds,
-    }).catch(() => [] as AllContainersMetricsHistorySeries[]),
-  ]);
+  // Start snapshot fetch, then chain InfluxDB queries off it without waiting for deployments
+  const snapshotPromise = getMetricsSnapshot().catch(() => null);
+
+  const influxPromise = snapshotPromise.then((snapshot) => {
+    if (!snapshot) {
+      return [[], []] as [MetricsHistoryPoint[], AllContainersMetricsHistorySeries[]];
+    }
+
+    return Promise.all([
+      getMetricsHistoryFromInflux({
+        hostIp: snapshot.hostIp,
+        limit,
+        bucketSeconds,
+      }).catch(() => [] as MetricsHistoryPoint[]),
+      getAllContainersMetricsHistoryFromInflux({
+        hostIp: snapshot.hostIp,
+        limit,
+        bucketSeconds,
+      }).catch(() => [] as AllContainersMetricsHistorySeries[]),
+    ]);
+  });
+
+  const [initialSnapshot, initialDeployments, [initialHistory, initialAllContainerHistory]] =
+    await Promise.all([snapshotPromise, deploymentsPromise, influxPromise]);
 
   return {
     influxExplorerUrl: getAppConfig().metrics.influxExplorerUrl,

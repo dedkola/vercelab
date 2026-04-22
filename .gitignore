@@ -47,3 +47,4 @@ next-env.d.ts
 .idea
 
 .playwright-mcpdata/
+/.devcontainer/influxdb-explorer-config/config.json

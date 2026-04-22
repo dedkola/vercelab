@@ -70,36 +70,55 @@ export async function loadWorkspaceShellData(
     getSearchParamValue(params?.range),
   );
   const includeMetricsHistory = options?.includeMetricsHistory ?? true;
-  const [initialSnapshot, initialDeployments] = await Promise.all([
-    getMetricsSnapshot().catch(() => null),
-    listDeploymentSummaries().catch(() => [] as DeploymentSummary[]),
-  ]);
-  const initialFocusedContainer = initialSnapshot?.containers.all[0] ?? null;
-  const [initialHistory, initialContainerHistory] =
-    includeMetricsHistory && initialSnapshot
-      ? await Promise.all([
+
+  // Start deployments fetch immediately — it doesn't need the snapshot
+  const deploymentsPromise = listDeploymentSummaries().catch(
+    () => [] as DeploymentSummary[],
+  );
+
+  const snapshotPromise = getMetricsSnapshot().catch(() => null);
+
+  // Chain InfluxDB queries off the snapshot as soon as hostIp is known,
+  // without waiting for deploymentsPromise
+  const influxPromise: Promise<
+    [MetricsHistoryPoint[], ContainerMetricsHistoryPoint[]]
+  > = includeMetricsHistory
+    ? snapshotPromise.then((snapshot) => {
+        if (!snapshot) {
+          return [[], []];
+        }
+
+        const initialFocusedContainer = snapshot.containers.all[0] ?? null;
+        const { bucketSeconds, limit } =
+          getDashboardHistorySettings(initialDashboardRange);
+
+        return Promise.all([
           getMetricsHistoryFromInflux({
-            hostIp: initialSnapshot.hostIp,
+            hostIp: snapshot.hostIp,
             limit: 48,
             bucketSeconds: 5,
           }).catch(() => [] as MetricsHistoryPoint[]),
           initialFocusedContainer
-            ? (() => {
-                const { bucketSeconds, limit } = getDashboardHistorySettings(
-                  initialDashboardRange,
-                );
-
-                return getContainerMetricsHistoryFromInflux({
-                  hostIp: initialSnapshot.hostIp,
-                  containerId: initialFocusedContainer.id,
-                  containerName: initialFocusedContainer.name,
-                  limit,
-                  bucketSeconds,
-                }).catch(() => [] as ContainerMetricsHistoryPoint[]);
-              })()
+            ? getContainerMetricsHistoryFromInflux({
+                hostIp: snapshot.hostIp,
+                containerId: initialFocusedContainer.id,
+                containerName: initialFocusedContainer.name,
+                limit,
+                bucketSeconds,
+              }).catch(() => [] as ContainerMetricsHistoryPoint[])
             : Promise.resolve([] as ContainerMetricsHistoryPoint[]),
-        ])
-      : ([[], []] as [MetricsHistoryPoint[], ContainerMetricsHistoryPoint[]]);
+        ]);
+      })
+    : Promise.resolve([[], []] as [
+        MetricsHistoryPoint[],
+        ContainerMetricsHistoryPoint[],
+      ]);
+
+  const [
+    initialSnapshot,
+    initialDeployments,
+    [initialHistory, initialContainerHistory],
+  ] = await Promise.all([snapshotPromise, deploymentsPromise, influxPromise]);
 
   return {
     baseDomain: getAppConfig().baseDomain,
