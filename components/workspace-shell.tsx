@@ -3040,9 +3040,6 @@ export function WorkspaceShell({
   const aggregateLogsTargetName = isAllContainersSelected
     ? "All containers"
     : selectedContainer.name;
-  const aggregateLogsTargetRegion = isAllContainersSelected
-    ? (sidebarSnapshot?.hostIp ?? "Current host")
-    : selectedContainer.region;
   const aggregateLogsStatusLabel = isAllContainersSelected
     ? `${sidebarSnapshot?.containers.running ?? 0} running`
     : selectedContainerStatusLabel;
@@ -3189,7 +3186,6 @@ export function WorkspaceShell({
           onLogViewChangeAction={setDashboardLogView}
           onResizeStartAction={(event) => handleResizeStart("logs", event)}
           selectedContainerName={aggregateLogsTargetName}
-          selectedContainerRegion={aggregateLogsTargetRegion}
           selectedContainerStatusLabel={aggregateLogsStatusLabel}
           selectedContainerStatusVariant={aggregateLogsStatusVariant}
           selectedPreviewAvailable={

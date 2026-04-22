@@ -27,7 +27,6 @@ type DashboardRightSidebarProps = {
   onLogViewChangeAction: (view: DashboardLogView) => void;
   onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
   selectedContainerName: string;
-  selectedContainerRegion: string;
   selectedContainerStatusLabel: string;
   selectedContainerStatusVariant: "success" | "warning" | "default";
   selectedPreviewAvailable: boolean;
@@ -56,7 +55,6 @@ export function DashboardRightSidebar({
   onLogViewChangeAction,
   onResizeStartAction,
   selectedContainerName,
-  selectedContainerRegion,
   selectedContainerStatusLabel,
   selectedContainerStatusVariant,
   selectedPreviewAvailable,
@@ -186,34 +184,6 @@ export function DashboardRightSidebar({
                         : "Live container logs are not wired into this page yet."}
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Active context
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                  <div className="text-xs text-muted-foreground">
-                    Current view
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">
-                    {
-                      logOptions.find(
-                        (option) => option.value === activeLogView,
-                      )?.label
-                    }
-                  </div>
-                </div>
-                <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                  <div className="text-xs text-muted-foreground">
-                    Selected region
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">
-                    {selectedContainerRegion}
-                  </div>
-                </div>
               </div>
             </div>
           </div>

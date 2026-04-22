@@ -827,11 +827,6 @@ export function MetricsDashboardShell({
   const previewLogs = isAllContainersSelected
     ? aggregateLogs[dashboardLogView]
     : (selectedEntry?.display.logs[dashboardLogView] ?? []);
-  const selectedContainerRegion = isAllContainersSelected
-    ? (effectiveSidebarSnapshot?.hostIp ?? "Current host")
-    : (selectedEntry?.display.region ??
-      effectiveSidebarSnapshot?.hostIp ??
-      "Current host");
   const dashboardPanels = (
     <>
       <DashboardLeftSidebar
@@ -886,7 +881,6 @@ export function MetricsDashboardShell({
             ? "All containers"
             : (selectedContainerName ?? "Container")
         }
-        selectedContainerRegion={selectedContainerRegion}
         selectedContainerStatusLabel={
           isAllContainersSelected
             ? `${effectiveSidebarSnapshot?.containers.running ?? 0} running`

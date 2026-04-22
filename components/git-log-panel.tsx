@@ -30,16 +30,6 @@ type DeploymentLogPayload = {
   updatedAt: string;
 };
 
-const deploymentTimeFormatter = new Intl.DateTimeFormat("en", {
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  month: "short",
-});
-
-const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
-  numeric: "auto",
-});
 
 const LOG_REFRESH_INTERVAL_MS = 2000;
 
@@ -79,52 +69,6 @@ function formatStatusBadgeVariant(
   }
 }
 
-function formatDeploymentTime(updatedAt: string) {
-  return deploymentTimeFormatter.format(new Date(updatedAt));
-}
-
-function formatRelativeTime(value: string | null) {
-  if (!value) {
-    return "--";
-  }
-
-  const deltaSeconds = Math.round(
-    (new Date(value).getTime() - Date.now()) / 1000,
-  );
-  const absoluteSeconds = Math.abs(deltaSeconds);
-
-  if (absoluteSeconds < 60) {
-    return relativeTimeFormatter.format(deltaSeconds, "second");
-  }
-
-  const deltaMinutes = Math.round(deltaSeconds / 60);
-
-  if (Math.abs(deltaMinutes) < 60) {
-    return relativeTimeFormatter.format(deltaMinutes, "minute");
-  }
-
-  const deltaHours = Math.round(deltaMinutes / 60);
-
-  if (Math.abs(deltaHours) < 24) {
-    return relativeTimeFormatter.format(deltaHours, "hour");
-  }
-
-  const deltaDays = Math.round(deltaHours / 24);
-
-  if (Math.abs(deltaDays) < 30) {
-    return relativeTimeFormatter.format(deltaDays, "day");
-  }
-
-  const deltaMonths = Math.round(deltaDays / 30);
-
-  if (Math.abs(deltaMonths) < 12) {
-    return relativeTimeFormatter.format(deltaMonths, "month");
-  }
-
-  const deltaYears = Math.round(deltaMonths / 12);
-
-  return relativeTimeFormatter.format(deltaYears, "year");
-}
 
 function getLogPanelEmptyState(
   currentView: GitLogPanelProps["currentView"],
@@ -400,49 +344,6 @@ export function GitLogPanel({
                 </div>
               </div>
 
-              <div className="w-full space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Active context
-                </div>
-                <div className="grid gap-3">
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">
-                      Current view
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {activeLogTab === "build" ? "Build log" : "Container log"}
-                    </div>
-                  </div>
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">
-                      Last refresh
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {logState.payload?.updatedAt
-                        ? formatRelativeTime(logState.payload.updatedAt)
-                        : "Waiting for logs"}
-                    </div>
-                  </div>
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">
-                      Repository
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {deployment.repositoryName}
-                    </div>
-                  </div>
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">
-                      Updated at
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {logState.payload?.updatedAt
-                        ? formatDeploymentTime(logState.payload.updatedAt)
-                        : formatDeploymentTime(deployment.updatedAt)}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </>
           ) : (
             <div className="flex min-w-0 flex-col space-y-4">
@@ -467,30 +368,6 @@ export function GitLogPanel({
                 </div>
                 <div className="px-4 py-4 font-mono text-[12px] leading-6 text-slate-400">
                   {emptyState.description}
-                </div>
-              </div>
-
-              <div className="w-full space-y-3 rounded-[1.35rem] border border-border/70 bg-background/88 px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.24)]">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Active context
-                </div>
-                <div className="grid gap-3">
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">
-                      Current view
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      {currentView === "create" ? "Create app" : "App list"}
-                    </div>
-                  </div>
-                  <div className="rounded-[1.2rem] border border-border/60 bg-background/80 px-3 py-3">
-                    <div className="text-xs text-muted-foreground">
-                      Selected app
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-foreground">
-                      None
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
