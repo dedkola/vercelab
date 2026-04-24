@@ -31,6 +31,7 @@ Vercelab turns an Ubuntu box or local Docker host into a deployment cockpit for 
 - [Highlights](#highlights)
 - [Architecture](#architecture)
 - [Stack](#stack)
+- [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
 - [Local Development](#local-development)
 - [Deployment Flow](#deployment-flow)
@@ -78,6 +79,22 @@ flowchart LR
 | Runtime | Docker, Docker Compose, Traefik |
 | Validation | Zod, TypeScript, ESLint, Vitest |
 | Package manager | pnpm 10 |
+
+## Screenshots
+
+Captured from a live Vercelab deployment.
+
+### Metrics dashboard
+
+![Vercelab metrics dashboard](public/screenshots/vercelab-dashboard-overview.png)
+
+### Container runtime
+
+![Vercelab container runtime view](public/screenshots/vercelab-containers.png)
+
+### Git deployments
+
+![Vercelab Git deployment view](public/screenshots/vercelab-git-deployments.png)
 
 ## Quick Start
 
