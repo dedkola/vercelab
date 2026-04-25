@@ -11,8 +11,10 @@ import {
   buildDefaultHostedDomain,
   buildTraefikLabels,
   buildTraefikRouterName,
+  buildTraefikTcpLabels,
   toContainerSlug,
 } from "@/lib/container-routing";
+import type { ExposureMode } from "@/lib/validation";
 
 export type CatalogImage = {
   description: string | null;
@@ -25,6 +27,8 @@ export type CatalogImage = {
 type CreateFromImageInput = {
   containerName?: string;
   envVariables?: string;
+  exposureMode?: ExposureMode;
+  hostPort?: number;
   image: string;
   ports?: string;
 };
@@ -357,23 +361,15 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
     throw new Error("Image is required.");
   }
 
+  const mode = input.exposureMode ?? "http";
   const config = getAppConfig();
-  const portMappings = parsePortMappings(input.ports);
-  const containerPort = await resolveImageContainerPort(image, portMappings);
-
-  if (!containerPort) {
-    throw new Error(
-      "Unable to determine a web port for this image. Add a port mapping or use an image that exposes an application port.",
-    );
-  }
-
   const normalizedName = input.containerName?.trim()
     ? toContainerSlug(input.containerName)
     : "";
   const containerName =
     normalizedName || `container-${Date.now().toString(36).slice(-8)}`;
-  const routedHost = buildDefaultHostedDomain(containerName, config.baseDomain);
-  const args = [
+
+  const baseArgs = [
     "run",
     "-d",
     "--name",
@@ -384,29 +380,142 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
     config.proxy.network,
   ];
 
-  for (const [key, value] of Object.entries(
-    buildTraefikLabels({
-      entrypoint: config.proxy.entrypoint,
-      host: routedHost,
-      network: config.proxy.network,
-      port: containerPort,
-      routerName: buildTraefikRouterName(containerName),
-    }),
-  )) {
-    args.push("--label", `${key}=${value}`);
-  }
-
-  for (const mapping of portMappings) {
-    args.push("-p", mapping);
-  }
-
   const envVariables = parseEnvVariables(input.envVariables);
+
+  await ensureProxyNetwork(config.proxy.network);
+
+  if (mode === "http") {
+    const portMappings = parsePortMappings(input.ports);
+    const containerPort = await resolveImageContainerPort(image, portMappings);
+
+    if (!containerPort) {
+      throw new Error(
+        "Unable to determine a web port for this image. Add a port mapping or use an image that exposes an application port.",
+      );
+    }
+
+    const routedHost = buildDefaultHostedDomain(containerName, config.baseDomain);
+    const args = [...baseArgs];
+
+    for (const [key, value] of Object.entries(
+      buildTraefikLabels({
+        entrypoint: config.proxy.entrypoint,
+        host: routedHost,
+        network: config.proxy.network,
+        port: containerPort,
+        routerName: buildTraefikRouterName(containerName),
+      }),
+    )) {
+      args.push("--label", `${key}=${value}`);
+    }
+
+    for (const mapping of portMappings) {
+      args.push("-p", mapping);
+    }
+
+    for (const envVariable of envVariables) {
+      args.push("-e", `${envVariable.key}=${envVariable.value}`);
+    }
+
+    args.push(image);
+
+    const output = await runCommand("docker", args);
+    const containerId = output.split(/\r?\n/).filter(Boolean).at(-1) ?? output;
+
+    return {
+      containerId: containerId.trim(),
+      containerName,
+      domain: routedHost,
+      exposureMode: mode,
+      image,
+      url: `https://${routedHost}`,
+    };
+  }
+
+  if (mode === "tcp") {
+    const hostPort = input.hostPort;
+
+    if (!hostPort) {
+      throw new Error("Host port is required for TCP exposure mode.");
+    }
+
+    const entrypoint = `tcp-${hostPort}`;
+    const args = [...baseArgs];
+
+    for (const [key, value] of Object.entries(
+      buildTraefikTcpLabels({
+        entrypoint,
+        network: config.proxy.network,
+        port: hostPort,
+        routerName: buildTraefikRouterName(containerName),
+      }),
+    )) {
+      args.push("--label", `${key}=${value}`);
+    }
+
+    // No -p binding: Traefik owns the host port via its static entrypoint and
+    // routes to the container via the Docker proxy network.
+    for (const envVariable of envVariables) {
+      args.push("-e", `${envVariable.key}=${envVariable.value}`);
+    }
+
+    args.push(image);
+
+    const output = await runCommand("docker", args);
+    const containerId = output.split(/\r?\n/).filter(Boolean).at(-1) ?? output;
+
+    return {
+      containerId: containerId.trim(),
+      containerName,
+      domain: null,
+      exposureMode: mode,
+      hostPort,
+      image,
+      url: null,
+    };
+  }
+
+  if (mode === "host") {
+    const portMappings = parsePortMappings(input.ports);
+
+    if (!portMappings.length) {
+      throw new Error(
+        "At least one port mapping is required for Host exposure mode.",
+      );
+    }
+
+    const args = [...baseArgs, "--label", "traefik.enable=false"];
+
+    for (const mapping of portMappings) {
+      args.push("-p", mapping);
+    }
+
+    for (const envVariable of envVariables) {
+      args.push("-e", `${envVariable.key}=${envVariable.value}`);
+    }
+
+    args.push(image);
+
+    const output = await runCommand("docker", args);
+    const containerId = output.split(/\r?\n/).filter(Boolean).at(-1) ?? output;
+
+    return {
+      containerId: containerId.trim(),
+      containerName,
+      domain: null,
+      exposureMode: mode,
+      image,
+      url: null,
+    };
+  }
+
+  // internal: no ports, no Traefik, still on proxy network for intra-Docker access
+  const args = [...baseArgs, "--label", "traefik.enable=false"];
 
   for (const envVariable of envVariables) {
     args.push("-e", `${envVariable.key}=${envVariable.value}`);
   }
 
-  await ensureProxyNetwork(config.proxy.network);
   args.push(image);
 
   const output = await runCommand("docker", args);
@@ -415,9 +524,10 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
   return {
     containerId: containerId.trim(),
     containerName,
-    domain: routedHost,
+    domain: null,
+    exposureMode: mode,
     image,
-    url: `https://${routedHost}`,
+    url: null,
   };
 }
 

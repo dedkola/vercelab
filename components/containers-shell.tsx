@@ -39,6 +39,8 @@ import {
 } from "@/lib/metrics-dashboard-metrics";
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
+import type { ExposureMode } from "@/lib/validation";
+
 const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
 const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
 const DEFAULT_LIST_WIDTH_PX = 304;
@@ -206,6 +208,9 @@ export function ContainersShell({
   const [imageReference, setImageReference] = useState("nginx:latest");
   const [newContainerName, setNewContainerName] = useState("");
   const [newContainerPorts, setNewContainerPorts] = useState("");
+  const [newContainerExposureMode, setNewContainerExposureMode] =
+    useState<ExposureMode>("http");
+  const [newContainerHostPort, setNewContainerHostPort] = useState("");
   const [newContainerEnvVariables, setNewContainerEnvVariables] = useState("");
   const [composeStackName, setComposeStackName] = useState("");
   const [composeContent, setComposeContent] = useState(
@@ -682,9 +687,16 @@ export function ContainersShell({
           ? {
               containerName: newContainerName,
               envVariables: newContainerEnvVariables,
+              exposureMode: newContainerExposureMode,
+              hostPort: newContainerHostPort.trim()
+                ? Number(newContainerHostPort.trim())
+                : undefined,
               image: imageReference,
               mode: "image" as const,
-              ports: newContainerPorts,
+              ports:
+                newContainerExposureMode === "tcp"
+                  ? undefined
+                  : newContainerPorts || undefined,
             }
           : {
               composeContent,
@@ -831,14 +843,42 @@ export function ContainersShell({
               placeholder="Container name"
               value={newContainerName}
             />
-            <Input
-              aria-label="Port mappings"
-              onChange={(event) => setNewContainerPorts(event.target.value)}
-              placeholder="8080:80, 8443:443"
-              value={newContainerPorts}
-            />
+            <select
+              aria-label="Exposure mode"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              onChange={(event) =>
+                setNewContainerExposureMode(event.target.value as ExposureMode)
+              }
+              value={newContainerExposureMode}
+            >
+              <option value="http">HTTP — Traefik reverse proxy</option>
+              <option value="tcp">TCP — Traefik TCP passthrough</option>
+              <option value="host">Host port — bind directly to host</option>
+              <option value="internal">Internal — no external exposure</option>
+            </select>
+            {newContainerExposureMode === "tcp" ? (
+              <Input
+                aria-label="Host port"
+                inputMode="numeric"
+                onChange={(event) => setNewContainerHostPort(event.target.value)}
+                placeholder="Host port (e.g. 27017)"
+                value={newContainerHostPort}
+              />
+            ) : newContainerExposureMode !== "internal" ? (
+              <Input
+                aria-label="Port mappings"
+                onChange={(event) => setNewContainerPorts(event.target.value)}
+                placeholder={
+                  newContainerExposureMode === "host"
+                    ? "27017:27017, 6379:6379"
+                    : "8080:80, 8443:443"
+                }
+                value={newContainerPorts}
+              />
+            ) : null}
             <Input
               aria-label="Environment variables"
+              className="md:col-span-2"
               onChange={(event) => setNewContainerEnvVariables(event.target.value)}
               placeholder="KEY=VALUE (comma or newline separated)"
               value={newContainerEnvVariables}

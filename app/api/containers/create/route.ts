@@ -2,6 +2,7 @@ import {
   createContainerFromCompose,
   createContainerFromImage,
 } from "@/lib/container-create";
+import type { ExposureMode } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,8 @@ type CreateContainerRequest =
   | {
       containerName?: string;
       envVariables?: string;
+      exposureMode?: ExposureMode;
+      hostPort?: number;
       image: string;
       mode: "image";
       ports?: string;
@@ -35,21 +38,24 @@ export async function POST(request: Request) {
       const created = await createContainerFromImage({
         containerName: payload.containerName,
         envVariables: payload.envVariables,
+        exposureMode: payload.exposureMode,
+        hostPort: payload.hostPort,
         image: payload.image,
         ports: payload.ports,
       });
 
-      return Response.json(
-        {
-          message: created.url
-            ? `Started ${created.containerName} at ${created.url}.`
-            : `Started ${created.containerName}.`,
-          ...created,
-        },
-        {
-          status: 201,
-        },
-      );
+      const mode = created.exposureMode;
+      let message: string;
+
+      if (mode === "http" && created.url) {
+        message = `Started ${created.containerName} at ${created.url}.`;
+      } else if (mode === "tcp" && created.hostPort) {
+        message = `Started ${created.containerName} on TCP port ${created.hostPort}.`;
+      } else {
+        message = `Started ${created.containerName}.`;
+      }
+
+      return Response.json({ message, ...created }, { status: 201 });
     }
 
     if (payload.mode === "compose") {
