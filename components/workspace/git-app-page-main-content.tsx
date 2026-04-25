@@ -756,7 +756,7 @@ export function GitAppPageMainContent({
               ) : (
                 <RefreshCcw className="h-4 w-4" />
               )}
-              Fetch
+              Refresh
             </Button>
             <Button
               disabled={isBusy}
