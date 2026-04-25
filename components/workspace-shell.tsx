@@ -3068,6 +3068,17 @@ export function WorkspaceShell({
   const selectedDeploymentDomain = selectedDeployment
     ? formatDeploymentDomain(selectedDeployment, baseDomain)
     : "";
+  const selectedDeploymentSettingsKey = selectedDeployment
+    ? JSON.stringify([
+        selectedDeployment.id,
+        selectedDeployment.appName,
+        selectedDeployment.branch ?? "",
+        selectedDeployment.commitSha ?? "",
+        selectedDeployment.envVariables ?? "",
+        selectedDeployment.port,
+        selectedDeployment.subdomain,
+      ])
+    : "";
   const workspacePanels = (
     <>
       {activeView === "dashboard" ? (
@@ -3149,6 +3160,7 @@ export function WorkspaceShell({
             deploymentHref={selectedDeploymentHref}
             deploymentStatusLabel={selectedDeploymentStatusLabel}
             deploymentStatusVariant={selectedDeploymentStatusVariant}
+            key={selectedDeploymentSettingsKey}
             onDeleteAction={handleDeleteApp}
             onFetchAction={handleFetchApp}
             onRefreshAction={() => router.refresh()}

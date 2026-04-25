@@ -289,13 +289,16 @@ export function GitAppPageMainContent({
   const [sourceData, setSourceData] = useState<DeploymentSourcePayload | null>(
     null,
   );
+  const [sourceDataDeploymentId, setSourceDataDeploymentId] = useState<
+    string | null
+  >(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState(deployment.subdomain);
   const deferredBranch = useDeferredValue(branchValue);
 
-  // Tracks whether the user has triggered the first source load.
-  // We never auto-fetch on page load — the fetch only starts when the user
-  // opens the branch combobox for the first time.
+  // Tracks whether source details have started loading. The first request runs
+  // after hydration so the route render stays fast, then branch changes can
+  // re-use the same background source fetch.
   const sourceRequestedRef = useRef(false);
   const [sourceRequested, setSourceRequested] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -339,12 +342,14 @@ export function GitAppPageMainContent({
           }
 
           setSourceData(payload as DeploymentSourcePayload);
+          setSourceDataDeploymentId(deployment.id);
         } catch (error) {
           if (controller.signal.aborted) {
             return;
           }
 
           setSourceData(null);
+          setSourceDataDeploymentId(null);
           setSourceError(
             error instanceof Error
               ? error.message
@@ -362,8 +367,25 @@ export function GitAppPageMainContent({
     [deployment.id],
   );
 
+  const requestSourceData = useCallback(
+    (branch: string) => {
+      sourceRequestedRef.current = true;
+      setSourceRequested(true);
+      fetchSourceData(branch);
+    },
+    [fetchSourceData],
+  );
+
+  // Clean up any in-flight request when the panel unmounts.
+  useEffect(() => {
+    return () => {
+      sourceRequestedRef.current = false;
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   // Re-fetch when the selected branch changes — but only after the first
-  // load has already been requested (i.e. the user opened the combobox once).
+  // load has already been requested.
   useEffect(() => {
     if (!sourceRequestedRef.current) {
       return;
@@ -372,46 +394,39 @@ export function GitAppPageMainContent({
     fetchSourceData(deferredBranch);
   }, [deferredBranch, deployment.updatedAt, fetchSourceData]);
 
-  // Clean up any in-flight request when the deployment changes.
+  // Start loading source metadata after the page paints. This keeps navigation
+  // quick while still filling in the current commit in the background.
   useEffect(() => {
-    return () => {
-      sourceRequestedRef.current = false;
-      abortControllerRef.current?.abort();
-    };
-  }, [deployment.id]);
-  const repositoryDescriptor = sourceData?.repository
+    const timeoutId = window.setTimeout(() => {
+      if (sourceRequestedRef.current) {
+        return;
+      }
+
+      requestSourceData(deployment.branch ?? "");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [deployment.branch, deployment.id, requestSourceData]);
+
+  const activeSourceData =
+    sourceDataDeploymentId === deployment.id ? sourceData : null;
+  const repositoryDescriptor = activeSourceData?.repository
     ? {
-        fullName: sourceData.repository.fullName,
-        url: sourceData.repository.url,
+        fullName: activeSourceData.repository.fullName,
+        url: activeSourceData.repository.url,
       }
     : getRepositoryDescriptor(deployment.repositoryUrl);
-  const activeCommit = sourceData?.currentCommit;
+  const activeCommit = activeSourceData?.currentCommit;
   const currentEnvPayload = deployment.envVariables ?? "";
   const envPayload = serializeEnvVariableDrafts(envRows);
   const liveHref = deploymentHref ?? `https://${publicDomainLabel}`;
-  const branchBrowserError = sourceError ?? sourceData?.browserError ?? null;
+  const branchBrowserError =
+    sourceError ?? activeSourceData?.browserError ?? null;
   const isBusy = pendingAction !== null;
   const normalizedCurrentEnvPayload = useMemo(
     () => serializeEnvVariableDrafts(buildEnvVariableDrafts(currentEnvPayload)),
     [currentEnvPayload],
   );
-
-  useEffect(() => {
-    setAppName(deployment.appName);
-    setBranchValue(deployment.branch ?? "");
-    setCommitSha(deployment.commitSha ?? "");
-    setEnvRows(buildEnvVariableDrafts(deployment.envVariables));
-    setPort(String(deployment.port));
-    setSubdomain(deployment.subdomain);
-  }, [
-    deployment.appName,
-    deployment.branch,
-    deployment.commitSha,
-    deployment.envVariables,
-    deployment.id,
-    deployment.port,
-    deployment.subdomain,
-  ]);
 
   const branchOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -419,7 +434,7 @@ export function GitAppPageMainContent({
     return [
       branchValue.trim(),
       deployment.branch ?? "",
-      ...(sourceData?.branches ?? []),
+      ...(activeSourceData?.branches ?? []),
     ]
       .filter((branch) => branch.length > 0)
       .filter((branch) => {
@@ -434,13 +449,13 @@ export function GitAppPageMainContent({
         description:
           branch === deployment.branch
             ? "Current saved branch"
-            : branch === sourceData?.currentBranch
+            : branch === activeSourceData?.currentBranch
               ? "Currently checked out"
               : undefined,
         label: branch,
         value: branch,
       }));
-  }, [branchValue, deployment.branch, sourceData]);
+  }, [branchValue, deployment.branch, activeSourceData]);
 
   const commitOptions = useMemo(() => {
     const seen = new Set<string>([""]);
@@ -459,7 +474,7 @@ export function GitAppPageMainContent({
       });
     }
 
-    for (const commit of sourceData?.commits ?? []) {
+    for (const commit of activeSourceData?.commits ?? []) {
       if (seen.has(commit.sha)) {
         continue;
       }
@@ -472,7 +487,7 @@ export function GitAppPageMainContent({
     }
 
     return options;
-  }, [branchValue, commitSha, deployment.branch, sourceData]);
+  }, [commitSha, activeSourceData]);
 
   const hasAppNameChange = appName.trim() !== deployment.appName;
   const hasBranchChange = branchValue.trim() !== (deployment.branch ?? "");
@@ -532,14 +547,11 @@ export function GitAppPageMainContent({
   }
 
   function handleBranchComboboxOpen(open: boolean) {
-    if (!open || sourceRequestedRef.current) {
+    if (!open || (sourceRequestedRef.current && !sourceError)) {
       return;
     }
 
-    // First time the user opens the branch dropdown — kick off the lazy fetch.
-    sourceRequestedRef.current = true;
-    setSourceRequested(true);
-    fetchSourceData(branchValue);
+    requestSourceData(branchValue);
   }
 
   function handleCommitSelect(value: string) {
@@ -641,7 +653,7 @@ export function GitAppPageMainContent({
                 <div className="flex flex-wrap items-center gap-2">
                   <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>
-                    {sourceData?.currentBranch ??
+                    {activeSourceData?.currentBranch ??
                       deployment.branch ??
                       "Default branch"}
                   </span>
@@ -695,8 +707,9 @@ export function GitAppPageMainContent({
                   </div>
                 ) : (
                   <span className="text-muted-foreground">
-                    Commit metadata loads after the repository source is
-                    available.
+                    {!sourceRequested || isSourceLoading
+                      ? "Loading current commit in the background..."
+                      : "Current commit metadata is not available yet."}
                   </span>
                 )
               }
@@ -839,7 +852,7 @@ export function GitAppPageMainContent({
 
               <SettingsRow
                 currentValue={
-                  sourceData?.currentBranch ??
+                  activeSourceData?.currentBranch ??
                   deployment.branch ??
                   "Default branch"
                 }

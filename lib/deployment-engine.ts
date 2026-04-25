@@ -936,6 +936,7 @@ export async function readDeploymentSourceState(input: {
 
   let branches: string[] = [];
   let commits: DeploymentSourceCommit[] = [];
+  let commitsBranch: string | null = null;
   let browserError: string | null = null;
 
   if (repository) {
@@ -950,6 +951,7 @@ export async function readDeploymentSourceState(input: {
           requestedBranch ?? deployment.branch ?? currentBranch;
 
         if (knownBranch) {
+          commitsBranch = knownBranch;
           [branches, commits] = await Promise.all([
             listGitHubBranches(token, repository.owner, repository.name),
             listGitHubCommits(
@@ -969,6 +971,7 @@ export async function readDeploymentSourceState(input: {
           const branchForCommits = branches[0];
 
           if (branchForCommits) {
+            commitsBranch = branchForCommits;
             commits = (
               await listGitHubCommits(
                 token,
@@ -1013,6 +1016,18 @@ export async function readDeploymentSourceState(input: {
           ? `${repository.webUrl}/commit/${deployment.commitSha}`
           : null,
       };
+    }
+  }
+
+  if (
+    !resolvedCurrentCommit &&
+    !deployment.commitSha &&
+    commits.length > 0
+  ) {
+    const currentBranchReference = deployment.branch ?? currentBranch;
+
+    if (!currentBranchReference || commitsBranch === currentBranchReference) {
+      resolvedCurrentCommit = commits[0] ?? null;
     }
   }
 
