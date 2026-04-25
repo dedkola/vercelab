@@ -31,6 +31,7 @@ import {
   InputGroupSuffix,
 } from "@/components/ui/input-group";
 import type { DeploymentSummary } from "@/lib/persistence";
+import type { ExposureMode } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 
 type DeploymentSourceCommit = {
@@ -283,6 +284,12 @@ export function GitAppPageMainContent({
   const [envRows, setEnvRows] = useState<EnvVariableDraft[]>(() =>
     buildEnvVariableDrafts(deployment.envVariables),
   );
+  const [exposureMode, setExposureMode] = useState<ExposureMode>(
+    deployment.exposureMode ?? "http",
+  );
+  const [hostPort, setHostPort] = useState(
+    String(deployment.hostPort ?? ""),
+  );
   const [isSourceLoading, setIsSourceLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [port, setPort] = useState(String(deployment.port));
@@ -493,6 +500,10 @@ export function GitAppPageMainContent({
   const hasBranchChange = branchValue.trim() !== (deployment.branch ?? "");
   const hasCommitChange = commitSha.trim() !== (deployment.commitSha ?? "");
   const hasEnvChange = envPayload !== normalizedCurrentEnvPayload;
+  const hasExposureModeChange =
+    exposureMode !== (deployment.exposureMode ?? "http");
+  const hasHostPortChange =
+    hostPort.trim() !== String(deployment.hostPort ?? "");
   const hasPortChange = port.trim() !== String(deployment.port);
   const hasSubdomainChange = subdomain.trim() !== deployment.subdomain;
   const changeCount = [
@@ -500,6 +511,8 @@ export function GitAppPageMainContent({
     hasBranchChange,
     hasCommitChange,
     hasEnvChange,
+    hasExposureModeChange,
+    hasHostPortChange,
     hasPortChange,
     hasSubdomainChange,
   ].filter(Boolean).length;
@@ -529,6 +542,10 @@ export function GitAppPageMainContent({
     formData.set("branch", branchValue.trim());
     formData.set("commitSha", commitSha.trim());
     formData.set("envVariables", envPayload);
+    formData.set("exposureMode", exposureMode);
+    if (hostPort.trim()) {
+      formData.set("hostPort", hostPort.trim());
+    }
     formData.set("port", port.trim());
     formData.set("subdomain", subdomain.trim());
 
@@ -930,6 +947,51 @@ export function GitAppPageMainContent({
                 onReset={() => setPort(String(deployment.port))}
                 resetDisabled={!hasPortChange}
               />
+
+              <SettingsRow
+                currentValue={deployment.exposureMode ?? "http"}
+                editor={
+                  <select
+                    className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-none"
+                    onChange={(event) =>
+                      setExposureMode(event.target.value as ExposureMode)
+                    }
+                    value={exposureMode}
+                  >
+                    <option value="http">HTTP — Traefik reverse proxy</option>
+                    <option value="tcp">TCP — Traefik TCP passthrough</option>
+                    <option value="host">Host port — bind to host</option>
+                    <option value="internal">Internal — no external exposure</option>
+                  </select>
+                }
+                label="Exposure mode"
+                onReset={() =>
+                  setExposureMode(deployment.exposureMode ?? "http")
+                }
+                resetDisabled={!hasExposureModeChange}
+              />
+
+              {(exposureMode === "tcp" || exposureMode === "host") && (
+                <SettingsRow
+                  currentValue={
+                    deployment.hostPort ? `:${deployment.hostPort}` : "—"
+                  }
+                  editor={
+                    <Input
+                      className="h-9 rounded-lg bg-background shadow-none"
+                      inputMode="numeric"
+                      onChange={(event) => setHostPort(event.target.value)}
+                      placeholder="e.g. 27017"
+                      value={hostPort}
+                    />
+                  }
+                  label="Host port"
+                  onReset={() =>
+                    setHostPort(String(deployment.hostPort ?? ""))
+                  }
+                  resetDisabled={!hasHostPortChange}
+                />
+              )}
             </div>
           </div>
 

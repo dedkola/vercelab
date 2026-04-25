@@ -26,6 +26,7 @@ import {
   type OperationType,
   type StoredDeployment,
 } from "@/lib/persistence";
+import { buildTraefikTcpLabels } from "@/lib/container-routing";
 import {
   createDeploymentSchema,
   updateDeploymentSettingsSchema,
@@ -542,7 +543,7 @@ async function detectRuntimeFiles(
 
       if (!selectedService) {
         throw new Error(
-          "This compose repository has multiple services. Enter the service name to expose through Traefik.",
+          "This compose repository has multiple services. Enter the service name to deploy.",
         );
       }
 
@@ -577,21 +578,43 @@ async function detectRuntimeFiles(
         ...deploymentEnvironment,
       };
 
-      const serviceOverride: Record<string, unknown> = {
-        networks,
-        environment: proxyEnvironment,
-        labels: {
+      const exposureMode = deployment.exposureMode ?? "http";
+      let serviceLabels: Record<string, string>;
+      let servicePorts: string[] | undefined;
+
+      if (exposureMode === "http") {
+        serviceLabels = {
           "traefik.enable": "true",
           "traefik.docker.network": getAppConfig().proxy.network,
-          [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(
-            deployment.subdomain,
-          )}\`)`,
+          [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(deployment.subdomain)}\`)`,
           [`traefik.http.routers.${routerName}.entrypoints`]:
             getAppConfig().proxy.entrypoint,
           [`traefik.http.routers.${routerName}.tls`]: "true",
           [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
             String(deployment.port),
-        },
+        };
+      } else if (exposureMode === "tcp") {
+        const hostPort = deployment.hostPort ?? deployment.port;
+        serviceLabels = buildTraefikTcpLabels({
+          entrypoint: `tcp-${hostPort}`,
+          network: getAppConfig().proxy.network,
+          port: deployment.port,
+          routerName,
+        });
+      } else if (exposureMode === "host") {
+        const hostPort = deployment.hostPort ?? deployment.port;
+        serviceLabels = { "traefik.enable": "false" };
+        servicePorts = [`${hostPort}:${deployment.port}`];
+      } else {
+        // internal — on proxy network for intra-Docker access, no external exposure
+        serviceLabels = { "traefik.enable": "false" };
+      }
+
+      const serviceOverride: Record<string, unknown> = {
+        networks,
+        environment: proxyEnvironment,
+        labels: serviceLabels,
+        ...(servicePorts ? { ports: servicePorts } : {}),
       };
 
       if (hasEnvironmentValues && selectedServiceHasBuild) {
@@ -664,6 +687,37 @@ async function detectRuntimeFiles(
     ...deploymentEnvironment,
   };
 
+  const exposureMode = deployment.exposureMode ?? "http";
+  let appLabels: Record<string, string>;
+  let appPorts: string[] | undefined;
+
+  if (exposureMode === "http") {
+    appLabels = {
+      "traefik.enable": "true",
+      "traefik.docker.network": getAppConfig().proxy.network,
+      [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(deployment.subdomain)}\`)`,
+      [`traefik.http.routers.${routerName}.entrypoints`]:
+        getAppConfig().proxy.entrypoint,
+      [`traefik.http.routers.${routerName}.tls`]: "true",
+      [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
+        String(deployment.port),
+    };
+  } else if (exposureMode === "tcp") {
+    const hostPort = deployment.hostPort ?? deployment.port;
+    appLabels = buildTraefikTcpLabels({
+      entrypoint: `tcp-${hostPort}`,
+      network: getAppConfig().proxy.network,
+      port: deployment.port,
+      routerName,
+    });
+  } else if (exposureMode === "host") {
+    const hostPort = deployment.hostPort ?? deployment.port;
+    appLabels = { "traefik.enable": "false" };
+    appPorts = [`${hostPort}:${deployment.port}`];
+  } else {
+    appLabels = { "traefik.enable": "false" };
+  }
+
   const generatedCompose = {
     services: {
       app: {
@@ -678,18 +732,8 @@ async function detectRuntimeFiles(
         environment: proxyEnvironment,
         restart: "unless-stopped",
         networks: [getAppConfig().proxy.network],
-        labels: {
-          "traefik.enable": "true",
-          "traefik.docker.network": getAppConfig().proxy.network,
-          [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(
-            deployment.subdomain,
-          )}\`)`,
-          [`traefik.http.routers.${routerName}.entrypoints`]:
-            getAppConfig().proxy.entrypoint,
-          [`traefik.http.routers.${routerName}.tls`]: "true",
-          [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
-            String(deployment.port),
-        },
+        labels: appLabels,
+        ...(appPorts ? { ports: appPorts } : {}),
       },
     },
     networks: {
@@ -783,7 +827,13 @@ async function executeLifecycleOperation(
           ? `Stopped ${deployment.appName}.`
           : operationType === "remove"
             ? `Removed ${deployment.appName}.`
-            : `Deployment is live at https://${getDefaultDomain(deployment.subdomain)}.`;
+            : deployment.exposureMode === "http" || !deployment.exposureMode
+              ? `Deployment is live at https://${getDefaultDomain(deployment.subdomain)}.`
+              : deployment.exposureMode === "tcp"
+                ? `TCP service deployed on port ${deployment.hostPort ?? deployment.port}.`
+                : deployment.exposureMode === "host"
+                  ? `${deployment.appName} deployed with host port ${deployment.hostPort ?? deployment.port}.`
+                  : `${deployment.appName} deployed (internal only).`;
 
       await completeOperation(operationId, "success", summary, output);
 
@@ -801,6 +851,8 @@ async function executeLifecycleOperation(
       return {
         appName: deployment.appName,
         domain: getDefaultDomain(deployment.subdomain),
+        exposureMode: deployment.exposureMode ?? "http",
+        hostPort: deployment.hostPort ?? null,
       };
     } catch (error) {
       const message =
@@ -826,6 +878,8 @@ export async function createAndDeployFromForm(input: {
   appName: string;
   subdomain: string;
   port: string;
+  exposureMode: FormDataEntryValue | string | null;
+  hostPort: FormDataEntryValue | string | null;
   envVariables: FormDataEntryValue | string | null;
 }) {
   const parsed = createDeploymentSchema.parse({
@@ -836,6 +890,8 @@ export async function createAndDeployFromForm(input: {
     appName: input.appName,
     subdomain: normalizeDomainInput(input.subdomain),
     port: input.port,
+    exposureMode: normalizeStringInput(input.exposureMode) ?? "http",
+    hostPort: normalizeStringInput(input.hostPort),
     envVariables: normalizeStringInput(input.envVariables),
   });
 
@@ -845,6 +901,8 @@ export async function createAndDeployFromForm(input: {
   return {
     deploymentId,
     domain,
+    exposureMode: parsed.exposureMode,
+    hostPort: parsed.hostPort ?? null,
   };
 }
 
@@ -878,6 +936,8 @@ export async function updateDeploymentSettingsById(input: {
   commitSha: FormDataEntryValue | string | null;
   subdomain: string;
   port: string;
+  exposureMode: FormDataEntryValue | string | null;
+  hostPort: FormDataEntryValue | string | null;
   envVariables: FormDataEntryValue | string | null;
 }) {
   const parsed = updateDeploymentSettingsSchema.parse({
@@ -887,6 +947,8 @@ export async function updateDeploymentSettingsById(input: {
     commitSha: normalizeStringInput(input.commitSha),
     subdomain: normalizeDomainInput(input.subdomain),
     port: input.port,
+    exposureMode: normalizeStringInput(input.exposureMode) ?? "http",
+    hostPort: normalizeStringInput(input.hostPort),
     envVariables: normalizeStringInput(input.envVariables),
   });
 
@@ -895,6 +957,8 @@ export async function updateDeploymentSettingsById(input: {
       appName: parsed.appName,
       subdomain: parsed.subdomain,
       port: parsed.port,
+      exposureMode: parsed.exposureMode,
+      hostPort: parsed.hostPort ?? null,
       envVariables: parsed.envVariables ?? null,
     });
     await updateDeploymentRepositorySettingsById(parsed.deploymentId, {
@@ -916,6 +980,8 @@ export async function updateDeploymentSettingsById(input: {
   return {
     appName: parsed.appName,
     domain: result.domain,
+    exposureMode: parsed.exposureMode,
+    hostPort: parsed.hostPort ?? null,
   };
 }
 

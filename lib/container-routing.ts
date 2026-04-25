@@ -43,6 +43,28 @@ export function buildTraefikLabels({
   } satisfies Record<string, string>;
 }
 
+export function buildTraefikTcpLabels({
+  entrypoint,
+  network,
+  port,
+  routerName,
+}: {
+  entrypoint: string;
+  network: string;
+  port: number;
+  routerName: string;
+}) {
+  return {
+    "traefik.enable": "true",
+    "traefik.docker.network": network,
+    [`traefik.tcp.routers.${routerName}.rule`]: "HostSNI(`*`)",
+    [`traefik.tcp.routers.${routerName}.entrypoints`]: entrypoint,
+    [`traefik.tcp.services.${routerName}.loadbalancer.server.port`]: String(
+      port,
+    ),
+  } satisfies Record<string, string>;
+}
+
 export function extractTraefikHostFromLabels(labels: ReadonlyMap<string, string>) {
   for (const [key, value] of labels.entries()) {
     if (

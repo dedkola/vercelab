@@ -4,7 +4,7 @@ import { Pool, type PoolClient } from "pg";
 
 import { getAppConfig } from "@/lib/app-config";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
-import type { CreateDeploymentInput } from "@/lib/validation";
+import type { CreateDeploymentInput, ExposureMode } from "@/lib/validation";
 
 export type DeploymentStatus =
   | "deploying"
@@ -28,6 +28,8 @@ export type StoredDeployment = {
   appSlug: string;
   subdomain: string;
   port: number;
+  exposureMode: ExposureMode;
+  hostPort: number | null;
   envVariables: string | null;
   serviceName: string | null;
   status: DeploymentStatus;
@@ -50,6 +52,8 @@ export type DeploymentSummary = {
   appName: string;
   subdomain: string;
   port: number;
+  exposureMode: ExposureMode;
+  hostPort: number | null;
   envVariables: string | null;
   serviceName: string | null;
   status: DeploymentStatus;
@@ -124,6 +128,8 @@ type StoredDeploymentRow = {
   app_slug: string;
   subdomain: string;
   port: number;
+  exposure_mode: ExposureMode;
+  host_port: number | null;
   env_variables: string | null;
   service_name: string | null;
   status: DeploymentStatus;
@@ -146,6 +152,8 @@ type DeploymentSummaryRow = {
   app_name: string;
   subdomain: string;
   port: number;
+  exposure_mode: ExposureMode;
+  host_port: number | null;
   env_variables: string | null;
   service_name: string | null;
   status: DeploymentStatus;
@@ -195,6 +203,8 @@ const deploymentSummarySelect = `
     d.app_name,
     d.subdomain,
     d.port,
+    d.exposure_mode,
+    d.host_port,
     d.env_variables,
     d.service_name,
     d.status,
@@ -255,6 +265,8 @@ function mapStoredDeployment(row: StoredDeploymentRow): StoredDeployment {
     appSlug: row.app_slug,
     subdomain: row.subdomain,
     port: row.port,
+    exposureMode: row.exposure_mode ?? "http",
+    hostPort: row.host_port ?? null,
     envVariables: row.env_variables,
     serviceName: row.service_name,
     status: row.status,
@@ -279,6 +291,8 @@ function mapDeploymentSummary(row: DeploymentSummaryRow): DeploymentSummary {
     appName: row.app_name,
     subdomain: row.subdomain,
     port: row.port,
+    exposureMode: row.exposure_mode ?? "http",
+    hostPort: row.host_port ?? null,
     envVariables: row.env_variables,
     serviceName: row.service_name,
     status: row.status,
@@ -377,6 +391,8 @@ async function initDatabase() {
             app_slug TEXT NOT NULL,
             subdomain TEXT NOT NULL UNIQUE,
             port INTEGER NOT NULL,
+            exposure_mode TEXT NOT NULL DEFAULT 'http',
+            host_port INTEGER,
             env_variables TEXT,
             service_name TEXT,
             status TEXT NOT NULL,
@@ -407,6 +423,12 @@ async function initDatabase() {
         `);
         await client.query(
           "ALTER TABLE repositories ADD COLUMN IF NOT EXISTS commit_sha TEXT",
+        );
+        await client.query(
+          "ALTER TABLE deployments ADD COLUMN IF NOT EXISTS exposure_mode TEXT NOT NULL DEFAULT 'http'",
+        );
+        await client.query(
+          "ALTER TABLE deployments ADD COLUMN IF NOT EXISTS host_port INTEGER",
         );
       } finally {
         client.release();
@@ -626,6 +648,8 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
             app_slug,
             subdomain,
             port,
+            exposure_mode,
+            host_port,
             env_variables,
             service_name,
             status,
@@ -637,7 +661,7 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
             created_at,
             updated_at,
             deployed_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         `,
         [
           deploymentId,
@@ -646,6 +670,8 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
           appSlug,
           input.subdomain,
           input.port,
+          input.exposureMode ?? "http",
+          input.hostPort ?? null,
           input.envVariables ?? null,
           input.serviceName ?? null,
           "deploying",
@@ -674,7 +700,10 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
   return {
     deploymentId,
     projectName,
-    domain: `${input.subdomain}.${getAppConfig().baseDomain}`,
+    domain:
+      (input.exposureMode ?? "http") === "http"
+        ? `${input.subdomain}.${getAppConfig().baseDomain}`
+        : null,
   };
 }
 
@@ -773,6 +802,8 @@ type DeploymentUpdate = Partial<{
   appSlug: string;
   subdomain: string;
   port: number;
+  exposureMode: ExposureMode;
+  hostPort: number | null;
   envVariables: string | null;
   serviceName: string | null;
   status: DeploymentStatus;
@@ -806,6 +837,8 @@ export async function updateDeploymentRecord(
     appSlug: "app_slug",
     subdomain: "subdomain",
     port: "port",
+    exposureMode: "exposure_mode",
+    hostPort: "host_port",
     envVariables: "env_variables",
     serviceName: "service_name",
     status: "status",

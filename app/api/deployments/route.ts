@@ -31,6 +31,8 @@ export async function POST(request: Request) {
       appName: getRequiredString(formData, "appName"),
       subdomain: getRequiredString(formData, "subdomain"),
       port: getRequiredString(formData, "port"),
+      exposureMode: formData.get("exposureMode"),
+      hostPort: formData.get("hostPort"),
       envVariables: formData.get("envVariables"),
     });
 

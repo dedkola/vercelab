@@ -52,12 +52,23 @@ export async function createDeploymentAction(formData: FormData) {
       appName: getRequiredFormValue(formData, "appName"),
       subdomain: getRequiredFormValue(formData, "subdomain"),
       port: getRequiredFormValue(formData, "port"),
+      exposureMode: formData.get("exposureMode"),
+      hostPort: formData.get("hostPort"),
       envVariables: formData.get("envVariables"),
     });
-    return createActionResult(
-      "success",
-      `Deployment live at https://${deployment.domain}`,
-    );
+
+    let message: string;
+    if (deployment.exposureMode === "http" && deployment.domain) {
+      message = `Deployment live at https://${deployment.domain}`;
+    } else if (deployment.exposureMode === "tcp" && deployment.hostPort) {
+      message = `TCP service deployed on port ${deployment.hostPort}`;
+    } else if (deployment.exposureMode === "host" && deployment.hostPort) {
+      message = `Deployment queued with host port ${deployment.hostPort}`;
+    } else {
+      message = "Deployment created (internal only).";
+    }
+
+    return createActionResult("success", message);
   } catch (error) {
     return createActionResult("error", getActionErrorMessage(error));
   }
@@ -70,10 +81,11 @@ export async function redeployDeploymentAction(
 
   try {
     const result = await redeployDeploymentById(deploymentId);
-    return createActionResult(
-      "success",
-      `Redeployed ${result.appName} to https://${result.domain}`,
-    );
+    const message =
+      result.exposureMode === "http"
+        ? `Redeployed ${result.appName} to https://${result.domain}`
+        : `Redeployed ${result.appName}.`;
+    return createActionResult("success", message);
   } catch (error) {
     return createActionResult("error", getActionErrorMessage(error));
   }
@@ -86,10 +98,11 @@ export async function fetchDeploymentFromGitAction(
 
   try {
     const result = await fetchDeploymentFromGitById(deploymentId);
-    return createActionResult(
-      "success",
-      `Fetched latest changes for ${result.appName} at https://${result.domain}`,
-    );
+    const message =
+      result.exposureMode === "http"
+        ? `Fetched latest changes for ${result.appName} at https://${result.domain}`
+        : `Fetched latest changes for ${result.appName}.`;
+    return createActionResult("success", message);
   } catch (error) {
     return createActionResult("error", getActionErrorMessage(error));
   }
@@ -132,12 +145,23 @@ export async function updateDeploymentAction(
       commitSha: formData.get("commitSha"),
       subdomain: getRequiredFormValue(formData, "subdomain"),
       port: getRequiredFormValue(formData, "port"),
+      exposureMode: formData.get("exposureMode"),
+      hostPort: formData.get("hostPort"),
       envVariables: formData.get("envVariables"),
     });
-    return createActionResult(
-      "success",
-      `Updated ${result.appName}. Deployment live at https://${result.domain}`,
-    );
+
+    let message: string;
+    if (result.exposureMode === "http" && result.domain) {
+      message = `Updated ${result.appName}. Deployment live at https://${result.domain}`;
+    } else if (result.exposureMode === "tcp" && result.hostPort) {
+      message = `Updated ${result.appName}. TCP service on port ${result.hostPort}`;
+    } else if (result.exposureMode === "host" && result.hostPort) {
+      message = `Updated ${result.appName}. Host port ${result.hostPort}`;
+    } else {
+      message = `Updated ${result.appName} (internal only).`;
+    }
+
+    return createActionResult("success", message);
   } catch (error) {
     return createActionResult("error", getActionErrorMessage(error));
   }

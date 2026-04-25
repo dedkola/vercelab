@@ -100,14 +100,17 @@ export function GitAppPageLeftSidebar({
   selectedRepositoryValue,
   totalAppsCount,
 }: GitAppPageLeftSidebarProps) {
+  const needsHostPort =
+    draftApp.exposureMode === "tcp" || draftApp.exposureMode === "host";
   const isCreateDisabled =
     isCreateAppPending ||
     repositoryState.isLoading ||
     (Boolean(draftApp.repositoryUrl) && isBranchLoading) ||
     !draftApp.repositoryUrl.trim() ||
     !draftApp.appName.trim() ||
-    !draftApp.subdomain.trim() ||
-    !draftApp.port.trim();
+    (draftApp.exposureMode === "http" && !draftApp.subdomain.trim()) ||
+    !draftApp.port.trim() ||
+    (needsHostPort && !draftApp.hostPort.trim());
 
   return (
     <>
@@ -243,7 +246,7 @@ export function GitAppPageLeftSidebar({
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-muted-foreground">
-                        Port
+                        Container port
                       </Label>
                       <Input
                         className="h-9 rounded-xl bg-background/80"
@@ -258,22 +261,73 @@ export function GitAppPageLeftSidebar({
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground">
-                      Subdomain
+                      Exposure mode
                     </Label>
-                    <InputGroup className="h-9">
-                      <InputGroupInput
-                        onChange={(event) =>
-                          onDraftChangeAction("subdomain", event.target.value)
-                        }
-                        value={draftApp.subdomain}
-                      />
-                      {baseDomain ? (
-                        <InputGroupSuffix className="leading-9">
-                          .{baseDomain}
-                        </InputGroupSuffix>
-                      ) : null}
-                    </InputGroup>
+                    <select
+                      className="h-9 w-full rounded-xl border border-input bg-background/80 px-3 text-sm"
+                      onChange={(event) =>
+                        onDraftChangeAction(
+                          "exposureMode",
+                          event.target.value,
+                        )
+                      }
+                      value={draftApp.exposureMode}
+                    >
+                      <option value="http">HTTP — Traefik reverse proxy</option>
+                      <option value="tcp">
+                        TCP — Traefik TCP passthrough (pre-configure entrypoint)
+                      </option>
+                      <option value="host">
+                        Host port — bind directly to host
+                      </option>
+                      <option value="internal">
+                        Internal — no external exposure
+                      </option>
+                    </select>
                   </div>
+
+                  {(draftApp.exposureMode === "tcp" ||
+                    draftApp.exposureMode === "host") && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Host port
+                      </Label>
+                      <Input
+                        className="h-9 rounded-xl bg-background/80"
+                        inputMode="numeric"
+                        onChange={(event) =>
+                          onDraftChangeAction("hostPort", event.target.value)
+                        }
+                        placeholder={
+                          draftApp.exposureMode === "tcp"
+                            ? "e.g. 27017 (TCP entrypoint)"
+                            : "e.g. 27017"
+                        }
+                        value={draftApp.hostPort}
+                      />
+                    </div>
+                  )}
+
+                  {draftApp.exposureMode === "http" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Subdomain
+                      </Label>
+                      <InputGroup className="h-9">
+                        <InputGroupInput
+                          onChange={(event) =>
+                            onDraftChangeAction("subdomain", event.target.value)
+                          }
+                          value={draftApp.subdomain}
+                        />
+                        {baseDomain ? (
+                          <InputGroupSuffix className="leading-9">
+                            .{baseDomain}
+                          </InputGroupSuffix>
+                        ) : null}
+                      </InputGroup>
+                    </div>
+                  )}
 
                   {repositoryState.error ? (
                     <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">

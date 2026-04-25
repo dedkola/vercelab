@@ -62,6 +62,7 @@ import {
 } from "@/lib/metrics-range";
 import type { DeploymentSummary } from "@/lib/persistence";
 import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
+import type { ExposureMode } from "@/lib/validation";
 
 export type MetricTone = "emerald" | "amber" | "slate";
 export type PreviewContainerStatus = "running" | "degraded" | "idle";
@@ -153,6 +154,8 @@ type WorkspaceShellProps = {
 export type DraftAppState = {
   appName: string;
   branch: string;
+  exposureMode: ExposureMode;
+  hostPort: string;
   port: string;
   repositoryUrl: string;
   subdomain: string;
@@ -1682,6 +1685,8 @@ function createEmptyDraftAppState(): DraftAppState {
   return {
     appName: "",
     branch: "",
+    exposureMode: "http",
+    hostPort: "",
     port: "3000",
     repositoryUrl: "",
     subdomain: "",
@@ -1856,6 +1861,8 @@ function createDraftFromRepository(
   return {
     appName: repository.name,
     branch: repository.defaultBranch,
+    exposureMode: "http",
+    hostPort: "",
     port: "3000",
     repositoryUrl: repository.cloneUrl,
     subdomain: slug || repository.name.toLowerCase(),
@@ -2860,11 +2867,21 @@ export function WorkspaceShell({
     const appName = draftApp.appName.trim();
     const subdomain = draftApp.subdomain.trim();
     const port = draftApp.port.trim();
+    const needsHostPort =
+      draftApp.exposureMode === "tcp" || draftApp.exposureMode === "host";
 
-    if (!repositoryUrl || !appName || !subdomain || !port) {
-      toast.error(
-        "Select a repository and complete the app name, subdomain, and port.",
-      );
+    if (!repositoryUrl || !appName || !port) {
+      toast.error("Select a repository and complete the app name and port.");
+      return;
+    }
+
+    if (draftApp.exposureMode === "http" && !subdomain) {
+      toast.error("Enter a subdomain for HTTP deployments.");
+      return;
+    }
+
+    if (needsHostPort && !draftApp.hostPort.trim()) {
+      toast.error("Enter a host port for TCP and Host exposure modes.");
       return;
     }
 
@@ -2876,6 +2893,11 @@ export function WorkspaceShell({
       formData.set("appName", appName);
       formData.set("subdomain", subdomain);
       formData.set("port", port);
+      formData.set("exposureMode", draftApp.exposureMode);
+
+      if (draftApp.hostPort.trim()) {
+        formData.set("hostPort", draftApp.hostPort.trim());
+      }
 
       if (draftApp.branch.trim()) {
         formData.set("branch", draftApp.branch.trim());
@@ -2888,6 +2910,8 @@ export function WorkspaceShell({
       const payload = (await response.json()) as {
         deploymentId?: string;
         domain?: string;
+        exposureMode?: ExposureMode;
+        hostPort?: number;
         error?: string;
       };
 
@@ -2895,11 +2919,15 @@ export function WorkspaceShell({
         throw new Error(payload.error ?? "Unable to create deployment.");
       }
 
-      toast.success(
-        payload.domain
-          ? `Deployment queued for https://${payload.domain}`
-          : "Deployment created.",
-      );
+      let toastMessage = "Deployment created.";
+      if (payload.exposureMode === "http" && payload.domain) {
+        toastMessage = `Deployment queued for https://${payload.domain}`;
+      } else if (payload.exposureMode === "tcp" && payload.hostPort) {
+        toastMessage = `TCP service queued on port ${payload.hostPort}`;
+      } else if (payload.exposureMode === "host" && payload.hostPort) {
+        toastMessage = `Deployment queued with host port ${payload.hostPort}`;
+      }
+      toast.success(toastMessage);
       setSelectedAppId(payload.deploymentId);
       setDraftApp(createEmptyDraftAppState());
       setIsCreateAppExpanded(false);
