@@ -115,7 +115,7 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
         );
         const rows = [
           createTooltipRow(
-            panel.title,
+            panel.primaryLabel ?? panel.title,
             formatMetricValue(panel.primaryValues[index] ?? 0, panel.format),
             style.tooltipAccent,
           ),
@@ -124,7 +124,8 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
         if (panel.secondaryValues?.length) {
           rows.push(
             createTooltipRow(
-              panel.id === "network" ? "Egress" : "Write",
+              panel.secondaryLabel ??
+                (panel.id === "network" ? "Upload" : "Write"),
               formatMetricValue(
                 panel.secondaryValues[index] ?? 0,
                 panel.format,

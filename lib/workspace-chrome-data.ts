@@ -34,6 +34,9 @@ export async function loadWorkspaceChromeData(
     hostIp: initialSnapshot.hostIp,
     limit: 48,
     bucketSeconds: 5,
+    ...(initialSnapshot.network.interfaces[0]?.name
+      ? { networkInterfaceName: initialSnapshot.network.interfaces[0].name }
+      : {}),
   }).catch(() => [] as MetricsHistoryPoint[]);
 
   return {

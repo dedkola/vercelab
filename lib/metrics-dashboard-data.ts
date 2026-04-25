@@ -68,6 +68,9 @@ export async function loadMetricsDashboardData(
         hostIp: snapshot.hostIp,
         limit,
         bucketSeconds,
+        ...(snapshot.network.interfaces[0]?.name
+          ? { networkInterfaceName: snapshot.network.interfaces[0].name }
+          : {}),
       }).catch(() => [] as MetricsHistoryPoint[]),
       getAllContainersMetricsHistoryFromInflux({
         hostIp: snapshot.hostIp,

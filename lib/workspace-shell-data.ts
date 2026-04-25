@@ -99,6 +99,9 @@ export async function loadWorkspaceShellData(
             hostIp: snapshot.hostIp,
             limit: 48,
             bucketSeconds: 5,
+            ...(snapshot.network.interfaces[0]?.name
+              ? { networkInterfaceName: snapshot.network.interfaces[0].name }
+              : {}),
           }).catch(() => [] as MetricsHistoryPoint[]),
           initialFocusedContainer
             ? getContainerMetricsHistoryFromInflux({

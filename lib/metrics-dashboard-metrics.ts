@@ -90,7 +90,9 @@ export type SystemMetricPanel = {
   format: ChartMetricFormat;
   id: "cpu" | "memory" | "network" | "disk";
   labels: string[];
+  primaryLabel?: string;
   primaryValues: number[];
+  secondaryLabel?: string;
   secondaryValues?: number[];
   stats: ChartStat[];
   timestamps: string[];
@@ -1164,6 +1166,7 @@ export function buildSystemMetricPanels(
   const networkOutPoints = history.map((point) => point.networkOut);
   const diskReadPoints = history.map((point) => point.diskRead);
   const diskWritePoints = history.map((point) => point.diskWrite);
+  const defaultNetworkInterfaceName = snapshot?.network.interfaces[0]?.name;
 
   return [
     {
@@ -1248,7 +1251,9 @@ export function buildSystemMetricPanels(
     },
     {
       currentCaption: snapshot
-        ? `${snapshot.network.interfaces.length} tracked interfaces`
+        ? defaultNetworkInterfaceName
+          ? `${defaultNetworkInterfaceName} default interface`
+          : "Default interface unavailable"
         : "",
       currentValue: snapshot
         ? formatBytesPerSecond(
@@ -1259,17 +1264,19 @@ export function buildSystemMetricPanels(
       format: "bytesPerSecond",
       id: "network",
       labels,
+      primaryLabel: "Download",
       primaryValues: networkInPoints,
+      secondaryLabel: "Upload",
       secondaryValues: networkOutPoints,
       stats: [
         {
-          label: "In",
+          label: "Download",
           value: snapshot
             ? formatBytesPerSecond(snapshot.network.rxBytesPerSecond)
             : "--",
         },
         {
-          label: "Out",
+          label: "Upload",
           value: snapshot
             ? formatBytesPerSecond(snapshot.network.txBytesPerSecond)
             : "--",
@@ -1285,7 +1292,7 @@ export function buildSystemMetricPanels(
         },
       ],
       timestamps,
-      title: "Host network",
+      title: "Default host",
       tone: "sky",
       variant: "dual-line",
     },

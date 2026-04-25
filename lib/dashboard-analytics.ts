@@ -291,6 +291,9 @@ export async function getDashboardAnalytics(
     bucketSeconds,
     hostIp: snapshot.hostIp,
     limit,
+    ...(snapshot.network.interfaces[0]?.name
+      ? { networkInterfaceName: snapshot.network.interfaces[0].name }
+      : {}),
   }).catch(() => [] as MetricsHistoryPoint[]);
 
   const heatmapEventGroups = await Promise.all(

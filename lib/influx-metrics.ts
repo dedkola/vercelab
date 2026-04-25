@@ -186,6 +186,22 @@ function buildHostQuery({
   return `SELECT mean(cpu_percent) AS cpu_percent, mean(memory_percent) AS memory_percent, mean(network_rx_bps) AS network_in, mean(network_tx_bps) AS network_out, mean(disk_read_bps) AS disk_read, mean(disk_write_bps) AS disk_write FROM host_metrics WHERE time > now() - ${windowMinutes}m${hostFilter} GROUP BY time(${bucketSeconds}s) fill(none)`;
 }
 
+function buildNetworkInterfaceQuery({
+  bucketSeconds,
+  hostIp,
+  networkInterfaceName,
+  windowMinutes,
+}: QueryOptions & {
+  networkInterfaceName: string;
+}) {
+  const hostFilter =
+    hostIp && hostIp !== "unknown"
+      ? ` AND host='${escapeInfluxString(hostIp)}'`
+      : "";
+
+  return `SELECT mean(rx_bps) AS network_in, mean(tx_bps) AS network_out FROM network_interface WHERE time > now() - ${windowMinutes}m${hostFilter} AND interface='${escapeInfluxString(networkInterfaceName)}' GROUP BY time(${bucketSeconds}s) fill(none)`;
+}
+
 function buildContainerQuery({
   hostIp,
   windowMinutes,
@@ -242,6 +258,7 @@ export async function getMetricsHistoryFromInflux(options?: {
   hostIp?: string;
   limit?: number;
   bucketSeconds?: number;
+  networkInterfaceName?: string;
 }) {
   const limit = Math.max(1, Math.min(options?.limit ?? 48, 240));
   const bucketSeconds = Math.max(
@@ -249,14 +266,28 @@ export async function getMetricsHistoryFromInflux(options?: {
     Math.min(options?.bucketSeconds ?? 5, 86_400),
   );
   const hostIp = options?.hostIp ?? "unknown";
+  const networkInterfaceName = options?.networkInterfaceName?.trim();
   const windowMinutes = Math.max(1, Math.ceil((limit * bucketSeconds) / 60));
 
-  const [hostSeries, containerSeries] = await Promise.all([
-    runInfluxV1Query(buildHostQuery({ hostIp, windowMinutes, bucketSeconds })),
-    runInfluxV1Query(
-      buildContainerQuery({ hostIp, windowMinutes, bucketSeconds }),
-    ),
-  ]);
+  const [hostSeries, containerSeries, networkInterfaceSeries] =
+    await Promise.all([
+      runInfluxV1Query(
+        buildHostQuery({ hostIp, windowMinutes, bucketSeconds }),
+      ),
+      runInfluxV1Query(
+        buildContainerQuery({ hostIp, windowMinutes, bucketSeconds }),
+      ),
+      networkInterfaceName
+        ? runInfluxV1Query(
+            buildNetworkInterfaceQuery({
+              bucketSeconds,
+              hostIp,
+              networkInterfaceName,
+              windowMinutes,
+            }),
+          )
+        : Promise.resolve([] as InfluxV1Series[]),
+    ]);
 
   const merged = new Map<string, PartialPoint>();
 
@@ -272,6 +303,18 @@ export async function getMetricsHistoryFromInflux(options?: {
       ...merged.get(point.timestamp),
       ...point,
     });
+  }
+
+  if (networkInterfaceName) {
+    for (const point of parseSeries(networkInterfaceSeries[0], (entry, row) => {
+      entry.networkIn = asFiniteNumber(row.network_in) ?? 0;
+      entry.networkOut = asFiniteNumber(row.network_out) ?? 0;
+    })) {
+      merged.set(point.timestamp, {
+        ...merged.get(point.timestamp),
+        ...point,
+      });
+    }
   }
 
   for (const point of parseSeries(containerSeries[0], (entry, row) => {

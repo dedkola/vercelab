@@ -48,12 +48,14 @@ export async function GET(request: Request) {
     : rangeBucketSeconds;
 
   const snapshot = await getMetricsSnapshot();
+  const networkInterfaceName = snapshot.network.interfaces[0]?.name;
   const [history, containerHistory, allContainerHistory] = await Promise.all([
     includeHistory
       ? getMetricsHistoryFromInflux({
           hostIp: snapshot.hostIp,
           limit: historyLimit,
           bucketSeconds: historyBucketSeconds,
+          ...(networkInterfaceName ? { networkInterfaceName } : {}),
         }).catch((error) => {
           const message =
             error instanceof Error

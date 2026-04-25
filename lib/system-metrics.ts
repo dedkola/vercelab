@@ -17,6 +17,12 @@ type InterfaceCounters = {
   txBytes: number;
 };
 
+type InterfaceRate = {
+  name: string;
+  rxBytesPerSecond: number;
+  txBytesPerSecond: number;
+};
+
 type DiskCounters = {
   readBytes: number;
   writeBytes: number;
@@ -108,6 +114,8 @@ export type MetricsSnapshot = {
 
 const CACHE_WINDOW_MS = 2500;
 const LOOPBACK_INTERFACE_RE = /^(lo|lo0)$/;
+const VIRTUAL_INTERFACE_RE =
+  /^(br-|cni|docker|flannel|kube|tap|tun|veth|virbr|zt)/;
 const IPV4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
 let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
@@ -442,6 +450,56 @@ async function readMemorySnapshot() {
 
 function isRelevantInterface(name: string) {
   return !LOOPBACK_INTERFACE_RE.test(name);
+}
+
+export function parseLinuxDefaultRouteInterface(source: string) {
+  const candidates = source
+    .split("\n")
+    .slice(1)
+    .map((line) => line.trim().split(/\s+/))
+    .filter((columns) => {
+      const destination = columns[1]?.toLowerCase();
+      const flags = Number.parseInt(columns[3] ?? "0", 16);
+
+      return columns[0] && destination === "00000000" && (flags & 1) === 1;
+    })
+    .map((columns) => ({
+      name: columns[0],
+      metric: Number.parseInt(columns[6] ?? "0", 10) || 0,
+    }))
+    .sort((left, right) => left.metric - right.metric);
+
+  return candidates[0]?.name ?? null;
+}
+
+function parseDarwinDefaultRouteInterface(source: string) {
+  return source.match(/^\s*interface:\s*(\S+)\s*$/m)?.[1] ?? null;
+}
+
+async function readDefaultNetworkInterfaceName() {
+  try {
+    const config = getAppConfig();
+
+    return parseLinuxDefaultRouteInterface(
+      await readFirstAvailableFile([
+        path.join(config.runtime.hostProcPath, "1/net/route"),
+        path.join(config.runtime.hostProcPath, "net/route"),
+        path.join("/proc", "net/route"),
+      ]),
+    );
+  } catch {
+    if (process.platform === "darwin") {
+      try {
+        return parseDarwinDefaultRouteInterface(
+          await runCommand("route", ["-n", "get", "default"]),
+        );
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
 }
 
 function parseLinuxNetworkCounters(source: string) {
@@ -1036,8 +1094,32 @@ async function buildSystemMetrics() {
   };
 }
 
+function pickDefaultNetworkInterface(
+  interfaces: InterfaceRate[],
+  defaultInterfaceName: string | null,
+) {
+  if (defaultInterfaceName) {
+    const defaultInterface = interfaces.find(
+      (entry) => entry.name === defaultInterfaceName,
+    );
+
+    if (defaultInterface) {
+      return defaultInterface;
+    }
+  }
+
+  return (
+    interfaces.find((entry) => !VIRTUAL_INTERFACE_RE.test(entry.name)) ??
+    interfaces[0] ??
+    null
+  );
+}
+
 async function buildNetworkMetrics() {
-  const counters = await readNetworkCounters();
+  const [counters, defaultInterfaceName] = await Promise.all([
+    readNetworkCounters(),
+    readDefaultNetworkInterfaceName(),
+  ]);
   const sample: SampleState<InterfaceCounters[]> = {
     capturedAt: Date.now(),
     value: counters,
@@ -1045,15 +1127,24 @@ async function buildNetworkMetrics() {
 
   if (!lastNetworkCounters) {
     lastNetworkCounters = sample;
+    const selectedInterface =
+      counters.find((entry) => entry.name === defaultInterfaceName) ??
+      counters.find((entry) => !VIRTUAL_INTERFACE_RE.test(entry.name)) ??
+      counters[0] ??
+      null;
 
     return {
       rxBytesPerSecond: 0,
       txBytesPerSecond: 0,
-      interfaces: counters.slice(0, 4).map((entry) => ({
-        name: entry.name,
-        rxBytesPerSecond: 0,
-        txBytesPerSecond: 0,
-      })),
+      interfaces: selectedInterface
+        ? [
+            {
+              name: selectedInterface.name,
+              rxBytesPerSecond: 0,
+              txBytesPerSecond: 0,
+            },
+          ]
+        : [],
     };
   }
 
@@ -1084,21 +1175,29 @@ async function buildNetworkMetrics() {
         right.txBytesPerSecond -
         (left.rxBytesPerSecond + left.txBytesPerSecond),
     );
+  const selectedInterface = pickDefaultNetworkInterface(
+    interfaces,
+    defaultInterfaceName,
+  );
 
   lastNetworkCounters = sample;
 
   return {
-    rxBytesPerSecond: round(
-      interfaces.reduce((sum, entry) => sum + entry.rxBytesPerSecond, 0),
-    ),
-    txBytesPerSecond: round(
-      interfaces.reduce((sum, entry) => sum + entry.txBytesPerSecond, 0),
-    ),
-    interfaces: interfaces.slice(0, 4).map((entry) => ({
-      name: entry.name,
-      rxBytesPerSecond: round(entry.rxBytesPerSecond),
-      txBytesPerSecond: round(entry.txBytesPerSecond),
-    })),
+    rxBytesPerSecond: selectedInterface
+      ? round(selectedInterface.rxBytesPerSecond)
+      : 0,
+    txBytesPerSecond: selectedInterface
+      ? round(selectedInterface.txBytesPerSecond)
+      : 0,
+    interfaces: selectedInterface
+      ? [
+          {
+            name: selectedInterface.name,
+            rxBytesPerSecond: round(selectedInterface.rxBytesPerSecond),
+            txBytesPerSecond: round(selectedInterface.txBytesPerSecond),
+          },
+        ]
+      : [],
   };
 }
 

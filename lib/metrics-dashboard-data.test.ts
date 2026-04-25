@@ -1,15 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  getAppConfigMock,
   listDeploymentSummariesMock,
   getMetricsSnapshotMock,
   getMetricsHistoryFromInfluxMock,
   getAllContainersMetricsHistoryFromInfluxMock,
 } = vi.hoisted(() => ({
+  getAppConfigMock: vi.fn(),
   listDeploymentSummariesMock: vi.fn(),
   getMetricsSnapshotMock: vi.fn(),
   getMetricsHistoryFromInfluxMock: vi.fn(),
   getAllContainersMetricsHistoryFromInfluxMock: vi.fn(),
+}));
+
+vi.mock("@/lib/app-config", () => ({
+  getAppConfig: getAppConfigMock,
 }));
 
 vi.mock("@/lib/persistence", () => ({
@@ -31,6 +37,11 @@ import { loadMetricsDashboardData } from "@/lib/metrics-dashboard-data";
 describe("loadMetricsDashboardData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getAppConfigMock.mockReturnValue({
+      metrics: {
+        influxExplorerUrl: null,
+      },
+    });
   });
 
   it("loads deployment summaries without requiring workspace analytics data", async () => {

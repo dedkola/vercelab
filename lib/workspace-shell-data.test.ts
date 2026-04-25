@@ -39,6 +39,9 @@ describe("loadWorkspaceShellData", () => {
     vi.clearAllMocks();
     getAppConfigMock.mockReturnValue({
       baseDomain: "apps.example.com",
+      metrics: {
+        influxExplorerUrl: null,
+      },
     });
   });
 
