@@ -93,9 +93,12 @@ function getStatusDotClassName(variant: "success" | "warning" | "default") {
 
 type DashboardLeftSidebarProps = {
   activeContainerId: string;
+  addPanel?: React.ReactNode;
   containers: ContainerListEntry[];
+  isAddPanelOpen?: boolean;
   isAllContainersSelected: boolean;
   listWidth: number;
+  onAddContainerAction?: () => void;
   onAllContainersSelectAction: () => void;
   onContainerSelectAction: (containerName: string) => void;
   onListResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
@@ -107,9 +110,12 @@ type DashboardLeftSidebarProps = {
 
 export function DashboardLeftSidebar({
   activeContainerId,
+  addPanel,
   containers,
+  isAddPanelOpen = false,
   isAllContainersSelected,
   listWidth,
+  onAddContainerAction,
   onAllContainersSelectAction,
   onContainerSelectAction,
   onListResizeStartAction,
@@ -129,7 +135,7 @@ export function DashboardLeftSidebar({
             <div className="space-y-1">
               <SectionLabel icon="cloud" text="Containers" />
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {runningContainersCount !== null ? (
                 <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
                   {runningContainersCount} running
@@ -138,6 +144,21 @@ export function DashboardLeftSidebar({
               <Badge className="border-border/60 bg-background/80 text-foreground">
                 {visibleCount} visible
               </Badge>
+              {onAddContainerAction ? (
+                <button
+                  aria-label={isAddPanelOpen ? "Close add container panel" : "Add new container"}
+                  className={cn(
+                    "flex h-6 w-6 items-center justify-center rounded-md border text-sm font-semibold transition",
+                    isAddPanelOpen
+                      ? "border-emerald-300/80 bg-emerald-50/90 text-emerald-700 hover:bg-emerald-100/80"
+                      : "border-border/60 bg-background/80 text-muted-foreground hover:border-emerald-300/70 hover:bg-emerald-50/70 hover:text-emerald-700",
+                  )}
+                  onClick={onAddContainerAction}
+                  type="button"
+                >
+                  {isAddPanelOpen ? "×" : "+"}
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="relative">
@@ -159,6 +180,14 @@ export function DashboardLeftSidebar({
 
         <ScrollArea className="h-full">
           <div className="w-full space-y-3 p-3">
+            {isAddPanelOpen && addPanel ? (
+              <div className="overflow-hidden rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-800">
+                  New Container
+                </div>
+                {addPanel}
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <button
                 aria-label="All containers"

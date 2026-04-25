@@ -29,6 +29,8 @@ import {
   type ContainerAction,
   getContainerInventoryMeta,
 } from "@/lib/container-inventory";
+import type { ContainerInspectData } from "@/lib/container-inspect";
+import type { RecreateChanges } from "@/lib/container-recreate";
 import {
   ALL_CONTAINERS_ID,
   buildAggregateLogs,
@@ -223,6 +225,10 @@ export function ContainersShell({
     null,
   );
   const [actionError, setActionError] = useState<string | null>(null);
+  const [inspectData, setInspectData] = useState<ContainerInspectData | null>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [recreatePending, setRecreatePending] = useState(false);
+  const [recreateError, setRecreateError] = useState<string | null>(null);
   const postActionRefreshTimeoutIdsRef = useRef<number[]>([]);
   const dragStateRef = useRef<{
     kind: "list" | "logs" | null;
@@ -377,6 +383,46 @@ export function ContainersShell({
         : "",
     );
   }, [aliases, selectedEntry]);
+
+  useEffect(() => {
+    const runtimeId = selectedEntry?.runtime?.id;
+
+    if (!runtimeId || isAllContainersSelected) {
+      setInspectData(null);
+      return;
+    }
+
+    let active = true;
+    setInspectData(null);
+    setInspectLoading(true);
+
+    void (async () => {
+      try {
+        const response = await fetch(`/api/containers/${runtimeId}/inspect`, {
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as ContainerInspectData & { error?: string };
+
+        if (!active) {
+          return;
+        }
+
+        if (response.ok) {
+          setInspectData(payload);
+        }
+      } catch {
+        // inspect failure is non-fatal
+      } finally {
+        if (active) {
+          setInspectLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [isAllContainersSelected, selectedEntry]);
 
   useEffect(() => {
     let active = true;
@@ -767,6 +813,38 @@ export function ContainersShell({
     }
   };
 
+  const handleRecreate = async (changes: RecreateChanges) => {
+    const runtimeId = selectedEntry?.runtime?.id;
+
+    if (!runtimeId) {
+      return;
+    }
+
+    setRecreatePending(true);
+    setRecreateError(null);
+
+    try {
+      const response = await fetch(`/api/containers/${runtimeId}/recreate`, {
+        body: JSON.stringify(changes),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Unable to recreate container.");
+      }
+
+      scheduleBackgroundSnapshotRefresh();
+    } catch (error) {
+      setRecreateError(
+        error instanceof Error ? error.message : "Unable to recreate container.",
+      );
+    } finally {
+      setRecreatePending(false);
+    }
+  };
+
   const createPanel = (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -935,9 +1013,17 @@ export function ContainersShell({
     <div className="flex min-w-0 flex-1 overflow-hidden">
       <DashboardLeftSidebar
         activeContainerId={selectedContainerId}
+        addPanel={createPanel}
         containers={filteredContainers}
+        isAddPanelOpen={isCreatePanelOpen}
         isAllContainersSelected={isAllContainersSelected}
         listWidth={listWidth}
+        onAddContainerAction={() => {
+          setIsCreatePanelOpen((current) => !current);
+          setCatalogError(null);
+          setCreateError(null);
+          setCreateSuccess(null);
+        }}
         onAllContainersSelectAction={() =>
           setSelectedContainerId(ALL_CONTAINERS_ID)
         }
@@ -953,18 +1039,15 @@ export function ContainersShell({
         actionError={actionError}
         actionPending={actionPending}
         aliasDraft={aliasDraft}
-        createPanel={createPanel}
+        inspectData={inspectData}
+        inspectLoading={inspectLoading}
         inventoryMeta={inventoryMeta}
-        isCreatePanelOpen={isCreatePanelOpen}
         onAliasDraftChangeAction={setAliasDraft}
         onAliasSaveAction={handleAliasSave}
-        onToggleCreatePanelAction={() => {
-          setIsCreatePanelOpen((current) => !current);
-          setCatalogError(null);
-          setCreateError(null);
-          setCreateSuccess(null);
-        }}
+        onRecreateAction={handleRecreate}
         onRunAction={handleRunAction}
+        recreateError={recreateError}
+        recreatePending={recreatePending}
         runtimeEntry={selectedEntry}
       />
 
