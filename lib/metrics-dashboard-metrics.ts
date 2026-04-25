@@ -1309,7 +1309,9 @@ export function buildSystemMetricPanels(
       format: "bytesPerSecond",
       id: "disk",
       labels,
+      primaryLabel: "Host read",
       primaryValues: diskReadPoints,
+      secondaryLabel: "Host write",
       secondaryValues: diskWritePoints,
       stats: [
         {
