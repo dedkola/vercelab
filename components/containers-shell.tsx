@@ -350,6 +350,8 @@ export function ContainersShell({
       null,
     [containers, selectedContainerId],
   );
+  // Stable primitive — won't change on every metrics poll, only when the container actually changes.
+  const selectedRuntimeId = selectedEntry?.runtime?.id ?? null;
   const inventoryMeta = getContainerInventoryMeta(selectedEntry);
   const aggregateLogs = useMemo(
     () =>
@@ -364,7 +366,7 @@ export function ContainersShell({
   const previewLogs = isAllContainersSelected
     ? aggregateLogs[dashboardLogView]
     : dashboardLogView === "live"
-      ? (runtimeLogs[selectedEntry?.display.id ?? ""] ?? [])
+      ? (runtimeLogs[selectedRuntimeId ?? ""] ?? [])
       : (selectedEntry?.display.logs[dashboardLogView] ?? []);
   const selectedContainerName = isAllContainersSelected
     ? "All containers"
@@ -382,12 +384,13 @@ export function ContainersShell({
         ? (aliases[selectedEntry.display.id] ?? selectedEntry.sidebarName)
         : "",
     );
-  }, [aliases, selectedEntry]);
+  // Use selectedContainerId (stable primitive) so this only fires when the selected
+  // container actually changes, not on every metrics poll that recreates selectedEntry.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aliases, selectedContainerId]);
 
   useEffect(() => {
-    const runtimeId = selectedEntry?.runtime?.id;
-
-    if (!runtimeId || isAllContainersSelected) {
+    if (!selectedRuntimeId || isAllContainersSelected) {
       setInspectData(null);
       return;
     }
@@ -398,7 +401,7 @@ export function ContainersShell({
 
     void (async () => {
       try {
-        const response = await fetch(`/api/containers/${runtimeId}/inspect`, {
+        const response = await fetch(`/api/containers/${selectedRuntimeId}/inspect`, {
           cache: "no-store",
         });
         const payload = (await response.json()) as ContainerInspectData & { error?: string };
@@ -422,7 +425,7 @@ export function ContainersShell({
     return () => {
       active = false;
     };
-  }, [isAllContainersSelected, selectedEntry]);
+  }, [isAllContainersSelected, selectedRuntimeId]);
 
   useEffect(() => {
     let active = true;
@@ -502,9 +505,7 @@ export function ContainersShell({
   }, [initialSnapshot]);
 
   useEffect(() => {
-    const selectedRuntime = selectedEntry?.runtime;
-
-    if (isAllContainersSelected || !selectedRuntime) {
+    if (isAllContainersSelected || !selectedRuntimeId) {
       setLogsError(null);
       return;
     }
@@ -540,7 +541,7 @@ export function ContainersShell({
 
       try {
         const response = await fetch(
-          `/api/containers/${selectedRuntime.id}/logs?tail=${LOG_TAIL_LINES}`,
+          `/api/containers/${selectedRuntimeId}/logs?tail=${LOG_TAIL_LINES}`,
           {
             cache: "no-store",
             signal: abortController.signal,
@@ -561,9 +562,9 @@ export function ContainersShell({
 
         setRuntimeLogs((current) => ({
           ...current,
-          [selectedEntry.display.id]: formatContainerLogLines(
+          [selectedRuntimeId]: formatContainerLogLines(
             payload.output ?? "",
-            selectedEntry.display.id,
+            selectedRuntimeId,
           ),
         }));
         setLogsError(null);
@@ -599,7 +600,7 @@ export function ContainersShell({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [isAllContainersSelected, selectedEntry]);
+  }, [isAllContainersSelected, selectedRuntimeId]);
 
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {

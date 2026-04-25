@@ -12,11 +12,6 @@ import type {
 } from "@/lib/container-inventory";
 import type { ContainerInspectData } from "@/lib/container-inspect";
 import type { RecreateChanges } from "@/lib/container-recreate";
-import {
-  formatBytes,
-  formatBytesPerSecond,
-  formatPercent,
-} from "@/lib/metrics-dashboard-metrics";
 import type { ExposureMode } from "@/lib/validation";
 
 const SENSITIVE_KEY_RE = /password|secret|token|key|auth|credential|private/i;
@@ -183,8 +178,6 @@ export function ContainersMainContent({
   recreatePending,
   runtimeEntry,
 }: ContainersMainContentProps) {
-  const runtime = runtimeEntry?.runtime ?? null;
-
   const [isEnvOpen, setIsEnvOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
@@ -318,64 +311,18 @@ export function ContainersMainContent({
           </div>
         </section>
 
-        {/* Compact metrics row */}
-        <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-lg border border-border/70 bg-background/88 px-3 py-2">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              State
-            </div>
-            <div className="mt-0.5 text-sm font-semibold text-foreground">
-              {runtime?.status ?? runtimeEntry?.display.status ?? "—"}
-            </div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              {runtime?.health ?? "unknown"}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 bg-background/88 px-3 py-2">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              CPU
-            </div>
-            <div className="mt-0.5 text-sm font-semibold text-foreground">
-              {runtime ? formatPercent(runtime.cpuPercent, 1) : "—"}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 bg-background/88 px-3 py-2">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              Memory
-            </div>
-            <div className="mt-0.5 text-sm font-semibold text-foreground">
-              {runtime ? formatBytes(runtime.memoryBytes) : "—"}
-            </div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              {runtime ? formatPercent(runtime.memoryPercent, 1) : "—"}
-            </div>
-          </div>
-          <div className="rounded-lg border border-border/70 bg-background/88 px-3 py-2">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              Network
-            </div>
-            <div className="mt-0.5 text-sm font-semibold text-foreground">
-              {runtime
-                ? formatBytesPerSecond(runtime.networkTotalBytesPerSecond)
-                : "—"}
-            </div>
-          </div>
-        </section>
-
         {/* Info chips */}
         <section className="rounded-xl border border-border/70 bg-background/88 px-3 py-3 shadow-[0_16px_42px_-36px_rgba(15,23,42,0.3)]">
           {runtimeEntry ? (
             <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <InfoChip
                 label="Container name"
-                value={runtime?.name ?? runtimeEntry.display.name}
+                value={runtimeEntry.display.name}
               />
               <InfoChip
                 label="Container ID"
                 mono
-                value={
-                  (runtime?.id ?? runtimeEntry.display.id)?.slice(0, 12) ?? null
-                }
+                value={runtimeEntry.display.id?.slice(0, 12) ?? null}
               />
               <InfoChip
                 label="App port"
@@ -416,7 +363,7 @@ export function ContainersMainContent({
                 value={
                   inspectLoading
                     ? "Loading…"
-                    : (inspectData?.image ?? runtime?.name ?? "—")
+                    : (inspectData?.image ?? "—")
                 }
               />
             </dl>
