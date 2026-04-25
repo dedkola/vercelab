@@ -267,9 +267,11 @@ export function WorkspaceChromeShell({
   );
   const headerStatusPills = useMemo(
     () =>
-      systemPanels.map((panel) => ({
-        label: formatHeaderPillLabel(panel),
-      })),
+      systemPanels
+        .map((panel) => ({
+          label: formatHeaderPillLabel(panel),
+        }))
+        .filter((pill) => pill.label.length > 0),
     [systemPanels],
   );
 

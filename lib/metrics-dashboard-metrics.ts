@@ -1169,7 +1169,7 @@ export function buildSystemMetricPanels(
     {
       currentCaption: snapshot
         ? `Load ${formatLoadAverage(snapshot.system.loadAverage)}`
-        : "Waiting for host samples",
+        : "",
       currentValue: snapshot
         ? formatPercent(snapshot.system.cpuPercent, 1)
         : "--",
@@ -1205,7 +1205,7 @@ export function buildSystemMetricPanels(
     {
       currentCaption: snapshot
         ? `${formatBytes(snapshot.system.memoryUsedBytes)} of ${formatBytes(snapshot.system.memoryTotalBytes)}`
-        : "Waiting for host samples",
+        : "",
       currentValue: snapshot
         ? formatPercent(snapshot.system.memoryPercent, 1)
         : "--",
@@ -1249,7 +1249,7 @@ export function buildSystemMetricPanels(
     {
       currentCaption: snapshot
         ? `${snapshot.network.interfaces.length} tracked interfaces`
-        : "Waiting for host samples",
+        : "",
       currentValue: snapshot
         ? formatBytesPerSecond(
             snapshot.network.rxBytesPerSecond +
@@ -1292,7 +1292,7 @@ export function buildSystemMetricPanels(
     {
       currentCaption: snapshot
         ? "Read vs write throughput"
-        : "Waiting for host samples",
+        : "",
       currentValue: snapshot
         ? formatBytesPerSecond(
             snapshot.system.diskReadBytesPerSecond +
