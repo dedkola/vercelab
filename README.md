@@ -110,14 +110,13 @@ pnpm run dev
 
 Open `http://localhost:3000`.
 
-For an Ubuntu server install:
+For an Ubuntu server install, run a single command:
 
 ```bash
-chmod +x install.sh
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
 ```
 
-The installer can derive an `sslip.io` base domain from the server's LAN IP when you do not provide one.
+The one-liner clones the repository to `/opt/vercelab` and starts the installer. The installer can derive an `sslip.io` base domain from the server's LAN IP when you do not provide one.
 
 ## Local Development
 
@@ -218,21 +217,33 @@ The containers workspace (`/containers`) shows all containers visible to the hos
 The production path assumes an Ubuntu host. If you do not provide a custom domain, the installer derives a reachable default base domain from the server's primary LAN IPv4 using `sslip.io`, for example `10-10-0-36.sslip.io`.
 
 ```bash
-chmod +x install.sh
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
 ```
 
-For a fully unattended bootstrap:
+The one-liner clones the repository into `/opt/vercelab` and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
+
+For a fully unattended bootstrap, pass configuration as environment variables before the pipe:
 
 ```bash
 VERCELAB_BASE_DOMAIN=lab.example.com \
 VERCELAB_ADMIN_HOST=vercelab.lab.example.com \
-VERCELAB_HOST_ROOT=/opt/vercelab \
 VERCELAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)" \
+bash <(curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh)
+```
+
+To clone to a different location, set `VERCELAB_INSTALL_DIR`:
+
+```bash
+VERCELAB_INSTALL_DIR=/srv/vercelab bash <(curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh)
+```
+
+If you already have the repository cloned, run the installer directly:
+
+```bash
 ./install.sh
 ```
 
-Any runtime variable listed in the configuration section can be exported before running `./install.sh`. On later runs, the installer reuses current `.env` values unless you override them again.
+Any runtime variable listed in the configuration section can be exported before running the installer. On later runs, the installer reuses current `.env` values unless you override them again.
 
 The installer:
 

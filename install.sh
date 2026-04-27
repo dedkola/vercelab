@@ -2,6 +2,57 @@
 
 set -euo pipefail
 
+# ── Remote bootstrap ─────────────────────────────────────────────────────────
+# Triggered when this script is piped through bash (e.g. curl ... | bash)
+# rather than executed from a local file. Clones the repo first, then
+# re-execs from the real file so BASH_SOURCE, relative paths, and pnpm
+# all work correctly. Interactive prompts are restored via /dev/tty.
+#
+# Override defaults with env vars before the pipe:
+#   VERCELAB_INSTALL_DIR  – clone target  (default: /opt/vercelab)
+#   VERCELAB_REPO_URL     – repository    (default: https://github.com/dedkola/vercelab)
+if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
+  _install_dir="${VERCELAB_INSTALL_DIR:-/opt/vercelab}"
+  _repo_url="${VERCELAB_REPO_URL:-https://github.com/dedkola/vercelab}"
+  _sudo=()
+
+  if [[ ${EUID} -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
+    _sudo=(sudo)
+  fi
+
+  if ! command -v git >/dev/null 2>&1; then
+    printf '[vercelab] git not found — installing...\n'
+    "${_sudo[@]}" apt-get update -q
+    "${_sudo[@]}" apt-get install -y --no-install-recommends git
+  fi
+
+  if [[ -d "$_install_dir" && ! -d "$_install_dir/.git" ]]; then
+    printf '[vercelab] ERROR: %s exists but is not a git repository.\n' "$_install_dir" >&2
+    printf '[vercelab] Remove it or set VERCELAB_INSTALL_DIR to a different path.\n' >&2
+    exit 1
+  fi
+
+  if [[ -d "$_install_dir/.git" ]]; then
+    printf '[vercelab] Updating existing clone at %s\n' "$_install_dir"
+    git -C "$_install_dir" pull --ff-only 2>/dev/null \
+      || printf '[vercelab] Could not fast-forward update — using existing clone.\n'
+  else
+    printf '[vercelab] Cloning Vercelab into %s\n' "$_install_dir"
+    "${_sudo[@]}" mkdir -p "$_install_dir"
+    [[ ${EUID} -eq 0 ]] || "${_sudo[@]}" chown "$(id -u):$(id -g)" "$_install_dir"
+    git clone "$_repo_url" "$_install_dir"
+  fi
+
+  # Restore interactive stdin from the controlling terminal when available so
+  # that prompts inside the re-exec'd script behave normally.
+  if [[ -c /dev/tty ]]; then
+    exec bash "$_install_dir/install.sh" "$@" </dev/tty
+  else
+    exec bash "$_install_dir/install.sh" "$@"
+  fi
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$SCRIPT_DIR"
 readonly ENV_FILE="$REPO_ROOT/.env"
