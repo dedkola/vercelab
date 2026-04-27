@@ -6,8 +6,8 @@
 
 [![GitHub package version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=for-the-badge&color=111827)](https://github.com/dedkola/vercelab)
 [![Next.js](https://img.shields.io/badge/Next.js-16.2.4-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.2.4-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19.2.5-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10.33-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
 
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
@@ -35,7 +35,8 @@ Vercelab turns an Ubuntu box or local Docker host into a deployment cockpit for 
 - [Quick Start](#quick-start)
 - [Local Development](#local-development)
 - [Deployment Flow](#deployment-flow)
-- [Charts Analytics Workspace](#charts-analytics-workspace)
+- [Metrics Dashboard](#metrics-dashboard)
+- [Containers Workspace](#containers-workspace)
 - [Ubuntu Server Install](#ubuntu-server-install)
 - [State and Storage](#state-and-storage)
 - [Configuration](#configuration)
@@ -47,8 +48,8 @@ Vercelab turns an Ubuntu box or local Docker host into a deployment cockpit for 
 | --- | --- |
 | GitHub deployments | Browse repositories, select branches, clone source, and deploy root `Dockerfile` or compose projects. |
 | Self-hosted routing | Places managed apps on a shared Docker network and exposes them through Traefik host rules. |
-| Operational dashboard | Tracks deployments, operations, host health, container status, and live log signals. |
-| Metrics workspace | Uses ECharts and InfluxDB history for rankings, host trends, treemaps, and heatmaps. |
+| Metrics dashboard | Tracks live host load, per-container CPU/memory/disk/network panels, and InfluxDB time-series history. |
+| Containers workspace | Full container inventory with inspect, logs, recreation, and catalog-based creation for all host containers. |
 | Safe runtime state | Stores repositories, deployments, and operations in PostgreSQL with encrypted GitHub tokens. |
 | Ubuntu bootstrap | Installs host prerequisites, pins Docker Engine 28.x, creates TLS assets, and starts the stack. |
 
@@ -191,20 +192,26 @@ The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment ins
 
 Compose repositories with multiple services must provide `serviceName`. Single-service compose projects are auto-detected. Dockerfile deployments receive both runtime environment variables and Docker build args from the multiline `KEY=VALUE` payload.
 
-## Charts Analytics Workspace
+## Metrics Dashboard
 
-The dashboard includes a Charts section alongside Overview and Git. It renders:
+The metrics dashboard is the home route (`/`). It displays:
 
-- horizontal rankings for CPU per container and memory per container
-- a fleet health treemap sized by memory or CPU and colored by container state
-- host trend charts for CPU, memory, network, and disk I/O
-- a logs and events heatmap combining timestamped container log tails with recent deployment activity
+- per-container CPU, memory, network, and disk metric panels powered by live Docker telemetry
+- host trend charts (CPU, memory, network I/O, disk read/write throughput) backed by InfluxDB 3 Core history
+- a deployments list with the latest operation status for each managed app
+- a time-range selector (1 h, 6 h, 24 h, 7 d) that applies to all InfluxDB history queries
 
-Analytics behavior:
+The shell polls `/api/metrics` on a live interval and merges server-side snapshots with historical series.
 
-- container rankings and treemap data come from live Docker telemetry collected by the control plane
-- host trend charts use InfluxDB history, including host disk read and write throughput
-- the heatmap is optimized for live operational visibility, not long-term log retention
+## Containers Workspace
+
+The containers workspace (`/containers`) shows all containers visible to the host Docker daemon, not just Vercelab-managed apps. Features:
+
+- live container inventory with status indicators and resource usage
+- per-container inspect panel with full Docker metadata
+- per-container log tail with live streaming
+- container recreation (pull latest image and restart with the same config)
+- catalog-based container creation with registry tag browsing and port exposure mode selection (`traefik`, `host`, `none`)
 
 ## Ubuntu Server Install
 
