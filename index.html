@@ -16,7 +16,10 @@
     <meta name="application-name" content="Vercelab" />
     <meta name="apple-mobile-web-app-title" content="Vercelab" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Vercelab - self-hosted Docker deployment cockpit" />
+    <meta
+      name="twitter:title"
+      content="Vercelab - self-hosted Docker deployment cockpit"
+    />
     <meta
       name="twitter:description"
       content="Deploy GitHub projects, watch host and container metrics, and run your homelab behind Traefik from one clean dashboard."
@@ -25,11 +28,17 @@
       name="twitter:image"
       content="https://raw.githubusercontent.com/dedkola/vercelab/main/public/screenshots/vercelab-dashboard-overview.png"
     />
-    <meta name="twitter:image:alt" content="Vercelab metrics dashboard with host charts, container list, and live logs." />
+    <meta
+      name="twitter:image:alt"
+      content="Vercelab metrics dashboard with host charts, container list, and live logs."
+    />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Vercelab" />
     <meta property="og:locale" content="en_US" />
-    <meta property="og:title" content="Vercelab - self-hosted Docker deployment cockpit" />
+    <meta
+      property="og:title"
+      content="Vercelab - self-hosted Docker deployment cockpit"
+    />
     <meta
       property="og:description"
       content="Deploy GitHub projects, watch host and container metrics, and run your homelab behind Traefik from one clean dashboard."
@@ -45,7 +54,10 @@
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1440" />
     <meta property="og:image:height" content="1000" />
-    <meta property="og:image:alt" content="Vercelab metrics dashboard with host charts, container list, and live logs." />
+    <meta
+      property="og:image:alt"
+      content="Vercelab metrics dashboard with host charts, container list, and live logs."
+    />
     <link
       rel="image_src"
       href="https://raw.githubusercontent.com/dedkola/vercelab/main/public/screenshots/vercelab-dashboard-overview.png"
@@ -93,13 +105,36 @@
         margin: 0;
         overflow-x: hidden;
         background:
-          radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 26%),
-          radial-gradient(circle at top right, rgba(226, 232, 240, 0.85), transparent 30%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 54%, #ffffff 100%);
+          radial-gradient(
+            circle at top left,
+            rgba(148, 163, 184, 0.16),
+            transparent 26%
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(226, 232, 240, 0.85),
+            transparent 30%
+          ),
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.98) 0%,
+            rgba(248, 250, 252, 0.96) 54%,
+            #ffffff 100%
+          );
         color: var(--foreground);
-        font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family:
+          Manrope,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
         font-size: 14px;
-        font-feature-settings: "ss01" 1, "cv05" 1, "tnum" 1;
+        font-feature-settings:
+          "ss01" 1,
+          "cv05" 1,
+          "tnum" 1;
         text-rendering: optimizeLegibility;
       }
 
@@ -157,7 +192,12 @@
         align-items: center;
         gap: 12px;
         border-right: 1px solid var(--border);
-        background: linear-gradient(180deg, var(--background), rgba(241, 245, 249, 0.22), var(--background));
+        background: linear-gradient(
+          180deg,
+          var(--background),
+          rgba(241, 245, 249, 0.22),
+          var(--background)
+        );
         padding: 12px 6px;
         box-shadow: 16px 0 48px -44px rgba(15, 23, 42, 0.26);
       }
@@ -206,7 +246,12 @@
         justify-content: space-between;
         gap: 16px;
         border-bottom: 1px solid var(--border);
-        background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.4), rgba(255, 255, 255, 0.96));
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.98),
+          rgba(241, 245, 249, 0.4),
+          rgba(255, 255, 255, 0.96)
+        );
         padding: 0 16px;
         box-shadow: 0 20px 48px -38px rgba(15, 23, 42, 0.45);
         -webkit-backdrop-filter: blur(18px);
@@ -299,7 +344,7 @@
         color: var(--foreground);
         cursor: pointer;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: 0.02em;
         padding: 8px 12px;
         transition:
@@ -323,7 +368,12 @@
       .panel {
         min-height: 0;
         border-right: 1px solid var(--border);
-        background: linear-gradient(180deg, var(--background), rgba(241, 245, 249, 0.14), var(--background));
+        background: linear-gradient(
+          180deg,
+          var(--background),
+          rgba(241, 245, 249, 0.14),
+          var(--background)
+        );
         box-shadow: var(--shadow-side);
       }
 
@@ -350,7 +400,12 @@
 
       .resize-handle {
         grid-row: 2;
-        background: linear-gradient(180deg, transparent, rgba(148, 163, 184, 0.22), transparent);
+        background: linear-gradient(
+          180deg,
+          transparent,
+          rgba(148, 163, 184, 0.22),
+          transparent
+        );
       }
 
       .resize-handle.first {
@@ -382,7 +437,7 @@
         gap: 8px;
         color: rgba(100, 116, 139, 0.92);
         font-size: 10px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: 0.16em;
         text-transform: uppercase;
       }
@@ -403,7 +458,7 @@
         background: rgba(255, 255, 255, 0.82);
         color: var(--foreground);
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.01em;
         padding: 4px 10px;
       }
@@ -427,7 +482,12 @@
         overflow: hidden;
         border: 1px solid rgba(148, 163, 184, 0.32);
         border-radius: var(--radius-lg);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.16), rgba(255, 255, 255, 0.98));
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.96),
+          rgba(241, 245, 249, 0.16),
+          rgba(255, 255, 255, 0.98)
+        );
         box-shadow: 0 20px 56px -46px rgba(15, 23, 42, 0.32);
       }
 
@@ -444,14 +504,14 @@
       .metric-title,
       .chart-title {
         font-size: 14px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.035em;
       }
 
       .metric-value {
         padding: 14px 14px 0;
         font-size: 22px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.04em;
       }
 
@@ -527,7 +587,7 @@
         min-width: 0;
         overflow: hidden;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.02em;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -539,7 +599,7 @@
         gap: 5px;
         color: var(--emerald-dark);
         font-size: 10px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
@@ -567,7 +627,12 @@
         overflow: hidden;
         border: 1px solid rgba(148, 163, 184, 0.32);
         border-radius: var(--radius-xl);
-        background: linear-gradient(90deg, var(--background), rgba(241, 245, 249, 0.16), var(--background));
+        background: linear-gradient(
+          90deg,
+          var(--background),
+          rgba(241, 245, 249, 0.16),
+          var(--background)
+        );
         box-shadow: var(--shadow-soft);
       }
 
@@ -587,7 +652,7 @@
       .hero-copy h1 {
         margin: 0;
         font-size: clamp(22px, 3vw, 32px);
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.055em;
         line-height: 1.04;
       }
@@ -621,7 +686,7 @@
         color: var(--muted-foreground);
         cursor: pointer;
         font-size: 11px;
-        font-weight: 800;
+        font-weight: 400;
         padding: 8px 12px;
       }
 
@@ -643,7 +708,7 @@
       .section-head h2 {
         margin: 0;
         font-size: 15px;
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.035em;
       }
 
@@ -713,7 +778,7 @@
         color: var(--muted-foreground);
         cursor: pointer;
         font-size: 12px;
-        font-weight: 800;
+        font-weight: 400;
         padding: 7px 12px;
       }
 
@@ -751,7 +816,9 @@
         min-height: 290px;
         padding: 14px;
         color: #e2e8f0;
-        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-family:
+          "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+          Consolas, monospace;
         font-size: 11px;
         line-height: 1.55;
       }
@@ -786,7 +853,11 @@
         border: 1px solid rgba(15, 23, 42, 0.12);
         border-radius: 1.6rem;
         background:
-          linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.93)),
+          linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.96),
+            rgba(236, 253, 245, 0.93)
+          ),
           rgba(255, 255, 255, 0.94);
         box-shadow:
           0 30px 120px -54px rgba(15, 23, 42, 0.58),
@@ -813,7 +884,7 @@
       }
 
       .selected-container-title {
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.03em;
       }
 
@@ -847,7 +918,7 @@
       .install-card h2 {
         margin: 6px 0 0;
         font-size: clamp(28px, 6vw, 48px);
-        font-weight: 800;
+        font-weight: 400;
         letter-spacing: -0.075em;
         line-height: 0.96;
       }
@@ -894,7 +965,9 @@
       .command-box code {
         overflow-x: auto;
         color: #e2e8f0;
-        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-family:
+          "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+          Consolas, monospace;
         font-size: 12px;
         line-height: 1.55;
         white-space: nowrap;
@@ -934,7 +1007,11 @@
         position: fixed;
         inset: 0;
         z-index: 2;
-        background: radial-gradient(circle at center, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.2));
+        background: radial-gradient(
+          circle at center,
+          rgba(15, 23, 42, 0.08),
+          rgba(15, 23, 42, 0.2)
+        );
         pointer-events: none;
       }
 
@@ -1071,21 +1148,50 @@
     <div class="page-shell">
       <main class="browser-frame" aria-label="Vercelab dashboard landing page">
         <aside class="workspace-rail" aria-label="Workspace navigation">
-          <button class="rail-button active" type="button" aria-label="Dashboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <button
+            class="rail-button active"
+            type="button"
+            aria-label="Dashboard"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M4 11.5 12 5l8 6.5" />
               <path d="M6.5 10.5V20h11v-9.5" />
             </svg>
           </button>
           <button class="rail-button" type="button" aria-label="Git App Page">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M7 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
               <path d="M17 13a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
               <path d="M10 8h2a5 5 0 0 1 5 5" />
             </svg>
           </button>
-          <button class="rail-button" type="button" aria-label="Influx Explorer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <button
+            class="rail-button"
+            type="button"
+            aria-label="Influx Explorer"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M6 18v-4" />
               <path d="M10 18V9" />
               <path d="M14 18v-7" />
@@ -1111,7 +1217,9 @@
             </div>
             <div class="topbar-actions">
               <button class="button" type="button">Reset layout</button>
-              <a class="button primary" href="#install" id="show-install">Install now</a>
+              <a class="button primary" href="#install" id="show-install"
+                >Install now</a
+              >
             </div>
           </header>
 
@@ -1124,8 +1232,20 @@
                 </header>
                 <div class="metric-value" id="cpu-value">26%</div>
                 <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
-                  <path data-spark="cpu-fill" d="" fill="#10b981" opacity="0.14"></path>
-                  <path data-spark="cpu-line" d="" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round"></path>
+                  <path
+                    data-spark="cpu-fill"
+                    d=""
+                    fill="#10b981"
+                    opacity="0.14"
+                  ></path>
+                  <path
+                    data-spark="cpu-line"
+                    d=""
+                    fill="none"
+                    stroke="#059669"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  ></path>
                 </svg>
               </article>
               <article class="metric-card" data-metric="memory">
@@ -1135,8 +1255,20 @@
                 </header>
                 <div class="metric-value" id="memory-value">11.2 GB</div>
                 <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
-                  <path data-spark="memory-fill" d="" fill="#3b82f6" opacity="0.14"></path>
-                  <path data-spark="memory-line" d="" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round"></path>
+                  <path
+                    data-spark="memory-fill"
+                    d=""
+                    fill="#3b82f6"
+                    opacity="0.14"
+                  ></path>
+                  <path
+                    data-spark="memory-line"
+                    d=""
+                    fill="none"
+                    stroke="#2563eb"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  ></path>
                 </svg>
               </article>
               <article class="metric-card" data-metric="network">
@@ -1146,8 +1278,20 @@
                 </header>
                 <div class="metric-value" id="network-value">42 MB/s</div>
                 <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
-                  <path data-spark="network-fill" d="" fill="#f59e0b" opacity="0.14"></path>
-                  <path data-spark="network-line" d="" fill="none" stroke="#d97706" stroke-width="3" stroke-linecap="round"></path>
+                  <path
+                    data-spark="network-fill"
+                    d=""
+                    fill="#f59e0b"
+                    opacity="0.14"
+                  ></path>
+                  <path
+                    data-spark="network-line"
+                    d=""
+                    fill="none"
+                    stroke="#d97706"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  ></path>
                 </svg>
               </article>
               <article class="metric-card" data-metric="disk">
@@ -1157,8 +1301,20 @@
                 </header>
                 <div class="metric-value" id="disk-value">128 MB/s</div>
                 <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
-                  <path data-spark="disk-fill" d="" fill="#14b8a6" opacity="0.14"></path>
-                  <path data-spark="disk-line" d="" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round"></path>
+                  <path
+                    data-spark="disk-fill"
+                    d=""
+                    fill="#14b8a6"
+                    opacity="0.14"
+                  ></path>
+                  <path
+                    data-spark="disk-line"
+                    d=""
+                    fill="none"
+                    stroke="#0f766e"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  ></path>
                 </svg>
               </article>
             </div>
@@ -1169,17 +1325,39 @@
             <div class="panel-heading">
               <div>
                 <div class="section-label">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 18h11a4 4 0 0 0 .5-7.97A7 7 0 0 0 5.2 14 3 3 0 0 0 6 18Z" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M6 18h11a4 4 0 0 0 .5-7.97A7 7 0 0 0 5.2 14 3 3 0 0 0 6 18Z"
+                    />
                   </svg>
                   Containers
                 </div>
                 <div class="search-wrap">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <circle cx="10.5" cy="10.5" r="5" />
                     <path d="m14.5 14.5 4.5 4.5" />
                   </svg>
-                  <input id="container-search" type="search" value="" placeholder="Search containers, stacks, images..." aria-label="Search simulated containers" />
+                  <input
+                    id="container-search"
+                    type="search"
+                    value=""
+                    placeholder="Search containers, stacks, images..."
+                    aria-label="Search simulated containers"
+                  />
                 </div>
               </div>
               <div class="pill-row">
@@ -1198,7 +1376,14 @@
                 <div class="hero-copy">
                   <div class="pill-row">
                     <span class="section-label">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <rect x="5" y="5" width="14" height="10" rx="1.5" />
                         <path d="M9 19h6M12 15v4" />
                       </svg>
@@ -1210,20 +1395,40 @@
                   </div>
                   <h1>Metrics dashboard</h1>
                   <p>
-                    Self-host GitHub projects into Docker, route them through Traefik, and watch live host,
-                    container, log, and deployment telemetry from one control plane.
+                    Self-host GitHub projects into Docker, route them through
+                    Traefik, and watch live host, container, log, and deployment
+                    telemetry from one control plane.
                   </p>
                   <div class="pill-row">
-                    <span class="badge">Window <span id="window-label">15 minutes</span></span>
-                    <span class="badge">Load avg <span id="load-label">1.22 1.08 0.91</span></span>
+                    <span class="badge"
+                      >Window <span id="window-label">15 minutes</span></span
+                    >
+                    <span class="badge"
+                      >Load avg
+                      <span id="load-label">1.22 1.08 0.91</span></span
+                    >
                   </div>
                 </div>
                 <div class="range-tabs" aria-label="Simulated range selector">
-                  <button class="range-tab active" type="button" data-range="15 minutes">15m</button>
-                  <button class="range-tab" type="button" data-range="1 hour">1h</button>
-                  <button class="range-tab" type="button" data-range="6 hours">6h</button>
-                  <button class="range-tab" type="button" data-range="24 hours">24h</button>
-                  <button class="range-tab" type="button" data-range="7 days">7d</button>
+                  <button
+                    class="range-tab active"
+                    type="button"
+                    data-range="15 minutes"
+                  >
+                    15m
+                  </button>
+                  <button class="range-tab" type="button" data-range="1 hour">
+                    1h
+                  </button>
+                  <button class="range-tab" type="button" data-range="6 hours">
+                    6h
+                  </button>
+                  <button class="range-tab" type="button" data-range="24 hours">
+                    24h
+                  </button>
+                  <button class="range-tab" type="button" data-range="7 days">
+                    7d
+                  </button>
                 </div>
               </div>
             </div>
@@ -1239,23 +1444,44 @@
                   <div>
                     <div class="chart-title">CPU usage</div>
                     <div class="chart-stats">
-                      <span class="badge">avg <span id="chart-cpu-avg">31%</span></span>
-                      <span class="badge success">peak <span id="chart-cpu-peak">61%</span></span>
+                      <span class="badge"
+                        >avg <span id="chart-cpu-avg">31%</span></span
+                      >
+                      <span class="badge success"
+                        >peak <span id="chart-cpu-peak">61%</span></span
+                      >
                       <span class="badge">selected fleet</span>
                     </div>
                   </div>
                 </header>
                 <div class="chart-body">
-                  <svg class="chart-svg" viewBox="0 0 760 250" role="img" aria-label="Simulated CPU chart">
+                  <svg
+                    class="chart-svg"
+                    viewBox="0 0 760 250"
+                    role="img"
+                    aria-label="Simulated CPU chart"
+                  >
                     <defs>
                       <linearGradient id="cpu-area" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0" stop-color="#10b981" />
-                        <stop offset="1" stop-color="#10b981" stop-opacity="0" />
+                        <stop
+                          offset="1"
+                          stop-color="#10b981"
+                          stop-opacity="0"
+                        />
                       </linearGradient>
                     </defs>
                     <g data-grid></g>
-                    <path class="chart-area" data-area="cpu" fill="url(#cpu-area)"></path>
-                    <path class="chart-path" data-line="cpu" stroke="#059669"></path>
+                    <path
+                      class="chart-area"
+                      data-area="cpu"
+                      fill="url(#cpu-area)"
+                    ></path>
+                    <path
+                      class="chart-path"
+                      data-line="cpu"
+                      stroke="#059669"
+                    ></path>
                     <g data-labels></g>
                   </svg>
                 </div>
@@ -1266,23 +1492,48 @@
                   <div>
                     <div class="chart-title">Memory pressure</div>
                     <div class="chart-stats">
-                      <span class="badge">avg <span id="chart-memory-avg">9.6 GB</span></span>
+                      <span class="badge"
+                        >avg <span id="chart-memory-avg">9.6 GB</span></span
+                      >
                       <span class="badge">limit 32 GB</span>
                       <span class="badge success">headroom 64%</span>
                     </div>
                   </div>
                 </header>
                 <div class="chart-body">
-                  <svg class="chart-svg" viewBox="0 0 760 250" role="img" aria-label="Simulated memory chart">
+                  <svg
+                    class="chart-svg"
+                    viewBox="0 0 760 250"
+                    role="img"
+                    aria-label="Simulated memory chart"
+                  >
                     <defs>
-                      <linearGradient id="memory-area" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient
+                        id="memory-area"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
                         <stop offset="0" stop-color="#2563eb" />
-                        <stop offset="1" stop-color="#2563eb" stop-opacity="0" />
+                        <stop
+                          offset="1"
+                          stop-color="#2563eb"
+                          stop-opacity="0"
+                        />
                       </linearGradient>
                     </defs>
                     <g data-grid></g>
-                    <path class="chart-area" data-area="memory" fill="url(#memory-area)"></path>
-                    <path class="chart-path" data-line="memory" stroke="#2563eb"></path>
+                    <path
+                      class="chart-area"
+                      data-area="memory"
+                      fill="url(#memory-area)"
+                    ></path>
+                    <path
+                      class="chart-path"
+                      data-line="memory"
+                      stroke="#2563eb"
+                    ></path>
                     <g data-labels></g>
                   </svg>
                 </div>
@@ -1293,23 +1544,50 @@
                   <div>
                     <div class="chart-title">Network throughput</div>
                     <div class="chart-stats">
-                      <span class="badge">rx <span id="chart-network-rx">42 MB/s</span></span>
-                      <span class="badge">tx <span id="chart-network-tx">17 MB/s</span></span>
+                      <span class="badge"
+                        >rx <span id="chart-network-rx">42 MB/s</span></span
+                      >
+                      <span class="badge"
+                        >tx <span id="chart-network-tx">17 MB/s</span></span
+                      >
                       <span class="badge warning">burst tolerant</span>
                     </div>
                   </div>
                 </header>
                 <div class="chart-body">
-                  <svg class="chart-svg" viewBox="0 0 760 250" role="img" aria-label="Simulated network chart">
+                  <svg
+                    class="chart-svg"
+                    viewBox="0 0 760 250"
+                    role="img"
+                    aria-label="Simulated network chart"
+                  >
                     <defs>
-                      <linearGradient id="network-area" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient
+                        id="network-area"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
                         <stop offset="0" stop-color="#d97706" />
-                        <stop offset="1" stop-color="#d97706" stop-opacity="0" />
+                        <stop
+                          offset="1"
+                          stop-color="#d97706"
+                          stop-opacity="0"
+                        />
                       </linearGradient>
                     </defs>
                     <g data-grid></g>
-                    <path class="chart-area" data-area="network" fill="url(#network-area)"></path>
-                    <path class="chart-path" data-line="network" stroke="#d97706"></path>
+                    <path
+                      class="chart-area"
+                      data-area="network"
+                      fill="url(#network-area)"
+                    ></path>
+                    <path
+                      class="chart-path"
+                      data-line="network"
+                      stroke="#d97706"
+                    ></path>
                     <g data-labels></g>
                   </svg>
                 </div>
@@ -1322,8 +1600,17 @@
             <div class="panel-heading">
               <div>
                 <div class="section-label">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M7 4h7l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M7 4h7l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
+                    />
                     <path d="M14 4v4h4M9 13h6M9 17h4" />
                   </svg>
                   Logs
@@ -1341,18 +1628,29 @@
             <div class="log-summary">
               <div class="log-summary-row">
                 <div>
-                  <div class="selected-container-title" id="selected-container">All containers</div>
-                  <div class="log-context">Grouped Influx history and fleet context</div>
+                  <div class="selected-container-title" id="selected-container">
+                    All containers
+                  </div>
+                  <div class="log-context">
+                    Grouped Influx history and fleet context
+                  </div>
                 </div>
                 <span class="badge success">Up</span>
               </div>
             </div>
             <div class="terminal-card">
               <div class="terminal-head">
-                <span><span class="status-dot terminal-dot"></span>Tail preview</span>
+                <span
+                  ><span class="status-dot terminal-dot"></span>Tail
+                  preview</span
+                >
                 <span id="line-count">8 lines</span>
               </div>
-              <div class="terminal-lines" id="terminal-lines" aria-live="polite"></div>
+              <div
+                class="terminal-lines"
+                id="terminal-lines"
+                aria-live="polite"
+              ></div>
             </div>
           </aside>
         </div>
@@ -1367,20 +1665,46 @@
             <div class="install-kicker">One line bootstrap</div>
             <h2 id="install-title">Install now</h2>
           </div>
-          <button class="close-button" type="button" aria-label="Hide install panel" id="hide-install">×</button>
+          <button
+            class="close-button"
+            type="button"
+            aria-label="Hide install panel"
+            id="hide-install"
+          >
+            ×
+          </button>
         </header>
         <div class="install-body">
           <p>
-            Run the installer on an Ubuntu host. It clones Vercelab, prepares Docker, starts PostgreSQL,
-            InfluxDB, Traefik, and launches the control plane.
+            Run the installer on an Ubuntu host. It clones Vercelab, prepares
+            Docker, starts PostgreSQL, InfluxDB, Traefik, and launches the
+            control plane.
           </p>
           <div class="command-box">
-            <code id="install-command">curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash</code>
-            <button class="copy-button" type="button" id="copy-install">Copy</button>
+            <code id="install-command"
+              >curl -fsSL
+              https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh
+              | bash</code
+            >
+            <button class="copy-button" type="button" id="copy-install">
+              Copy
+            </button>
           </div>
           <div class="install-links">
-            <a class="install-link" href="https://github.com/dedkola/vercelab" rel="noopener noreferrer" target="_blank">View GitHub repo ↗</a>
-            <a class="install-link" href="https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh" rel="noopener noreferrer" target="_blank">Open installer ↗</a>
+            <a
+              class="install-link"
+              href="https://github.com/dedkola/vercelab"
+              rel="noopener noreferrer"
+              target="_blank"
+              >View GitHub repo ↗</a
+            >
+            <a
+              class="install-link"
+              href="https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh"
+              rel="noopener noreferrer"
+              target="_blank"
+              >Open installer ↗</a
+            >
           </div>
         </div>
       </div>
@@ -1418,7 +1742,8 @@
         disk: [44, 39, 46, 41, 58, 54, 49, 61, 55, 52, 57, 50],
       };
 
-      const formatCommand = "curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash";
+      const formatCommand =
+        "curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash";
 
       function pointsToPath(values, width, height, padding = 10) {
         const max = Math.max(...values, 100);
@@ -1477,9 +1802,12 @@
       function renderContainers(filter = "") {
         const list = document.getElementById("container-list");
         const normalized = filter.trim().toLowerCase();
-        const visible = containers.filter((container) => container.name.toLowerCase().includes(normalized));
+        const visible = containers.filter((container) =>
+          container.name.toLowerCase().includes(normalized),
+        );
         list.innerHTML = visible
-          .map((container) => `
+          .map(
+            (container) => `
             <button class="container-row ${container.active ? "active" : ""}" type="button" data-container="${container.name}">
               <span class="container-row-inner">
                 <span class="container-name">${container.name}</span>
@@ -1488,14 +1816,18 @@
                 </span>
               </span>
             </button>
-          `)
+          `,
+          )
           .join("");
 
         list.querySelectorAll(".container-row").forEach((button) => {
           button.addEventListener("click", () => {
-            list.querySelectorAll(".container-row").forEach((row) => row.classList.remove("active"));
+            list
+              .querySelectorAll(".container-row")
+              .forEach((row) => row.classList.remove("active"));
             button.classList.add("active");
-            document.getElementById("selected-container").textContent = button.dataset.container;
+            document.getElementById("selected-container").textContent =
+              button.dataset.container;
           });
         });
       }
@@ -1505,9 +1837,17 @@
         const stamp = new Date();
         terminal.innerHTML = logs
           .map((message, index) => {
-            const date = new Date(stamp.getTime() - (logs.length - index) * 23000);
-            const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            const level = message.includes("checkpoint") ? "warning" : "success";
+            const date = new Date(
+              stamp.getTime() - (logs.length - index) * 23000,
+            );
+            const time = date.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            });
+            const level = message.includes("checkpoint")
+              ? "warning"
+              : "success";
             return `
               <div class="log-line">
                 <span class="status-dot ${level === "warning" ? "warning" : ""}" style="margin-top:7px"></span>
@@ -1517,14 +1857,17 @@
             `;
           })
           .join("");
-        document.getElementById("line-count").textContent = `${logs.length} lines`;
+        document.getElementById("line-count").textContent =
+          `${logs.length} lines`;
       }
 
       function tickMetrics() {
         for (const key of Object.keys(metricState)) {
           const series = metricState[key];
           const last = series[series.length - 1];
-          const drift = Math.sin(Date.now() / 1800 + series.length) * 6 + (Math.random() * 8 - 4);
+          const drift =
+            Math.sin(Date.now() / 1800 + series.length) * 6 +
+            (Math.random() * 8 - 4);
           const next = Math.max(12, Math.min(82, Math.round(last + drift)));
           series.push(next);
           while (series.length > 18) series.shift();
@@ -1533,23 +1876,36 @@
         }
 
         const cpu = metricState.cpu[metricState.cpu.length - 1];
-        const memory = (9.4 + metricState.memory[metricState.memory.length - 1] / 13).toFixed(1);
+        const memory = (
+          9.4 +
+          metricState.memory[metricState.memory.length - 1] / 13
+        ).toFixed(1);
         const network = metricState.network[metricState.network.length - 1];
         const disk = metricState.disk[metricState.disk.length - 1] * 2;
         document.getElementById("cpu-value").textContent = `${cpu}%`;
         document.getElementById("memory-value").textContent = `${memory} GB`;
-        document.getElementById("network-value").textContent = `${network} MB/s`;
+        document.getElementById("network-value").textContent =
+          `${network} MB/s`;
         document.getElementById("disk-value").textContent = `${disk} MB/s`;
         document.getElementById("header-cpu").textContent = `CPU ${cpu}%`;
-        document.getElementById("header-memory").textContent = `Memory ${memory} GB`;
-        document.getElementById("header-network").textContent = `RX ${network} MB/s / TX ${Math.max(8, Math.round(network / 2.4))} MB/s`;
-        document.getElementById("header-disk").textContent = `Read ${disk} MB/s / Write ${Math.round(disk / 1.6)} MB/s`;
-        document.getElementById("chart-cpu-avg").textContent = `${Math.round(metricState.cpu.reduce((a, b) => a + b, 0) / metricState.cpu.length)}%`;
-        document.getElementById("chart-cpu-peak").textContent = `${Math.max(...metricState.cpu)}%`;
-        document.getElementById("chart-memory-avg").textContent = `${memory} GB`;
-        document.getElementById("chart-network-rx").textContent = `${network} MB/s`;
-        document.getElementById("chart-network-tx").textContent = `${Math.max(8, Math.round(network / 2.4))} MB/s`;
-        document.getElementById("load-label").textContent = `${(cpu / 21).toFixed(2)} ${(cpu / 24).toFixed(2)} ${(cpu / 29).toFixed(2)}`;
+        document.getElementById("header-memory").textContent =
+          `Memory ${memory} GB`;
+        document.getElementById("header-network").textContent =
+          `RX ${network} MB/s / TX ${Math.max(8, Math.round(network / 2.4))} MB/s`;
+        document.getElementById("header-disk").textContent =
+          `Read ${disk} MB/s / Write ${Math.round(disk / 1.6)} MB/s`;
+        document.getElementById("chart-cpu-avg").textContent =
+          `${Math.round(metricState.cpu.reduce((a, b) => a + b, 0) / metricState.cpu.length)}%`;
+        document.getElementById("chart-cpu-peak").textContent =
+          `${Math.max(...metricState.cpu)}%`;
+        document.getElementById("chart-memory-avg").textContent =
+          `${memory} GB`;
+        document.getElementById("chart-network-rx").textContent =
+          `${network} MB/s`;
+        document.getElementById("chart-network-tx").textContent =
+          `${Math.max(8, Math.round(network / 2.4))} MB/s`;
+        document.getElementById("load-label").textContent =
+          `${(cpu / 21).toFixed(2)} ${(cpu / 24).toFixed(2)} ${(cpu / 29).toFixed(2)}`;
       }
 
       function setupInstallPanel() {
@@ -1588,7 +1944,10 @@
         copy.addEventListener("click", async () => {
           let copied = false;
           try {
-            if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+            if (
+              navigator.clipboard &&
+              typeof navigator.clipboard.writeText === "function"
+            ) {
               await navigator.clipboard.writeText(formatCommand);
               copied = true;
             } else {
@@ -1616,9 +1975,12 @@
       function setupRangeTabs() {
         document.querySelectorAll(".range-tab").forEach((tab) => {
           tab.addEventListener("click", () => {
-            document.querySelectorAll(".range-tab").forEach((item) => item.classList.remove("active"));
+            document
+              .querySelectorAll(".range-tab")
+              .forEach((item) => item.classList.remove("active"));
             tab.classList.add("active");
-            document.getElementById("window-label").textContent = tab.dataset.range;
+            document.getElementById("window-label").textContent =
+              tab.dataset.range;
           });
         });
       }
@@ -1632,9 +1994,11 @@
       Object.keys(metricState).forEach(renderChart);
       tickMetrics();
       window.setInterval(tickMetrics, 2400);
-      document.getElementById("container-search").addEventListener("input", (event) => {
-        renderContainers(event.target.value);
-      });
+      document
+        .getElementById("container-search")
+        .addEventListener("input", (event) => {
+          renderContainers(event.target.value);
+        });
     </script>
   </body>
 </html>
