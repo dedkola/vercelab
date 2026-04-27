@@ -113,7 +113,7 @@ export type ContainerMetricSeries = {
 
 export type ContainerMetricPanel = {
   format: ChartMetricFormat;
-  id: "cpu" | "memory" | "network";
+  id: "cpu" | "memory" | "network" | "disk";
   labels: string[];
   series: ContainerMetricSeries[];
   stats: ChartStat[];
@@ -1377,6 +1377,12 @@ export function buildContainerMetricPanels(
     (point) => point.networkTotal,
     (value) => formatBytesPerSecond(value),
   );
+  const diskSeries = alignContainerSeries(
+    descriptors,
+    selectedContainerId,
+    (point) => point.diskTotal,
+    (value) => formatBytesPerSecond(value),
+  );
   const selectedCpuSeries = getSelectedSeries(
     cpuSeries.series,
     selectedContainerId,
@@ -1389,9 +1395,14 @@ export function buildContainerMetricPanels(
     networkSeries.series,
     selectedContainerId,
   );
+  const selectedDiskSeries = getSelectedSeries(
+    diskSeries.series,
+    selectedContainerId,
+  );
   const topCpuSeries = getTopSeries(cpuSeries.series);
   const topMemorySeries = getTopSeries(memorySeries.series);
   const topNetworkSeries = getTopSeries(networkSeries.series);
+  const topDiskSeries = getTopSeries(diskSeries.series);
 
   return [
     {
@@ -1477,6 +1488,34 @@ export function buildContainerMetricPanels(
       ],
       timestamps: networkSeries.timestamps,
       title: "Network by container",
+    },
+    {
+      format: "bytesPerSecond",
+      id: "disk",
+      labels: diskSeries.labels,
+      series: diskSeries.series,
+      stats: [
+        {
+          label: "Tracked",
+          value: `${diskSeries.series.length}`,
+        },
+        {
+          label: "Hot now",
+          value: topDiskSeries
+            ? `${topDiskSeries.label} ${topDiskSeries.latestValue}`
+            : "--",
+        },
+        {
+          label: selectedDiskSeries ? "Focus" : "Peak",
+          value: selectedDiskSeries
+            ? `${selectedDiskSeries.label} ${selectedDiskSeries.latestValue}`
+            : getGlobalPeak(diskSeries.series) === null
+              ? "--"
+              : formatBytesPerSecond(getGlobalPeak(diskSeries.series)!),
+        },
+      ],
+      timestamps: diskSeries.timestamps,
+      title: "Disk I/O by container",
     },
   ];
 }
