@@ -1,0 +1,1597 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Vercelab is a self-hosted Docker and Traefik control plane with live metrics, logs, and GitHub deployments."
+    />
+    <title>Vercelab - self-hosted deployment control plane</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --background: #ffffff;
+        --foreground: #0f172a;
+        --muted: #f1f5f9;
+        --muted-strong: #e2e8f0;
+        --muted-foreground: #64748b;
+        --border: rgba(148, 163, 184, 0.32);
+        --card: rgba(255, 255, 255, 0.94);
+        --emerald: #059669;
+        --emerald-dark: #047857;
+        --emerald-soft: #ecfdf5;
+        --amber: #d97706;
+        --amber-soft: #fffbeb;
+        --slate: #0f172a;
+        --terminal: #0f1720;
+        --radius-lg: 1.35rem;
+        --radius-xl: 1.6rem;
+        --shadow-soft: 0 26px 76px -56px rgba(15, 23, 42, 0.32);
+        --shadow-card: 0 30px 80px -62px rgba(15, 23, 42, 0.34);
+        --shadow-side: 18px 0 56px -52px rgba(15, 23, 42, 0.24);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 26%),
+          radial-gradient(circle at top right, rgba(226, 232, 240, 0.85), transparent 30%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 54%, #ffffff 100%);
+        color: var(--foreground);
+        font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
+        font-feature-settings: "ss01" 1, "cv05" 1, "tnum" 1;
+        text-rendering: optimizeLegibility;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .page-shell {
+        min-height: 100vh;
+        padding: 18px;
+      }
+
+      .browser-frame {
+        position: relative;
+        display: flex;
+        min-height: calc(100vh - 36px);
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 2rem;
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: 0 42px 140px -92px rgba(15, 23, 42, 0.65);
+        -webkit-backdrop-filter: blur(28px);
+        backdrop-filter: blur(28px);
+      }
+
+      .grain {
+        position: fixed;
+        inset: 0;
+        z-index: 4;
+        pointer-events: none;
+        opacity: 0.14;
+        mix-blend-mode: multiply;
+        background-image:
+          linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px);
+        background-size: 5px 5px;
+      }
+
+      .workspace-rail {
+        display: flex;
+        width: 44px;
+        flex-shrink: 0;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        border-right: 1px solid var(--border);
+        background: linear-gradient(180deg, var(--background), rgba(241, 245, 249, 0.22), var(--background));
+        padding: 12px 6px;
+        box-shadow: 16px 0 48px -44px rgba(15, 23, 42, 0.26);
+      }
+
+      .rail-button {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border: 0;
+        border-radius: 0.8rem;
+        background: transparent;
+        color: var(--muted-foreground);
+        cursor: pointer;
+        transition:
+          color 180ms ease,
+          transform 180ms ease,
+          background 180ms ease;
+      }
+
+      .rail-button.active,
+      .rail-button:hover {
+        background: var(--emerald-soft);
+        color: var(--emerald-dark);
+        transform: translateY(-1px);
+      }
+
+      .rail-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .dashboard-frame {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: 248px 4px 304px minmax(420px, 1fr) 4px 340px;
+        grid-template-rows: 60px minmax(0, 1fr);
+      }
+
+      .topbar {
+        grid-column: 1 / -1;
+        display: flex;
+        height: 60px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.4), rgba(255, 255, 255, 0.96));
+        padding: 0 16px;
+        box-shadow: 0 20px 48px -38px rgba(15, 23, 42, 0.45);
+        -webkit-backdrop-filter: blur(18px);
+        backdrop-filter: blur(18px);
+      }
+
+      .brand-lockup,
+      .brand-pill,
+      .status-strip,
+      .topbar-actions,
+      .pill-row {
+        display: flex;
+        align-items: center;
+      }
+
+      .brand-lockup {
+        min-width: 0;
+        gap: 12px;
+      }
+
+      .brand-pill {
+        gap: 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.86);
+        padding: 6px 14px;
+        box-shadow: 0 16px 36px -28px rgba(15, 23, 42, 0.35);
+      }
+
+      .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #10b981;
+        box-shadow: 0 0 0 7px rgba(16, 185, 129, 0.12);
+        animation: pulse 1.9s ease-in-out infinite;
+      }
+
+      .brand-pill strong {
+        font-size: 14px;
+        letter-spacing: -0.02em;
+      }
+
+      .topbar-title {
+        min-width: 0;
+        border-left: 1px solid var(--border);
+        padding-left: 12px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+
+      .status-strip {
+        min-width: 0;
+        flex: 1;
+        justify-content: center;
+        gap: 12px;
+        color: rgba(100, 116, 139, 0.86);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .status-strip span {
+        white-space: nowrap;
+      }
+
+      .status-strip span + span::before {
+        display: inline-block;
+        width: 4px;
+        height: 4px;
+        margin: 0 12px 2px 0;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.8);
+        content: "";
+      }
+
+      .topbar-actions {
+        flex-shrink: 0;
+        gap: 8px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 32px;
+        border: 1px solid rgba(148, 163, 184, 0.36);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.84);
+        color: var(--foreground);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        padding: 8px 12px;
+        transition:
+          transform 180ms ease,
+          border-color 180ms ease,
+          box-shadow 180ms ease;
+      }
+
+      .button:hover {
+        border-color: rgba(16, 185, 129, 0.42);
+        box-shadow: 0 16px 30px -24px rgba(15, 23, 42, 0.45);
+        transform: translateY(-1px);
+      }
+
+      .button.primary {
+        border-color: rgba(16, 185, 129, 0.45);
+        background: #0f172a;
+        color: #f8fafc;
+      }
+
+      .panel {
+        min-height: 0;
+        border-right: 1px solid var(--border);
+        background: linear-gradient(180deg, var(--background), rgba(241, 245, 249, 0.14), var(--background));
+        box-shadow: var(--shadow-side);
+      }
+
+      .host-panel {
+        grid-column: 1;
+        grid-row: 2;
+        overflow: hidden auto;
+      }
+
+      .container-panel {
+        grid-column: 3;
+        grid-row: 2;
+        overflow: hidden auto;
+      }
+
+      .log-panel {
+        grid-column: 6;
+        grid-row: 2;
+        overflow: hidden auto;
+        border-right: 0;
+        border-left: 1px solid var(--border);
+        box-shadow: -22px 0 72px -58px rgba(15, 23, 42, 0.34);
+      }
+
+      .resize-handle {
+        grid-row: 2;
+        background: linear-gradient(180deg, transparent, rgba(148, 163, 184, 0.22), transparent);
+      }
+
+      .resize-handle.first {
+        grid-column: 2;
+      }
+
+      .resize-handle.second {
+        grid-column: 5;
+      }
+
+      .panel-stack {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.26);
+        padding: 12px;
+      }
+
+      .section-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(100, 116, 139, 0.92);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .section-label svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 24px;
+        border: 1px solid rgba(148, 163, 184, 0.34);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--foreground);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        padding: 4px 10px;
+      }
+
+      .badge.success {
+        border-color: rgba(16, 185, 129, 0.28);
+        background: rgba(236, 253, 245, 0.94);
+        color: var(--emerald-dark);
+      }
+
+      .badge.warning {
+        border-color: rgba(245, 158, 11, 0.28);
+        background: rgba(255, 251, 235, 0.94);
+        color: #b45309;
+      }
+
+      .metric-card,
+      .chart-card,
+      .log-summary,
+      .terminal-card {
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        border-radius: var(--radius-lg);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.16), rgba(255, 255, 255, 0.98));
+        box-shadow: 0 20px 56px -46px rgba(15, 23, 42, 0.32);
+      }
+
+      .metric-card header,
+      .chart-card header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.26);
+        padding: 14px;
+      }
+
+      .metric-title,
+      .chart-title {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+      }
+
+      .metric-value {
+        padding: 14px 14px 0;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+      }
+
+      .sparkline {
+        display: block;
+        width: 100%;
+        height: 58px;
+        margin-top: 4px;
+      }
+
+      .search-wrap {
+        position: relative;
+        margin-top: 12px;
+      }
+
+      .search-wrap svg {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        width: 15px;
+        height: 15px;
+        color: var(--muted-foreground);
+        transform: translateY(-50%);
+      }
+
+      .search-wrap input {
+        width: 100%;
+        height: 40px;
+        border: 1px solid rgba(148, 163, 184, 0.34);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.84);
+        box-shadow: 0 18px 42px -30px rgba(15, 23, 42, 0.22);
+        color: var(--foreground);
+        outline: none;
+        padding: 0 12px 0 36px;
+      }
+
+      .container-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      .container-row {
+        width: 100%;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        border-radius: 0.55rem;
+        background: rgba(255, 255, 255, 0.85);
+        color: inherit;
+        cursor: pointer;
+        padding: 8px 10px;
+        text-align: left;
+        transition:
+          background 180ms ease,
+          border-color 180ms ease,
+          transform 180ms ease;
+      }
+
+      .container-row.active,
+      .container-row:hover {
+        border-color: rgba(16, 185, 129, 0.52);
+        background: rgba(236, 253, 245, 0.78);
+        transform: translateX(1px);
+      }
+
+      .container-row-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .container-name {
+        min-width: 0;
+        overflow: hidden;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .container-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--emerald-dark);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #10b981;
+      }
+
+      .status-dot.warning {
+        background: #f59e0b;
+      }
+
+      .content {
+        grid-column: 4;
+        grid-row: 2;
+        min-width: 0;
+        overflow: hidden auto;
+        padding: 20px;
+      }
+
+      .hero-card {
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        border-radius: var(--radius-xl);
+        background: linear-gradient(90deg, var(--background), rgba(241, 245, 249, 0.16), var(--background));
+        box-shadow: var(--shadow-soft);
+      }
+
+      .hero-card-inner {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 18px;
+      }
+
+      .hero-copy {
+        display: grid;
+        gap: 11px;
+      }
+
+      .hero-copy h1 {
+        margin: 0;
+        font-size: clamp(22px, 3vw, 32px);
+        font-weight: 800;
+        letter-spacing: -0.055em;
+        line-height: 1.04;
+      }
+
+      .hero-copy p {
+        max-width: 660px;
+        margin: 0;
+        color: var(--muted-foreground);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.7;
+      }
+
+      .pill-row {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .range-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+        max-width: 360px;
+      }
+
+      .range-tab {
+        border: 1px solid rgba(148, 163, 184, 0.34);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--muted-foreground);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 8px 12px;
+      }
+
+      .range-tab.active {
+        border-color: rgba(16, 185, 129, 0.38);
+        background: rgba(236, 253, 245, 0.94);
+        color: var(--emerald-dark);
+        box-shadow: 0 18px 40px -32px rgba(16, 185, 129, 0.3);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin: 18px 0 12px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+      }
+
+      .chart-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .chart-card {
+        background: var(--card);
+        box-shadow: var(--shadow-card);
+      }
+
+      .chart-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .chart-body {
+        padding: 16px;
+      }
+
+      .chart-svg {
+        display: block;
+        width: 100%;
+        height: 250px;
+        overflow: visible;
+      }
+
+      .grid-line {
+        stroke: rgba(15, 23, 42, 0.08);
+        stroke-dasharray: 5 6;
+      }
+
+      .axis-label {
+        fill: rgba(100, 116, 139, 0.78);
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 10px;
+      }
+
+      .chart-path {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 3;
+        filter: drop-shadow(0 12px 20px rgba(15, 23, 42, 0.12));
+      }
+
+      .chart-area {
+        opacity: 0.16;
+      }
+
+      .log-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.26);
+        padding: 12px;
+      }
+
+      .log-tab {
+        border: 1px solid rgba(148, 163, 184, 0.34);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--muted-foreground);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 7px 12px;
+      }
+
+      .log-tab.active {
+        border-color: rgba(16, 185, 129, 0.28);
+        background: rgba(236, 253, 245, 0.94);
+        color: var(--emerald-dark);
+      }
+
+      .log-summary {
+        margin: 12px;
+        padding: 14px;
+      }
+
+      .terminal-card {
+        margin: 12px;
+        border-color: rgba(15, 23, 42, 0.16);
+        background: var(--terminal);
+        box-shadow: 0 24px 70px -50px rgba(15, 23, 42, 0.5);
+      }
+
+      .terminal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: #cbd5e1;
+        font-size: 12px;
+        padding: 12px 14px;
+      }
+
+      .terminal-lines {
+        display: grid;
+        gap: 9px;
+        min-height: 290px;
+        padding: 14px;
+        color: #e2e8f0;
+        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.55;
+      }
+
+      .log-line {
+        display: grid;
+        grid-template-columns: auto 48px 1fr;
+        gap: 10px;
+      }
+
+      .log-line .time {
+        color: #64748b;
+      }
+
+      .install-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 3;
+        display: grid;
+        place-items: center;
+        padding: 22px;
+        pointer-events: none;
+      }
+
+      .install-modal[hidden],
+      .backdrop[hidden] {
+        display: none;
+      }
+
+      .install-card {
+        width: min(560px, calc(100vw - 44px));
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 1.6rem;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.93)),
+          rgba(255, 255, 255, 0.94);
+        box-shadow:
+          0 30px 120px -54px rgba(15, 23, 42, 0.58),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        pointer-events: auto;
+        transform: translateY(0);
+        animation: floatIn 850ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+        -webkit-backdrop-filter: blur(24px);
+        backdrop-filter: blur(24px);
+      }
+
+      .log-description {
+        margin: 6px 0 0;
+        color: var(--muted-foreground);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .log-summary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .selected-container-title {
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .log-context {
+        margin-top: 4px;
+        color: var(--muted-foreground);
+        font-size: 12px;
+      }
+
+      .terminal-dot {
+        display: inline-block;
+        margin-right: 8px;
+      }
+
+      .install-card header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 22px 22px 14px;
+      }
+
+      .install-kicker {
+        color: var(--emerald-dark);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .install-card h2 {
+        margin: 6px 0 0;
+        font-size: clamp(28px, 6vw, 48px);
+        font-weight: 800;
+        letter-spacing: -0.075em;
+        line-height: 0.96;
+      }
+
+      .close-button {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        place-items: center;
+        border: 1px solid rgba(148, 163, 184, 0.34);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.76);
+        color: var(--muted-foreground);
+        cursor: pointer;
+      }
+
+      .install-body {
+        display: grid;
+        gap: 14px;
+        padding: 0 22px 22px;
+      }
+
+      .install-body p {
+        margin: 0;
+        color: var(--muted-foreground);
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.65;
+      }
+
+      .command-box {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        border-radius: 1.1rem;
+        background: #0f1720;
+        padding: 10px;
+        box-shadow: 0 18px 52px -38px rgba(15, 23, 42, 0.65);
+      }
+
+      .command-box code {
+        overflow-x: auto;
+        color: #e2e8f0;
+        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        white-space: nowrap;
+      }
+
+      .copy-button {
+        border: 1px solid rgba(16, 185, 129, 0.34);
+        border-radius: 0.85rem;
+        background: rgba(236, 253, 245, 0.94);
+        color: var(--emerald-dark);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 900;
+        padding: 9px 12px;
+      }
+
+      .install-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .install-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--foreground);
+        font-size: 12px;
+        font-weight: 850;
+        padding: 9px 12px;
+      }
+
+      .backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 2;
+        background: radial-gradient(circle at center, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.2));
+        pointer-events: none;
+      }
+
+      .screen-reader-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.12);
+        }
+        50% {
+          box-shadow: 0 0 0 10px rgba(16, 185, 129, 0.02);
+        }
+      }
+
+      @keyframes floatIn {
+        from {
+          opacity: 0;
+          transform: translateY(18px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @media (max-width: 1280px) {
+        .dashboard-frame {
+          grid-template-columns: 220px 4px 270px minmax(360px, 1fr);
+        }
+
+        .log-panel,
+        .resize-handle.second {
+          display: none;
+        }
+
+        .status-strip {
+          display: none;
+        }
+      }
+
+      @media (max-width: 980px) {
+        .page-shell {
+          padding: 10px;
+        }
+
+        .browser-frame {
+          min-height: calc(100vh - 20px);
+          border-radius: 1.35rem;
+        }
+
+        .workspace-rail,
+        .host-panel,
+        .container-panel,
+        .resize-handle {
+          display: none;
+        }
+
+        .dashboard-frame {
+          display: flex;
+          min-width: 0;
+          flex: 1;
+          flex-direction: column;
+        }
+
+        .topbar {
+          flex-wrap: wrap;
+          height: auto;
+          min-height: 60px;
+          padding: 12px;
+        }
+
+        .topbar-title {
+          display: none;
+        }
+
+        .topbar-actions {
+          width: 100%;
+        }
+
+        .topbar-actions .button {
+          flex: 1;
+        }
+
+        .content {
+          min-height: 0;
+          padding: 12px;
+        }
+
+        .hero-card-inner {
+          flex-direction: column;
+        }
+
+        .range-tabs {
+          justify-content: flex-start;
+        }
+
+        .install-card {
+          margin-top: 120px;
+        }
+
+        .install-modal {
+          align-items: start;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .hero-copy h1 {
+          font-size: 24px;
+        }
+
+        .chart-svg {
+          height: 190px;
+        }
+
+        .command-box {
+          grid-template-columns: 1fr;
+        }
+
+        .copy-button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <main class="browser-frame" aria-label="Vercelab dashboard landing page">
+        <aside class="workspace-rail" aria-label="Workspace navigation">
+          <button class="rail-button active" type="button" aria-label="Dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 11.5 12 5l8 6.5" />
+              <path d="M6.5 10.5V20h11v-9.5" />
+            </svg>
+          </button>
+          <button class="rail-button" type="button" aria-label="Git App Page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+              <path d="M17 13a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+              <path d="M10 8h2a5 5 0 0 1 5 5" />
+            </svg>
+          </button>
+          <button class="rail-button" type="button" aria-label="Influx Explorer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 18v-4" />
+              <path d="M10 18V9" />
+              <path d="M14 18v-7" />
+              <path d="M18 18V7" />
+            </svg>
+          </button>
+        </aside>
+
+        <div class="dashboard-frame">
+          <header class="topbar">
+            <div class="brand-lockup">
+              <div class="brand-pill">
+                <span class="live-dot" aria-hidden="true"></span>
+                <strong>Vercelab</strong>
+              </div>
+              <div class="topbar-title">Infrastructure view</div>
+            </div>
+            <div class="status-strip" aria-label="Live metric summary">
+              <span id="header-cpu">CPU 26%</span>
+              <span id="header-memory">Memory 11.2 GB</span>
+              <span id="header-network">RX 42 MB/s / TX 17 MB/s</span>
+              <span id="header-disk">Read 128 MB/s / Write 81 MB/s</span>
+            </div>
+            <div class="topbar-actions">
+              <button class="button" type="button">Reset layout</button>
+              <a class="button primary" href="#install" id="show-install">Install now</a>
+            </div>
+          </header>
+
+          <aside class="panel host-panel" aria-label="Server load sidebar">
+            <div class="panel-stack">
+              <article class="metric-card" data-metric="cpu">
+                <header>
+                  <div class="metric-title">CPU</div>
+                  <span class="badge success" id="cpu-delta">+2.4%</span>
+                </header>
+                <div class="metric-value" id="cpu-value">26%</div>
+                <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
+                  <path data-spark="cpu-fill" d="" fill="#10b981" opacity="0.14"></path>
+                  <path data-spark="cpu-line" d="" fill="none" stroke="#059669" stroke-width="3" stroke-linecap="round"></path>
+                </svg>
+              </article>
+              <article class="metric-card" data-metric="memory">
+                <header>
+                  <div class="metric-title">Memory</div>
+                  <span class="badge">stable</span>
+                </header>
+                <div class="metric-value" id="memory-value">11.2 GB</div>
+                <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
+                  <path data-spark="memory-fill" d="" fill="#3b82f6" opacity="0.14"></path>
+                  <path data-spark="memory-line" d="" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round"></path>
+                </svg>
+              </article>
+              <article class="metric-card" data-metric="network">
+                <header>
+                  <div class="metric-title">Network</div>
+                  <span class="badge success">healthy</span>
+                </header>
+                <div class="metric-value" id="network-value">42 MB/s</div>
+                <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
+                  <path data-spark="network-fill" d="" fill="#f59e0b" opacity="0.14"></path>
+                  <path data-spark="network-line" d="" fill="none" stroke="#d97706" stroke-width="3" stroke-linecap="round"></path>
+                </svg>
+              </article>
+              <article class="metric-card" data-metric="disk">
+                <header>
+                  <div class="metric-title">Disk</div>
+                  <span class="badge">nvme</span>
+                </header>
+                <div class="metric-value" id="disk-value">128 MB/s</div>
+                <svg class="sparkline" viewBox="0 0 220 58" aria-hidden="true">
+                  <path data-spark="disk-fill" d="" fill="#14b8a6" opacity="0.14"></path>
+                  <path data-spark="disk-line" d="" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round"></path>
+                </svg>
+              </article>
+            </div>
+          </aside>
+          <div class="resize-handle first" aria-hidden="true"></div>
+
+          <aside class="panel container-panel" aria-label="Container list">
+            <div class="panel-heading">
+              <div>
+                <div class="section-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 18h11a4 4 0 0 0 .5-7.97A7 7 0 0 0 5.2 14 3 3 0 0 0 6 18Z" />
+                  </svg>
+                  Containers
+                </div>
+                <div class="search-wrap">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10.5" cy="10.5" r="5" />
+                    <path d="m14.5 14.5 4.5 4.5" />
+                  </svg>
+                  <input id="container-search" type="search" value="" placeholder="Search containers, stacks, images..." aria-label="Search simulated containers" />
+                </div>
+              </div>
+              <div class="pill-row">
+                <span class="badge success">7 running</span>
+                <span class="badge">9 visible</span>
+              </div>
+            </div>
+            <div class="panel-stack">
+              <div class="container-list" id="container-list"></div>
+            </div>
+          </aside>
+
+          <section class="content">
+            <div class="hero-card">
+              <div class="hero-card-inner">
+                <div class="hero-copy">
+                  <div class="pill-row">
+                    <span class="section-label">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="5" width="14" height="10" rx="1.5" />
+                        <path d="M9 19h6M12 15v4" />
+                      </svg>
+                      Infrastructure view
+                    </span>
+                    <span class="badge">9 tracked</span>
+                    <span class="badge success">7 running</span>
+                    <span class="badge">Fleet compare</span>
+                  </div>
+                  <h1>Metrics dashboard</h1>
+                  <p>
+                    Self-host GitHub projects into Docker, route them through Traefik, and watch live host,
+                    container, log, and deployment telemetry from one control plane.
+                  </p>
+                  <div class="pill-row">
+                    <span class="badge">Window <span id="window-label">15 minutes</span></span>
+                    <span class="badge">Load avg <span id="load-label">1.22 1.08 0.91</span></span>
+                  </div>
+                </div>
+                <div class="range-tabs" aria-label="Simulated range selector">
+                  <button class="range-tab active" type="button" data-range="15 minutes">15m</button>
+                  <button class="range-tab" type="button" data-range="1 hour">1h</button>
+                  <button class="range-tab" type="button" data-range="6 hours">6h</button>
+                  <button class="range-tab" type="button" data-range="24 hours">24h</button>
+                  <button class="range-tab" type="button" data-range="7 days">7d</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-head">
+              <h2>Container load explorer</h2>
+              <span class="badge success">Simulated live history</span>
+            </div>
+
+            <div class="chart-grid">
+              <article class="chart-card">
+                <header>
+                  <div>
+                    <div class="chart-title">CPU usage</div>
+                    <div class="chart-stats">
+                      <span class="badge">avg <span id="chart-cpu-avg">31%</span></span>
+                      <span class="badge success">peak <span id="chart-cpu-peak">61%</span></span>
+                      <span class="badge">selected fleet</span>
+                    </div>
+                  </div>
+                </header>
+                <div class="chart-body">
+                  <svg class="chart-svg" viewBox="0 0 760 250" role="img" aria-label="Simulated CPU chart">
+                    <defs>
+                      <linearGradient id="cpu-area" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#10b981" />
+                        <stop offset="1" stop-color="#10b981" stop-opacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <g data-grid></g>
+                    <path class="chart-area" data-area="cpu" fill="url(#cpu-area)"></path>
+                    <path class="chart-path" data-line="cpu" stroke="#059669"></path>
+                    <g data-labels></g>
+                  </svg>
+                </div>
+              </article>
+
+              <article class="chart-card">
+                <header>
+                  <div>
+                    <div class="chart-title">Memory pressure</div>
+                    <div class="chart-stats">
+                      <span class="badge">avg <span id="chart-memory-avg">9.6 GB</span></span>
+                      <span class="badge">limit 32 GB</span>
+                      <span class="badge success">headroom 64%</span>
+                    </div>
+                  </div>
+                </header>
+                <div class="chart-body">
+                  <svg class="chart-svg" viewBox="0 0 760 250" role="img" aria-label="Simulated memory chart">
+                    <defs>
+                      <linearGradient id="memory-area" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#2563eb" />
+                        <stop offset="1" stop-color="#2563eb" stop-opacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <g data-grid></g>
+                    <path class="chart-area" data-area="memory" fill="url(#memory-area)"></path>
+                    <path class="chart-path" data-line="memory" stroke="#2563eb"></path>
+                    <g data-labels></g>
+                  </svg>
+                </div>
+              </article>
+
+              <article class="chart-card">
+                <header>
+                  <div>
+                    <div class="chart-title">Network throughput</div>
+                    <div class="chart-stats">
+                      <span class="badge">rx <span id="chart-network-rx">42 MB/s</span></span>
+                      <span class="badge">tx <span id="chart-network-tx">17 MB/s</span></span>
+                      <span class="badge warning">burst tolerant</span>
+                    </div>
+                  </div>
+                </header>
+                <div class="chart-body">
+                  <svg class="chart-svg" viewBox="0 0 760 250" role="img" aria-label="Simulated network chart">
+                    <defs>
+                      <linearGradient id="network-area" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#d97706" />
+                        <stop offset="1" stop-color="#d97706" stop-opacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <g data-grid></g>
+                    <path class="chart-area" data-area="network" fill="url(#network-area)"></path>
+                    <path class="chart-path" data-line="network" stroke="#d97706"></path>
+                    <g data-labels></g>
+                  </svg>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <div class="resize-handle second" aria-hidden="true"></div>
+          <aside class="panel log-panel" aria-label="Logs sidebar">
+            <div class="panel-heading">
+              <div>
+                <div class="section-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 4h7l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+                    <path d="M14 4v4h4M9 13h6M9 17h4" />
+                  </svg>
+                  Logs
+                </div>
+                <p class="log-description">
+                  Grouped history context for the full container fleet.
+                </p>
+              </div>
+            </div>
+            <div class="log-tabs">
+              <button class="log-tab active" type="button">Live</button>
+              <button class="log-tab" type="button">Build</button>
+              <button class="log-tab" type="button">Deploy</button>
+            </div>
+            <div class="log-summary">
+              <div class="log-summary-row">
+                <div>
+                  <div class="selected-container-title" id="selected-container">All containers</div>
+                  <div class="log-context">Grouped Influx history and fleet context</div>
+                </div>
+                <span class="badge success">Up</span>
+              </div>
+            </div>
+            <div class="terminal-card">
+              <div class="terminal-head">
+                <span><span class="status-dot terminal-dot"></span>Tail preview</span>
+                <span id="line-count">8 lines</span>
+              </div>
+              <div class="terminal-lines" id="terminal-lines" aria-live="polite"></div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <div class="backdrop" aria-hidden="true"></div>
+    <section class="install-modal" id="install" aria-labelledby="install-title">
+      <div class="install-card">
+        <header>
+          <div>
+            <div class="install-kicker">One line bootstrap</div>
+            <h2 id="install-title">Install now</h2>
+          </div>
+          <button class="close-button" type="button" aria-label="Hide install panel" id="hide-install">×</button>
+        </header>
+        <div class="install-body">
+          <p>
+            Run the installer on an Ubuntu host. It clones Vercelab, prepares Docker, starts PostgreSQL,
+            InfluxDB, Traefik, and launches the control plane.
+          </p>
+          <div class="command-box">
+            <code id="install-command">curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash</code>
+            <button class="copy-button" type="button" id="copy-install">Copy</button>
+          </div>
+          <div class="install-links">
+            <a class="install-link" href="https://github.com/dedkola/vercelab" rel="noopener noreferrer" target="_blank">View GitHub repo ↗</a>
+            <a class="install-link" href="https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh" rel="noopener noreferrer" target="_blank">Open installer ↗</a>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="grain" aria-hidden="true"></div>
+
+    <script>
+      const containers = [
+        { name: "All", status: "Up", active: true },
+        { name: "control-plane", status: "Up" },
+        { name: "traefik", status: "Up" },
+        { name: "postgres", status: "Up" },
+        { name: "influxdb3-core", status: "Up" },
+        { name: "portfolio-main", status: "Up" },
+        { name: "api-staging", status: "Up" },
+        { name: "docs-preview", status: "Up" },
+        { name: "legacy-worker", status: "Dn", warning: true },
+      ];
+
+      const logs = [
+        "control-plane: metrics snapshot persisted to influx bucket",
+        "traefik: router vercelab-dashboard matched Host(`vercelab.local`)",
+        "postgres: checkpoint complete, buffers written 184",
+        "portfolio-main: docker healthcheck returned healthy",
+        "api-staging: pulled latest image digest sha256:ad7f...",
+        "influxdb3-core: query window=15m returned 144 series",
+        "docs-preview: deployment warmed on shared proxy network",
+        "control-plane: operation queue idle, lock released",
+      ];
+
+      const metricState = {
+        cpu: [26, 31, 28, 38, 42, 35, 47, 44, 37, 51, 49, 43],
+        memory: [34, 35, 36, 36, 37, 36, 38, 39, 37, 38, 39, 40],
+        network: [24, 32, 29, 48, 44, 52, 38, 43, 57, 46, 42, 50],
+        disk: [44, 39, 46, 41, 58, 54, 49, 61, 55, 52, 57, 50],
+      };
+
+      const formatCommand = "curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash";
+
+      function pointsToPath(values, width, height, padding = 10) {
+        const max = Math.max(...values, 100);
+        const min = Math.min(...values, 0);
+        const xStep = (width - padding * 2) / (values.length - 1);
+        return values
+          .map((value, index) => {
+            const x = padding + index * xStep;
+            const ratio = (value - min) / Math.max(1, max - min);
+            const y = height - padding - ratio * (height - padding * 2);
+            return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+          })
+          .join(" ");
+      }
+
+      function pointsToArea(values, width, height, padding = 10) {
+        const line = pointsToPath(values, width, height, padding);
+        return `${line} L ${width - padding} ${height - padding} L ${padding} ${height - padding} Z`;
+      }
+
+      function renderSparkline(metric) {
+        const values = metricState[metric];
+        const line = document.querySelector(`[data-spark="${metric}-line"]`);
+        const fill = document.querySelector(`[data-spark="${metric}-fill"]`);
+        if (!line || !fill) return;
+        line.setAttribute("d", pointsToPath(values, 220, 58, 7));
+        fill.setAttribute("d", pointsToArea(values, 220, 58, 7));
+      }
+
+      function renderChart(metric) {
+        const values = metricState[metric];
+        const line = document.querySelector(`[data-line="${metric}"]`);
+        const area = document.querySelector(`[data-area="${metric}"]`);
+        if (!line || !area) return;
+        line.setAttribute("d", pointsToPath(values, 760, 250, 28));
+        area.setAttribute("d", pointsToArea(values, 760, 250, 28));
+      }
+
+      function renderChartScaffold() {
+        document.querySelectorAll("[data-grid]").forEach((grid) => {
+          grid.innerHTML = Array.from({ length: 5 }, (_, index) => {
+            const y = 32 + index * 42;
+            return `<line class="grid-line" x1="28" x2="732" y1="${y}" y2="${y}"></line>`;
+          }).join("");
+        });
+
+        document.querySelectorAll("[data-labels]").forEach((labels) => {
+          labels.innerHTML = [
+            '<text class="axis-label" x="28" y="236">now-15m</text>',
+            '<text class="axis-label" x="358" y="236">now-7m</text>',
+            '<text class="axis-label" x="690" y="236">live</text>',
+          ].join("");
+        });
+      }
+
+      function renderContainers(filter = "") {
+        const list = document.getElementById("container-list");
+        const normalized = filter.trim().toLowerCase();
+        const visible = containers.filter((container) => container.name.toLowerCase().includes(normalized));
+        list.innerHTML = visible
+          .map((container) => `
+            <button class="container-row ${container.active ? "active" : ""}" type="button" data-container="${container.name}">
+              <span class="container-row-inner">
+                <span class="container-name">${container.name}</span>
+                <span class="container-state" style="color:${container.warning ? "#b45309" : "var(--emerald-dark)"}">
+                  <span class="status-dot ${container.warning ? "warning" : ""}"></span>${container.status}
+                </span>
+              </span>
+            </button>
+          `)
+          .join("");
+
+        list.querySelectorAll(".container-row").forEach((button) => {
+          button.addEventListener("click", () => {
+            list.querySelectorAll(".container-row").forEach((row) => row.classList.remove("active"));
+            button.classList.add("active");
+            document.getElementById("selected-container").textContent = button.dataset.container;
+          });
+        });
+      }
+
+      function renderLogs() {
+        const terminal = document.getElementById("terminal-lines");
+        const stamp = new Date();
+        terminal.innerHTML = logs
+          .map((message, index) => {
+            const date = new Date(stamp.getTime() - (logs.length - index) * 23000);
+            const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            const level = message.includes("checkpoint") ? "warning" : "success";
+            return `
+              <div class="log-line">
+                <span class="status-dot ${level === "warning" ? "warning" : ""}" style="margin-top:7px"></span>
+                <span class="time">${time}</span>
+                <span>${message}</span>
+              </div>
+            `;
+          })
+          .join("");
+        document.getElementById("line-count").textContent = `${logs.length} lines`;
+      }
+
+      function tickMetrics() {
+        for (const key of Object.keys(metricState)) {
+          const series = metricState[key];
+          const last = series[series.length - 1];
+          const drift = Math.sin(Date.now() / 1800 + series.length) * 6 + (Math.random() * 8 - 4);
+          const next = Math.max(12, Math.min(82, Math.round(last + drift)));
+          series.push(next);
+          while (series.length > 18) series.shift();
+          renderSparkline(key);
+          renderChart(key);
+        }
+
+        const cpu = metricState.cpu[metricState.cpu.length - 1];
+        const memory = (9.4 + metricState.memory[metricState.memory.length - 1] / 13).toFixed(1);
+        const network = metricState.network[metricState.network.length - 1];
+        const disk = metricState.disk[metricState.disk.length - 1] * 2;
+        document.getElementById("cpu-value").textContent = `${cpu}%`;
+        document.getElementById("memory-value").textContent = `${memory} GB`;
+        document.getElementById("network-value").textContent = `${network} MB/s`;
+        document.getElementById("disk-value").textContent = `${disk} MB/s`;
+        document.getElementById("header-cpu").textContent = `CPU ${cpu}%`;
+        document.getElementById("header-memory").textContent = `Memory ${memory} GB`;
+        document.getElementById("header-network").textContent = `RX ${network} MB/s / TX ${Math.max(8, Math.round(network / 2.4))} MB/s`;
+        document.getElementById("header-disk").textContent = `Read ${disk} MB/s / Write ${Math.round(disk / 1.6)} MB/s`;
+        document.getElementById("chart-cpu-avg").textContent = `${Math.round(metricState.cpu.reduce((a, b) => a + b, 0) / metricState.cpu.length)}%`;
+        document.getElementById("chart-cpu-peak").textContent = `${Math.max(...metricState.cpu)}%`;
+        document.getElementById("chart-memory-avg").textContent = `${memory} GB`;
+        document.getElementById("chart-network-rx").textContent = `${network} MB/s`;
+        document.getElementById("chart-network-tx").textContent = `${Math.max(8, Math.round(network / 2.4))} MB/s`;
+        document.getElementById("load-label").textContent = `${(cpu / 21).toFixed(2)} ${(cpu / 24).toFixed(2)} ${(cpu / 29).toFixed(2)}`;
+      }
+
+      function setupInstallPanel() {
+        const install = document.getElementById("install");
+        const backdrop = document.querySelector(".backdrop");
+        const copy = document.getElementById("copy-install");
+        const hide = document.getElementById("hide-install");
+        const show = document.getElementById("show-install");
+
+        const showPanel = () => {
+          install.hidden = false;
+          backdrop.hidden = false;
+        };
+
+        const hidePanel = () => {
+          install.hidden = true;
+          backdrop.hidden = true;
+        };
+
+        const fallbackCopy = () => {
+          if (typeof document.execCommand !== "function") {
+            return false;
+          }
+
+          const textArea = document.createElement("textarea");
+          textArea.value = formatCommand;
+          textArea.setAttribute("readonly", "");
+          textArea.className = "screen-reader-only";
+          document.body.appendChild(textArea);
+          textArea.select();
+          const copied = document.execCommand("copy");
+          textArea.remove();
+          return copied;
+        };
+
+        copy.addEventListener("click", async () => {
+          let copied = false;
+          try {
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+              await navigator.clipboard.writeText(formatCommand);
+              copied = true;
+            } else {
+              copied = fallbackCopy();
+            }
+          } catch {
+            copied = fallbackCopy();
+          }
+
+          copy.textContent = copied ? "Copied" : "Copy failed";
+          window.setTimeout(() => {
+            copy.textContent = "Copy";
+          }, 1800);
+        });
+        show.addEventListener("click", (event) => {
+          event.preventDefault();
+          showPanel();
+          window.location.hash = "install";
+        });
+        hide.addEventListener("click", () => {
+          hidePanel();
+        });
+      }
+
+      function setupRangeTabs() {
+        document.querySelectorAll(".range-tab").forEach((tab) => {
+          tab.addEventListener("click", () => {
+            document.querySelectorAll(".range-tab").forEach((item) => item.classList.remove("active"));
+            tab.classList.add("active");
+            document.getElementById("window-label").textContent = tab.dataset.range;
+          });
+        });
+      }
+
+      renderChartScaffold();
+      renderContainers();
+      renderLogs();
+      setupInstallPanel();
+      setupRangeTabs();
+      Object.keys(metricState).forEach(renderSparkline);
+      Object.keys(metricState).forEach(renderChart);
+      tickMetrics();
+      window.setInterval(tickMetrics, 2400);
+      document.getElementById("container-search").addEventListener("input", (event) => {
+        renderContainers(event.target.value);
+      });
+    </script>
+  </body>
+</html>
