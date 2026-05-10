@@ -2699,6 +2699,19 @@ export function WorkspaceShell({
     ? sharedChrome.loadRepositories
     : loadRepositories;
 
+  const handleGithubTokenSaved = useCallback(
+    (payload: { repositories: GitHubRepository[]; tokenConfigured: boolean }) => {
+      setRepositoryState({
+        error: null,
+        hasLoaded: true,
+        isLoading: false,
+        repositories: payload.repositories,
+        tokenConfigured: payload.tokenConfigured,
+      });
+    },
+    [],
+  );
+
   // Repositories are fetched lazily — only when the create-app panel is opened
   // (see handleToggleCreateAppPanel). No auto-fetch on page/view load.
 
@@ -3262,6 +3275,7 @@ export function WorkspaceShell({
         activeViewDescription={activeViewDescription}
         activeViewLabel={activeViewMeta.label}
         activeViewStatusLabel={activeViewStatusLabel}
+        onGithubTokenSavedAction={handleGithubTokenSaved}
         onResetLayoutAction={handleResetLayout}
         title={activeViewTitle}
       />

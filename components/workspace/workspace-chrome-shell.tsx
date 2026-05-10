@@ -334,6 +334,19 @@ export function WorkspaceChromeShell({
     return request;
   }, [repositoryState.hasLoaded, repositoryState.isLoading]);
 
+  const handleGithubTokenSaved = useCallback(
+    (payload: { repositories: GitHubRepository[]; tokenConfigured: boolean }) => {
+      setRepositoryState({
+        error: null,
+        hasLoaded: true,
+        isLoading: false,
+        repositories: payload.repositories,
+        tokenConfigured: payload.tokenConfigured,
+      });
+    },
+    [],
+  );
+
   const registerResetHandler = useCallback((handler: ResetHandler) => {
     resetHandlersRef.current.add(handler);
 
@@ -687,6 +700,7 @@ export function WorkspaceChromeShell({
           activeViewDescription={activeViewDescription}
           activeViewLabel={activeViewMeta.label}
           activeViewStatusLabel={activeViewStatusLabel}
+          onGithubTokenSavedAction={handleGithubTokenSaved}
           onResetLayoutAction={handleResetLayout}
           statusPills={headerStatusPills}
           title={activeViewTitle}
