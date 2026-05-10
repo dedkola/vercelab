@@ -220,7 +220,7 @@ The production path assumes an Ubuntu host. If you do not provide a custom domai
 curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
 ```
 
-The one-liner clones the repository into `/opt/vercelab` and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
+The one-liner proposes `/opt/vercelab` as the clone location and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
 
 For a fully unattended bootstrap, pass configuration as environment variables before the pipe:
 
@@ -243,7 +243,7 @@ If you already have the repository cloned, run the installer directly:
 ./install.sh
 ```
 
-Any runtime variable listed in the configuration section can be exported before running the installer. On later runs, the installer reuses current `.env` values unless you override them again.
+Any runtime variable listed in the configuration section can be exported before running the installer. On later runs, the installer proposes current `.env` values as defaults unless you override them with environment variables.
 
 The installer:
 
@@ -263,7 +263,7 @@ If you later edit `.env`, rerun `./install.sh` so the stack and wildcard certifi
 
 Runtime variables for Ubuntu installs are written to `.env` in the repository root. `install.sh` rewrites that file on each successful run and locks it down with `chmod 600`.
 
-Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/opt/vercelab`:
+Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/opt/vercelab`. During interactive installs, the wizard proposes the default host root, data root, and managed apps directory so you can change them before `.env` is written:
 
 | Path | Purpose |
 | --- | --- |

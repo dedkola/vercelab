@@ -12,9 +12,19 @@ set -euo pipefail
 #   VERCELAB_INSTALL_DIR  – clone target  (default: /opt/vercelab)
 #   VERCELAB_REPO_URL     – repository    (default: https://github.com/dedkola/vercelab)
 if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
-  _install_dir="${VERCELAB_INSTALL_DIR:-/opt/vercelab}"
+  _default_install_dir="/opt/vercelab"
+  _install_dir="${VERCELAB_INSTALL_DIR:-}"
   _repo_url="${VERCELAB_REPO_URL:-https://github.com/dedkola/vercelab}"
   _sudo=()
+
+  if [[ -z "$_install_dir" ]]; then
+    if [[ -t 0 ]]; then
+      read -r -p "Install directory [$_default_install_dir]: " _install_dir || true
+    elif [[ -c /dev/tty ]]; then
+      read -r -p "Install directory [$_default_install_dir]: " _install_dir </dev/tty || true
+    fi
+    _install_dir="${_install_dir:-$_default_install_dir}"
+  fi
 
   if [[ ${EUID} -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
     _sudo=(sudo)
@@ -127,6 +137,19 @@ prompt_with_default() {
   fi
 
   printf '%s' "${input:-$default_value}"
+}
+
+default_path_for_parent() {
+  local existing_value="$1"
+  local existing_parent="$2"
+  local selected_parent="$3"
+  local derived_value="$4"
+
+  if [[ -n "$existing_value" && "$existing_parent" == "$selected_parent" ]]; then
+    printf '%s' "$existing_value"
+  else
+    printf '%s' "$derived_value"
+  fi
 }
 
 prompt_optional_secret() {
@@ -478,7 +501,7 @@ ensure_path_inside_root() {
 }
 
 gather_configuration() {
-  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_influx_explorer_host existing_influx_explorer_url existing_host_root existing_host_lan_ip existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_influx_explorer_data_dir existing_influx_explorer_config_dir existing_influx_explorer_session_secret existing_secret existing_github_token default_base_domain default_host_lan_ip
+  local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_influx_explorer_host existing_influx_explorer_url existing_host_root existing_host_lan_ip existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_influx_explorer_data_dir existing_influx_explorer_config_dir existing_influx_explorer_session_secret existing_secret existing_github_token default_base_domain default_host_lan_ip default_data_root default_apps_dir
 
   existing_node_env="$(read_env_value NODE_ENV)"
   existing_runtime_host="$(read_env_value HOSTNAME)"
@@ -531,19 +554,31 @@ gather_configuration() {
   VERCELAB_INFLUXDB_EXPLORER_HOST="${VERCELAB_INFLUXDB_EXPLORER_HOST:-${existing_influx_explorer_host:-influx.${VERCELAB_BASE_DOMAIN}}}"
   VERCELAB_INFLUXDB_EXPLORER_URL="${VERCELAB_INFLUXDB_EXPLORER_URL:-${existing_influx_explorer_url:-https://${VERCELAB_INFLUXDB_EXPLORER_HOST}}}"
 
-  VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-${existing_host_root:-$DEFAULT_HOST_ROOT}}"
+  VERCELAB_HOST_ROOT="${VERCELAB_HOST_ROOT:-$(prompt_with_default "Host storage root" "${existing_host_root:-$DEFAULT_HOST_ROOT}")}"
   VERCELAB_HOST_LAN_IP="${VERCELAB_HOST_LAN_IP:-${existing_host_lan_ip:-$default_host_lan_ip}}"
 
-  VERCELAB_DATA_ROOT="${VERCELAB_DATA_ROOT:-${existing_data_root:-${VERCELAB_HOST_ROOT}/data}}"
-  VERCELAB_TRAEFIK_DYNAMIC_DIR="${VERCELAB_TRAEFIK_DYNAMIC_DIR:-${existing_dynamic_dir:-${VERCELAB_HOST_ROOT}/traefik/dynamic}}"
-  VERCELAB_TRAEFIK_CERTS_DIR="${VERCELAB_TRAEFIK_CERTS_DIR:-${existing_certs_dir:-${VERCELAB_HOST_ROOT}/traefik/certs}}"
-  VERCELAB_APPS_DIR="${VERCELAB_APPS_DIR:-${existing_apps_dir:-${VERCELAB_DATA_ROOT}/apps}}"
-  VERCELAB_LOGS_DIR="${VERCELAB_LOGS_DIR:-${existing_logs_dir:-${VERCELAB_DATA_ROOT}/logs}}"
-  VERCELAB_LOCKS_DIR="${VERCELAB_LOCKS_DIR:-${existing_locks_dir:-${VERCELAB_DATA_ROOT}/locks}}"
-  VERCELAB_POSTGRES_DATA_DIR="${VERCELAB_POSTGRES_DATA_DIR:-${existing_postgres_data_dir:-${VERCELAB_DATA_ROOT}/postgres}}"
-  VERCELAB_INFLUXDB_DATA_DIR="${VERCELAB_INFLUXDB_DATA_DIR:-${existing_influx_data_dir:-${VERCELAB_DATA_ROOT}/influxdb}}"
-  VERCELAB_INFLUXDB_EXPLORER_DATA_DIR="${VERCELAB_INFLUXDB_EXPLORER_DATA_DIR:-${existing_influx_explorer_data_dir:-${VERCELAB_DATA_ROOT}/influxdb-explorer}}"
-  VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR="${VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR:-${existing_influx_explorer_config_dir:-${VERCELAB_DATA_ROOT}/influxdb-explorer-config}}"
+  if [[ -n "$existing_data_root" && "${existing_host_root:-}" == "$VERCELAB_HOST_ROOT" ]]; then
+    default_data_root="$existing_data_root"
+  else
+    default_data_root="${VERCELAB_HOST_ROOT}/data"
+  fi
+
+  VERCELAB_DATA_ROOT="${VERCELAB_DATA_ROOT:-$(prompt_with_default "Data storage root" "$default_data_root")}"
+  VERCELAB_TRAEFIK_DYNAMIC_DIR="${VERCELAB_TRAEFIK_DYNAMIC_DIR:-$(default_path_for_parent "$existing_dynamic_dir" "${existing_host_root:-}" "$VERCELAB_HOST_ROOT" "${VERCELAB_HOST_ROOT}/traefik/dynamic")}"
+  VERCELAB_TRAEFIK_CERTS_DIR="${VERCELAB_TRAEFIK_CERTS_DIR:-$(default_path_for_parent "$existing_certs_dir" "${existing_host_root:-}" "$VERCELAB_HOST_ROOT" "${VERCELAB_HOST_ROOT}/traefik/certs")}"
+  if [[ -n "$existing_apps_dir" && "${existing_data_root:-}" == "$VERCELAB_DATA_ROOT" ]]; then
+    default_apps_dir="$existing_apps_dir"
+  else
+    default_apps_dir="${VERCELAB_DATA_ROOT}/apps"
+  fi
+
+  VERCELAB_APPS_DIR="${VERCELAB_APPS_DIR:-$(prompt_with_default "Managed apps directory" "$default_apps_dir")}"
+  VERCELAB_LOGS_DIR="${VERCELAB_LOGS_DIR:-$(default_path_for_parent "$existing_logs_dir" "${existing_data_root:-}" "$VERCELAB_DATA_ROOT" "${VERCELAB_DATA_ROOT}/logs")}"
+  VERCELAB_LOCKS_DIR="${VERCELAB_LOCKS_DIR:-$(default_path_for_parent "$existing_locks_dir" "${existing_data_root:-}" "$VERCELAB_DATA_ROOT" "${VERCELAB_DATA_ROOT}/locks")}"
+  VERCELAB_POSTGRES_DATA_DIR="${VERCELAB_POSTGRES_DATA_DIR:-$(default_path_for_parent "$existing_postgres_data_dir" "${existing_data_root:-}" "$VERCELAB_DATA_ROOT" "${VERCELAB_DATA_ROOT}/postgres")}"
+  VERCELAB_INFLUXDB_DATA_DIR="${VERCELAB_INFLUXDB_DATA_DIR:-$(default_path_for_parent "$existing_influx_data_dir" "${existing_data_root:-}" "$VERCELAB_DATA_ROOT" "${VERCELAB_DATA_ROOT}/influxdb")}"
+  VERCELAB_INFLUXDB_EXPLORER_DATA_DIR="${VERCELAB_INFLUXDB_EXPLORER_DATA_DIR:-$(default_path_for_parent "$existing_influx_explorer_data_dir" "${existing_data_root:-}" "$VERCELAB_DATA_ROOT" "${VERCELAB_DATA_ROOT}/influxdb-explorer")}"
+  VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR="${VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR:-$(default_path_for_parent "$existing_influx_explorer_config_dir" "${existing_data_root:-}" "$VERCELAB_DATA_ROOT" "${VERCELAB_DATA_ROOT}/influxdb-explorer-config")}"
 
   VERCELAB_PROXY_NETWORK="${VERCELAB_PROXY_NETWORK:-${existing_proxy_network:-vercelab_proxy}}"
   VERCELAB_PROXY_ENTRYPOINT="${VERCELAB_PROXY_ENTRYPOINT:-${existing_proxy_entrypoint:-websecure}}"
