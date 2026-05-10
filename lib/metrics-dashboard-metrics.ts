@@ -1292,7 +1292,7 @@ export function buildSystemMetricPanels(
         },
       ],
       timestamps,
-      title: "Default host",
+      title: "Host Network",
       tone: "sky",
       variant: "dual-line",
     },

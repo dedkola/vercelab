@@ -65,7 +65,7 @@ describe("buildSystemMetricPanels", () => {
       currentCaption: "enp4s0 default interface",
       primaryLabel: "Download",
       secondaryLabel: "Upload",
-      title: "Default host",
+      title: "Host Network",
     });
     expect(networkPanel?.stats.map((stat) => stat.label)).toEqual([
       "Download",
