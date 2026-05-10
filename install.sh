@@ -2,6 +2,19 @@
 
 set -euo pipefail
 
+default_vercelab_root() {
+  local default_home=""
+
+  if [[ -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]] && command -v getent >/dev/null 2>&1; then
+    default_home="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+  fi
+
+  default_home="${default_home:-${HOME:-}}"
+  default_home="${default_home:-/home/$(id -un)}"
+
+  printf '%s/vercelab' "${default_home%/}"
+}
+
 # ── Remote bootstrap ─────────────────────────────────────────────────────────
 # Triggered when this script is piped through bash (e.g. curl ... | bash)
 # rather than executed from a local file. Clones the repo first, then
@@ -9,10 +22,10 @@ set -euo pipefail
 # all work correctly. Interactive prompts are restored via /dev/tty.
 #
 # Override defaults with env vars before the pipe:
-#   VERCELAB_INSTALL_DIR  – clone target  (default: /opt/vercelab)
+#   VERCELAB_INSTALL_DIR  – clone target  (default: ~/vercelab)
 #   VERCELAB_REPO_URL     – repository    (default: https://github.com/dedkola/vercelab)
 if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
-  _default_install_dir="/opt/vercelab"
+  _default_install_dir="$(default_vercelab_root)"
   _install_dir="${VERCELAB_INSTALL_DIR:-}"
   _repo_url="${VERCELAB_REPO_URL:-https://github.com/dedkola/vercelab}"
   _sudo=()
@@ -74,7 +87,7 @@ readonly PNPM_VERSION="10.33.0"
 readonly DEFAULT_NODE_ENV="production"
 readonly DEFAULT_HOSTNAME="0.0.0.0"
 readonly DEFAULT_PORT="3000"
-readonly DEFAULT_HOST_ROOT="/opt/vercelab"
+readonly DEFAULT_HOST_ROOT="$(default_vercelab_root)"
 
 CONTROL_PLANE_HOSTNAME=""
 

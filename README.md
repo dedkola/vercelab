@@ -116,7 +116,7 @@ For an Ubuntu server install, run a single command:
 curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
 ```
 
-The one-liner clones the repository to `/opt/vercelab` and starts the installer. The installer can derive an `sslip.io` base domain from the server's LAN IP when you do not provide one.
+The one-liner clones the repository to `/home/<username>/vercelab` by default and starts the installer. The installer can derive an `sslip.io` base domain from the server's LAN IP when you do not provide one.
 
 ## Local Development
 
@@ -220,7 +220,7 @@ The production path assumes an Ubuntu host. If you do not provide a custom domai
 curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
 ```
 
-The one-liner proposes `/opt/vercelab` as the clone location and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
+The one-liner proposes `/home/<username>/vercelab` as the clone location and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
 
 For a fully unattended bootstrap, pass configuration as environment variables before the pipe:
 
@@ -251,7 +251,7 @@ The installer:
 - installs host packages required by the bootstrap scripts
 - installs and pins Docker Engine `28.x` plus the Compose plugin because this stack documents Docker `29.x` as incompatible with Traefik's Docker provider
 - runs `pnpm install --frozen-lockfile` and `pnpm run build` as a host-side smoke test
-- creates a shared host root under `/opt/vercelab` by default
+- creates a shared host root under `/home/<username>/vercelab` by default
 - auto-generates a reachable default base domain when one is not provided
 - generates a wildcard self-signed certificate for the base domain
 - writes the runtime `.env` file, including derived paths and runtime settings
@@ -263,20 +263,20 @@ If you later edit `.env`, rerun `./install.sh` so the stack and wildcard certifi
 
 Runtime variables for Ubuntu installs are written to `.env` in the repository root. `install.sh` rewrites that file on each successful run and locks it down with `chmod 600`.
 
-Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/opt/vercelab`. During interactive installs, the wizard proposes the default host root, data root, and managed apps directory so you can change them before `.env` is written:
+Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/home/<username>/vercelab`. During interactive installs, the wizard proposes the default host root, data root, and managed apps directory so you can change them before `.env` is written:
 
 | Path | Purpose |
 | --- | --- |
-| `/opt/vercelab/data/apps` | Cloned deployment repositories and generated compose files. |
-| `/opt/vercelab/data/logs` | Deployment logs. |
-| `/opt/vercelab/data/locks` | Deployment lock files. |
-| `/opt/vercelab/data/postgres` | PostgreSQL data directory. |
-| `/opt/vercelab/data/influxdb` | InfluxDB 3 Core data directory. |
-| `/opt/vercelab/data/influxdb-explorer` | InfluxDB Explorer SQLite data. |
-| `/opt/vercelab/data/influxdb-explorer-config` | Generated Explorer connection config. |
-| `/opt/vercelab/traefik/dynamic/tls.yml` | Traefik TLS dynamic config. |
-| `/opt/vercelab/traefik/certs/wildcard.crt` | Self-signed wildcard certificate. |
-| `/opt/vercelab/traefik/certs/wildcard.key` | Wildcard certificate private key. |
+| `/home/<username>/vercelab/data/apps` | Cloned deployment repositories and generated compose files. |
+| `/home/<username>/vercelab/data/logs` | Deployment logs. |
+| `/home/<username>/vercelab/data/locks` | Deployment lock files. |
+| `/home/<username>/vercelab/data/postgres` | PostgreSQL data directory. |
+| `/home/<username>/vercelab/data/influxdb` | InfluxDB 3 Core data directory. |
+| `/home/<username>/vercelab/data/influxdb-explorer` | InfluxDB Explorer SQLite data. |
+| `/home/<username>/vercelab/data/influxdb-explorer-config` | Generated Explorer connection config. |
+| `/home/<username>/vercelab/traefik/dynamic/tls.yml` | Traefik TLS dynamic config. |
+| `/home/<username>/vercelab/traefik/certs/wildcard.crt` | Self-signed wildcard certificate. |
+| `/home/<username>/vercelab/traefik/certs/wildcard.key` | Wildcard certificate private key. |
 
 Local macOS development stores runtime state under `./data/`:
 
@@ -323,7 +323,7 @@ Important runtime variables:
 | `VERCELAB_HOST_LAN_IP` | auto-derived from host primary LAN IPv4 | Host LAN IPv4 shown in the dashboard and used to tag host metrics. |
 | `VERCELAB_PROXY_NETWORK` | `vercelab_proxy` | Shared Docker network for Traefik and managed apps. |
 | `VERCELAB_PROXY_ENTRYPOINT` | `websecure` | Traefik HTTPS entrypoint. |
-| `VERCELAB_HOST_ROOT` | `/opt/vercelab` | Shared host path mounted into the control-plane container at the same absolute path. |
+| `VERCELAB_HOST_ROOT` | `/home/<username>/vercelab` | Shared host path mounted into the control-plane container at the same absolute path. |
 | `VERCELAB_DATA_ROOT` | `${VERCELAB_HOST_ROOT}/data` | Parent directory for apps, logs, locks, and databases. |
 | `VERCELAB_TRAEFIK_DYNAMIC_DIR` | `${VERCELAB_HOST_ROOT}/traefik/dynamic` | Generated Traefik dynamic config location. |
 | `VERCELAB_TRAEFIK_CERTS_DIR` | `${VERCELAB_HOST_ROOT}/traefik/certs` | Wildcard certificate and key. |
