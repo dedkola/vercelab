@@ -180,6 +180,8 @@ export function ContainersMainContent({
 }: ContainersMainContentProps) {
   const [isEnvOpen, setIsEnvOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const inspectEnvVars = inspectData?.envVars ?? [];
+  const inspectPortBindings = inspectData?.portBindings ?? [];
 
   const [editName, setEditName] = useState("");
   const [editImage, setEditImage] = useState("");
@@ -207,11 +209,11 @@ export function ContainersMainContent({
           ? "tcp"
           : inspectData.traefikPort
             ? "http"
-            : inspectData.portBindings.length > 0
+            : inspectPortBindings.length > 0
               ? "host"
               : "internal",
       );
-      setEditEnvVars(inspectData.envVars.map((v) => ({ ...v })));
+      setEditEnvVars(inspectEnvVars.map((v) => ({ ...v })));
       setAvailableTags([]);
       setTagsError(null);
     }
@@ -384,7 +386,7 @@ export function ContainersMainContent({
             >
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Environment Variables
-                {inspectData ? ` (${inspectData.envVars.length})` : null}
+                {inspectData ? ` (${inspectEnvVars.length})` : null}
               </span>
               <span className="text-muted-foreground">{isEnvOpen ? "▲" : "▼"}</span>
             </button>
@@ -393,7 +395,7 @@ export function ContainersMainContent({
               <div className="border-t border-border/60 px-3 pb-3 pt-2">
                 {inspectLoading ? (
                   <p className="py-2 text-xs text-muted-foreground">Loading…</p>
-                ) : inspectData?.envVars.length ? (
+                ) : inspectEnvVars.length ? (
                   <div className="overflow-auto rounded-md border border-border/60">
                     <table className="w-full text-xs">
                       <thead>
@@ -407,7 +409,7 @@ export function ContainersMainContent({
                         </tr>
                       </thead>
                       <tbody>
-                        {inspectData.envVars.map(({ key, value }) => (
+                        {inspectEnvVars.map(({ key, value }) => (
                           <tr
                             className="border-b border-border/40 last:border-0 odd:bg-muted/8"
                             key={key}

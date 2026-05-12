@@ -1,18 +1,26 @@
 # =========================
 # Dependencies stage
 # =========================
-FROM node:22.13-bookworm-slim AS deps
+ARG NODE_IMAGE=node:24-bookworm-slim
+ARG PNPM_VERSION=11.1.1
+ARG COREPACK_VERSION=0.34.7
+
+FROM ${NODE_IMAGE} AS deps
+
+ARG PNPM_VERSION
+ARG COREPACK_VERSION
 
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Enable Corepack and pin pnpm explicitly (IMPORTANT FIX)
-RUN corepack enable \
- && corepack prepare pnpm@11.1.0 --activate
+# Refresh Corepack's signing keys before preparing newer pnpm releases.
+RUN npm install -g corepack@${COREPACK_VERSION} \
+ && corepack enable \
+ && corepack prepare pnpm@${PNPM_VERSION} --activate
 
-# Copy only dependency files first (better cache)
-COPY package.json pnpm-lock.yaml ./
+# Copy only dependency/config files first (better cache)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # System deps (only in deps stage)
 RUN apt-get update \
@@ -26,15 +34,19 @@ RUN pnpm install --frozen-lockfile
 # =========================
 # Builder stage
 # =========================
-FROM node:22.13-bookworm-slim AS builder
+FROM ${NODE_IMAGE} AS builder
+
+ARG PNPM_VERSION
+ARG COREPACK_VERSION
 
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Keep pnpm consistent
-RUN corepack enable \
- && corepack prepare pnpm@11.1.0 --activate
+RUN npm install -g corepack@${COREPACK_VERSION} \
+ && corepack enable \
+ && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 # Bring dependencies
 COPY --from=deps /app/node_modules ./node_modules
@@ -52,7 +64,7 @@ RUN pnpm prune --prod
 # =========================
 # Runner stage
 # =========================
-FROM node:22.13-bookworm-slim AS runner
+FROM ${NODE_IMAGE} AS runner
 
 WORKDIR /app
 

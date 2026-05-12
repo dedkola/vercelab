@@ -170,7 +170,6 @@ function useStoredPanelWidth(
       return;
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWidth(clamp(parsedWidth, minWidth, maxWidth));
   }, [key, maxWidth, minWidth]);
 
