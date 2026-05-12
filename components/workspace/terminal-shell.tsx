@@ -129,6 +129,12 @@ export function TerminalShell() {
     });
   }, [lines]);
 
+  useEffect(() => {
+    if (!isRunning && cwd) {
+      inputRef.current?.focus();
+    }
+  }, [cwd, isRunning]);
+
   async function runCommand(nextCommand: string) {
     const trimmedCommand = nextCommand.trim();
 
@@ -200,7 +206,6 @@ export function TerminalShell() {
       ]);
     } finally {
       setIsRunning(false);
-      window.setTimeout(() => inputRef.current?.focus(), 0);
     }
   }
 
@@ -280,11 +285,12 @@ export function TerminalShell() {
             </span>
             <input
               aria-label="Terminal command"
+              aria-disabled={isRunning || !cwd}
               autoComplete="off"
               className="min-w-0 flex-1 border-0 bg-transparent text-zinc-50 outline-none placeholder:text-zinc-600"
-              disabled={isRunning || !cwd}
               onChange={(event) => setCommand(event.target.value)}
               onKeyDown={handleKeyDown}
+              readOnly={isRunning || !cwd}
               ref={inputRef}
               spellCheck={false}
               value={command}
