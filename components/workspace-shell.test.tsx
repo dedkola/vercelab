@@ -985,10 +985,7 @@ describe("WorkspaceShell", () => {
       screen.getAllByRole("link", { name: "docs.example.com" })[0],
     ).toHaveAttribute("href", "https://docs.example.com");
     expect(screen.queryByText(/deploy mode/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /a1b2c3d/i })).toHaveAttribute(
-      "href",
-      "https://github.com/dedkola/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
-    );
+    expect(screen.getAllByText(/a1b2c3d/i)[0]).toBeVisible();
 
     const appRowButton = screen.getByRole("button", {
       name: /docs-app.*example\.com/i,

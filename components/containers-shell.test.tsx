@@ -189,7 +189,7 @@ describe("ContainersShell", () => {
     const aliasInput = await screen.findByLabelText(/label/i);
     await user.clear(aliasInput);
     await user.type(aliasInput, "Platform UI");
-    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    await user.click(screen.getByRole("button", { name: /save label/i }));
 
     expect(
       window.localStorage.getItem("vercelab:containers-friendly-labels"),
