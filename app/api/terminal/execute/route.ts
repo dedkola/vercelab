@@ -28,8 +28,8 @@ type TerminalTarget = "container" | "host";
 
 function getShell() {
   return process.env.SHELL && path.isAbsolute(process.env.SHELL)
-    ? process.env.SHELL
-    : "/bin/bash";
+      ? process.env.SHELL
+      : "/bin/bash";
 }
 
 function shellQuote(value: string) {
@@ -37,9 +37,9 @@ function shellQuote(value: string) {
 }
 
 function appendOutput(
-  current: string,
-  chunk: Buffer,
-  onClip: () => void,
+    current: string,
+    chunk: Buffer,
+    onClip: () => void,
 ) {
   const next = current + chunk.toString("utf8");
 
@@ -53,9 +53,9 @@ function appendOutput(
 
 async function resolveWorkingDirectory(value: unknown) {
   const requested =
-    typeof value === "string" && value.trim().length > 0
-      ? value.trim()
-      : process.cwd();
+      typeof value === "string" && value.trim().length > 0
+          ? value.trim()
+          : process.cwd();
   const resolved = path.resolve(requested);
   const info = await stat(resolved);
 
@@ -70,9 +70,9 @@ async function resolveWorkingDirectory(value: unknown) {
 
 function resolveHostWorkingDirectory(value: unknown) {
   const requested =
-    typeof value === "string" && value.trim().length > 0
-      ? value.trim()
-      : (process.env.VERCELAB_HOST_ROOT ?? "/");
+      typeof value === "string" && value.trim().length > 0
+          ? value.trim()
+          : (process.env.VERCELAB_HOST_ROOT ?? "/");
 
   return path.posix.resolve("/", requested);
 }
@@ -98,10 +98,10 @@ async function readUbuntuName() {
   try {
     const release = await readFile("/etc/os-release", "utf8");
     const prettyName = release
-      .split("\n")
-      .find((line) => line.startsWith("PRETTY_NAME="))
-      ?.replace("PRETTY_NAME=", "")
-      .replace(/^"|"$/g, "");
+        .split("\n")
+        .find((line) => line.startsWith("PRETTY_NAME="))
+        ?.replace("PRETTY_NAME=", "")
+        .replace(/^"|"$/g, "");
 
     return prettyName ?? null;
   } catch {
@@ -124,12 +124,12 @@ async function getTerminalTarget(): Promise<TerminalTarget> {
 }
 
 function runProcess(
-  executable: string,
-  args: string[],
-  options?: {
-    input?: string;
-    timeoutMs?: number;
-  },
+    executable: string,
+    args: string[],
+    options?: {
+      input?: string;
+      timeoutMs?: number;
+    },
 ): Promise<{
   code: number | null;
   stderr: string;
@@ -215,11 +215,11 @@ async function getHostTerminalImage() {
 
   const containerId = await readSelfContainerId();
   const inspected = await runProcess(
-    "docker",
-    ["inspect", "--format", "{{.Config.Image}}", containerId],
-    {
-      timeoutMs: 5000,
-    },
+      "docker",
+      ["inspect", "--format", "{{.Config.Image}}", containerId],
+      {
+        timeoutMs: 5000,
+      },
   );
   const image = inspected.stdout.trim();
 
@@ -228,13 +228,13 @@ async function getHostTerminalImage() {
   }
 
   throw new Error(
-    "Unable to resolve the control-plane image for host terminal access. Set VERCELAB_HOST_TERMINAL_IMAGE.",
+      "Unable to resolve the control-plane image for host terminal access. Set VERCELAB_HOST_TERMINAL_IMAGE.",
   );
 }
 
 function stripMarkers(stdout: string, token: string) {
   const exitPattern = new RegExp(
-    `\\n?__VERCELAB_${token}_EXIT__:(\\d+)\\n?`,
+      `\\n?__VERCELAB_${token}_EXIT__:(\\d+)\\n?`,
   );
   const cwdPattern = new RegExp(`__VERCELAB_${token}_CWD__:(.*)\\n?`);
   const exitMatch = stdout.match(exitPattern);
@@ -273,9 +273,9 @@ async function buildHostDockerArgs() {
 }
 
 async function runCommand(
-  command: string,
-  cwd: string,
-  target: TerminalTarget,
+    command: string,
+    cwd: string,
+    target: TerminalTarget,
 ): Promise<RunCommandResult> {
   const executable = target === "host" ? "docker" : getShell();
   const args = target === "host" ? await buildHostDockerArgs() : ["-s"];
@@ -352,72 +352,86 @@ async function runCommand(
     });
 
     child.stdin.end(
-      [
-        `export TERM=${shellQuote(TERMINAL_TYPE)}`,
-        "export COLORTERM=truecolor",
-        "export COLUMNS=${COLUMNS:-120}",
-        "export LINES=${LINES:-40}",
-        `cd ${shellQuote(cwd)} || exit 127`,
-        "set +e",
-        command,
-        "__vercelab_status=$?",
-        `printf '\\n__VERCELAB_${token}_EXIT__:%s\\n' "$__vercelab_status"`,
-        `printf '__VERCELAB_${token}_CWD__:%s\\n' "$PWD"`,
-      ].join("\n"),
+        [
+          `export TERM=${shellQuote(TERMINAL_TYPE)}`,
+          "export COLORTERM=truecolor",
+          "export COLUMNS=${COLUMNS:-120}",
+          "export LINES=${LINES:-40}",
+          `cd ${shellQuote(cwd)} || exit 127`,
+          "set +e",
+          command,
+          "__vercelab_status=$?",
+          `printf '\\n__VERCELAB_${token}_EXIT__:%s\\n' "$__vercelab_status"`,
+          `printf '__VERCELAB_${token}_CWD__:%s\\n' "$PWD"`,
+        ].join("\n"),
     );
   });
 }
 
 export async function GET() {
-  const target = await getTerminalTarget();
+  try {
+    const target = await getTerminalTarget();
 
-  if (target === "host") {
-    const cwd = resolveHostWorkingDirectory(undefined);
-    const info = await runCommand(
-      [
-        "printf '__VERCELAB_INFO_USER__:%s\\n' \"$(id -un 2>/dev/null || printf root)\"",
-        "printf '__VERCELAB_INFO_HOST__:%s\\n' \"$(hostname 2>/dev/null || printf host)\"",
-        "printf '__VERCELAB_INFO_OS__:%s\\n' \"$(. /etc/os-release 2>/dev/null && printf \"%s\" \"$PRETTY_NAME\" || uname -sr)\"",
-        "printf '__VERCELAB_INFO_ARCH__:%s\\n' \"$(uname -m 2>/dev/null || printf unknown)\"",
-      ].join("\n"),
-      cwd,
-      target,
-    );
-    const readInfo = (key: string) =>
-      info.stdout.match(new RegExp(`__VERCELAB_INFO_${key}__:(.*)`))?.[1] ??
-      "";
+    if (target === "host") {
+      const cwd = resolveHostWorkingDirectory(undefined);
+      const info = await runCommand(
+          [
+            "printf '__VERCELAB_INFO_USER__:%s\\n' \"$(id -un 2>/dev/null || printf root)\"",
+            "printf '__VERCELAB_INFO_HOST__:%s\\n' \"$(hostname 2>/dev/null || printf host)\"",
+            "printf '__VERCELAB_INFO_OS__:%s\\n' \"$(. /etc/os-release 2>/dev/null && printf \"%s\" \"$PRETTY_NAME\" || uname -sr)\"",
+            "printf '__VERCELAB_INFO_ARCH__:%s\\n' \"$(uname -m 2>/dev/null || printf unknown)\"",
+          ].join("\n"),
+          cwd,
+          target,
+      );
+      const readInfo = (key: string) =>
+          info.stdout.match(new RegExp(`__VERCELAB_INFO_${key}__:(.*)`))?.[1] ??
+          "";
+
+      return Response.json({
+        arch: readInfo("ARCH") || os.arch(),
+        cwd: info.cwd,
+        hostname: readInfo("HOST") || "host",
+        osName: readInfo("OS") || "Ubuntu host",
+        platform: "linux",
+        shell: HOST_SHELL,
+        target,
+        username: readInfo("USER") || "root",
+      });
+    }
+
+    const username = (() => {
+      try {
+        return os.userInfo().username;
+      } catch {
+        return process.env.USER ?? "server";
+      }
+    })();
+    const osName = (await readUbuntuName()) ?? `${os.type()} ${os.release()}`;
 
     return Response.json({
-      arch: readInfo("ARCH") || os.arch(),
-      cwd: info.cwd,
-      hostname: readInfo("HOST") || "host",
-      osName: readInfo("OS") || "Ubuntu host",
-      platform: "linux",
-      shell: HOST_SHELL,
+      arch: os.arch(),
+      cwd: process.cwd(),
+      hostname: os.hostname(),
+      osName,
+      platform: os.platform(),
+      shell: getShell(),
       target,
-      username: readInfo("USER") || "root",
+      username,
     });
+  } catch (error) {
+    return Response.json(
+        {
+          error:
+              error instanceof Error && error.message.trim().length > 0
+                  ? error.message
+                  : "Unable to open host shell.",
+        },
+        {
+          status: 503,
+        },
+    );
   }
-
-  const username = (() => {
-    try {
-      return os.userInfo().username;
-    } catch {
-      return process.env.USER ?? "server";
-    }
-  })();
-  const osName = (await readUbuntuName()) ?? `${os.type()} ${os.release()}`;
-
-  return Response.json({
-    arch: os.arch(),
-    cwd: process.cwd(),
-    hostname: os.hostname(),
-    osName,
-    platform: os.platform(),
-    shell: getShell(),
-    target,
-    username,
-  });
 }
 
 export async function POST(request: Request) {
@@ -429,46 +443,46 @@ export async function POST(request: Request) {
 
   if (command.trim().length === 0) {
     return Response.json(
-      {
-        error: "Command is required.",
-      },
-      {
-        status: 400,
-      },
+        {
+          error: "Command is required.",
+        },
+        {
+          status: 400,
+        },
     );
   }
 
   if (command.length > MAX_COMMAND_LENGTH) {
     return Response.json(
-      {
-        error: `Command is limited to ${MAX_COMMAND_LENGTH} characters.`,
-      },
-      {
-        status: 400,
-      },
+        {
+          error: `Command is limited to ${MAX_COMMAND_LENGTH} characters.`,
+        },
+        {
+          status: 400,
+        },
     );
   }
 
   try {
     const target = await getTerminalTarget();
     const cwd =
-      target === "host"
-        ? resolveHostWorkingDirectory(body?.cwd)
-        : await resolveWorkingDirectory(body?.cwd);
+        target === "host"
+            ? resolveHostWorkingDirectory(body?.cwd)
+            : await resolveWorkingDirectory(body?.cwd);
     const result = await runCommand(command, cwd, target);
 
     return Response.json(result);
   } catch (error) {
     return Response.json(
-      {
-        error:
-          error instanceof Error && error.message.trim().length > 0
-            ? error.message
-            : "Unable to execute command.",
-      },
-      {
-        status: 400,
-      },
+        {
+          error:
+              error instanceof Error && error.message.trim().length > 0
+                  ? error.message
+                  : "Unable to execute command.",
+        },
+        {
+          status: 400,
+        },
     );
   }
 }

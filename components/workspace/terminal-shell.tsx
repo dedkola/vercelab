@@ -25,20 +25,24 @@ type TerminalHost = {
   username: string;
 };
 
+type TerminalHostError = {
+  error?: string;
+};
+
 type TerminalMessage =
-  | {
-      data: string;
-      type: "error" | "output";
-    }
-  | {
-      target: "container" | "host";
-      type: "ready";
-    }
-  | {
-      exitCode: number;
-      signal?: number;
-      type: "exit";
-    };
+    | {
+  data: string;
+  type: "error" | "output";
+}
+    | {
+  target: "container" | "host";
+  type: "ready";
+}
+    | {
+  exitCode: number;
+  signal?: number;
+  type: "exit";
+};
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 
@@ -54,8 +58,8 @@ function buildTerminalWebSocketUrl(host: TerminalHost | null) {
   url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
   if (
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
   ) {
     url.port = process.env.NEXT_PUBLIC_TERMINAL_WS_PORT ?? "3001";
   }
@@ -92,7 +96,7 @@ function parseTerminalMessage(data: MessageEvent["data"]) {
 
 export function TerminalShell() {
   const [connectionStatus, setConnectionStatus] =
-    useState<ConnectionStatus>("connecting");
+      useState<ConnectionStatus>("connecting");
   const [host, setHost] = useState<TerminalHost | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -126,11 +130,11 @@ export function TerminalShell() {
 
     if (webSocket?.readyState === WebSocket.OPEN) {
       webSocket.send(
-        JSON.stringify({
-          cols: terminal.cols,
-          rows: terminal.rows,
-          type: "resize",
-        }),
+          JSON.stringify({
+            cols: terminal.cols,
+            rows: terminal.rows,
+            type: "resize",
+          }),
       );
     }
   }, []);
@@ -182,7 +186,7 @@ export function TerminalShell() {
     webSocket.addEventListener("close", () => {
       if (webSocketRef.current === webSocket) {
         setConnectionStatus((current) =>
-          current === "error" ? current : "disconnected",
+            current === "error" ? current : "disconnected",
         );
       }
     });
@@ -201,14 +205,15 @@ export function TerminalShell() {
         const response = await fetch("/api/terminal/execute", {
           cache: "no-store",
         });
-        const payload = (await response.json()) as TerminalHost;
+        const text = await response.text();
+        const payload = text ? (JSON.parse(text) as TerminalHostError) : null;
 
         if (!response.ok) {
-          throw new Error("Unable to open host shell.");
+          throw new Error(payload?.error ?? "Unable to open host shell.");
         }
 
         if (isActive) {
-          setHost(payload);
+          setHost(payload as TerminalHost);
         }
       } catch (error) {
         if (!isActive) {
@@ -217,7 +222,7 @@ export function TerminalShell() {
 
         setConnectionStatus("error");
         terminalRef.current?.writeln(
-          error instanceof Error ? error.message : "Unable to open host shell.",
+            error instanceof Error ? error.message : "Unable to open host shell.",
         );
       }
     }
@@ -239,7 +244,7 @@ export function TerminalShell() {
       convertEol: true,
       cursorBlink: true,
       fontFamily:
-        'var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+          'var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize: 13,
       scrollback: 5000,
       theme: {
@@ -273,10 +278,10 @@ export function TerminalShell() {
 
       if (webSocket?.readyState === WebSocket.OPEN) {
         webSocket.send(
-          JSON.stringify({
-            data,
-            type: "input",
-          }),
+            JSON.stringify({
+              data,
+              type: "input",
+            }),
         );
       }
     });
@@ -342,113 +347,113 @@ export function TerminalShell() {
   }
 
   return (
-    <div className="flex min-w-0 flex-1 overflow-hidden bg-background/70">
-      <main className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col border-r border-border/70 bg-zinc-950">
-          <div
-            className="min-h-0 flex-1 overflow-hidden px-3 py-3"
-            ref={terminalElementRef}
-          />
-        </div>
-      </main>
+      <div className="flex min-w-0 flex-1 overflow-hidden bg-background/70">
+        <main className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col border-r border-border/70 bg-zinc-950">
+            <div
+                className="min-h-0 flex-1 overflow-hidden px-3 py-3"
+                ref={terminalElementRef}
+            />
+          </div>
+        </main>
 
-      <aside className="hidden w-72 shrink-0 flex-col border-l border-border/70 bg-background/88 lg:flex">
-        <div className="border-b border-border/70 px-4 py-3">
-          <div className="text-xs font-semibold tracking-tight text-foreground">
-            Host terminal
+        <aside className="hidden w-72 shrink-0 flex-col border-l border-border/70 bg-background/88 lg:flex">
+          <div className="border-b border-border/70 px-4 py-3">
+            <div className="text-xs font-semibold tracking-tight text-foreground">
+              Host terminal
+            </div>
+            <div className="mt-1 truncate text-[11px] text-muted-foreground">
+              {host ? `${host.username}@${host.hostname}` : "Connecting"}
+            </div>
           </div>
-          <div className="mt-1 truncate text-[11px] text-muted-foreground">
-            {host ? `${host.username}@${host.hostname}` : "Connecting"}
-          </div>
-        </div>
 
-        <div className="space-y-4 px-4 py-4 text-xs">
-          <div>
-            <div className="text-[11px] font-medium text-muted-foreground">
-              System
+          <div className="space-y-4 px-4 py-4 text-xs">
+            <div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                System
+              </div>
+              <div className="mt-1 leading-5 text-foreground">
+                {host?.osName ?? "Loading"}
+              </div>
             </div>
-            <div className="mt-1 leading-5 text-foreground">
-              {host?.osName ?? "Loading"}
+            <div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                Shell
+              </div>
+              <div className="mt-1 break-all font-mono text-[11px] leading-5 text-foreground">
+                {host?.shell ?? "..."}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                Target
+              </div>
+              <div className="mt-1 text-foreground">
+                {host?.target === "host" ? "Ubuntu host" : "Current process"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                Status
+              </div>
+              <div className="mt-1 text-foreground">{statusLabel}</div>
             </div>
           </div>
-          <div>
-            <div className="text-[11px] font-medium text-muted-foreground">
-              Shell
-            </div>
-            <div className="mt-1 break-all font-mono text-[11px] leading-5 text-foreground">
-              {host?.shell ?? "..."}
-            </div>
-          </div>
-          <div>
-            <div className="text-[11px] font-medium text-muted-foreground">
-              Target
-            </div>
-            <div className="mt-1 text-foreground">
-              {host?.target === "host" ? "Ubuntu host" : "Current process"}
-            </div>
-          </div>
-          <div>
-            <div className="text-[11px] font-medium text-muted-foreground">
-              Status
-            </div>
-            <div className="mt-1 text-foreground">{statusLabel}</div>
-          </div>
-        </div>
 
-        <div className="mt-auto space-y-2 border-t border-border/70 p-3">
-          <Button
-            className="w-full justify-center"
-            disabled={!hasSelection}
-            onClick={handleCopySelection}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
-            Copy selection
-          </Button>
-          <Button
-            className="w-full justify-center"
-            onClick={handleCopyOutput}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
-            Copy output
-          </Button>
-          <Button
-            className="w-full justify-center"
-            onClick={connectTerminal}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <PlugZap className="h-3.5 w-3.5" aria-hidden="true" />
-            Reconnect
-          </Button>
-          <Button
-            className="w-full justify-center"
-            onClick={() => terminalRef.current?.clear()}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Clear
-          </Button>
-          <Button
-            className="w-full justify-center"
-            onClick={sendResize}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-            Fit
-          </Button>
-        </div>
-      </aside>
-    </div>
+          <div className="mt-auto space-y-2 border-t border-border/70 p-3">
+            <Button
+                className="w-full justify-center"
+                disabled={!hasSelection}
+                onClick={handleCopySelection}
+                size="sm"
+                type="button"
+                variant="secondary"
+            >
+              <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
+              Copy selection
+            </Button>
+            <Button
+                className="w-full justify-center"
+                onClick={handleCopyOutput}
+                size="sm"
+                type="button"
+                variant="secondary"
+            >
+              <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
+              Copy output
+            </Button>
+            <Button
+                className="w-full justify-center"
+                onClick={connectTerminal}
+                size="sm"
+                type="button"
+                variant="secondary"
+            >
+              <PlugZap className="h-3.5 w-3.5" aria-hidden="true" />
+              Reconnect
+            </Button>
+            <Button
+                className="w-full justify-center"
+                onClick={() => terminalRef.current?.clear()}
+                size="sm"
+                type="button"
+                variant="secondary"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Clear
+            </Button>
+            <Button
+                className="w-full justify-center"
+                onClick={sendResize}
+                size="sm"
+                type="button"
+                variant="secondary"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              Fit
+            </Button>
+          </div>
+        </aside>
+      </div>
   );
 }

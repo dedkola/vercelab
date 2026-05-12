@@ -78,12 +78,14 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        docker.io \
         git \
         util-linux \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Next.js standalone output (recommended)
 COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
