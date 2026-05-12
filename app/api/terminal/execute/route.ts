@@ -12,6 +12,7 @@ const COMMAND_TIMEOUT_MS = 30000;
 const MAX_COMMAND_LENGTH = 4000;
 const MAX_OUTPUT_CHARS = 60000;
 const HOST_SHELL = "/bin/bash";
+const TERMINAL_TYPE = "xterm-256color";
 
 type RunCommandResult = {
   clipped: boolean;
@@ -291,7 +292,7 @@ async function runCommand(
       cwd: target === "host" ? process.cwd() : cwd,
       env: {
         ...process.env,
-        TERM: process.env.TERM ?? "xterm-256color",
+        TERM: process.env.TERM ?? TERMINAL_TYPE,
       },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -352,6 +353,10 @@ async function runCommand(
 
     child.stdin.end(
       [
+        `export TERM=${shellQuote(TERMINAL_TYPE)}`,
+        "export COLORTERM=truecolor",
+        "export COLUMNS=${COLUMNS:-120}",
+        "export LINES=${LINES:-40}",
         `cd ${shellQuote(cwd)} || exit 127`,
         "set +e",
         command,

@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Trash2 } from "lucide-react";
+import { Clipboard, Play, Trash2 } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,10 @@ export function TerminalShell() {
   const outputRef = useRef<HTMLDivElement | null>(null);
 
   const prompt = useMemo(() => getPrompt(host, cwd || "~"), [cwd, host]);
+  const terminalOutput = useMemo(
+    () => lines.map((line) => line.text).join("\n\n"),
+    [lines],
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -249,14 +254,26 @@ export function TerminalShell() {
     }
   }
 
+  async function handleCopyOutput() {
+    if (!terminalOutput.trim()) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(terminalOutput);
+      toast.success("Terminal output copied");
+    } catch {
+      toast.error("Unable to copy terminal output");
+    }
+  }
+
   return (
     <div className="flex min-w-0 flex-1 overflow-hidden bg-background/70">
       <main className="flex min-w-0 flex-1 flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r border-border/70">
           <div
             ref={outputRef}
-            className="min-h-0 flex-1 overflow-auto bg-zinc-950 px-4 py-4 font-mono text-[12px] leading-5 text-zinc-100 shadow-inner"
-            onClick={() => inputRef.current?.focus()}
+            className="min-h-0 flex-1 select-text overflow-auto bg-zinc-950 px-4 py-4 font-mono text-[12px] leading-5 text-zinc-100 shadow-inner"
           >
             <div className="space-y-2">
               {lines.map((line) => (
@@ -354,6 +371,17 @@ export function TerminalShell() {
         </div>
 
         <div className="mt-auto border-t border-border/70 p-3">
+          <Button
+            className="mb-2 w-full justify-center"
+            disabled={!terminalOutput.trim()}
+            onClick={handleCopyOutput}
+            size="sm"
+            type="button"
+            variant="secondary"
+          >
+            <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
+            Copy output
+          </Button>
           <Button
             className="w-full justify-center"
             onClick={() => setLines([])}
