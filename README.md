@@ -44,14 +44,14 @@ Vercelab turns an Ubuntu box or local Docker host into a deployment cockpit for 
 
 ## Highlights
 
-| Capability | What it does |
-| --- | --- |
-| GitHub deployments | Browse repositories, select branches, clone source, and deploy root `Dockerfile` or compose projects. |
-| Self-hosted routing | Places managed apps on a shared Docker network and exposes them through Traefik host rules. |
-| Metrics dashboard | Tracks live host load, per-container CPU/memory/disk/network panels, and InfluxDB time-series history. |
+| Capability           | What it does                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| GitHub deployments   | Browse repositories, select branches, clone source, and deploy root `Dockerfile` or compose projects.        |
+| Self-hosted routing  | Places managed apps on a shared Docker network and exposes them through Traefik host rules.                  |
+| Metrics dashboard    | Tracks live host load, per-container CPU/memory/disk/network panels, and InfluxDB time-series history.       |
 | Containers workspace | Full container inventory with inspect, logs, recreation, and catalog-based creation for all host containers. |
-| Safe runtime state | Stores repositories, deployments, and operations in PostgreSQL with encrypted GitHub tokens. |
-| Ubuntu bootstrap | Installs host prerequisites, pins Docker Engine 28.x, creates TLS assets, and starts the stack. |
+| Safe runtime state   | Stores repositories, deployments, and operations in PostgreSQL with encrypted GitHub tokens.                 |
+| Ubuntu bootstrap     | Installs host prerequisites, pins Docker Engine 28.x, creates TLS assets, and starts the stack.              |
 
 ## Architecture
 
@@ -70,16 +70,16 @@ flowchart LR
 
 ## Stack
 
-| Layer | Technology |
-| --- | --- |
-| Web app | Next.js 16 App Router, React 19, TypeScript |
-| UI | Tailwind CSS 4, shadcn-style components, Radix UI, Lucide icons |
-| Charts | ECharts via the local dashboard components |
-| Persistence | PostgreSQL for control-plane state |
-| Metrics | InfluxDB 3 Core plus InfluxDB Explorer |
-| Runtime | Docker, Docker Compose, Traefik |
-| Validation | Zod, TypeScript, ESLint, Vitest |
-| Package manager | pnpm 10 |
+| Layer           | Technology                                                      |
+| --------------- | --------------------------------------------------------------- |
+| Web app         | Next.js 16 App Router, React 19, TypeScript                     |
+| UI              | Tailwind CSS 4, shadcn-style components, Radix UI, Lucide icons |
+| Charts          | ECharts via the local dashboard components                      |
+| Persistence     | PostgreSQL for control-plane state                              |
+| Metrics         | InfluxDB 3 Core plus InfluxDB Explorer                          |
+| Runtime         | Docker, Docker Compose, Traefik                                 |
+| Validation      | Zod, TypeScript, ESLint, Vitest                                 |
+| Package manager | pnpm 10                                                         |
 
 ## Screenshots
 
@@ -140,13 +140,13 @@ Start infrastructure:
 pnpm run dev:infra
 ```
 
-| Service | URL |
-| --- | --- |
-| App | `http://localhost:3000` |
-| Postgres | `localhost:5432` |
-| InfluxDB API | `http://localhost:8181` |
+| Service           | URL                       |
+| ----------------- | ------------------------- |
+| App               | `http://localhost:3000`   |
+| Postgres          | `localhost:5432`          |
+| InfluxDB API      | `http://localhost:8181`   |
 | InfluxDB Explorer | `http://influx.localhost` |
-| Traefik dashboard | `http://localhost:8088` |
+| Traefik dashboard | `http://localhost:8088`   |
 
 Stop local infrastructure:
 
@@ -158,27 +158,27 @@ pnpm run dev:infra:down
 
 The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment inside Docker. Open the repository in VS Code and choose **Reopen in Container**, or run **Dev Containers: Reopen in Container** from the command palette.
 
-| Resource | Host macOS stack | Devcontainer |
-| --- | --- | --- |
-| Docker network | `vercelab_dev_proxy` | `vercelab_devcontainer_net` |
-| Postgres host port | `localhost:5432` | not exposed |
-| InfluxDB host port | `localhost:8181` | not exposed |
-| InfluxDB Explorer | `http://influx.localhost` | `http://localhost:8888` |
-| Traefik | `:80`, dashboard `:8088` | none |
+| Resource           | Host macOS stack          | Devcontainer                |
+| ------------------ | ------------------------- | --------------------------- |
+| Docker network     | `vercelab_dev_proxy`      | `vercelab_devcontainer_net` |
+| Postgres host port | `localhost:5432`          | not exposed                 |
+| InfluxDB host port | `localhost:8181`          | not exposed                 |
+| InfluxDB Explorer  | `http://influx.localhost` | `http://localhost:8888`     |
+| Traefik            | `:80`, dashboard `:8088`  | none                        |
 
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm run setup-env` | Generate a local `.env.local` file. |
-| `pnpm run dev:infra` | Start local Postgres, InfluxDB, Explorer, and Traefik. |
-| `pnpm run dev:infra:down` | Stop the local infrastructure stack. |
-| `pnpm run dev` | Start the Next.js dev server. |
-| `pnpm run build` | Build the production app. |
-| `pnpm run start` | Start the built app. |
-| `pnpm run lint` | Run ESLint. |
-| `pnpm run test` | Run Vitest in watch mode. |
-| `pnpm run test:run` | Run Vitest once. |
+| Command                   | Purpose                                                |
+| ------------------------- | ------------------------------------------------------ |
+| `pnpm run setup-env`      | Generate a local `.env.local` file.                    |
+| `pnpm run dev:infra`      | Start local Postgres, InfluxDB, Explorer, and Traefik. |
+| `pnpm run dev:infra:down` | Stop the local infrastructure stack.                   |
+| `pnpm run dev`            | Start the Next.js dev server.                          |
+| `pnpm run build`          | Build the production app.                              |
+| `pnpm run start`          | Start the built app.                                   |
+| `pnpm run lint`           | Run ESLint.                                            |
+| `pnpm run test`           | Run Vitest in watch mode.                              |
+| `pnpm run test:run`       | Run Vitest once.                                       |
 
 ## Deployment Flow
 
@@ -265,18 +265,18 @@ Runtime variables for Ubuntu installs are written to `.env` in the repository ro
 
 Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/home/<username>/vercelab`. During interactive installs, the wizard proposes the default host root, data root, and managed apps directory so you can change them before `.env` is written:
 
-| Path | Purpose |
-| --- | --- |
-| `/home/<username>/vercelab/data/apps` | Cloned deployment repositories and generated compose files. |
-| `/home/<username>/vercelab/data/logs` | Deployment logs. |
-| `/home/<username>/vercelab/data/locks` | Deployment lock files. |
-| `/home/<username>/vercelab/data/postgres` | PostgreSQL data directory. |
-| `/home/<username>/vercelab/data/influxdb` | InfluxDB 3 Core data directory. |
-| `/home/<username>/vercelab/data/influxdb-explorer` | InfluxDB Explorer SQLite data. |
-| `/home/<username>/vercelab/data/influxdb-explorer-config` | Generated Explorer connection config. |
-| `/home/<username>/vercelab/traefik/dynamic/tls.yml` | Traefik TLS dynamic config. |
-| `/home/<username>/vercelab/traefik/certs/wildcard.crt` | Self-signed wildcard certificate. |
-| `/home/<username>/vercelab/traefik/certs/wildcard.key` | Wildcard certificate private key. |
+| Path                                                      | Purpose                                                     |
+| --------------------------------------------------------- | ----------------------------------------------------------- |
+| `/home/<username>/vercelab/data/apps`                     | Cloned deployment repositories and generated compose files. |
+| `/home/<username>/vercelab/data/logs`                     | Deployment logs.                                            |
+| `/home/<username>/vercelab/data/locks`                    | Deployment lock files.                                      |
+| `/home/<username>/vercelab/data/postgres`                 | PostgreSQL data directory.                                  |
+| `/home/<username>/vercelab/data/influxdb`                 | InfluxDB 3 Core data directory.                             |
+| `/home/<username>/vercelab/data/influxdb-explorer`        | InfluxDB Explorer SQLite data.                              |
+| `/home/<username>/vercelab/data/influxdb-explorer-config` | Generated Explorer connection config.                       |
+| `/home/<username>/vercelab/traefik/dynamic/tls.yml`       | Traefik TLS dynamic config.                                 |
+| `/home/<username>/vercelab/traefik/certs/wildcard.crt`    | Self-signed wildcard certificate.                           |
+| `/home/<username>/vercelab/traefik/certs/wildcard.key`    | Wildcard certificate private key.                           |
 
 Local macOS development stores runtime state under `./data/`:
 
@@ -295,76 +295,76 @@ The devcontainer uses named Docker volumes instead of host-bind mounts.
 
 Important runtime variables:
 
-| Variable | Purpose |
-| --- | --- |
-| `VERCELAB_BASE_DOMAIN` | Wildcard domain for deployed apps, such as `myhomelan.com`. |
-| `VERCELAB_ADMIN_HOST` | Full hostname for the control plane, such as `vercelab.myhomelan.com`. |
-| `VERCELAB_HOST_ROOT` | Shared absolute host path mounted into the app container at the same path. |
-| `VERCELAB_APPS_DIR` | Managed clone and generated compose directory. |
-| `VERCELAB_LOGS_DIR` | Deployment log directory. |
-| `VERCELAB_LOCKS_DIR` | Deployment lock directory. |
-| `VERCELAB_POSTGRES_DATA_DIR` | PostgreSQL data directory. |
-| `VERCELAB_INFLUXDB_DATA_DIR` | InfluxDB data directory. |
-| `VERCELAB_DOCKER_SOCKET_PATH` | Docker socket passed through to Traefik and the control plane. |
-| `VERCELAB_PROXY_NETWORK` | Shared Docker network used by Traefik and deployed apps. |
-| `VERCELAB_ENCRYPTION_SECRET` | Secret used to encrypt stored GitHub tokens. |
-| `VERCELAB_GITHUB_TOKEN` | Optional workspace GitHub token for repository browsing. |
+| Variable                      | Purpose                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| `VERCELAB_BASE_DOMAIN`        | Wildcard domain for deployed apps, such as `myhomelan.com`.                |
+| `VERCELAB_ADMIN_HOST`         | Full hostname for the control plane, such as `vercelab.myhomelan.com`.     |
+| `VERCELAB_HOST_ROOT`          | Shared absolute host path mounted into the app container at the same path. |
+| `VERCELAB_APPS_DIR`           | Managed clone and generated compose directory.                             |
+| `VERCELAB_LOGS_DIR`           | Deployment log directory.                                                  |
+| `VERCELAB_LOCKS_DIR`          | Deployment lock directory.                                                 |
+| `VERCELAB_POSTGRES_DATA_DIR`  | PostgreSQL data directory.                                                 |
+| `VERCELAB_INFLUXDB_DATA_DIR`  | InfluxDB data directory.                                                   |
+| `VERCELAB_DOCKER_SOCKET_PATH` | Docker socket passed through to Traefik and the control plane.             |
+| `VERCELAB_PROXY_NETWORK`      | Shared Docker network used by Traefik and deployed apps.                   |
+| `VERCELAB_ENCRYPTION_SECRET`  | Secret used to encrypt stored GitHub tokens.                               |
+| `VERCELAB_GITHUB_TOKEN`       | Optional workspace GitHub token for repository browsing.                   |
 
 <details>
 <summary>Default runtime variables written by the installer</summary>
 
-| Variable | Default | Notes |
-| --- | --- | --- |
-| `NODE_ENV` | `production` | Runtime mode for the control plane container. |
-| `HOSTNAME` | `0.0.0.0` | Bind address inside the container. |
-| `PORT` | `3000` | Internal port Traefik forwards to. |
-| `VERCELAB_BASE_DOMAIN` | auto-derived from host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps. |
-| `VERCELAB_ADMIN_HOST` | `vercelab.${VERCELAB_BASE_DOMAIN}` | Control plane hostname. |
-| `VERCELAB_HOST_LAN_IP` | auto-derived from host primary LAN IPv4 | Host LAN IPv4 shown in the dashboard and used to tag host metrics. |
-| `VERCELAB_PROXY_NETWORK` | `vercelab_proxy` | Shared Docker network for Traefik and managed apps. |
-| `VERCELAB_PROXY_ENTRYPOINT` | `websecure` | Traefik HTTPS entrypoint. |
-| `VERCELAB_HOST_ROOT` | `/home/<username>/vercelab` | Shared host path mounted into the control-plane container at the same absolute path. |
-| `VERCELAB_DATA_ROOT` | `${VERCELAB_HOST_ROOT}/data` | Parent directory for apps, logs, locks, and databases. |
-| `VERCELAB_TRAEFIK_DYNAMIC_DIR` | `${VERCELAB_HOST_ROOT}/traefik/dynamic` | Generated Traefik dynamic config location. |
-| `VERCELAB_TRAEFIK_CERTS_DIR` | `${VERCELAB_HOST_ROOT}/traefik/certs` | Wildcard certificate and key. |
-| `VERCELAB_APPS_DIR` | `${VERCELAB_DATA_ROOT}/apps` | Cloned app repositories. |
-| `VERCELAB_LOGS_DIR` | `${VERCELAB_DATA_ROOT}/logs` | Deployment logs. |
-| `VERCELAB_LOCKS_DIR` | `${VERCELAB_DATA_ROOT}/locks` | Deployment lock files. |
-| `VERCELAB_POSTGRES_DATA_DIR` | `${VERCELAB_DATA_ROOT}/postgres` | PostgreSQL data directory. |
-| `VERCELAB_INFLUXDB_DATA_DIR` | `${VERCELAB_DATA_ROOT}/influxdb` | InfluxDB 3 Core data directory. |
-| `VERCELAB_INFLUXDB_EXPLORER_DATA_DIR` | `${VERCELAB_DATA_ROOT}/influxdb-explorer` | InfluxDB Explorer SQLite data directory. |
-| `VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR` | `${VERCELAB_DATA_ROOT}/influxdb-explorer-config` | Generated Explorer connection config directory. |
-| `VERCELAB_DOCKER_SOCKET_PATH` | `/var/run/docker.sock` | Host Docker socket passed into Traefik and the control plane. |
-| `VERCELAB_DATABASE_PROVIDER` | `postgres` | PostgreSQL is required in this stack. |
-| `VERCELAB_POSTGRES_URL` | `postgres://vercelab:...@postgres:5432/vercelab` | Control-plane relational database connection URL. |
-| `VERCELAB_POSTGRES_USER` | `vercelab` | Postgres container username. |
-| `VERCELAB_POSTGRES_PASSWORD` | generated by installer | Postgres container password. |
-| `VERCELAB_POSTGRES_DB` | `vercelab` | Postgres database name. |
-| `VERCELAB_INFLUXDB_URL` | `http://influxdb:8181` | InfluxDB 3 Core write endpoint. |
-| `VERCELAB_INFLUXDB_DATABASE` | `vercelab_metrics` | InfluxDB database for metrics. |
-| `VERCELAB_INFLUXDB_EXPLORER_HOST` | `influx.${VERCELAB_BASE_DOMAIN}` | Public Explorer hostname routed through Traefik. |
-| `VERCELAB_INFLUXDB_EXPLORER_URL` | `https://${VERCELAB_INFLUXDB_EXPLORER_HOST}` | Canonical Explorer URL surfaced in the UI. |
-| `VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET` | generated by installer | Explorer session key for persistent sessions. |
-| `VERCELAB_INFLUXDB_TOKEN` | generated by installer when empty | InfluxDB API token used for authenticated write/query access. |
-| `VERCELAB_INFLUXDB_RETENTION_DAYS` | `90` | Desired metrics retention period. |
-| `VERCELAB_ENCRYPTION_SECRET` | generated 64-hex-character secret when unset | Used to encrypt stored GitHub tokens. |
+| Variable                                    | Default                                                                  | Notes                                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `NODE_ENV`                                  | `production`                                                             | Runtime mode for the control plane container.                                        |
+| `HOSTNAME`                                  | `0.0.0.0`                                                                | Bind address inside the container.                                                   |
+| `PORT`                                      | `3000`                                                                   | Internal port Traefik forwards to.                                                   |
+| `VERCELAB_BASE_DOMAIN`                      | auto-derived from host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps.                                              |
+| `VERCELAB_ADMIN_HOST`                       | `vercelab.${VERCELAB_BASE_DOMAIN}`                                       | Control plane hostname.                                                              |
+| `VERCELAB_HOST_LAN_IP`                      | auto-derived from host primary LAN IPv4                                  | Host LAN IPv4 shown in the dashboard and used to tag host metrics.                   |
+| `VERCELAB_PROXY_NETWORK`                    | `vercelab_proxy`                                                         | Shared Docker network for Traefik and managed apps.                                  |
+| `VERCELAB_PROXY_ENTRYPOINT`                 | `websecure`                                                              | Traefik HTTPS entrypoint.                                                            |
+| `VERCELAB_HOST_ROOT`                        | `/home/<username>/vercelab`                                              | Shared host path mounted into the control-plane container at the same absolute path. |
+| `VERCELAB_DATA_ROOT`                        | `${VERCELAB_HOST_ROOT}/data`                                             | Parent directory for apps, logs, locks, and databases.                               |
+| `VERCELAB_TRAEFIK_DYNAMIC_DIR`              | `${VERCELAB_HOST_ROOT}/traefik/dynamic`                                  | Generated Traefik dynamic config location.                                           |
+| `VERCELAB_TRAEFIK_CERTS_DIR`                | `${VERCELAB_HOST_ROOT}/traefik/certs`                                    | Wildcard certificate and key.                                                        |
+| `VERCELAB_APPS_DIR`                         | `${VERCELAB_DATA_ROOT}/apps`                                             | Cloned app repositories.                                                             |
+| `VERCELAB_LOGS_DIR`                         | `${VERCELAB_DATA_ROOT}/logs`                                             | Deployment logs.                                                                     |
+| `VERCELAB_LOCKS_DIR`                        | `${VERCELAB_DATA_ROOT}/locks`                                            | Deployment lock files.                                                               |
+| `VERCELAB_POSTGRES_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/postgres`                                         | PostgreSQL data directory.                                                           |
+| `VERCELAB_INFLUXDB_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/influxdb`                                         | InfluxDB 3 Core data directory.                                                      |
+| `VERCELAB_INFLUXDB_EXPLORER_DATA_DIR`       | `${VERCELAB_DATA_ROOT}/influxdb-explorer`                                | InfluxDB Explorer SQLite data directory.                                             |
+| `VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR`     | `${VERCELAB_DATA_ROOT}/influxdb-explorer-config`                         | Generated Explorer connection config directory.                                      |
+| `VERCELAB_DOCKER_SOCKET_PATH`               | `/var/run/docker.sock`                                                   | Host Docker socket passed into Traefik and the control plane.                        |
+| `VERCELAB_DATABASE_PROVIDER`                | `postgres`                                                               | PostgreSQL is required in this stack.                                                |
+| `VERCELAB_POSTGRES_URL`                     | `postgres://vercelab:...@postgres:5432/vercelab`                         | Control-plane relational database connection URL.                                    |
+| `VERCELAB_POSTGRES_USER`                    | `vercelab`                                                               | Postgres container username.                                                         |
+| `VERCELAB_POSTGRES_PASSWORD`                | generated by installer                                                   | Postgres container password.                                                         |
+| `VERCELAB_POSTGRES_DB`                      | `vercelab`                                                               | Postgres database name.                                                              |
+| `VERCELAB_INFLUXDB_URL`                     | `http://influxdb:8181`                                                   | InfluxDB 3 Core write endpoint.                                                      |
+| `VERCELAB_INFLUXDB_DATABASE`                | `vercelab_metrics`                                                       | InfluxDB database for metrics.                                                       |
+| `VERCELAB_INFLUXDB_EXPLORER_HOST`           | `influx.${VERCELAB_BASE_DOMAIN}`                                         | Public Explorer hostname routed through Traefik.                                     |
+| `VERCELAB_INFLUXDB_EXPLORER_URL`            | `https://${VERCELAB_INFLUXDB_EXPLORER_HOST}`                             | Canonical Explorer URL surfaced in the UI.                                           |
+| `VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET` | generated by installer                                                   | Explorer session key for persistent sessions.                                        |
+| `VERCELAB_INFLUXDB_TOKEN`                   | generated by installer when empty                                        | InfluxDB API token used for authenticated write/query access.                        |
+| `VERCELAB_INFLUXDB_RETENTION_DAYS`          | `90`                                                                     | Desired metrics retention period.                                                    |
+| `VERCELAB_ENCRYPTION_SECRET`                | generated 64-hex-character secret when unset                             | Used to encrypt stored GitHub tokens.                                                |
 
 </details>
 
 ## Runtime Files
 
-| File | Role |
-| --- | --- |
-| `.env.example` | Template for the production stack. |
-| `.env.local` | Local macOS dev environment generated by `pnpm run setup-env`; gitignored. |
-| `.env` | Generated production runtime configuration written by `install.sh`; gitignored. |
-| `docker-compose.yml` | Production stack: Traefik, Postgres, InfluxDB, Explorer, and control plane. |
-| `docker-compose.dev.yml` | Local macOS infrastructure stack without the control-plane container. |
-| `.devcontainer/docker-compose.yml` | Fully isolated VS Code devcontainer stack. |
-| `scripts/setup-env.sh` | Interactive `.env.local` generator. |
-| `Dockerfile` | Standalone Next.js production image with Git and Docker CLI tooling. |
-| `install.sh` | Ubuntu bootstrapper for Docker, TLS assets, and the control-plane stack. |
-| `uninstall.sh` | Removal script with `--purge`, `--purge-images`, and `--all` cleanup modes. |
+| File                               | Role                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| `.env.example`                     | Template for the production stack.                                              |
+| `.env.local`                       | Local macOS dev environment generated by `pnpm run setup-env`; gitignored.      |
+| `.env`                             | Generated production runtime configuration written by `install.sh`; gitignored. |
+| `docker-compose.yml`               | Production stack: Traefik, Postgres, InfluxDB, Explorer, and control plane.     |
+| `docker-compose.dev.yml`           | Local macOS infrastructure stack without the control-plane container.           |
+| `.devcontainer/docker-compose.yml` | Fully isolated VS Code devcontainer stack.                                      |
+| `scripts/setup-env.sh`             | Interactive `.env.local` generator.                                             |
+| `Dockerfile`                       | Standalone Next.js production image with Git and Docker CLI tooling.            |
+| `install.sh`                       | Ubuntu bootstrapper for Docker, TLS assets, and the control-plane stack.        |
+| `uninstall.sh`                     | Removal script with `--purge`, `--purge-images`, and `--all` cleanup modes.     |
 
 ## Health and Readiness
 
@@ -394,6 +394,13 @@ Rebuild and recreate only the UI container:
 
 ```bash
 docker compose up -d --build --no-deps control-plane
+```
+
+or
+
+```bash
+docker compose build --no-cache control-plane
+docker compose up -d --force-recreate --no-deps control-plane
 ```
 
 Force a recreate without rebuilding:
