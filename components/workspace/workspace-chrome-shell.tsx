@@ -1,6 +1,13 @@
 "use client";
 
-import { Activity, Box, GitBranch, Home, type LucideIcon } from "lucide-react";
+import {
+  Activity,
+  Box,
+  GitBranch,
+  Home,
+  Terminal,
+  type LucideIcon,
+} from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
@@ -89,6 +96,12 @@ const WORKSPACE_PAGES: Array<{
     id: "containers",
     label: "Containers",
   },
+  {
+    description: "Host terminal for this server",
+    iconComponent: Terminal,
+    id: "terminal",
+    label: "Terminal",
+  },
 ];
 
 const WorkspaceChromeContext =
@@ -154,6 +167,8 @@ function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
       ? "/git-app-page"
       : view === "containers"
         ? "/containers"
+        : view === "terminal"
+          ? "/terminal"
         : "/";
 
   if (range === "15m") {
@@ -260,6 +275,8 @@ export function WorkspaceChromeShell({
       ? "git-app-page"
       : pathname === "/containers"
         ? "containers"
+        : pathname === "/terminal"
+          ? "terminal"
         : "dashboard";
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
@@ -644,18 +661,24 @@ export function WorkspaceChromeShell({
       ? "Metrics dashboard"
       : activeView === "git-app-page"
         ? "Git App Page"
+        : activeView === "terminal"
+          ? "Host terminal"
         : "Containers";
   const activeViewDescription =
     activeView === "dashboard"
       ? "Live host and container observability inside the shared workspace shell."
       : activeView === "git-app-page"
         ? "Create, review, and edit live deployments in the same shared workspace shell."
+        : activeView === "terminal"
+          ? "Host shell for the Ubuntu server running this control plane."
         : "Runtime inventory, protected system services, and per-container log inspection.";
   const activeViewStatusLabel =
     activeView === "dashboard"
       ? "Live runtime"
       : activeView === "git-app-page"
         ? "Live deployments"
+        : activeView === "terminal"
+          ? "Host shell"
         : "Live containers";
   const hostMetricsProps = {
     isCollapsed: isMetricsCollapsed,

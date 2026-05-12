@@ -28,6 +28,8 @@ function getWorkspaceRailHref(view: WorkspaceView) {
   const pathname =
     view === "dashboard"
       ? "/"
+      : view === "terminal"
+        ? "/terminal"
       : view === "git-app-page"
         ? "/git-app-page"
         : "/containers";

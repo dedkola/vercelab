@@ -67,7 +67,11 @@ import type { ExposureMode } from "@/lib/validation";
 export type MetricTone = "emerald" | "amber" | "slate";
 export type PreviewContainerStatus = "running" | "degraded" | "idle";
 export type DashboardLogView = "live" | "events" | "alerts";
-export type WorkspaceView = "dashboard" | "git-app-page" | "containers";
+export type WorkspaceView =
+  | "dashboard"
+  | "git-app-page"
+  | "containers"
+  | "terminal";
 
 export type MetricCard = {
   title: string;

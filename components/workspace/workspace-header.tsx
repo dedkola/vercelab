@@ -1,6 +1,7 @@
 "use client";
 
-import { Settings, ShieldCheck } from "lucide-react";
+import { Settings, ShieldCheck, Terminal } from "lucide-react";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -136,6 +137,17 @@ export function WorkspaceHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <Button
+          aria-label="Open terminal"
+          asChild
+          className="h-8 w-8 rounded-full px-0"
+          size="icon"
+          variant="ghost"
+        >
+          <Link href="/terminal">
+            <Terminal className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </Button>
         <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
           <PopoverTrigger asChild>
             <Button
