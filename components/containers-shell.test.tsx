@@ -184,7 +184,9 @@ describe("ContainersShell", () => {
       />,
     );
 
-    const aliasInput = await screen.findByLabelText(/^label$/i);
+    await user.click(await screen.findByRole("button", { name: /edit container/i }));
+
+    const aliasInput = await screen.findByLabelText(/label/i);
     await user.clear(aliasInput);
     await user.type(aliasInput, "Platform UI");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
@@ -240,7 +242,7 @@ describe("ContainersShell", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /^add$/i }));
+    await user.click(screen.getByRole("button", { name: /add new container/i }));
     await user.clear(screen.getByLabelText(/container image reference/i));
     await user.type(
       screen.getByLabelText(/container image reference/i),

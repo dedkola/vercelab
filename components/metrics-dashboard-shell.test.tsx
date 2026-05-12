@@ -435,7 +435,7 @@ describe("MetricsDashboardShell", () => {
     expect(screen.queryByText(/^fleet cpu$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^fleet memory$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^fleet network$/i)).not.toBeInTheDocument();
-    expect(screen.getAllByTestId("echart-surface").length).toBe(7);
+    expect(screen.getAllByTestId("echart-surface").length).toBe(8);
   });
 
   it("avoids an immediate duplicate fetch after hydration and polls the light payload", async () => {

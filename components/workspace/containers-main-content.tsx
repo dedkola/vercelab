@@ -451,45 +451,43 @@ export function ContainersMainContent({
 
             {isEditOpen ? (
               <div className="space-y-4 border-t border-border/60 px-3 pb-3 pt-3">
+                {/* Label saves locally and remains available for protected containers. */}
+                <div className="space-y-1.5">
+                  <label
+                    className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
+                    htmlFor="edit-label"
+                  >
+                    Label
+                    <span className="ml-1.5 rounded bg-muted/50 px-1 py-0.5 text-[10px] normal-case tracking-normal text-muted-foreground">
+                      saved locally
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      className="h-8 flex-1 text-sm"
+                      disabled={!inventoryMeta.canEditAlias}
+                      id="edit-label"
+                      onChange={(e) => onAliasDraftChangeAction(e.target.value)}
+                      value={aliasDraft}
+                    />
+                    <Button
+                      disabled={!inventoryMeta.canEditAlias || !runtimeEntry}
+                      onClick={onAliasSaveAction}
+                      size="xs"
+                      type="button"
+                      variant="secondary"
+                    >
+                      Save label
+                    </Button>
+                  </div>
+                </div>
+
                 {inventoryMeta.kind === "system" ? (
                   <p className="rounded-md border border-amber-300/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
                     System containers cannot be edited or recreated from this page.
                   </p>
                 ) : (
                   <>
-                    {/* Label — saves without recreate */}
-                    <div className="space-y-1.5">
-                      <label
-                        className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
-                        htmlFor="edit-label"
-                      >
-                        Label
-                        <span className="ml-1.5 rounded bg-muted/50 px-1 py-0.5 text-[10px] normal-case tracking-normal text-muted-foreground">
-                          saved locally
-                        </span>
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          className="h-8 flex-1 text-sm"
-                          disabled={!inventoryMeta.canEditAlias}
-                          id="edit-label"
-                          onChange={(e) =>
-                            onAliasDraftChangeAction(e.target.value)
-                          }
-                          value={aliasDraft}
-                        />
-                        <Button
-                          disabled={!inventoryMeta.canEditAlias || !runtimeEntry}
-                          onClick={onAliasSaveAction}
-                          size="xs"
-                          type="button"
-                          variant="secondary"
-                        >
-                          Save label
-                        </Button>
-                      </div>
-                    </div>
-
                     <hr className="border-border/60" />
 
                     {/* Fields that require recreate */}

@@ -2398,7 +2398,7 @@ export function WorkspaceShell({
 
     const shouldPollImmediately = hasMountedLivePollingRef.current
       ? true
-      : !(initialSnapshot && initialHistory.length > 0);
+      : activeView !== "dashboard" || !(initialSnapshot && initialHistory.length > 0);
 
     hasMountedLivePollingRef.current = true;
     scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);

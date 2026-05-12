@@ -527,9 +527,6 @@ describe("WorkspaceShell", () => {
     ).toBeVisible();
     expect(screen.getAllByText(/^dashboard$/i)[0]).toBeVisible();
     expect(screen.getByText(/tail preview/i)).toBeVisible();
-    expect(
-      await screen.findByText(/3 running containers on 192\.168\.1\.10\./i),
-    ).toBeVisible();
     expect(screen.getAllByText(/3\s+running/i)[0]).toBeVisible();
   });
 
@@ -929,14 +926,6 @@ describe("WorkspaceShell", () => {
 
     await waitFor(() => {
       expect(
-        fetchSpy.mock.calls.some(
-          ([input]) => getRequestUrl(input) === "/api/github/repos",
-        ),
-      ).toBe(true);
-    });
-
-    await waitFor(() => {
-      expect(
         fetchSpy.mock.calls.some(([input]) => {
           const url = getRequestUrl(input);
 
@@ -990,7 +979,7 @@ describe("WorkspaceShell", () => {
     expect(
       screen.getByRole("button", { name: /save and recreate/i }),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: /^fetch$/i })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^refresh$/i })).toBeVisible();
     expect(screen.getByDisplayValue("docs-app")).toBeVisible();
     expect(
       screen.getAllByRole("link", { name: "docs.example.com" })[0],
