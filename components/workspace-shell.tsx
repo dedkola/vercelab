@@ -3094,6 +3094,8 @@ export function WorkspaceShell({
     appName: deploymentDisplayNames.get(deployment.id) ?? deployment.appName,
     domain: formatDeploymentDomain(deployment, baseDomain),
     dotClassName: getDeploymentStatusDotClassName(deployment.status),
+    exposureMode: deployment.exposureMode ?? "http",
+    hostPort: deployment.hostPort ?? null,
     id: deployment.id,
     isActive: deployment.id === selectedAppId,
     relativeUpdatedAt: formatRelativeTime(deployment.updatedAt),

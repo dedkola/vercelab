@@ -1,12 +1,18 @@
 "use client";
 
 import type { FormEvent, MouseEvent as ReactMouseEvent } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Search,
+  type LucideIcon,
+} from "lucide-react";
 
 import type {
   DraftAppState,
   RepositoryState,
 } from "@/components/workspace-shell";
-import { Icon } from "@/components/dashboard-kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -19,6 +25,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import type { ExposureMode } from "@/lib/validation";
 
 import { ResizeHandle, SectionLabel } from "./workspace-ui";
 
@@ -32,6 +39,8 @@ type GitAppPageListItem = {
   appName: string;
   domain: string;
   dotClassName: string;
+  exposureMode?: ExposureMode;
+  hostPort: number | null;
   id: string;
   isActive: boolean;
   relativeUpdatedAt: string;
@@ -68,10 +77,73 @@ type GitAppPageLeftSidebarProps = {
   totalAppsCount: number;
 };
 
-function formatSidebarAppStatusLabel(
+function getStatusDotClassName(
   statusVariant: GitAppPageListItem["statusVariant"],
 ) {
-  return statusVariant === "success" ? "Up" : "Dn";
+  switch (statusVariant) {
+    case "success":
+      return "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.14)]";
+    case "warning":
+      return "bg-amber-500 shadow-[0_0_0_3px_rgba(245,158,11,0.16)]";
+    default:
+      return "bg-slate-400 shadow-[0_0_0_3px_rgba(100,116,139,0.13)]";
+  }
+}
+
+function getAppMetaLabel(deployment: GitAppPageListItem) {
+  if (deployment.exposureMode === "internal") {
+    return "No public route";
+  }
+
+  if (
+    (deployment.exposureMode === "tcp" || deployment.exposureMode === "host") &&
+    deployment.hostPort
+  ) {
+    return `Host port ${deployment.hostPort}`;
+  }
+
+  return deployment.domain || "No public route";
+}
+
+function getAppFreshnessLabel(deployment: GitAppPageListItem) {
+  return deployment.relativeUpdatedAt === "Unknown"
+    ? "Updated unknown"
+    : `Updated ${deployment.relativeUpdatedAt}`;
+}
+
+function getAppExposureLabel(deployment: GitAppPageListItem) {
+  switch (deployment.exposureMode) {
+    case "tcp":
+      return "tcp";
+    case "host":
+      return "host";
+    case "internal":
+      return null;
+    case "http":
+    default:
+      return deployment.domain ? "routed" : null;
+  }
+}
+
+function SidebarIconBox({
+  icon: IconComponent,
+  isActive,
+}: {
+  icon: LucideIcon;
+  isActive?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+        isActive
+          ? "border-emerald-200/90 bg-background/90 text-emerald-700"
+          : "border-border/70 bg-background/70 text-muted-foreground group-hover:text-foreground",
+      )}
+    >
+      <IconComponent aria-hidden="true" className="size-4" />
+    </span>
+  );
 }
 
 export function GitAppPageLeftSidebar({
@@ -118,28 +190,28 @@ export function GitAppPageLeftSidebar({
         className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
         style={{ width: `${listWidth}px` }}
       >
-        <div className="space-y-3 border-b border-border/60 px-3 py-3">
+        <div className="flex flex-col gap-3 border-b border-border/60 px-3 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               <SectionLabel icon="github" text="Git App Page" />
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <Badge className="h-6 border-emerald-200/80 bg-emerald-50/90 px-2 text-[11px] text-emerald-700">
                 {liveAppsCount} live
               </Badge>
-              <Badge className="border-border/60 bg-background/80 text-foreground">
+              <Badge className="h-6 border-border/60 bg-background/80 px-2 text-[11px] text-foreground">
                 {totalAppsCount} apps
               </Badge>
             </div>
           </div>
           <div className="relative">
-            <Icon
-              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-              name="search"
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               aria-label="Search apps"
-              className="h-10 rounded-2xl bg-background/80 pl-9 shadow-[0_18px_42px_-30px_rgba(15,23,42,0.22)]"
+              className="h-9 rounded-lg border-border/70 bg-background/90 pl-9 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.24)]"
               onChange={(event) =>
                 onAppSearchQueryChangeAction(event.target.value)
               }
@@ -150,22 +222,42 @@ export function GitAppPageLeftSidebar({
         </div>
 
         <ScrollArea className="h-full">
-          <div className="space-y-3 p-3">
-            <div className="overflow-hidden rounded-[1.2rem] border border-border/70 bg-background/92 shadow-[0_18px_46px_-40px_rgba(15,23,42,0.24)]">
+          <div className="flex flex-col gap-3 p-3">
+            <div
+              className={cn(
+                "overflow-hidden rounded-lg border transition-all duration-200",
+                isCreateAppExpanded
+                  ? "border-emerald-300/80 bg-emerald-50/55 shadow-[0_18px_44px_-36px_rgba(5,150,105,0.35)]"
+                  : "border-transparent bg-transparent hover:border-border/70 hover:bg-background/80",
+              )}
+            >
               <button
-                className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left"
+                className="group flex w-full items-center justify-between gap-3 py-2.5 pl-3 pr-4 text-left"
                 onClick={onToggleCreateAppAction}
                 type="button"
               >
-                <div>
-                  <div className="text-sm font-semibold tracking-tight text-foreground">
-                    Add Git app
+                <div className="flex min-w-0 items-center gap-3">
+                  <SidebarIconBox icon={Plus} isActive={isCreateAppExpanded} />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+                      Add Git app
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                      Deploy from repository
+                    </div>
                   </div>
                 </div>
-                <Icon
-                  className="h-4 w-4 text-muted-foreground"
-                  name={isCreateAppExpanded ? "chevron-down" : "chevron-right"}
-                />
+                {isCreateAppExpanded ? (
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                ) : (
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                )}
               </button>
 
               {isCreateAppExpanded ? (
@@ -360,46 +452,67 @@ export function GitAppPageLeftSidebar({
               ) : null}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="flex flex-col gap-1.5">
               {appItems.length ? (
-                appItems.map((deployment) => (
-                  <button
-                    aria-label={`${deployment.appName} ${deployment.domain} ${deployment.statusLabel}`}
-                    className={cn(
-                      "w-full rounded-md border px-2.5 py-1.5 text-left transition-colors duration-200",
-                      deployment.isActive
-                        ? "border-emerald-300/80 bg-emerald-50/75"
-                        : "border-border/70 bg-background/85 hover:bg-muted/55",
-                    )}
-                    key={deployment.id}
-                    onClick={() => onSelectAppAction(deployment.id)}
-                    type="button"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
-                        {deployment.appName}
-                      </span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.08em]",
-                          deployment.statusVariant === "success"
-                            ? "text-emerald-700"
-                            : deployment.statusVariant === "warning"
-                              ? "text-amber-700"
-                              : "text-muted-foreground",
-                        )}
-                      >
+                appItems.map((deployment) => {
+                  const exposureLabel = getAppExposureLabel(deployment);
+
+                  return (
+                    <button
+                      aria-label={`${deployment.appName} ${deployment.domain} ${deployment.statusLabel} ${deployment.relativeUpdatedAt}`}
+                      className={cn(
+                        "group w-full overflow-hidden rounded-lg border px-3 py-2.5 text-left transition-all duration-200",
+                        deployment.isActive
+                          ? "border-emerald-300/80 bg-emerald-50/80 shadow-[0_18px_44px_-36px_rgba(5,150,105,0.38)]"
+                          : "border-transparent bg-transparent hover:border-border/70 hover:bg-background/80",
+                      )}
+                      key={deployment.id}
+                      onClick={() => onSelectAppAction(deployment.id)}
+                      type="button"
+                    >
+                      <div className="flex items-start gap-3">
                         <span
                           className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            deployment.dotClassName,
+                            "mt-1.5 size-2 shrink-0 rounded-full",
+                            getStatusDotClassName(deployment.statusVariant),
                           )}
                         />
-                        {formatSidebarAppStatusLabel(deployment.statusVariant)}
-                      </span>
-                    </div>
-                  </button>
-                ))
+                        <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="min-w-0 truncate text-sm font-medium tracking-tight text-foreground">
+                              {deployment.appName}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                            {getAppMetaLabel(deployment)}
+                          </span>
+                          <span className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+                            <span className="truncate rounded-md border border-border/60 bg-background/75 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                              {getAppFreshnessLabel(deployment)}
+                            </span>
+                            <span
+                              className={cn(
+                                "truncate rounded-md border px-1.5 py-0.5 text-[11px] font-medium",
+                                deployment.statusVariant === "success"
+                                  ? "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"
+                                  : deployment.statusVariant === "warning"
+                                    ? "border-amber-200/80 bg-amber-50/80 text-amber-700"
+                                    : "border-border/60 bg-background/75 text-muted-foreground",
+                              )}
+                            >
+                              {deployment.statusLabel}
+                            </span>
+                            {exposureLabel ? (
+                              <span className="truncate rounded-md border border-sky-200/70 bg-sky-50/80 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
+                                {exposureLabel}
+                              </span>
+                            ) : null}
+                          </span>
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
               ) : (
                 <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-6 text-sm text-muted-foreground">
                   No apps match the current filter.
