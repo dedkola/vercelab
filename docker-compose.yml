@@ -125,6 +125,7 @@ services:
       VERCELAB_HOST_PROC_PATH: ${VERCELAB_HOST_PROC_PATH:-/host/proc}
       VERCELAB_TERMINAL_TARGET: ${VERCELAB_TERMINAL_TARGET:-host}
       VERCELAB_HOST_TERMINAL_IMAGE: ${VERCELAB_HOST_TERMINAL_IMAGE:-}
+      VERCELAB_TERMINAL_WS_PORT: ${VERCELAB_TERMINAL_WS_PORT:-3001}
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,6 +154,11 @@ services:
       - traefik.http.routers.vercelab.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
       - traefik.http.routers.vercelab.tls=true
       - traefik.http.services.vercelab.loadbalancer.server.port=${PORT:-3000}
+      - "traefik.http.routers.vercelab-terminal.rule=Host(`${VERCELAB_ADMIN_HOST}`) && PathPrefix(`/terminal/ws`)"
+      - traefik.http.routers.vercelab-terminal.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vercelab-terminal.tls=true
+      - traefik.http.routers.vercelab-terminal.priority=100
+      - traefik.http.services.vercelab-terminal.loadbalancer.server.port=${VERCELAB_TERMINAL_WS_PORT:-3001}
     networks:
       - proxy
 

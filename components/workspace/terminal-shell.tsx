@@ -1,18 +1,18 @@
 "use client";
 
-import { Clipboard, Play, Trash2 } from "lucide-react";
+import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
+import { Clipboard, PlugZap, RotateCcw, Trash2 } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type FormEvent,
-  type KeyboardEvent,
 } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 type TerminalHost = {
   arch: string;
@@ -21,65 +21,177 @@ type TerminalHost = {
   osName: string;
   platform: string;
   shell: string;
+  target?: "container" | "host";
   username: string;
 };
 
-type TerminalExecuteResponse = {
-  clipped?: boolean;
-  cwd?: string;
-  durationMs?: number;
-  error?: string;
-  exitCode?: number | null;
-  stderr?: string;
-  stdout?: string;
-  timedOut?: boolean;
-};
+type TerminalMessage =
+  | {
+      data: string;
+      type: "error" | "output";
+    }
+  | {
+      target: "container" | "host";
+      type: "ready";
+    }
+  | {
+      exitCode: number;
+      signal?: number;
+      type: "exit";
+    };
 
-type TerminalLine = {
-  id: string;
-  kind: "command" | "error" | "stderr" | "stdout" | "system";
-  text: string;
-};
+type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 
-const MAX_HISTORY_ITEMS = 80;
+function buildTerminalWebSocketUrl(host: TerminalHost | null) {
+  const configuredUrl = process.env.NEXT_PUBLIC_TERMINAL_WS_URL;
 
-function createLine(kind: TerminalLine["kind"], text: string): TerminalLine {
-  return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    kind,
-    text,
-  };
+  if (configuredUrl) {
+    return configuredUrl;
+  }
+
+  const url = new URL("/terminal/ws", window.location.href);
+
+  url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+  if (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  ) {
+    url.port = process.env.NEXT_PUBLIC_TERMINAL_WS_PORT ?? "3001";
+  }
+
+  if (host?.cwd) {
+    url.searchParams.set("cwd", host.cwd);
+  }
+
+  return url.toString();
 }
 
-function getPrompt(host: TerminalHost | null, cwd: string) {
-  const user = host?.username ?? "server";
-  const hostname = host?.hostname ?? "host";
+function getTerminalBufferText(terminal: Terminal) {
+  const buffer = terminal.buffer.active;
+  const lines: string[] = [];
 
-  return `${user}@${hostname}:${cwd}$`;
+  for (let index = 0; index < buffer.length; index += 1) {
+    lines.push(buffer.getLine(index)?.translateToString(true) ?? "");
+  }
+
+  return lines.join("\n").trimEnd();
 }
 
-function normalizeOutput(value: string | undefined) {
-  return value?.replace(/\s+$/g, "") ?? "";
+function parseTerminalMessage(data: MessageEvent["data"]) {
+  if (typeof data !== "string") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(data) as TerminalMessage;
+  } catch {
+    return null;
+  }
 }
 
 export function TerminalShell() {
-  const [command, setCommand] = useState("");
-  const [cwd, setCwd] = useState("");
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>("connecting");
   const [host, setHost] = useState<TerminalHost | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [lines, setLines] = useState<TerminalLine[]>([
-    createLine("system", "Opening host shell..."),
-  ]);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const outputRef = useRef<HTMLDivElement | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const terminalElementRef = useRef<HTMLDivElement | null>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const webSocketRef = useRef<WebSocket | null>(null);
 
-  const prompt = useMemo(() => getPrompt(host, cwd || "~"), [cwd, host]);
-  const terminalOutput = useMemo(
-    () => lines.map((line) => line.text).join("\n\n"),
-    [lines],
-  );
+  const statusLabel = useMemo(() => {
+    switch (connectionStatus) {
+      case "connected":
+        return "Connected";
+      case "connecting":
+        return "Connecting";
+      case "error":
+        return "Connection error";
+      case "disconnected":
+        return "Disconnected";
+    }
+  }, [connectionStatus]);
+
+  const sendResize = useCallback(() => {
+    const terminal = terminalRef.current;
+    const fitAddon = fitAddonRef.current;
+    const webSocket = webSocketRef.current;
+
+    if (!terminal || !fitAddon) {
+      return;
+    }
+
+    fitAddon.fit();
+
+    if (webSocket?.readyState === WebSocket.OPEN) {
+      webSocket.send(
+        JSON.stringify({
+          cols: terminal.cols,
+          rows: terminal.rows,
+          type: "resize",
+        }),
+      );
+    }
+  }, []);
+
+  const connectTerminal = useCallback(() => {
+    const terminal = terminalRef.current;
+
+    if (!terminal) {
+      return;
+    }
+
+    webSocketRef.current?.close();
+    setConnectionStatus("connecting");
+    terminal.clear();
+    terminal.writeln("Opening host terminal...");
+
+    const webSocket = new WebSocket(buildTerminalWebSocketUrl(host));
+
+    webSocketRef.current = webSocket;
+
+    webSocket.addEventListener("open", () => {
+      setConnectionStatus("connected");
+      terminal.focus();
+      sendResize();
+    });
+
+    webSocket.addEventListener("message", (event) => {
+      const message = parseTerminalMessage(event.data);
+
+      if (!message) {
+        return;
+      }
+
+      if (message.type === "output") {
+        terminal.write(message.data);
+      }
+
+      if (message.type === "error") {
+        terminal.writeln(`\r\n${message.data}`);
+        setConnectionStatus("error");
+      }
+
+      if (message.type === "exit") {
+        terminal.writeln("\r\nSession closed.");
+        setConnectionStatus("disconnected");
+      }
+    });
+
+    webSocket.addEventListener("close", () => {
+      if (webSocketRef.current === webSocket) {
+        setConnectionStatus((current) =>
+          current === "error" ? current : "disconnected",
+        );
+      }
+    });
+
+    webSocket.addEventListener("error", () => {
+      setConnectionStatus("error");
+      terminal.writeln("\r\nUnable to connect to the terminal server.");
+    });
+  }, [host, sendResize]);
 
   useEffect(() => {
     let isActive = true;
@@ -95,29 +207,18 @@ export function TerminalShell() {
           throw new Error("Unable to open host shell.");
         }
 
-        if (!isActive) {
-          return;
+        if (isActive) {
+          setHost(payload);
         }
-
-        setHost(payload);
-        setCwd(payload.cwd);
-        setLines([
-          createLine(
-            "system",
-            `Connected to ${payload.username}@${payload.hostname} · ${payload.osName}`,
-          ),
-        ]);
       } catch (error) {
         if (!isActive) {
           return;
         }
 
-        setLines([
-          createLine(
-            "error",
-            error instanceof Error ? error.message : "Unable to open host shell.",
-          ),
-        ]);
+        setConnectionStatus("error");
+        terminalRef.current?.writeln(
+          error instanceof Error ? error.message : "Unable to open host shell.",
+        );
       }
     }
 
@@ -129,138 +230,111 @@ export function TerminalShell() {
   }, []);
 
   useEffect(() => {
-    outputRef.current?.scrollTo({
-      top: outputRef.current.scrollHeight,
+    if (!terminalElementRef.current || terminalRef.current) {
+      return;
+    }
+
+    const terminal = new Terminal({
+      allowProposedApi: false,
+      convertEol: true,
+      cursorBlink: true,
+      fontFamily:
+        'var(--font-mono), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontSize: 13,
+      scrollback: 5000,
+      theme: {
+        background: "#09090b",
+        black: "#18181b",
+        blue: "#60a5fa",
+        brightBlack: "#71717a",
+        brightBlue: "#93c5fd",
+        brightCyan: "#67e8f9",
+        brightGreen: "#6ee7b7",
+        brightMagenta: "#f0abfc",
+        brightRed: "#fca5a5",
+        brightWhite: "#f4f4f5",
+        brightYellow: "#fde68a",
+        cyan: "#22d3ee",
+        foreground: "#f4f4f5",
+        green: "#34d399",
+        magenta: "#e879f9",
+        red: "#f87171",
+        selectionBackground: "#155e75",
+        white: "#e4e4e7",
+        yellow: "#facc15",
+      },
     });
-  }, [lines]);
+    const fitAddon = new FitAddon();
+
+    terminal.loadAddon(fitAddon);
+    terminal.open(terminalElementRef.current);
+    terminal.onData((data) => {
+      const webSocket = webSocketRef.current;
+
+      if (webSocket?.readyState === WebSocket.OPEN) {
+        webSocket.send(
+          JSON.stringify({
+            data,
+            type: "input",
+          }),
+        );
+      }
+    });
+    terminal.onSelectionChange(() => {
+      setHasSelection(terminal.hasSelection());
+    });
+
+    terminalRef.current = terminal;
+    fitAddonRef.current = fitAddon;
+    sendResize();
+
+    const resizeObserver = new ResizeObserver(() => {
+      sendResize();
+    });
+
+    resizeObserver.observe(terminalElementRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      webSocketRef.current?.close();
+      terminal.dispose();
+      terminalRef.current = null;
+      fitAddonRef.current = null;
+    };
+  }, [sendResize]);
 
   useEffect(() => {
-    if (!isRunning && cwd) {
-      inputRef.current?.focus();
+    if (host && terminalRef.current) {
+      connectTerminal();
     }
-  }, [cwd, isRunning]);
+  }, [connectTerminal, host]);
 
-  async function runCommand(nextCommand: string) {
-    const trimmedCommand = nextCommand.trim();
+  async function handleCopySelection() {
+    const terminal = terminalRef.current;
+    const selection = terminal?.getSelection();
 
-    if (!trimmedCommand || isRunning) {
+    if (!selection) {
       return;
     }
-
-    if (trimmedCommand === "clear") {
-      setCommand("");
-      setLines([]);
-      return;
-    }
-
-    setIsRunning(true);
-    setCommand("");
-    setHistory((current) =>
-      [trimmedCommand, ...current.filter((item) => item !== trimmedCommand)].slice(
-        0,
-        MAX_HISTORY_ITEMS,
-      ),
-    );
-    setHistoryIndex(null);
-    setLines((current) => [
-      ...current,
-      createLine("command", `${prompt} ${trimmedCommand}`),
-    ]);
 
     try {
-      const response = await fetch("/api/terminal/execute", {
-        body: JSON.stringify({
-          command: nextCommand,
-          cwd,
-        }),
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-      });
-      const payload = (await response.json()) as TerminalExecuteResponse;
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Command failed.");
-      }
-
-      if (payload.cwd) {
-        setCwd(payload.cwd);
-      }
-
-      const stdout = normalizeOutput(payload.stdout);
-      const stderr = normalizeOutput(payload.stderr);
-
-      setLines((current) => [
-        ...current,
-        ...(stdout ? [createLine("stdout", stdout)] : []),
-        ...(stderr ? [createLine("stderr", stderr)] : []),
-        ...(payload.timedOut
-          ? [createLine("error", "Command timed out after 30s.")]
-          : []),
-        ...(payload.clipped ? [createLine("system", "Output clipped.")] : []),
-      ]);
-    } catch (error) {
-      setLines((current) => [
-        ...current,
-        createLine(
-          "error",
-          error instanceof Error ? error.message : "Command failed.",
-        ),
-      ]);
-    } finally {
-      setIsRunning(false);
-    }
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void runCommand(command);
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      const nextIndex =
-        historyIndex === null
-          ? 0
-          : Math.min(historyIndex + 1, history.length - 1);
-      const nextCommand = history[nextIndex];
-
-      if (nextCommand) {
-        setHistoryIndex(nextIndex);
-        setCommand(nextCommand);
-      }
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-
-      if (historyIndex === null) {
-        return;
-      }
-
-      const nextIndex = historyIndex - 1;
-
-      if (nextIndex < 0) {
-        setHistoryIndex(null);
-        setCommand("");
-        return;
-      }
-
-      setHistoryIndex(nextIndex);
-      setCommand(history[nextIndex] ?? "");
+      await navigator.clipboard.writeText(selection);
+      toast.success("Selection copied");
+    } catch {
+      toast.error("Unable to copy selection");
     }
   }
 
   async function handleCopyOutput() {
-    if (!terminalOutput.trim()) {
+    const terminal = terminalRef.current;
+    const output = terminal ? getTerminalBufferText(terminal) : "";
+
+    if (!output) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(terminalOutput);
+      await navigator.clipboard.writeText(output);
       toast.success("Terminal output copied");
     } catch {
       toast.error("Unable to copy terminal output");
@@ -270,58 +344,11 @@ export function TerminalShell() {
   return (
     <div className="flex min-w-0 flex-1 overflow-hidden bg-background/70">
       <main className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col border-r border-border/70">
+        <div className="flex min-h-0 flex-1 flex-col border-r border-border/70 bg-zinc-950">
           <div
-            ref={outputRef}
-            className="min-h-0 flex-1 select-text overflow-auto bg-zinc-950 px-4 py-4 font-mono text-[12px] leading-5 text-zinc-100 shadow-inner"
-          >
-            <div className="space-y-2">
-              {lines.map((line) => (
-                <pre
-                  className={cn(
-                    "whitespace-pre-wrap break-words",
-                    line.kind === "command" && "text-emerald-300",
-                    line.kind === "stderr" && "text-amber-200",
-                    line.kind === "error" && "text-red-300",
-                    line.kind === "system" && "text-zinc-400",
-                  )}
-                  key={line.id}
-                >
-                  {line.text}
-                </pre>
-              ))}
-            </div>
-          </div>
-
-          <form
-            className="flex items-center gap-2 border-t border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-[12px] text-zinc-100"
-            onSubmit={handleSubmit}
-          >
-            <span className="max-w-[52%] shrink-0 truncate text-emerald-300">
-              {prompt}
-            </span>
-            <input
-              aria-label="Terminal command"
-              aria-disabled={isRunning || !cwd}
-              autoComplete="off"
-              className="min-w-0 flex-1 border-0 bg-transparent text-zinc-50 outline-none placeholder:text-zinc-600"
-              onChange={(event) => setCommand(event.target.value)}
-              onKeyDown={handleKeyDown}
-              readOnly={isRunning || !cwd}
-              ref={inputRef}
-              spellCheck={false}
-              value={command}
-            />
-            <Button
-              aria-label="Run command"
-              className="h-8 w-8 shrink-0 rounded-lg border-zinc-700 bg-zinc-900 px-0 text-zinc-100 hover:bg-zinc-800"
-              disabled={isRunning || !cwd || command.trim().length === 0}
-              size="icon"
-              type="submit"
-            >
-              <Play className="h-3.5 w-3.5" aria-hidden="true" />
-            </Button>
-          </form>
+            className="min-h-0 flex-1 overflow-hidden px-3 py-3"
+            ref={terminalElementRef}
+          />
         </div>
       </main>
 
@@ -346,14 +373,6 @@ export function TerminalShell() {
           </div>
           <div>
             <div className="text-[11px] font-medium text-muted-foreground">
-              Path
-            </div>
-            <div className="mt-1 break-all font-mono text-[11px] leading-5 text-foreground">
-              {cwd || "..."}
-            </div>
-          </div>
-          <div>
-            <div className="text-[11px] font-medium text-muted-foreground">
               Shell
             </div>
             <div className="mt-1 break-all font-mono text-[11px] leading-5 text-foreground">
@@ -362,18 +381,34 @@ export function TerminalShell() {
           </div>
           <div>
             <div className="text-[11px] font-medium text-muted-foreground">
-              Status
+              Target
             </div>
             <div className="mt-1 text-foreground">
-              {isRunning ? "Running" : cwd ? "Ready" : "Connecting"}
+              {host?.target === "host" ? "Ubuntu host" : "Current process"}
             </div>
+          </div>
+          <div>
+            <div className="text-[11px] font-medium text-muted-foreground">
+              Status
+            </div>
+            <div className="mt-1 text-foreground">{statusLabel}</div>
           </div>
         </div>
 
-        <div className="mt-auto border-t border-border/70 p-3">
+        <div className="mt-auto space-y-2 border-t border-border/70 p-3">
           <Button
-            className="mb-2 w-full justify-center"
-            disabled={!terminalOutput.trim()}
+            className="w-full justify-center"
+            disabled={!hasSelection}
+            onClick={handleCopySelection}
+            size="sm"
+            type="button"
+            variant="secondary"
+          >
+            <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
+            Copy selection
+          </Button>
+          <Button
+            className="w-full justify-center"
             onClick={handleCopyOutput}
             size="sm"
             type="button"
@@ -384,13 +419,33 @@ export function TerminalShell() {
           </Button>
           <Button
             className="w-full justify-center"
-            onClick={() => setLines([])}
+            onClick={connectTerminal}
+            size="sm"
+            type="button"
+            variant="secondary"
+          >
+            <PlugZap className="h-3.5 w-3.5" aria-hidden="true" />
+            Reconnect
+          </Button>
+          <Button
+            className="w-full justify-center"
+            onClick={() => terminalRef.current?.clear()}
             size="sm"
             type="button"
             variant="secondary"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             Clear
+          </Button>
+          <Button
+            className="w-full justify-center"
+            onClick={sendResize}
+            size="sm"
+            type="button"
+            variant="secondary"
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            Fit
           </Button>
         </div>
       </aside>

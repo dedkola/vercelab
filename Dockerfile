@@ -6,6 +6,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY package.json pnpm-lock.yaml ./
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends g++ make python3 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && pnpm install --frozen-lockfile
 
 FROM node:20-bookworm-slim AS builder
@@ -20,6 +24,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN pnpm run build
+RUN pnpm prune --prod
 
 FROM node:20-bookworm-slim AS runner
 
@@ -44,7 +49,10 @@ RUN apt-get update \
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/server ./server
 
 EXPOSE 3000
+EXPOSE 3001
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "node server/terminal-ws.mjs & terminal_pid=$!; trap 'kill $terminal_pid 2>/dev/null || true' EXIT INT TERM; node server.js"]
