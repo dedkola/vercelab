@@ -759,23 +759,36 @@ async function runComposeCommand(
   runtimeFiles: RuntimeFiles,
   args: string[],
 ) {
-  return await runCommand(
-    "docker",
-    [
-      "compose",
-      "-p",
-      deployment.projectName,
-      ...runtimeFiles.fileArgs,
-      ...args,
-    ],
-    {
-      cwd: deployment.workspacePath,
-      env: {
-        DOCKER_BUILDKIT: "1",
-        COMPOSE_DOCKER_CLI_BUILD: "1",
-      },
+  const composeArgs = [
+    "-p",
+    deployment.projectName,
+    ...runtimeFiles.fileArgs,
+    ...args,
+  ];
+  const commandOptions = {
+    cwd: deployment.workspacePath,
+    env: {
+      DOCKER_BUILDKIT: "1",
+      COMPOSE_DOCKER_CLI_BUILD: "1",
     },
-  );
+  } satisfies CommandOptions;
+
+  try {
+    return await runCommand("docker", ["compose", ...composeArgs], commandOptions);
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    const shouldFallbackToComposeBinary =
+      message.includes("unknown shorthand flag: 'p' in -p") ||
+      message.includes("unknown flag: -p") ||
+      message.includes("docker: 'compose' is not a docker command") ||
+      message.includes("docker compose exited with status");
+
+    if (!shouldFallbackToComposeBinary) {
+      throw error;
+    }
+
+    return await runCommand("docker-compose", composeArgs, commandOptions);
+  }
 }
 
 async function readComposeLogs(
