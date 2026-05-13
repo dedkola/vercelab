@@ -312,6 +312,28 @@ async function runCommand(
   });
 }
 
+async function runComposeCommand(
+  composeArgs: string[],
+  options: CommandOptions = {},
+) {
+  try {
+    return await runCommand("docker", ["compose", ...composeArgs], options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    const shouldFallbackToComposeBinary =
+      message.includes("unknown shorthand flag: 'p' in -p") ||
+      message.includes("unknown flag: -p") ||
+      message.includes("docker: 'compose' is not a docker command") ||
+      message.includes("docker compose exited with status");
+
+    if (!shouldFallbackToComposeBinary) {
+      throw error;
+    }
+
+    return await runCommand("docker-compose", composeArgs, options);
+  }
+}
+
 export async function searchContainerCatalog(query: string) {
   const normalized = query.trim();
 
@@ -628,8 +650,7 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
   );
 
   await ensureProxyNetwork(config.proxy.network);
-  await runCommand("docker", [
-    "compose",
+  await runComposeCommand([
     "-p",
     stackName,
     "-f",
