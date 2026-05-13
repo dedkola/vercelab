@@ -79,6 +79,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         docker.io \
+        docker-compose \
         git \
         util-linux \
     && rm -rf /var/lib/apt/lists/*

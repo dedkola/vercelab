@@ -76,7 +76,7 @@ export type DeploymentSourceState = {
 };
 
 function parseDeploymentEnvVariables(
-  rawValue: string | null,
+    rawValue: string | null,
 ): Record<string, string> {
   if (!rawValue) {
     return {};
@@ -96,7 +96,7 @@ function parseDeploymentEnvVariables(
 
     if (separatorIndex < 1) {
       throw new Error(
-        `Invalid environment variable line \"${trimmed}\". Use KEY=VALUE format.`,
+          `Invalid environment variable line \"${trimmed}\". Use KEY=VALUE format.`,
       );
     }
 
@@ -105,7 +105,7 @@ function parseDeploymentEnvVariables(
 
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
       throw new Error(
-        `Invalid environment variable key \"${key}\". Use letters, numbers, and underscores only.`,
+          `Invalid environment variable key \"${key}\". Use letters, numbers, and underscores only.`,
       );
     }
 
@@ -128,8 +128,8 @@ function extractComposeNetworks(serviceConfig: unknown): string[] {
 
   if (Array.isArray(service.networks)) {
     return service.networks
-      .filter((network): network is string => typeof network === "string")
-      .filter(Boolean);
+        .filter((network): network is string => typeof network === "string")
+        .filter(Boolean);
   }
 
   if (typeof service.networks === "object") {
@@ -140,7 +140,7 @@ function extractComposeNetworks(serviceConfig: unknown): string[] {
 }
 
 function normalizeStringInput(
-  value: FormDataEntryValue | string | null | undefined,
+    value: FormDataEntryValue | string | null | undefined,
 ) {
   if (typeof value !== "string") {
     return undefined;
@@ -158,8 +158,8 @@ function normalizeDomainInput(value: string) {
   }
 
   const candidate = /^https?:\/\//i.test(trimmedValue)
-    ? trimmedValue
-    : `https://${trimmedValue}`;
+      ? trimmedValue
+      : `https://${trimmedValue}`;
 
   let hostname: string;
 
@@ -238,9 +238,9 @@ async function resolveDeploymentGitToken(deploymentId: string) {
 }
 
 async function runCommand(
-  command: string,
-  args: string[],
-  options: CommandOptions = {},
+    command: string,
+    args: string[],
+    options: CommandOptions = {},
 ) {
   return await new Promise<string>((resolve, reject) => {
     const child = spawn(command, args, {
@@ -276,14 +276,24 @@ async function runCommand(
       }
 
       reject(
-        new Error(
-          [output, `${command} ${args.join(" ")} exited with status ${code}.`]
-            .filter(Boolean)
-            .join("\n"),
-        ),
+          new Error(
+              [output, `${command} ${args.join(" ")} exited with status ${code}.`]
+                  .filter(Boolean)
+                  .join("\n"),
+          ),
       );
     });
   });
+}
+
+export function shouldFallbackToDockerComposeBinary(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  return (
+      normalizedMessage.includes("unknown shorthand flag: 'p' in -p") ||
+      normalizedMessage.includes("unknown flag: -p") ||
+      normalizedMessage.includes("docker: 'compose' is not a docker command")
+  );
 }
 
 async function pathExists(targetPath: string) {
@@ -306,8 +316,8 @@ async function withDeploymentLock<T>(task: () => Promise<T>) {
   try {
     handle = await open(lockPath, "wx");
     await handle.writeFile(
-      `${process.pid}\n${new Date().toISOString()}\n`,
-      "utf8",
+        `${process.pid}\n${new Date().toISOString()}\n`,
+        "utf8",
     );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
@@ -341,7 +351,7 @@ async function removeWorkspace(workspacePath: string) {
 
   if (!resolvedWorkspace.startsWith(appsRoot)) {
     throw new Error(
-      "Refusing to remove a workspace outside the Vercelab apps directory.",
+        "Refusing to remove a workspace outside the Vercelab apps directory.",
     );
   }
 
@@ -357,8 +367,8 @@ async function cloneRepository(deployment: StoredDeployment) {
   await fs.mkdir(deployment.workspacePath, { recursive: true });
 
   const cloneUrl = buildGitCloneUrl(
-    deployment.repositoryUrl,
-    await resolveDeploymentGitToken(deployment.id),
+      deployment.repositoryUrl,
+      await resolveDeploymentGitToken(deployment.id),
   );
 
   const args = ["clone", "--depth", "1"];
@@ -378,36 +388,36 @@ async function checkoutPinnedCommit(deployment: StoredDeployment) {
   }
 
   const fetchOutput = await runCommand(
-    "git",
-    ["fetch", "--depth", "1", "origin", deployment.commitSha],
-    {
-      cwd: deployment.workspacePath,
-    },
+      "git",
+      ["fetch", "--depth", "1", "origin", deployment.commitSha],
+      {
+        cwd: deployment.workspacePath,
+      },
   );
   const checkoutOutput = await runCommand(
-    "git",
-    ["checkout", "--detach", deployment.commitSha],
-    {
-      cwd: deployment.workspacePath,
-    },
+      "git",
+      ["checkout", "--detach", deployment.commitSha],
+      {
+        cwd: deployment.workspacePath,
+      },
   );
 
   return [fetchOutput, checkoutOutput].filter(Boolean).join("\n");
 }
 
 async function deployWorkspace(
-  deployment: StoredDeployment,
-  syncWithGit: boolean,
+    deployment: StoredDeployment,
+    syncWithGit: boolean,
 ) {
   await ensureProxyNetwork();
 
   const shouldClone =
-    syncWithGit || !(await pathExists(deployment.workspacePath));
+      syncWithGit || !(await pathExists(deployment.workspacePath));
   const cloneOutput = shouldClone ? await cloneRepository(deployment) : "";
   const checkoutOutput =
-    shouldClone && deployment.commitSha
-      ? await checkoutPinnedCommit(deployment)
-      : "";
+      shouldClone && deployment.commitSha
+          ? await checkoutPinnedCommit(deployment)
+          : "";
   const runtimeFiles = await detectRuntimeFiles(deployment);
 
   await updateDeploymentRecord(deployment.id, {
@@ -433,17 +443,17 @@ async function deployWorkspace(
   }
 
   return (
-    truncateOutput(
-      [cloneOutput, checkoutOutput, composeOutput].filter(Boolean).join("\n\n"),
-    ) ?? ""
+      truncateOutput(
+          [cloneOutput, checkoutOutput, composeOutput].filter(Boolean).join("\n\n"),
+      ) ?? ""
   );
 }
 
 function mapSourceCommit(
-  commit: Pick<
-    GitHubCommit,
-    "authorName" | "committedAt" | "message" | "sha" | "url"
-  >,
+    commit: Pick<
+        GitHubCommit,
+        "authorName" | "committedAt" | "message" | "sha" | "url"
+    >,
 ): DeploymentSourceCommit {
   return {
     authorName: commit.authorName,
@@ -472,7 +482,7 @@ async function readWorkspaceBranch(workspacePath: string) {
 }
 
 async function readWorkspaceCommit(
-  deployment: StoredDeployment,
+    deployment: StoredDeployment,
 ): Promise<DeploymentSourceCommit | null> {
   if (!(await pathExists(deployment.workspacePath))) {
     return null;
@@ -480,14 +490,14 @@ async function readWorkspaceCommit(
 
   try {
     const output = await runCommand(
-      "git",
-      ["log", "-1", "--pretty=format:%H%n%s%n%cI%n%an"],
-      {
-        cwd: deployment.workspacePath,
-      },
+        "git",
+        ["log", "-1", "--pretty=format:%H%n%s%n%cI%n%an"],
+        {
+          cwd: deployment.workspacePath,
+        },
     );
     const [sha = "", message = "", committedAt = "", authorName = ""] =
-      output.split("\n");
+        output.split("\n");
 
     if (!sha) {
       return null;
@@ -509,10 +519,10 @@ async function readWorkspaceCommit(
 }
 
 async function detectRuntimeFiles(
-  deployment: StoredDeployment,
+    deployment: StoredDeployment,
 ): Promise<RuntimeFiles> {
   const deploymentEnvironment = parseDeploymentEnvVariables(
-    deployment.envVariables,
+      deployment.envVariables,
   );
   const hasEnvironmentValues = Object.keys(deploymentEnvironment).length > 0;
   const composeCandidates = [
@@ -538,39 +548,39 @@ async function detectRuntimeFiles(
       }
 
       const selectedService =
-        deployment.serviceName ??
-        (serviceNames.length === 1 ? serviceNames[0] : null);
+          deployment.serviceName ??
+          (serviceNames.length === 1 ? serviceNames[0] : null);
 
       if (!selectedService) {
         throw new Error(
-          "This compose repository has multiple services. Enter the service name to deploy.",
+            "This compose repository has multiple services. Enter the service name to deploy.",
         );
       }
 
       if (!serviceNames.includes(selectedService)) {
         throw new Error(
-          `Compose service "${selectedService}" was not found in ${candidate}.`,
+            `Compose service "${selectedService}" was not found in ${candidate}.`,
         );
       }
 
       const selectedServiceConfig = parsed?.services?.[selectedService];
       const selectedServiceHasBuild =
-        selectedServiceConfig &&
-        typeof selectedServiceConfig === "object" &&
-        Object.hasOwn(selectedServiceConfig, "build");
+          selectedServiceConfig &&
+          typeof selectedServiceConfig === "object" &&
+          Object.hasOwn(selectedServiceConfig, "build");
       const networks = Array.from(
-        new Set([
-          ...extractComposeNetworks(selectedServiceConfig),
-          getAppConfig().proxy.network,
-        ]),
+          new Set([
+            ...extractComposeNetworks(selectedServiceConfig),
+            getAppConfig().proxy.network,
+          ]),
       );
 
       const routerName = `${deployment.projectName}-${selectedService}`
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "-");
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, "-");
       const overridePath = path.join(
-        deployment.workspacePath,
-        ".vercelab.override.compose.yml",
+          deployment.workspacePath,
+          ".vercelab.override.compose.yml",
       );
 
       const proxyEnvironment: Record<string, string> = {
@@ -588,10 +598,10 @@ async function detectRuntimeFiles(
           "traefik.docker.network": getAppConfig().proxy.network,
           [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(deployment.subdomain)}\`)`,
           [`traefik.http.routers.${routerName}.entrypoints`]:
-            getAppConfig().proxy.entrypoint,
+          getAppConfig().proxy.entrypoint,
           [`traefik.http.routers.${routerName}.tls`]: "true",
           [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
-            String(deployment.port),
+              String(deployment.port),
         };
       } else if (exposureMode === "tcp") {
         const hostPort = deployment.hostPort ?? deployment.port;
@@ -642,8 +652,8 @@ async function detectRuntimeFiles(
       // Docker Compose merges port lists additively, so the only reliable way to
       // suppress them is to rewrite the base file without them.
       const basePath = path.join(
-        deployment.workspacePath,
-        ".vercelab.base.compose.yml",
+          deployment.workspacePath,
+          ".vercelab.base.compose.yml",
       );
       const cleanedParsed = parsed as {
         services?: Record<string, Record<string, unknown>>;
@@ -671,16 +681,16 @@ async function detectRuntimeFiles(
 
   if (!(await pathExists(dockerfilePath))) {
     throw new Error(
-      "Supported runtime files were not found. Add a root Dockerfile or docker-compose.yml.",
+        "Supported runtime files were not found. Add a root Dockerfile or docker-compose.yml.",
     );
   }
 
   const routerName = `${deployment.projectName}-app`
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-");
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-");
   const generatedComposePath = path.join(
-    deployment.workspacePath,
-    ".vercelab.generated.compose.yml",
+      deployment.workspacePath,
+      ".vercelab.generated.compose.yml",
   );
   const proxyEnvironment: Record<string, string> = {
     HOSTNAME: "0.0.0.0",
@@ -697,10 +707,10 @@ async function detectRuntimeFiles(
       "traefik.docker.network": getAppConfig().proxy.network,
       [`traefik.http.routers.${routerName}.rule`]: `Host(\`${getDefaultDomain(deployment.subdomain)}\`)`,
       [`traefik.http.routers.${routerName}.entrypoints`]:
-        getAppConfig().proxy.entrypoint,
+      getAppConfig().proxy.entrypoint,
       [`traefik.http.routers.${routerName}.tls`]: "true",
       [`traefik.http.services.${routerName}.loadbalancer.server.port`]:
-        String(deployment.port),
+          String(deployment.port),
     };
   } else if (exposureMode === "tcp") {
     const hostPort = deployment.hostPort ?? deployment.port;
@@ -724,10 +734,10 @@ async function detectRuntimeFiles(
         build: {
           context: ".",
           ...(hasEnvironmentValues
-            ? {
+              ? {
                 args: deploymentEnvironment,
               }
-            : {}),
+              : {}),
         },
         environment: proxyEnvironment,
         restart: "unless-stopped",
@@ -755,9 +765,9 @@ async function detectRuntimeFiles(
 }
 
 async function runComposeCommand(
-  deployment: StoredDeployment,
-  runtimeFiles: RuntimeFiles,
-  args: string[],
+    deployment: StoredDeployment,
+    runtimeFiles: RuntimeFiles,
+    args: string[],
 ) {
   const composeArgs = [
     "-p",
@@ -776,29 +786,33 @@ async function runComposeCommand(
   try {
     return await runCommand("docker", ["compose", ...composeArgs], commandOptions);
   } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : "";
-    const shouldFallbackToComposeBinary =
-      message.includes("unknown shorthand flag: 'p' in -p") ||
-      message.includes("unknown flag: -p") ||
-      message.includes("docker: 'compose' is not a docker command") ||
-      message.includes("docker compose exited with status");
-
-    if (!shouldFallbackToComposeBinary) {
+    if (
+        !(error instanceof Error) ||
+        !shouldFallbackToDockerComposeBinary(error.message)
+    ) {
       throw error;
     }
 
-    return await runCommand("docker-compose", composeArgs, commandOptions);
+    try {
+      return await runCommand("docker-compose", composeArgs, commandOptions);
+    } catch (fallbackError) {
+      if ((fallbackError as NodeJS.ErrnoException).code === "ENOENT") {
+        throw error;
+      }
+
+      throw fallbackError;
+    }
   }
 }
 
 async function readComposeLogs(
-  deployment: StoredDeployment,
-  runtimeFiles: RuntimeFiles,
-  options: ReadComposeLogsOptions = {},
+    deployment: StoredDeployment,
+    runtimeFiles: RuntimeFiles,
+    options: ReadComposeLogsOptions = {},
 ) {
   const serviceName = options.includeAllServices
-    ? null
-    : (runtimeFiles.serviceName ?? deployment.serviceName);
+      ? null
+      : (runtimeFiles.serviceName ?? deployment.serviceName);
 
   return await runComposeCommand(deployment, runtimeFiles, [
     "logs",
@@ -811,42 +825,42 @@ async function readComposeLogs(
 }
 
 async function executeLifecycleOperation(
-  deploymentId: string,
-  operationType: OperationType,
-  task: (deployment: StoredDeployment, operationId: string) => Promise<string>,
-  statusOnSuccess: StoredDeployment["status"],
+    deploymentId: string,
+    operationType: OperationType,
+    task: (deployment: StoredDeployment, operationId: string) => Promise<string>,
+    statusOnSuccess: StoredDeployment["status"],
 ) {
   return await withDeploymentLock(async () => {
     const deployment = await getStoredDeploymentById(deploymentId);
     const operationId = await createOperation(
-      deploymentId,
-      operationType,
-      `${operationType} started for ${deployment.appName}`,
+        deploymentId,
+        operationType,
+        `${operationType} started for ${deployment.appName}`,
     );
 
     await updateDeploymentRecord(deploymentId, {
       status:
-        operationType === "remove"
-          ? "removing"
-          : operationType === "stop"
-            ? "stopped"
-            : "deploying",
+          operationType === "remove"
+              ? "removing"
+              : operationType === "stop"
+                  ? "stopped"
+                  : "deploying",
     });
 
     try {
       const output = await task(deployment, operationId);
       const summary =
-        operationType === "stop"
-          ? `Stopped ${deployment.appName}.`
-          : operationType === "remove"
-            ? `Removed ${deployment.appName}.`
-            : deployment.exposureMode === "http" || !deployment.exposureMode
-              ? `Deployment is live at https://${getDefaultDomain(deployment.subdomain)}.`
-              : deployment.exposureMode === "tcp"
-                ? `TCP service deployed on port ${deployment.hostPort ?? deployment.port}.`
-                : deployment.exposureMode === "host"
-                  ? `${deployment.appName} deployed with host port ${deployment.hostPort ?? deployment.port}.`
-                  : `${deployment.appName} deployed (internal only).`;
+          operationType === "stop"
+              ? `Stopped ${deployment.appName}.`
+              : operationType === "remove"
+                  ? `Removed ${deployment.appName}.`
+                  : deployment.exposureMode === "http" || !deployment.exposureMode
+                      ? `Deployment is live at https://${getDefaultDomain(deployment.subdomain)}.`
+                      : deployment.exposureMode === "tcp"
+                          ? `TCP service deployed on port ${deployment.hostPort ?? deployment.port}.`
+                          : deployment.exposureMode === "host"
+                              ? `${deployment.appName} deployed with host port ${deployment.hostPort ?? deployment.port}.`
+                              : `${deployment.appName} deployed (internal only).`;
 
       await completeOperation(operationId, "success", summary, output);
 
@@ -855,9 +869,9 @@ async function executeLifecycleOperation(
           status: statusOnSuccess,
           lastOutput: output,
           deployedAt:
-            operationType === "stop"
-              ? deployment.deployedAt
-              : new Date().toISOString(),
+              operationType === "stop"
+                  ? deployment.deployedAt
+                  : new Date().toISOString(),
         });
       }
 
@@ -869,9 +883,9 @@ async function executeLifecycleOperation(
       };
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unexpected deployment failure.";
+          error instanceof Error
+              ? error.message
+              : "Unexpected deployment failure.";
 
       await completeOperation(operationId, "failed", message, message);
       await updateDeploymentRecord(deploymentId, {
@@ -921,24 +935,24 @@ export async function createAndDeployFromForm(input: {
 
 export async function redeployDeploymentById(deploymentId: string) {
   return await executeLifecycleOperation(
-    deploymentId,
-    "redeploy",
-    async (deployment) => {
-      return await deployWorkspace(deployment, false);
-    },
-    "running",
+      deploymentId,
+      "redeploy",
+      async (deployment) => {
+        return await deployWorkspace(deployment, false);
+      },
+      "running",
   );
 }
 
 export async function fetchDeploymentFromGitById(
-  deploymentId: string,
-  operationType: "deploy" | "redeploy" = "redeploy",
+    deploymentId: string,
+    operationType: "deploy" | "redeploy" = "redeploy",
 ) {
   return await executeLifecycleOperation(
-    deploymentId,
-    operationType,
-    async (deployment) => await deployWorkspace(deployment, true),
-    "running",
+      deploymentId,
+      operationType,
+      async (deployment) => await deployWorkspace(deployment, true),
+      "running",
   );
 }
 
@@ -981,7 +995,7 @@ export async function updateDeploymentSettingsById(input: {
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) {
       throw new Error(
-        "That subdomain is already reserved by another deployment.",
+          "That subdomain is already reserved by another deployment.",
       );
     }
 
@@ -1027,59 +1041,59 @@ export async function readDeploymentSourceState(input: {
         // calls in parallel. Only fall back to sequential when we need
         // branches[0] as the default.
         const knownBranch =
-          requestedBranch ?? deployment.branch ?? currentBranch;
+            requestedBranch ?? deployment.branch ?? currentBranch;
 
         if (knownBranch) {
           commitsBranch = knownBranch;
           [branches, commits] = await Promise.all([
             listGitHubBranches(token, repository.owner, repository.name),
             listGitHubCommits(
-              token,
-              repository.owner,
-              repository.name,
-              knownBranch,
+                token,
+                repository.owner,
+                repository.name,
+                knownBranch,
             ).then((list) => list.map(mapSourceCommit)),
           ]);
         } else {
           // Unknown branch — fetch branches first so we can use branches[0]
           branches = await listGitHubBranches(
-            token,
-            repository.owner,
-            repository.name,
+              token,
+              repository.owner,
+              repository.name,
           );
           const branchForCommits = branches[0];
 
           if (branchForCommits) {
             commitsBranch = branchForCommits;
             commits = (
-              await listGitHubCommits(
-                token,
-                repository.owner,
-                repository.name,
-                branchForCommits,
-              )
+                await listGitHubCommits(
+                    token,
+                    repository.owner,
+                    repository.name,
+                    branchForCommits,
+                )
             ).map(mapSourceCommit);
           }
         }
       } catch (error) {
         browserError =
-          error instanceof Error
-            ? error.message
-            : "Unable to load repository source details.";
+            error instanceof Error
+                ? error.message
+                : "Unable to load repository source details.";
       }
     } else {
       browserError = "No GitHub token is configured for this deployment.";
     }
   } else {
     browserError =
-      "Only GitHub repositories support branch and commit browsing.";
+        "Only GitHub repositories support branch and commit browsing.";
   }
 
   let resolvedCurrentCommit = currentCommit;
 
   if (!resolvedCurrentCommit && deployment.commitSha) {
     const matchingCommit = commits.find(
-      (commit) => commit.sha === deployment.commitSha,
+        (commit) => commit.sha === deployment.commitSha,
     );
 
     if (matchingCommit) {
@@ -1092,16 +1106,16 @@ export async function readDeploymentSourceState(input: {
         sha: deployment.commitSha,
         shortSha: deployment.commitSha.slice(0, 7),
         url: repository
-          ? `${repository.webUrl}/commit/${deployment.commitSha}`
-          : null,
+            ? `${repository.webUrl}/commit/${deployment.commitSha}`
+            : null,
       };
     }
   }
 
   if (
-    !resolvedCurrentCommit &&
-    !deployment.commitSha &&
-    commits.length > 0
+      !resolvedCurrentCommit &&
+      !deployment.commitSha &&
+      commits.length > 0
   ) {
     const currentBranchReference = deployment.branch ?? currentBranch;
 
@@ -1119,39 +1133,39 @@ export async function readDeploymentSourceState(input: {
     currentBranch,
     currentCommit: resolvedCurrentCommit,
     repository: repository
-      ? {
+        ? {
           fullName: repository.fullName,
           name: repository.name,
           owner: repository.owner,
           url: repository.webUrl,
         }
-      : null,
+        : null,
   };
 }
 
 export async function stopDeploymentById(deploymentId: string) {
   return await executeLifecycleOperation(
-    deploymentId,
-    "stop",
-    async (deployment) => {
-      if (!(await pathExists(deployment.workspacePath))) {
-        return "Workspace already removed.";
-      }
+      deploymentId,
+      "stop",
+      async (deployment) => {
+        if (!(await pathExists(deployment.workspacePath))) {
+          return "Workspace already removed.";
+        }
 
-      const runtimeFiles = await detectRuntimeFiles(deployment);
-      const output = await runComposeCommand(deployment, runtimeFiles, [
-        "down",
-        "--remove-orphans",
-      ]);
+        const runtimeFiles = await detectRuntimeFiles(deployment);
+        const output = await runComposeCommand(deployment, runtimeFiles, [
+          "down",
+          "--remove-orphans",
+        ]);
 
-      await updateDeploymentRecord(deployment.id, {
-        status: "stopped",
-        lastOutput: output,
-      });
+        await updateDeploymentRecord(deployment.id, {
+          status: "stopped",
+          lastOutput: output,
+        });
 
-      return truncateOutput(output) ?? "Stopped without logs.";
-    },
-    "stopped",
+        return truncateOutput(output) ?? "Stopped without logs.";
+      },
+      "stopped",
   );
 }
 
@@ -1159,9 +1173,9 @@ export async function removeDeploymentById(deploymentId: string) {
   return await withDeploymentLock(async () => {
     const deployment = await getStoredDeploymentById(deploymentId);
     const operationId = await createOperation(
-      deploymentId,
-      "remove",
-      `remove started for ${deployment.appName}`,
+        deploymentId,
+        "remove",
+        `remove started for ${deployment.appName}`,
     );
 
     await updateDeploymentRecord(deploymentId, {
@@ -1180,18 +1194,18 @@ export async function removeDeploymentById(deploymentId: string) {
           ]);
         } catch (error) {
           output =
-            error instanceof Error
-              ? error.message
-              : "Failed during compose shutdown.";
+              error instanceof Error
+                  ? error.message
+                  : "Failed during compose shutdown.";
         }
       }
 
       await removeWorkspace(deployment.workspacePath);
       await completeOperation(
-        operationId,
-        "success",
-        `Removed ${deployment.appName}.`,
-        truncateOutput(output),
+          operationId,
+          "success",
+          `Removed ${deployment.appName}.`,
+          truncateOutput(output),
       );
       await deleteDeploymentRecord(deploymentId);
 
@@ -1200,7 +1214,7 @@ export async function removeDeploymentById(deploymentId: string) {
       };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Unexpected removal failure.";
+          error instanceof Error ? error.message : "Unexpected removal failure.";
       await completeOperation(operationId, "failed", message, message);
       await updateDeploymentRecord(deploymentId, {
         status: "failed",
@@ -1220,13 +1234,13 @@ export async function readDeploymentBuildLog(deploymentId: string) {
     deploymentId,
     appName: deployment.appName,
     summary:
-      operation?.summary ??
-      deployment.lastOutput ??
-      "No build log captured yet.",
+        operation?.summary ??
+        deployment.lastOutput ??
+        "No build log captured yet.",
     output:
-      operation?.output ??
-      deployment.lastOutput ??
-      "No build log captured yet.",
+        operation?.output ??
+        deployment.lastOutput ??
+        "No build log captured yet.",
     status: operation?.status ?? "success",
     updatedAt: operation?.updatedAt ?? deployment.updatedAt,
   };
@@ -1248,8 +1262,8 @@ export async function readDeploymentContainerLog(deploymentId: string) {
 }
 
 export async function readDeploymentContainerLogTail(
-  deploymentId: string,
-  options: ReadComposeLogsOptions = {},
+    deploymentId: string,
+    options: ReadComposeLogsOptions = {},
 ) {
   const deployment = await getStoredDeploymentById(deploymentId);
 
@@ -1262,7 +1276,7 @@ export async function readDeploymentContainerLogTail(
     return await readComposeLogs(deployment, runtimeFiles, options);
   } catch (error) {
     return error instanceof Error
-      ? error.message
-      : "Unable to read container logs.";
+        ? error.message
+        : "Unable to read container logs.";
   }
 }
