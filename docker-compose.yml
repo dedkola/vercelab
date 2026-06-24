@@ -1,0 +1,165 @@
+name: vercelab
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vercelab-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${VERCELAB_POSTGRES_USER:-vercelab}
+      POSTGRES_PASSWORD: ${VERCELAB_POSTGRES_PASSWORD:-vercelab}
+      POSTGRES_DB: ${VERCELAB_POSTGRES_DB:-vercelab}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${VERCELAB_POSTGRES_USER:-vercelab} -d ${VERCELAB_POSTGRES_DB:-vercelab}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - ${VERCELAB_POSTGRES_DATA_DIR:-/opt/vercelab/data/postgres}:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  influxdb:
+    image: influxdb:3-core
+    container_name: vercelab-influxdb
+    restart: unless-stopped
+    command:
+      - influxdb3
+      - serve
+      - --node-id=vercelab-node
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3/data
+      - --admin-token-recovery-http-bind=127.0.0.1:8182
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x influxdb3 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - ${VERCELAB_INFLUXDB_DATA_DIR:-/opt/vercelab/data/influxdb}:/var/lib/influxdb3/data
+    networks:
+      - proxy
+
+  influxdb-explorer:
+    image: influxdata/influxdb3-ui:1.7.0
+    container_name: vercelab-influxdb-explorer
+    restart: unless-stopped
+    command:
+      - --mode=admin
+    environment:
+      SESSION_SECRET_KEY: ${VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET:-change-me-influxdb-explorer-session-secret}
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ${VERCELAB_INFLUXDB_EXPLORER_DATA_DIR:-/opt/vercelab/data/influxdb-explorer}:/db
+      - ${VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR:-/opt/vercelab/data/influxdb-explorer-config}:/app-root/config:ro
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
+      - "traefik.http.routers.vercelab-influxdb-explorer.rule=Host(`${VERCELAB_INFLUXDB_EXPLORER_HOST:-influx.localhost}`)"
+      - traefik.http.routers.vercelab-influxdb-explorer.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vercelab-influxdb-explorer.tls=true
+      - traefik.http.services.vercelab-influxdb-explorer.loadbalancer.server.port=8080
+    networks:
+      - proxy
+
+  traefik:
+    image: traefik:v3.0
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --ping=true
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:ro
+      - ${VERCELAB_TRAEFIK_DYNAMIC_DIR:-/opt/vercelab/traefik/dynamic}:/etc/traefik/dynamic:ro
+      - ${VERCELAB_TRAEFIK_CERTS_DIR:-/opt/vercelab/traefik/certs}:/etc/traefik/certs:ro
+    networks:
+      - proxy
+
+  control-plane:
+    container_name: vercelab-ui
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      HOSTNAME: ${HOSTNAME:-0.0.0.0}
+      VERCELAB_HOST_ROOT: ${VERCELAB_HOST_ROOT:-/opt/vercelab}
+      VERCELAB_DATA_ROOT: ${VERCELAB_DATA_ROOT:-/opt/vercelab/data}
+      VERCELAB_TRAEFIK_DYNAMIC_DIR: ${VERCELAB_TRAEFIK_DYNAMIC_DIR:-/opt/vercelab/traefik/dynamic}
+      VERCELAB_TRAEFIK_CERTS_DIR: ${VERCELAB_TRAEFIK_CERTS_DIR:-/opt/vercelab/traefik/certs}
+      VERCELAB_APPS_DIR: ${VERCELAB_APPS_DIR:-/opt/vercelab/data/apps}
+      VERCELAB_LOGS_DIR: ${VERCELAB_LOGS_DIR:-/opt/vercelab/data/logs}
+      VERCELAB_LOCKS_DIR: ${VERCELAB_LOCKS_DIR:-/opt/vercelab/data/locks}
+      VERCELAB_DATABASE_PROVIDER: ${VERCELAB_DATABASE_PROVIDER:-postgres}
+      VERCELAB_POSTGRES_URL: ${VERCELAB_POSTGRES_URL:-postgres://vercelab:vercelab@postgres:5432/vercelab}
+      VERCELAB_POSTGRES_USER: ${VERCELAB_POSTGRES_USER:-vercelab}
+      VERCELAB_POSTGRES_PASSWORD: ${VERCELAB_POSTGRES_PASSWORD:-vercelab}
+      VERCELAB_POSTGRES_DB: ${VERCELAB_POSTGRES_DB:-vercelab}
+      VERCELAB_INFLUXDB_URL: ${VERCELAB_INFLUXDB_URL:-http://influxdb:8181}
+      VERCELAB_INFLUXDB_DATABASE: ${VERCELAB_INFLUXDB_DATABASE:-vercelab_metrics}
+      VERCELAB_INFLUXDB_TOKEN: ${VERCELAB_INFLUXDB_TOKEN:-}
+      VERCELAB_INFLUXDB_RETENTION_DAYS: ${VERCELAB_INFLUXDB_RETENTION_DAYS:-90}
+      VERCELAB_DOCKER_SOCKET_PATH: ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+      VERCELAB_HOST_PROC_PATH: ${VERCELAB_HOST_PROC_PATH:-/host/proc}
+      VERCELAB_TERMINAL_TARGET: ${VERCELAB_TERMINAL_TARGET:-host}
+      VERCELAB_HOST_TERMINAL_IMAGE: ${VERCELAB_HOST_TERMINAL_IMAGE:-}
+      VERCELAB_TERMINAL_WS_PORT: ${VERCELAB_TERMINAL_WS_PORT:-3001}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      # Liveness only — `/api/health` can be 503 (e.g. no Docker CLI) while the app still serves traffic.
+      test:
+        ["CMD-SHELL", 'curl -fsS "http://127.0.0.1:$${PORT:-3000}/" >/dev/null']
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    volumes:
+      - ${VERCELAB_HOST_ROOT:-/opt/vercelab}:${VERCELAB_HOST_ROOT:-/opt/vercelab}
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+      - /proc:${VERCELAB_HOST_PROC_PATH:-/host/proc}:ro
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
+      - "traefik.http.routers.vercelab.rule=Host(`${VERCELAB_ADMIN_HOST}`)"
+      - traefik.http.routers.vercelab.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vercelab.tls=true
+      - traefik.http.routers.vercelab.service=vercelab
+      - traefik.http.services.vercelab.loadbalancer.server.port=${PORT:-3000}
+      - "traefik.http.routers.vercelab-terminal.rule=Host(`${VERCELAB_ADMIN_HOST}`) && PathPrefix(`/terminal/ws`)"
+      - traefik.http.routers.vercelab-terminal.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
+      - traefik.http.routers.vercelab-terminal.tls=true
+      - traefik.http.routers.vercelab-terminal.priority=100
+      - traefik.http.routers.vercelab-terminal.service=vercelab-terminal
+      - traefik.http.services.vercelab-terminal.loadbalancer.server.port=${VERCELAB_TERMINAL_WS_PORT:-3001}
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    name: ${VERCELAB_PROXY_NETWORK:-vercelab_proxy}

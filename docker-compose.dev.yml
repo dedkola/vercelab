@@ -1,0 +1,128 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Vercelab – LOCAL macOS DEVELOPMENT infrastructure stack
+#
+# Runs: Postgres · InfluxDB 3 Core · InfluxDB Explorer · Traefik
+# Does NOT run the control-plane container — use `pnpm dev` for that.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   docker compose -f docker-compose.dev.yml down
+#
+# All data is stored under ./data/ (gitignored).
+# No system paths, no /proc mounts, no TLS certificates required.
+#
+# Service URLs (after `docker compose -f docker-compose.dev.yml up -d`):
+#   Postgres:          localhost:5432
+#   InfluxDB API:      http://localhost:8181
+#   InfluxDB Explorer: http://influx.localhost  (via Traefik)
+#   Traefik dashboard: http://localhost:8088
+# ──────────────────────────────────────────────────────────────────────────────
+name: vercelab-dev
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: vercelab-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${VERCELAB_POSTGRES_USER:-vercelab}
+      POSTGRES_PASSWORD: ${VERCELAB_POSTGRES_PASSWORD:-vercelab}
+      POSTGRES_DB:       ${VERCELAB_POSTGRES_DB:-vercelab}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${VERCELAB_POSTGRES_USER:-vercelab} -d ${VERCELAB_POSTGRES_DB:-vercelab}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - proxy
+
+  # ── InfluxDB 3 Core ─────────────────────────────────────────────────────────
+  influxdb:
+    image: influxdb:3-core
+    container_name: vercelab-dev-influxdb
+    restart: unless-stopped
+    command:
+      - influxdb3
+      - serve
+      - --node-id=vercelab-dev-node
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3/data
+      - --admin-token-recovery-http-bind=127.0.0.1:8182
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x influxdb3 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "127.0.0.1:8181:8181"
+    volumes:
+      - ./data/influxdb:/var/lib/influxdb3/data
+    networks:
+      - proxy
+
+  # ── InfluxDB Explorer UI ────────────────────────────────────────────────────
+  influxdb-explorer:
+    image: influxdata/influxdb3-ui:1.7.0
+    container_name: vercelab-dev-influxdb-explorer
+    restart: unless-stopped
+    command:
+      - --mode=admin
+    environment:
+      SESSION_SECRET_KEY: ${VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET:-dev-influxdb-explorer-session-secret}
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ./data/influxdb-explorer:/db
+      - ./data/influxdb-explorer-config:/app-root/config:ro
+    labels:
+      - traefik.enable=true
+      # Use the explicit network name so Traefik can reach this container
+      # regardless of which compose project prefix is active (host dev or devcontainer).
+      - traefik.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_dev_proxy}
+      - traefik.http.routers.dev-influxdb-explorer.rule=Host(`influx.localhost`)
+      - traefik.http.routers.dev-influxdb-explorer.entrypoints=web
+      - traefik.http.services.dev-influxdb-explorer.loadbalancer.server.port=8080
+    networks:
+      - proxy
+
+  # ── Traefik (HTTP only – no TLS needed locally) ─────────────────────────────
+  traefik:
+    image: traefik:v3.0
+    container_name: vercelab-dev-traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # Reference the explicit external network name, not the compose-generated one.
+      # This means devcontainer services that join the same named network are
+      # automatically picked up by Traefik without any changes here.
+      - --providers.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_dev_proxy}
+      - --entrypoints.web.address=:80
+      # Traefik dashboard (read-only, no auth – dev only)
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --ping=true
+    ports:
+      - "80:80"
+      - "127.0.0.1:8088:8080"   # Traefik dashboard → http://localhost:8088
+    volumes:
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:ro
+    networks:
+      - proxy
+
+networks:
+  # Named external network so any devcontainer compose can join the same proxy
+  # without Docker inventing a project-prefixed name that conflicts.
+  # Created automatically on first `docker compose -f docker-compose.dev.yml up`.
+  proxy:
+    name: ${VERCELAB_PROXY_NETWORK:-vercelab_dev_proxy}
+    driver: bridge
+

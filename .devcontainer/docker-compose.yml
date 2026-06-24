@@ -1,0 +1,127 @@
+name: vercelab-devcontainer
+
+# ──────────────────────────────────────────────────────────────────────────────
+# This compose file is ONLY for devcontainer (VS Code / GitHub Codespaces).
+# It is fully self-contained: Postgres, InfluxDB, and Explorer all run here.
+#
+# For host macOS development (pnpm dev), use docker-compose.dev.yml instead.
+# The two stacks use different networks and container names on purpose so they
+# can run simultaneously without conflict:
+#
+#   devcontainer  →  network: vercelab_devcontainer_net  (internal only)
+#   docker-compose.dev.yml  →  network: vercelab_dev_proxy  (+ host port binds)
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  devcontainer:
+    container_name: vercelab-ui
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspaces/vercelab:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Some hosts expose docker.sock as root:root (0660).
+    # Add group 0 so the non-root `node` user can still access Docker.
+    group_add:
+      - "0"
+    command: sleep infinity
+    environment:
+      VERCELAB_UI_DEV_MODE: "true"
+      VERCELAB_HOST_ROOT: /workspaces/vercelab
+      VERCELAB_DATA_ROOT: /workspaces/vercelab/data
+      VERCELAB_APPS_DIR: /workspaces/vercelab/data/apps
+      VERCELAB_LOGS_DIR: /workspaces/vercelab/data/logs
+      VERCELAB_LOCKS_DIR: /workspaces/vercelab/data/locks
+      VERCELAB_DATABASE_PROVIDER: postgres
+      VERCELAB_POSTGRES_USER: vercelab
+      VERCELAB_POSTGRES_PASSWORD: vercelab
+      VERCELAB_POSTGRES_DB: vercelab
+      VERCELAB_POSTGRES_URL: postgresql://vercelab:vercelab@postgres:5432/vercelab
+      VERCELAB_INFLUXDB_URL: http://influxdb:8181
+      VERCELAB_INFLUXDB_DATABASE: vercelab_metrics
+      VERCELAB_INFLUXDB_EXPLORER_URL: http://localhost:8888
+      VERCELAB_BASE_DOMAIN: localhost
+      # Intentionally different from docker-compose.dev.yml (vercelab_dev_proxy)
+      # to keep the two stacks isolated.
+      VERCELAB_PROXY_NETWORK: vercelab_devcontainer_net
+      VERCELAB_ENCRYPTION_SECRET: devcontainer-local-secret-change-me
+    networks:
+      - devnet
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vercelab-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vercelab
+      POSTGRES_PASSWORD: vercelab
+      POSTGRES_DB: vercelab
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vercelab -d vercelab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - devnet
+
+  influxdb:
+    image: influxdb:3-core
+    container_name: vercelab-influxdb
+    restart: unless-stopped
+    command:
+      - influxdb3
+      - serve
+      - --node-id=vercelab-node
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3/data
+      - --admin-token-recovery-http-bind=127.0.0.1:8182
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x influxdb3 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - influxdb-data:/var/lib/influxdb3
+    networks:
+      - devnet
+
+  influxdb-explorer:
+    image: influxdata/influxdb3-ui:1.7.0
+    container_name: vercelab-influxdb-explorer
+    restart: unless-stopped
+    command:
+      - --mode=admin
+    environment:
+      SESSION_SECRET_KEY: devcontainer-influxdb-explorer-session-secret
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - 8888:8080
+    volumes:
+      - influxdb-explorer-data:/db
+      - ./influxdb-explorer-config:/app-root/config:ro
+    networks:
+      - devnet
+
+networks:
+  devnet:
+    # Explicit name prevents compose from prepending the project name, making
+    # it predictable and clearly separate from vercelab_dev_proxy.
+    name: vercelab_devcontainer_net
+    driver: bridge
+
+volumes:
+  postgres-data:
+  influxdb-data:
+  influxdb-explorer-data:
