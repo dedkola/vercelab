@@ -213,7 +213,7 @@ const PREVIEW_CONTAINERS: PreviewContainer[] = [
     id: "control-plane",
     name: "control-plane",
     stack: "vercelab",
-    image: "ghcr.io/dedkola/vercelab:preview",
+    image: "ghcr.io/kolasokol/vercelab:preview",
     node: "edge-a / arm64",
     status: "running",
     summary:
@@ -533,7 +533,7 @@ const PREVIEW_CONTAINERS: PreviewContainer[] = [
     id: "worker-builds",
     name: "worker-builds",
     stack: "jobs",
-    image: "ghcr.io/dedkola/build-worker:latest",
+    image: "ghcr.io/kolasokol/build-worker:latest",
     node: "edge-c / amd64",
     status: "running",
     summary:

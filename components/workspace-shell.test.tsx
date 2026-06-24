@@ -86,7 +86,7 @@ describe("WorkspaceShell", () => {
               message: "Redesign Git app management surface",
               sha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
               shortSha: "a1b2c3d",
-              url: "https://github.com/dedkola/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+              url: "https://github.com/kolasokol/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
             },
           ],
           configuredBranch: "main",
@@ -98,18 +98,18 @@ describe("WorkspaceShell", () => {
             message: "Redesign Git app management surface",
             sha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
             shortSha: "a1b2c3d",
-            url: "https://github.com/dedkola/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+            url: "https://github.com/kolasokol/vercelab/commit/a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
           },
           repository: {
-            fullName: "dedkola/vercelab",
+            fullName: "kolasokol/vercelab",
             name: "vercelab",
-            owner: "dedkola",
-            url: "https://github.com/dedkola/vercelab",
+            owner: "kolasokol",
+            url: "https://github.com/kolasokol/vercelab",
           },
         });
       }
 
-      if (url.includes("/api/github/repos/dedkola/vercelab/branches")) {
+      if (url.includes("/api/github/repos/kolasokol/vercelab/branches")) {
         return jsonResponse({
           branches: ["main", "release", "preview"],
         });
@@ -121,10 +121,10 @@ describe("WorkspaceShell", () => {
             {
               id: 1,
               name: "vercelab",
-              fullName: "dedkola/vercelab",
-              owner: "dedkola",
-              cloneUrl: "https://github.com/dedkola/vercelab.git",
-              url: "https://github.com/dedkola/vercelab.git",
+              fullName: "kolasokol/vercelab",
+              owner: "kolasokol",
+              cloneUrl: "https://github.com/kolasokol/vercelab.git",
+              url: "https://github.com/kolasokol/vercelab.git",
               defaultBranch: "main",
               visibility: "private",
               description: "Vercelab control plane",
@@ -619,8 +619,8 @@ describe("WorkspaceShell", () => {
         initialDeployments={[
           {
             id: "dep-1",
-            repositoryName: "dedkola/vercelab",
-            repositoryUrl: "https://github.com/dedkola/vercelab.git",
+            repositoryName: "kolasokol/vercelab",
+            repositoryUrl: "https://github.com/kolasokol/vercelab.git",
             branch: "main",
             commitSha: null,
             appName: "control-plane-app",
@@ -741,8 +741,8 @@ describe("WorkspaceShell", () => {
         initialDeployments={[
           {
             id: "dep-marketing",
-            repositoryName: "dedkola/marketing-site",
-            repositoryUrl: "https://github.com/dedkola/marketing-site.git",
+            repositoryName: "kolasokol/marketing-site",
+            repositoryUrl: "https://github.com/kolasokol/marketing-site.git",
             branch: "main",
             commitSha: null,
             appName: "Marketing Site",
@@ -947,8 +947,8 @@ describe("WorkspaceShell", () => {
         initialDeployments={[
           {
             id: "dep-1",
-            repositoryName: "dedkola/vercelab",
-            repositoryUrl: "https://github.com/dedkola/vercelab.git",
+            repositoryName: "kolasokol/vercelab",
+            repositoryUrl: "https://github.com/kolasokol/vercelab.git",
             branch: "main",
             commitSha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
             appName: "docs-app",
@@ -992,7 +992,7 @@ describe("WorkspaceShell", () => {
     });
 
     expect(
-      within(appRowButton).queryByText("dedkola/vercelab"),
+      within(appRowButton).queryByText("kolasokol/vercelab"),
     ).not.toBeInTheDocument();
   });
 
@@ -1012,7 +1012,7 @@ describe("WorkspaceShell", () => {
     });
 
     await user.click(repositoryCombobox);
-    await user.click(await screen.findByText("dedkola/vercelab"));
+    await user.click(await screen.findByText("kolasokol/vercelab"));
 
     expect(
       await screen.findByText(/3 branches available for selection\./i),
@@ -1031,7 +1031,7 @@ describe("WorkspaceShell", () => {
     expect(
       fetchSpy.mock.calls.some(([input]) =>
         getRequestUrl(input).includes(
-          "/api/github/repos/dedkola/vercelab/branches",
+          "/api/github/repos/kolasokol/vercelab/branches",
         ),
       ),
     ).toBe(true);

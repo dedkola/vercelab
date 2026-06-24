@@ -4,7 +4,7 @@
 
 **A self-hosted deployment control plane for homelabs, built on Next.js, Docker, Traefik, PostgreSQL, and InfluxDB.**
 
-[![GitHub package version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=for-the-badge&color=111827)](https://github.com/dedkola/vercelab)
+[![GitHub package version](https://img.shields.io/github/package-json/v/kolasokol/vercelab?style=for-the-badge&color=111827)](https://github.com/kolasokol/vercelab)
 [![Node.js](https://img.shields.io/badge/Node.js-24_LTS-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.2.6-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.6-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
@@ -17,11 +17,11 @@
 [![Traefik](https://img.shields.io/badge/Traefik-edge-24A1C1?style=for-the-badge&logo=traefikproxy&logoColor=white)](https://traefik.io/traefik/)
 [![Vitest](https://img.shields.io/badge/Vitest-tested-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
 
-[![Last commit](https://img.shields.io/github/last-commit/dedkola/vercelab?style=flat-square&color=0f766e)](https://github.com/dedkola/vercelab/commits/main)
-[![Repo size](https://img.shields.io/github/repo-size/dedkola/vercelab?style=flat-square&color=334155)](https://github.com/dedkola/vercelab)
-[![Issues](https://img.shields.io/github/issues/dedkola/vercelab?style=flat-square&color=7c3aed)](https://github.com/dedkola/vercelab/issues)
-[![Pull requests](https://img.shields.io/github/issues-pr/dedkola/vercelab?style=flat-square&color=2563eb)](https://github.com/dedkola/vercelab/pulls)
-[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C?style=flat-square&logo=dependabot&logoColor=white)](https://github.com/dedkola/vercelab/blob/main/.github/dependabot.yml)
+[![Last commit](https://img.shields.io/github/last-commit/kolasokol/vercelab?style=flat-square&color=0f766e)](https://github.com/kolasokol/vercelab/commits/main)
+[![Repo size](https://img.shields.io/github/repo-size/kolasokol/vercelab?style=flat-square&color=334155)](https://github.com/kolasokol/vercelab)
+[![Issues](https://img.shields.io/github/issues/kolasokol/vercelab?style=flat-square&color=7c3aed)](https://github.com/kolasokol/vercelab/issues)
+[![Pull requests](https://img.shields.io/github/issues-pr/kolasokol/vercelab?style=flat-square&color=2563eb)](https://github.com/kolasokol/vercelab/pulls)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C?style=flat-square&logo=dependabot&logoColor=white)](https://github.com/kolasokol/vercelab/blob/main/.github/dependabot.yml)
 
 </div>
 
@@ -114,7 +114,7 @@ Open `http://localhost:3000`.
 For an Ubuntu server install, run a single command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kolasokol/vercelab/main/install.sh | bash
 ```
 
 The one-liner clones the repository to `/home/<username>/vercelab` by default and starts the installer. The installer can derive an `sslip.io` base domain from the server's LAN IP when you do not provide one.
@@ -218,7 +218,7 @@ The containers workspace (`/containers`) shows all containers visible to the hos
 The production path assumes an Ubuntu host. If you do not provide a custom domain, the installer derives a reachable default base domain from the server's primary LAN IPv4 using `sslip.io`, for example `10-10-0-36.sslip.io`.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kolasokol/vercelab/main/install.sh | bash
 ```
 
 The one-liner proposes `/home/<username>/vercelab` as the clone location and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
@@ -229,13 +229,13 @@ For a fully unattended bootstrap, pass configuration as environment variables be
 VERCELAB_BASE_DOMAIN=lab.example.com \
 VERCELAB_ADMIN_HOST=vercelab.lab.example.com \
 VERCELAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)" \
-bash <(curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/kolasokol/vercelab/main/install.sh)
 ```
 
 To clone to a different location, set `VERCELAB_INSTALL_DIR`:
 
 ```bash
-VERCELAB_INSTALL_DIR=/srv/vercelab bash <(curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh)
+VERCELAB_INSTALL_DIR=/srv/vercelab bash <(curl -fsSL https://raw.githubusercontent.com/kolasokol/vercelab/main/install.sh)
 ```
 
 If you already have the repository cloned, run the installer directly:

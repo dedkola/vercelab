@@ -23,11 +23,11 @@ default_vercelab_root() {
 #
 # Override defaults with env vars before the pipe:
 #   VERCELAB_INSTALL_DIR  – clone target  (default: ~/vercelab)
-#   VERCELAB_REPO_URL     – repository    (default: https://github.com/dedkola/vercelab)
+#   VERCELAB_REPO_URL     – repository    (default: https://github.com/kolasokol/vercelab)
 if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
   _default_install_dir="$(default_vercelab_root)"
   _install_dir="${VERCELAB_INSTALL_DIR:-}"
-  _repo_url="${VERCELAB_REPO_URL:-https://github.com/dedkola/vercelab}"
+  _repo_url="${VERCELAB_REPO_URL:-https://github.com/kolasokol/vercelab}"
   _sudo=()
 
   if [[ -z "$_install_dir" ]]; then

@@ -786,8 +786,8 @@ describe("MetricsDashboardShell", () => {
         initialDeployments={[
           {
             id: "dep-omnichat",
-            repositoryName: "dedkola/omnichat",
-            repositoryUrl: "https://github.com/dedkola/omnichat.git",
+            repositoryName: "kolasokol/omnichat",
+            repositoryUrl: "https://github.com/kolasokol/omnichat.git",
             branch: "main",
             commitSha: null,
             appName: "Omnichat",

@@ -48,8 +48,8 @@ describe("loadMetricsDashboardData", () => {
     listDeploymentSummariesMock.mockResolvedValue([
       {
         id: "dep-1",
-        repositoryName: "dedkola/marketing-site",
-        repositoryUrl: "https://github.com/dedkola/marketing-site.git",
+        repositoryName: "kolasokol/marketing-site",
+        repositoryUrl: "https://github.com/kolasokol/marketing-site.git",
         branch: "main",
         commitSha: null,
         appName: "Marketing Site",
