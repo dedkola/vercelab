@@ -1,22 +1,25 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+      time: '09:00'
     assignees:
-      - "kolasokol"
+      - kolasokol
+    labels:
+      - dependencies
+    open-pull-requests-limit: 10
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+      time: '09:00'
     assignees:
-      - "kolasokol"
-
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    assignees:
-      - "kolasokol"
+      - kolasokol
+    labels:
+      - dependencies
+      - github-actions
