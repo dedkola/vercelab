@@ -127,7 +127,7 @@ export async function listGitHubRepositories(
           Authorization: `Bearer ${token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
-        cache: "no-store",
+        next: { revalidate: 60 },
       },
     );
 
@@ -180,7 +180,7 @@ export async function listGitHubBranches(
           Authorization: `Bearer ${token}`,
           "X-GitHub-Api-Version": "2022-11-28",
         },
-        cache: "no-store",
+        next: { revalidate: 60 },
       },
     );
 
