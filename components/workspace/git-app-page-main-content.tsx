@@ -206,11 +206,11 @@ function getRepositoryDescriptor(repositoryUrl: string) {
 
 function SnapshotRow({ label, value }: SnapshotRowProps) {
   return (
-    <div className="grid gap-1 border-b border-border/50 py-3 last:border-b-0 md:grid-cols-[9.5rem_minmax(0,1fr)] md:items-start md:gap-4">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="grid gap-1 border-b border-border/50 py-2.5 last:border-b-0 md:grid-cols-[9rem_minmax(0,1fr)] md:items-start md:gap-3">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
-      <div className="min-w-0 text-sm leading-6 text-foreground">{value}</div>
+      <div className="min-w-0 text-sm leading-5 text-foreground">{value}</div>
     </div>
   );
 }
@@ -223,15 +223,15 @@ function SettingsRow({
   resetDisabled = false,
 }: SettingsRowProps) {
   return (
-    <div className="grid gap-2.5 px-4 py-3 md:grid-cols-[10rem_minmax(0,0.9fr)_minmax(0,1.15fr)_5rem] md:items-center">
+    <div className="grid gap-2 px-3 py-2 md:grid-cols-[10rem_minmax(0,0.9fr)_minmax(0,1.15fr)_5rem] md:items-center">
       <div>
-        <div className="text-sm font-semibold tracking-tight text-foreground">
+        <div className="text-xs font-semibold tracking-tight text-foreground">
           {label}
         </div>
       </div>
 
-      <div className="min-w-0 rounded-[0.95rem] border border-border/60 bg-muted/36 px-3 py-2">
-        <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:hidden">
+      <div className="min-w-0 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
           Current
         </div>
         <div className="min-w-0 text-sm leading-5 text-foreground">
@@ -240,7 +240,7 @@ function SettingsRow({
       </div>
 
       <div className="min-w-0">
-        <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:hidden">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
           New value
         </div>
         {editor}
@@ -580,26 +580,26 @@ export function GitAppPageMainContent({
   }
 
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-[1.4rem] border border-border/70 bg-linear-to-r from-background via-muted/22 to-background shadow-[0_26px_80px_-62px_rgba(15,23,42,0.4)]">
-        <div className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-3">
+      <section className="rounded-xl border border-border/70 bg-background p-3 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Active deployment
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                {deployment.appName}
-              </h1>
-              <Badge variant={deploymentStatusVariant}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground" variant="outline">
+                Deployment
+              </Badge>
+              <Badge className="rounded-md text-[11px]" variant={deploymentStatusVariant}>
                 {deploymentStatusLabel}
               </Badge>
-              <Badge className="border-border/60 bg-background/80 text-foreground">
+              <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
                 {deployment.composeMode ?? "auto"}
               </Badge>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>Deployment endpoint</span>
+            <h1 className="text-base font-semibold tracking-tight text-foreground">
+              {deployment.appName}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>Endpoint</span>
               <a
                 className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
                 href={liveHref}
@@ -607,13 +607,13 @@ export function GitAppPageMainContent({
                 target="_blank"
               >
                 {publicDomainLabel}
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3 w-3" />
               </a>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Badge className="border-border/60 bg-muted/45 text-foreground">
+            <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
               Updated{" "}
               {new Date(deployment.updatedAt).toLocaleString("en", {
                 hour: "2-digit",
@@ -622,19 +622,19 @@ export function GitAppPageMainContent({
                 day: "numeric",
               })}
             </Badge>
-            <Badge className="border-border/60 bg-muted/45 text-foreground">
+            <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
               Port {deployment.port}
             </Badge>
           </div>
         </div>
       </section>
 
-      <Card className="overflow-hidden border-border/70 bg-card/92">
-        <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+      <Card className="overflow-hidden rounded-xl border-border/70 shadow-sm">
+        <CardHeader className="border-b border-border/60 pb-2 pt-3">
           <CardTitle>Current app snapshot</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-5 pt-4">
-          <div className="rounded-[1.2rem] border border-border/60 bg-background/88 px-4 py-1">
+        <CardContent className="space-y-4 py-3">
+          <div className="rounded-lg border border-border/60 bg-background px-3 py-1">
             <SnapshotRow label="App name" value={deployment.appName} />
             <SnapshotRow
               label="Traefik URL"
@@ -808,19 +808,19 @@ export function GitAppPageMainContent({
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-border/70 bg-card/92">
-        <CardHeader className="border-b border-border/60 bg-linear-to-r from-muted/52 via-background to-background">
+      <Card className="overflow-hidden rounded-xl border-border/70 shadow-sm">
+        <CardHeader className="border-b border-border/60 pb-2 pt-3">
           <CardTitle>Editable runtime settings</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 pt-4">
+        <CardContent className="space-y-3 py-3">
           {branchBrowserError ? (
-            <div className="rounded-[1rem] border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm leading-6 text-amber-900">
+            <div className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-5 text-amber-900">
               {branchBrowserError}
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded-[1.25rem] border border-border/60 bg-background/88">
-            <div className="hidden border-b border-border/60 bg-muted/30 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:grid md:grid-cols-[11rem_minmax(0,0.9fr)_minmax(0,1.15fr)_5rem]">
+          <div className="overflow-hidden rounded-lg border border-border/60 bg-background">
+            <div className="hidden border-b border-border/60 bg-muted/30 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[11rem_minmax(0,0.9fr)_minmax(0,1.15fr)_5rem]">
               <div>Setting</div>
               <div>Current</div>
               <div>New value</div>
@@ -832,7 +832,7 @@ export function GitAppPageMainContent({
                 currentValue={deployment.appName}
                 editor={
                   <Input
-                    className="h-9 rounded-lg bg-background shadow-none"
+                    className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none"
                     onChange={(event) => setAppName(event.target.value)}
                     value={appName}
                   />
@@ -849,14 +849,14 @@ export function GitAppPageMainContent({
                   </span>
                 }
                 editor={
-                  <InputGroup className="h-9 rounded-lg bg-background shadow-none">
+                  <InputGroup className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none">
                     <InputGroupInput
-                      className="px-3 text-sm"
+                      className="px-2.5 text-xs"
                       onChange={(event) => setSubdomain(event.target.value)}
                       value={subdomain}
                     />
                     {baseDomain ? (
-                      <InputGroupSuffix className="leading-9">
+                      <InputGroupSuffix className="text-xs leading-8">
                         .{baseDomain}
                       </InputGroupSuffix>
                     ) : null}
@@ -876,7 +876,7 @@ export function GitAppPageMainContent({
                 editor={
                   <Combobox
                     ariaLabel="Saved branch"
-                    buttonClassName="h-9 rounded-lg bg-background px-3 text-sm shadow-none"
+                    buttonClassName="h-8 rounded-lg border border-border/70 bg-background px-2.5 text-xs shadow-none"
                     disabled={isSourceLoading}
                     emptyText={branchBrowserError ?? "No branches available"}
                     onOpenChangeAction={handleBranchComboboxOpen}
@@ -916,7 +916,7 @@ export function GitAppPageMainContent({
                 editor={
                   <Combobox
                     ariaLabel="Saved commit"
-                    buttonClassName="h-9 rounded-lg bg-background px-3 text-sm shadow-none"
+                    buttonClassName="h-8 rounded-lg border border-border/70 bg-background px-2.5 text-xs shadow-none"
                     disabled={isSourceLoading || Boolean(branchBrowserError)}
                     emptyText={branchBrowserError ?? "No commits available"}
                     onValueChangeAction={handleCommitSelect}
@@ -937,7 +937,7 @@ export function GitAppPageMainContent({
                 currentValue={`:${deployment.port}`}
                 editor={
                   <Input
-                    className="h-9 rounded-lg bg-background shadow-none"
+                    className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none"
                     inputMode="numeric"
                     onChange={(event) => setPort(event.target.value)}
                     value={port}
@@ -952,7 +952,7 @@ export function GitAppPageMainContent({
                 currentValue={deployment.exposureMode ?? "http"}
                 editor={
                   <select
-                    className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-none"
+                    className="h-8 w-full rounded-lg border border-input bg-background px-3 text-xs shadow-none"
                     onChange={(event) =>
                       setExposureMode(event.target.value as ExposureMode)
                     }
@@ -978,7 +978,7 @@ export function GitAppPageMainContent({
                   }
                   editor={
                     <Input
-                      className="h-9 rounded-lg bg-background shadow-none"
+                      className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none"
                       inputMode="numeric"
                       onChange={(event) => setHostPort(event.target.value)}
                       placeholder="e.g. 27017"
@@ -995,9 +995,9 @@ export function GitAppPageMainContent({
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[1.25rem] border border-border/60 bg-background/88">
-            <div className="flex flex-col gap-3 border-b border-border/60 bg-muted/24 px-4 py-3 md:flex-row md:items-center md:justify-between">
-              <div className="text-sm font-semibold tracking-tight text-foreground">
+          <div className="overflow-hidden rounded-lg border border-border/60 bg-background">
+            <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/24 px-3 py-2 md:flex-row md:items-center md:justify-between">
+              <div className="text-xs font-semibold tracking-tight text-foreground">
                 Environment variables
               </div>
 
@@ -1029,7 +1029,7 @@ export function GitAppPageMainContent({
               </div>
             </div>
 
-            <div className="hidden border-b border-border/60 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:grid md:grid-cols-[5.5rem_minmax(0,0.7fr)_minmax(0,1.3fr)_3rem]">
+            <div className="hidden border-b border-border/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[5.5rem_minmax(0,0.7fr)_minmax(0,1.3fr)_3rem]">
               <div>Use</div>
               <div>Key</div>
               <div>Value</div>
@@ -1040,7 +1040,7 @@ export function GitAppPageMainContent({
               <div className="divide-y divide-border/60">
                 {envRows.map((row) => (
                   <div
-                    className="grid gap-3 px-4 py-3 md:grid-cols-[5.5rem_minmax(0,0.7fr)_minmax(0,1.3fr)_3rem] md:items-center"
+                    className="grid gap-2 px-3 py-2 md:grid-cols-[5.5rem_minmax(0,0.7fr)_minmax(0,1.3fr)_3rem] md:items-center"
                     key={row.id}
                   >
                     <label className="inline-flex items-center gap-2 text-xs font-medium text-foreground">
@@ -1066,7 +1066,7 @@ export function GitAppPageMainContent({
 
                     <Input
                       className={cn(
-                        "h-9 rounded-lg bg-background shadow-none",
+                        "h-8 rounded-lg border-border/70 bg-background text-xs shadow-none",
                         !row.enabled && "opacity-65",
                       )}
                       onChange={(event) => {
@@ -1087,7 +1087,7 @@ export function GitAppPageMainContent({
 
                     <Input
                       className={cn(
-                        "h-9 rounded-lg bg-background shadow-none",
+                        "h-8 rounded-lg border-border/70 bg-background text-xs shadow-none",
                         !row.enabled && "opacity-65",
                       )}
                       onChange={(event) => {
@@ -1124,20 +1124,20 @@ export function GitAppPageMainContent({
                 ))}
               </div>
             ) : (
-              <div className="px-4 py-6 text-sm leading-6 text-muted-foreground">
+              <div className="px-3 py-5 text-xs leading-5 text-muted-foreground">
                 No environment variables are configured yet. Add the ones you
                 need and include the row in the next save.
               </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-3 rounded-[1.2rem] border border-border/60 bg-linear-to-r from-muted/34 via-background to-background px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-2">
               <div className="text-sm font-semibold tracking-tight text-foreground">
                 Save changes
               </div>
               {changeCount > 0 ? (
-                <Badge className="border-border/60 bg-background/80 text-foreground">
+                <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
                   {changeCount} pending
                 </Badge>
               ) : null}

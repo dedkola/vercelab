@@ -346,8 +346,8 @@ export function GitLogPanel({
 
             </>
           ) : (
-            <div className="flex min-w-0 flex-col space-y-4">
-              <div className="w-full rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
+            <div className="flex min-w-0 flex-col space-y-3">
+              <div className="w-full rounded-xl border border-border/70 bg-background px-3 py-3 shadow-sm">
                 <div className="text-sm font-semibold tracking-tight text-foreground">
                   {emptyState.title}
                 </div>
@@ -356,8 +356,8 @@ export function GitLogPanel({
                 </div>
               </div>
 
-              <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
-                <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+              <div className="min-w-0 overflow-hidden rounded-xl border border-border/70 bg-[#0f1720] shadow-sm">
+                <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
                   <div className="flex items-center gap-2 text-xs text-slate-300">
                     <span className="h-2 w-2 rounded-full bg-slate-400" />
                     Tail preview
@@ -366,7 +366,7 @@ export function GitLogPanel({
                     Idle
                   </div>
                 </div>
-                <div className="px-4 py-4 font-mono text-[12px] leading-6 text-slate-400">
+                <div className="px-3 py-3 font-mono text-[12px] leading-5 text-slate-400">
                   {emptyState.description}
                 </div>
               </div>

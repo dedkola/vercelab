@@ -183,21 +183,20 @@ const METRICS_PANEL_STORAGE_KEY = "vercelab:containers-metrics-panel-width";
 const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
 const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
 
-const DEFAULT_METRICS_WIDTH_PX = 248;
-const DEFAULT_LIST_WIDTH_PX = 304;
-const DEFAULT_LOGS_WIDTH_PX = 340;
+const DEFAULT_METRICS_WIDTH_PX = 232;
+const DEFAULT_LIST_WIDTH_PX = 280;
+const DEFAULT_LOGS_WIDTH_PX = 320;
 const EMPTY_DEPLOYMENTS: DeploymentSummary[] = [];
 const EMPTY_CONTAINER_HISTORY: ContainerMetricsHistoryPoint[] = [];
 const EMPTY_CONTAINER_LIST: ContainerListEntry[] = [];
 const EMPTY_FOCUSED_METRIC_CHARTS: FocusedMetricChart[] = [];
 const EMPTY_ALL_CONTAINERS_METRIC_CHARTS: AllContainersMetricChart[] = [];
-
-const MIN_METRICS_WIDTH_PX = 216;
-const MAX_METRICS_WIDTH_PX = 420;
-const MIN_LIST_WIDTH_PX = 260;
-const MAX_LIST_WIDTH_PX = 420;
-const MIN_LOGS_WIDTH_PX = 300;
-const MAX_LOGS_WIDTH_PX = 520;
+const MIN_METRICS_WIDTH_PX = 200;
+const MAX_METRICS_WIDTH_PX = 360;
+const MIN_LIST_WIDTH_PX = 240;
+const MAX_LIST_WIDTH_PX = 400;
+const MIN_LOGS_WIDTH_PX = 280;
+const MAX_LOGS_WIDTH_PX = 480;
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
@@ -3217,13 +3216,13 @@ export function WorkspaceShell({
             publicDomainLabel={selectedDeploymentDomain}
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <div className="max-w-lg rounded-[1.75rem] border border-border/70 bg-background/86 px-6 py-8 text-center shadow-[0_28px_72px_-48px_rgba(15,23,42,0.3)]">
+          <div className="flex h-full items-center justify-center p-4">
+            <div className="max-w-md rounded-xl border border-border/70 bg-background px-5 py-6 text-center shadow-sm">
               <SectionLabel icon="github" text="Git App Page" />
-              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
+              <h1 className="mt-3 text-lg font-semibold tracking-tight text-foreground">
                 Add your first app
               </h1>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
                 Open the compact create panel in the sidebar to pick a
                 repository and start a live deployment.
               </p>
@@ -3273,7 +3272,7 @@ export function WorkspaceShell({
 
   return (
     <section
-      className="flex h-screen flex-col bg-linear-to-b from-background via-muted/12 to-background"
+      className="flex h-screen flex-col bg-background"
       aria-label="Workspace shell"
     >
       <WorkspaceHeader

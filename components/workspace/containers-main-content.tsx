@@ -68,8 +68,8 @@ type InfoChipProps = {
 
 function InfoChip({ label, value, children, mono }: InfoChipProps) {
   return (
-    <div className="rounded-md border border-border/60 bg-muted/16 px-2.5 py-2">
-      <dt className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+    <div className="rounded-md border border-border/60 bg-background px-2.5 py-2">
+      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </dt>
       <dd
@@ -279,14 +279,14 @@ export function ContainersMainContent({
     null;
 
   return (
-    <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/12 to-background p-2 md:p-3">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2.5">
+    <main className="min-w-0 flex-1 overflow-auto bg-muted/30 p-3 md:p-4">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3">
 
         {/* Header */}
-        <section className="rounded-xl border border-border/70 bg-background/86 px-3 py-2.5 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.35)]">
+        <section className="rounded-xl border border-border/70 bg-background px-3 py-2.5 shadow-sm">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <Badge variant={getKindBadgeVariant(inventoryMeta.kind)}>
+              <Badge className="rounded-md text-[11px]" variant={getKindBadgeVariant(inventoryMeta.kind)}>
                 {formatKindLabel(inventoryMeta.kind)}
               </Badge>
               <h1 className="truncate text-sm font-semibold tracking-tight text-foreground md:text-base">
@@ -314,7 +314,7 @@ export function ContainersMainContent({
         </section>
 
         {/* Info chips */}
-        <section className="rounded-xl border border-border/70 bg-background/88 px-3 py-3 shadow-[0_16px_42px_-36px_rgba(15,23,42,0.3)]">
+        <section className="rounded-xl border border-border/70 bg-background px-3 py-3 shadow-sm">
           {runtimeEntry ? (
             <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <InfoChip
@@ -378,13 +378,13 @@ export function ContainersMainContent({
 
         {/* Environment Variables */}
         {runtimeEntry ? (
-          <section className="overflow-hidden rounded-xl border border-border/70 bg-background/88 shadow-[0_16px_42px_-36px_rgba(15,23,42,0.3)]">
+          <section className="overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm">
             <button
               className="flex w-full items-center justify-between px-3 py-2.5 text-left transition hover:bg-muted/20"
               onClick={() => setIsEnvOpen((prev) => !prev)}
               type="button"
             >
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Environment Variables
                 {inspectData ? ` (${inspectEnvVars.length})` : null}
               </span>
@@ -437,13 +437,13 @@ export function ContainersMainContent({
 
         {/* Edit Card */}
         {runtimeEntry ? (
-          <section className="overflow-hidden rounded-xl border border-border/70 bg-background/88 shadow-[0_16px_42px_-36px_rgba(15,23,42,0.3)]">
+          <section className="overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm">
             <button
               className="flex w-full items-center justify-between px-3 py-2.5 text-left transition hover:bg-muted/20"
               onClick={handleOpenEdit}
               type="button"
             >
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Edit Container
               </span>
               <span className="text-muted-foreground">{isEditOpen ? "▲" : "▼"}</span>

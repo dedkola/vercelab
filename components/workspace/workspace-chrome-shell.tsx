@@ -43,9 +43,9 @@ import {
 import type { MetricsSnapshot } from "@/lib/system-metrics";
 
 const METRICS_PANEL_STORAGE_KEY = "vercelab:workspace-metrics-panel-width";
-const DEFAULT_METRICS_WIDTH_PX = 248;
-const MIN_METRICS_WIDTH_PX = 216;
-const MAX_METRICS_WIDTH_PX = 420;
+const DEFAULT_METRICS_WIDTH_PX = 232;
+const MIN_METRICS_WIDTH_PX = 200;
+const MAX_METRICS_WIDTH_PX = 360;
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
@@ -716,7 +716,7 @@ export function WorkspaceChromeShell({
     <WorkspaceChromeContext.Provider value={contextValue}>
       <section
         aria-label="Workspace shell"
-        className="flex h-screen flex-col bg-linear-to-b from-background via-muted/12 to-background"
+        className="flex h-screen flex-col bg-background"
       >
         <WorkspaceHeader
           activeViewDescription={activeViewDescription}

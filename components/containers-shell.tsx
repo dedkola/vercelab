@@ -45,12 +45,12 @@ import type { ExposureMode } from "@/lib/validation";
 
 const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
 const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
-const DEFAULT_LIST_WIDTH_PX = 304;
-const DEFAULT_LOGS_WIDTH_PX = 340;
-const MIN_LIST_WIDTH_PX = 260;
-const MAX_LIST_WIDTH_PX = 420;
-const MIN_LOGS_WIDTH_PX = 300;
-const MAX_LOGS_WIDTH_PX = 520;
+const DEFAULT_LIST_WIDTH_PX = 280;
+const DEFAULT_LOGS_WIDTH_PX = 320;
+const MIN_LIST_WIDTH_PX = 240;
+const MAX_LIST_WIDTH_PX = 400;
+const MIN_LOGS_WIDTH_PX = 280;
+const MAX_LOGS_WIDTH_PX = 480;
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LOG_TAIL_LINES = 150;

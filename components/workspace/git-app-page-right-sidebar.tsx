@@ -34,7 +34,7 @@ export function GitAppPageRightSidebar({
 }: GitAppPageRightSidebarProps) {
   if (isCollapsed) {
     return (
-      <aside className="flex w-11 shrink-0 items-start border-l border-border/70 bg-linear-to-b from-background via-muted/26 to-background px-1.5 py-2 shadow-[-20px_0_54px_-44px_rgba(15,23,42,0.3)]">
+      <aside className="flex w-11 shrink-0 items-start border-l border-border/70 bg-background px-1.5 py-2">
         <Button
           aria-label="Show logs sidebar"
           className="h-7 w-7"
@@ -54,19 +54,19 @@ export function GitAppPageRightSidebar({
       <ResizeHandle onMouseDown={onResizeStartAction} />
 
       <aside
-        className="flex shrink-0 flex-col border-l border-border/70 bg-linear-to-b from-background via-muted/16 to-background shadow-[-22px_0_72px_-58px_rgba(15,23,42,0.34)] transition-[width] duration-300"
+        className="flex shrink-0 flex-col border-l border-border/70 bg-background transition-[width] duration-300"
         style={{ width: `${width}px` }}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-3">
-          <div className="space-y-1">
+        <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2">
+          <div className="space-y-0.5">
             <SectionLabel icon="syslog" text="Logs" />
-            <div className="text-xs text-muted-foreground">
+            <div className="text-[11px] text-muted-foreground">
               Build and container output for the selected deployment.
             </div>
           </div>
           <Button
             aria-label="Hide logs sidebar"
-            className="h-7 w-7"
+            className="h-6 w-6"
             onClick={onCollapseAction}
             size="icon"
             type="button"
