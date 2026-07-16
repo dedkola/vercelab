@@ -21,10 +21,17 @@ export async function GET() {
 
     const repositories = await listGitHubRepositories(token);
 
-    return Response.json({
-      repositories,
-      tokenConfigured: true,
-    });
+    return Response.json(
+      {
+        repositories,
+        tokenConfigured: true,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+        },
+      },
+    );
   } catch (error) {
     return Response.json(
       {

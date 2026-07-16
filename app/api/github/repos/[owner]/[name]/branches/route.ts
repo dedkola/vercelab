@@ -28,10 +28,18 @@ export async function GET(
     const branches = await listGitHubBranches(
       config.security.githubToken,
       owner,
-      name
+      name,
     );
 
-    return Response.json({ branches }, { status: 200 });
+    return Response.json(
+      { branches },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+        },
+      },
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to fetch branches";
