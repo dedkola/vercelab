@@ -53,15 +53,15 @@ const METRICS_PANEL_STORAGE_KEY = "vercelab:dashboard-metrics-panel-width";
 const LIST_PANEL_STORAGE_KEY = "vercelab:dashboard-list-panel-width";
 const LOGS_PANEL_STORAGE_KEY = "vercelab:dashboard-logs-panel-width";
 
-const DEFAULT_METRICS_WIDTH_PX = 248;
-const DEFAULT_LIST_WIDTH_PX = 304;
-const DEFAULT_LOGS_WIDTH_PX = 340;
-const MIN_METRICS_WIDTH_PX = 216;
-const MAX_METRICS_WIDTH_PX = 420;
-const MIN_LIST_WIDTH_PX = 260;
-const MAX_LIST_WIDTH_PX = 420;
-const MIN_LOGS_WIDTH_PX = 300;
-const MAX_LOGS_WIDTH_PX = 520;
+const DEFAULT_METRICS_WIDTH_PX = 232;
+const DEFAULT_LIST_WIDTH_PX = 280;
+const DEFAULT_LOGS_WIDTH_PX = 320;
+const MIN_METRICS_WIDTH_PX = 200;
+const MAX_METRICS_WIDTH_PX = 360;
+const MIN_LIST_WIDTH_PX = 240;
+const MAX_LIST_WIDTH_PX = 400;
+const MIN_LOGS_WIDTH_PX = 280;
+const MAX_LOGS_WIDTH_PX = 480;
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
@@ -848,7 +848,7 @@ export function MetricsDashboardShell({
         visibleCount={filteredContainers.length}
       />
 
-      <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
+      <main className="min-w-0 flex-1 overflow-auto bg-muted/30 p-4 md:p-5">
         <MetricsDashboardMainContent
           allContainerHistory={allContainerHistory}
           containerHistoryStatusText={containerHistoryError}
@@ -905,7 +905,7 @@ export function MetricsDashboardShell({
   return (
     <section
       aria-label="Workspace shell"
-      className="flex h-screen flex-col bg-linear-to-b from-background via-muted/12 to-background"
+      className="flex h-screen flex-col bg-background"
     >
       <WorkspaceHeader
         activeViewDescription="Live host and container observability inside the shared workspace shell."

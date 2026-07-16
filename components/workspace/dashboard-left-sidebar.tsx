@@ -83,11 +83,11 @@ function getContainerStatusVariant(
 function getStatusDotClassName(variant: "success" | "warning" | "default") {
   switch (variant) {
     case "success":
-      return "bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.14)]";
+      return "bg-emerald-500";
     case "warning":
-      return "bg-amber-500 shadow-[0_0_0_3px_rgba(245,158,11,0.16)]";
+      return "bg-amber-500";
     default:
-      return "bg-slate-400 shadow-[0_0_0_3px_rgba(100,116,139,0.13)]";
+      return "bg-slate-400";
   }
 }
 
@@ -161,21 +161,21 @@ export function DashboardLeftSidebar({
   return (
     <>
       <aside
-        className="flex shrink-0 flex-col border-r border-border/70 bg-linear-to-b from-background via-muted/10 to-background shadow-[18px_0_56px_-52px_rgba(15,23,42,0.24)] transition-[width] duration-300"
+        className="flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-300"
         style={{ width: `${listWidth}px` }}
       >
-        <div className="flex flex-col gap-3 border-b border-border/60 px-3 py-3">
+        <div className="flex flex-col gap-2 border-b border-border/70 px-3 py-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-1">
               <SectionLabel icon="cloud" text="Containers" />
             </div>
             <div className="flex flex-wrap items-center justify-end gap-1.5">
               {runningContainersCount !== null ? (
-                <Badge className="h-6 border-emerald-200/80 bg-emerald-50/90 px-2 text-[11px] text-emerald-700">
+                <Badge className="h-5 rounded-md border-emerald-200/80 bg-emerald-50/90 px-1.5 text-[11px] text-emerald-700">
                   {runningContainersCount} running
                 </Badge>
               ) : null}
-              <Badge className="h-6 border-border/60 bg-background/80 px-2 text-[11px] text-foreground">
+              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground">
                 {visibleCount} visible
               </Badge>
               {onAddContainerAction ? (
@@ -206,64 +206,64 @@ export function DashboardLeftSidebar({
           <div className="relative">
             <Search
               aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               aria-label="Search containers"
-              className="h-9 rounded-lg border-border/70 bg-background/90 pl-9 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.24)]"
+              className="h-8 rounded-lg border-border/70 bg-background pl-8 text-xs"
               onChange={(event) =>
                 onSearchQueryChangeAction(event.target.value)
               }
-              placeholder="Search containers, stacks, images..."
+              placeholder="Search containers…"
               value={searchQuery}
             />
           </div>
         </div>
 
         <ScrollArea className="h-full">
-          <div className="flex w-full flex-col gap-3 p-3">
+          <div className="flex w-full flex-col gap-2 p-2">
             {isAddPanelOpen && addPanel ? (
-              <div className="overflow-hidden rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-800">
+              <div className="overflow-hidden rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-2.5">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-800">
                   New Container
                 </div>
                 {addPanel}
               </div>
             ) : null}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1">
               <button
                 aria-label="All containers"
                 className={cn(
-                  "group w-full rounded-lg border px-3 py-2.5 text-left transition-all duration-200",
+                  "group w-full rounded-lg border px-2.5 py-2 text-left transition-colors",
                   isAllContainersSelected ||
                     activeContainerId === "__all-containers__"
-                    ? "border-emerald-300/80 bg-emerald-50/80 shadow-[0_18px_44px_-36px_rgba(5,150,105,0.35)]"
-                    : "border-transparent bg-transparent hover:border-border/70 hover:bg-background/80",
+                    ? "border-emerald-200 bg-emerald-50/60"
+                    : "border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40",
                 )}
                 onClick={onAllContainersSelectAction}
                 type="button"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <span
                     className={cn(
-                      "flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+                      "flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors",
                       isAllContainersSelected ||
                         activeContainerId === "__all-containers__"
-                        ? "border-emerald-200/90 bg-background/90 text-emerald-700"
-                        : "border-border/70 bg-background/70 text-muted-foreground group-hover:text-foreground",
+                        ? "border-emerald-200 bg-background text-emerald-700"
+                        : "border-border/70 bg-background text-muted-foreground group-hover:text-foreground",
                     )}
                   >
                     <Box aria-hidden="true" className="size-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold tracking-tight text-foreground">
+                    <span className="block truncate text-xs font-semibold tracking-tight text-foreground">
                       All containers
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    <span className="block truncate text-[11px] text-muted-foreground">
                       Fleet overview
                     </span>
                   </span>
-                  <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background px-1.5 text-xs font-semibold text-foreground">
+                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background px-1.5 text-[11px] font-semibold text-foreground">
                     {containers.length}
                   </span>
                 </div>
@@ -280,10 +280,10 @@ export function DashboardLeftSidebar({
                     <button
                       aria-label={getContainerAriaLabel(container)}
                       className={cn(
-                        "group w-full overflow-hidden rounded-lg border px-3 py-2.5 text-left transition-all duration-200",
+                        "group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors",
                         isActive
-                          ? "border-emerald-300/80 bg-emerald-50/80 shadow-[0_18px_44px_-36px_rgba(5,150,105,0.38)]"
-                          : "border-transparent bg-transparent hover:border-border/70 hover:bg-background/80",
+                          ? "border-emerald-200 bg-emerald-50/60"
+                          : "border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40",
                       )}
                       key={container.display.id}
                       onClick={() =>
@@ -291,32 +291,32 @@ export function DashboardLeftSidebar({
                       }
                       type="button"
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2.5">
                         <span
                           className={cn(
-                            "mt-1.5 size-2 shrink-0 rounded-full",
+                            "mt-1.5 size-1.5 shrink-0 rounded-full",
                             statusDotClassName,
                           )}
                         />
                         <span className="min-w-0 flex-1">
                           <span className="flex min-w-0 items-center justify-between gap-2">
-                            <span className="min-w-0 truncate text-sm font-medium tracking-tight text-foreground">
+                            <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
                               {container.sidebarName}
                             </span>
                             <span
                               className={cn(
-                                "shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                                "shrink-0 text-[10px] font-semibold uppercase tracking-wide",
                                 getStatusTextClassName(statusVariant),
                               )}
                             >
                               {formatContainerStatusLabel(container)}
                             </span>
                           </span>
-                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                          <span className="block truncate text-[11px] text-muted-foreground">
                             {getContainerMetaLabel(container)}
                           </span>
-                          <span className="mt-2 flex min-w-0 items-center gap-1.5">
-                            <span className="truncate rounded-md border border-border/60 bg-background/75 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                          <span className="mt-1 flex min-w-0 items-center gap-1">
+                            <span className="truncate rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                               {getContainerLoadLabel(container)}
                             </span>
                             {container.runtime?.routedHost ? (
@@ -331,7 +331,7 @@ export function DashboardLeftSidebar({
                   );
                 })
               ) : (
-                <div className="rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 py-6 text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed border-border/70 bg-background px-3 py-5 text-xs text-muted-foreground">
                   No matching containers
                 </div>
               )}

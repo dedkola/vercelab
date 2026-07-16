@@ -4,6 +4,7 @@ import { memo, useMemo } from "react";
 import type { EChartsCoreOption } from "echarts";
 
 import { EChartSurface } from "@/components/ui/echart-surface";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SystemMetricPanel } from "@/lib/metrics-dashboard-metrics";
 import {
@@ -80,7 +81,7 @@ function createTooltipRow(label: string, value: string, color?: string) {
 
 function EmptyChartState({ message }: { message: string }) {
   return (
-    <div className="flex h-44 items-center justify-center rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 text-center text-sm leading-6 text-muted-foreground">
+    <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border/70 bg-background px-4 text-center text-sm leading-6 text-muted-foreground">
       {message}
     </div>
   );
@@ -341,19 +342,26 @@ export const SystemMetricCard = memo(
     return (
       <Card
         className={cn(
-          "overflow-hidden border bg-linear-to-br shadow-[0_26px_68px_-54px_rgba(15,23,42,0.3)]",
+          "overflow-hidden rounded-xl border bg-background shadow-sm",
           style.border,
-          style.surface,
         )}
       >
-        <CardHeader className="space-y-2 border-b border-border/60 pb-3">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/60 pb-2 pt-3">
           <CardTitle>{panel.title}</CardTitle>
+          <Badge
+            className={cn(
+              "max-w-[140px] truncate text-[11px] shadow-none",
+              style.badge,
+            )}
+          >
+            {panel.currentCaption}
+          </Badge>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="py-3">
           {panel.primaryValues.length ? (
             <EChartSurface
               ariaLabel={`${panel.title} chart`}
-              className="h-44"
+              className="h-32"
               option={option}
               setOptionOptions={CHART_SET_OPTION_OPTIONS}
             />

@@ -81,8 +81,8 @@ export function WorkspaceRail({
   }, [items, prefetchView]);
 
   return (
-    <aside className="flex w-11 shrink-0 flex-col items-center gap-3 border-r border-border/70 bg-linear-to-b from-background via-muted/22 to-background px-1.5 py-3 shadow-[16px_0_48px_-44px_rgba(15,23,42,0.26)]">
-      <div className="flex w-full flex-col gap-2 pt-1">
+    <aside className="flex w-11 shrink-0 flex-col items-center gap-2 border-r border-border/70 bg-background px-1.5 py-2">
+      <div className="flex w-full flex-col gap-1">
         {items.map((item) => {
           const isActive = item.view === activeView;
           const isExternal = item.external && item.href;
@@ -92,10 +92,10 @@ export function WorkspaceRail({
             <button
               aria-label={item.label}
               className={cn(
-                "group flex w-full items-center justify-center border-0 bg-transparent p-2 transition-all duration-200",
+                "group flex h-8 w-8 items-center justify-center rounded-lg border-0 bg-transparent transition-colors",
                 isActive
-                  ? "text-emerald-700"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
               )}
               key={item.id}
               onClick={() => {
@@ -123,7 +123,7 @@ export function WorkspaceRail({
             >
               <PageIcon
                 className={cn(
-                  "h-4 w-4 transition-transform duration-200 group-hover:-translate-y-px",
+                  "h-4 w-4",
                   isActive ? "text-emerald-700" : "text-current",
                 )}
               />

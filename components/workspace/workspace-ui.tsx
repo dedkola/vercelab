@@ -125,13 +125,12 @@ export function ResizeHandle({
     <div
       aria-hidden="true"
       className={cn(
-        "group relative z-10 w-3 shrink-0 cursor-col-resize",
+        "group relative z-10 w-2 shrink-0 cursor-col-resize",
         className,
       )}
       onMouseDown={onMouseDown}
     >
-      <div className="absolute inset-y-3 left-1/2 w-px -translate-x-1/2 rounded-full bg-border transition-colors duration-200 group-hover:bg-emerald-300" />
-      <div className="absolute left-1/2 top-1/2 h-10 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-background shadow-[0_10px_25px_-18px_rgba(15,23,42,0.45)] ring-1 ring-border transition-all duration-200 group-hover:bg-emerald-50 group-hover:ring-emerald-200/80" />
+      <div className="absolute inset-y-2 left-1/2 w-px -translate-x-1/2 rounded-full bg-border transition-colors group-hover:bg-emerald-300" />
     </div>
   );
 }
@@ -172,7 +171,10 @@ export function SectionLabel({
   text: string;
 }) {
   return (
-    <Badge className="gap-1 border border-border/60 bg-background/85 text-foreground shadow-sm">
+    <Badge
+      className="gap-1 rounded-md border border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground shadow-none"
+      variant="outline"
+    >
       <Icon name={icon} className="h-3.5 w-3.5" />
       {text}
     </Badge>

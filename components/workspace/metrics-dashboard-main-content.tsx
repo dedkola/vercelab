@@ -68,7 +68,7 @@ const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
 
 function EmptyChartState({ message }: { message: string }) {
   return (
-    <div className="flex h-44 items-center justify-center rounded-[1.2rem] border border-dashed border-border/70 bg-background/70 px-4 text-center text-sm leading-6 text-muted-foreground">
+    <div className="flex h-44 items-center justify-center rounded-lg border border-dashed border-border/70 bg-background px-4 text-center text-sm leading-6 text-muted-foreground">
       {message}
     </div>
   );
@@ -84,11 +84,11 @@ function buildContainerChartOption(
     animation: false,
     color: panel.series.map((series) => series.color),
     grid: {
-      bottom: 34,
+      bottom: 30,
       containLabel: true,
-      left: 14,
-      right: 18,
-      top: 60,
+      left: 10,
+      right: 14,
+      top: 44,
     },
     legend: {
       icon: "roundRect",
@@ -251,28 +251,44 @@ const ContainerMetricCard = memo(function ContainerMetricCard({
   const option = useMemo(() => buildContainerChartOption(panel), [panel]);
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/94 shadow-[0_30px_80px_-62px_rgba(15,23,42,0.34)]">
-      <CardHeader className="gap-4 border-b border-border/60 bg-linear-to-r from-muted/44 via-background to-background pb-4">
-        <CardTitle>{panel.title}</CardTitle>
-
-        <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-          {panel.stats.map((stat) => (
-            <div
-              className="rounded-full border border-border/60 bg-background/82 px-3 py-1.5"
-              key={`${panel.id}-${stat.label}`}
+    <Card className="overflow-hidden rounded-xl border-border/70 shadow-sm">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-2 pt-3">
+        <div className="flex items-center gap-3">
+          <CardTitle>{panel.title}</CardTitle>
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            {panel.stats.map((stat) => (
+              <span
+                className="rounded-md border border-border/60 bg-background px-1.5 py-0.5"
+                key={`${panel.id}-${stat.label}`}
+              >
+                {stat.label} {stat.value}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-[11px]">
+          {panel.series.slice(0, 2).map((series) => (
+            <span
+              className="flex items-center gap-1"
+              key={series.label}
+              style={{ color: series.isSelected ? "inherit" : "hsl(var(--muted-foreground))" }}
             >
-              {stat.label} {stat.value}
-            </div>
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: series.color }}
+              />
+              {series.label}
+            </span>
           ))}
         </div>
       </CardHeader>
-      <CardContent className="pt-5">
+      <CardContent className="py-3">
         {panel.series.some((series) =>
           series.values.some((value) => value !== null),
         ) ? (
           <EChartSurface
             ariaLabel={`${panel.title} chart`}
-            className="h-96"
+            className="h-72"
             option={option}
             setOptionOptions={CHART_SET_OPTION_OPTIONS}
           />
@@ -320,48 +336,37 @@ export function MetricsDashboardMainContent({
     : "Waiting for load average";
 
   return (
-    <div className="space-y-5">
-      <section className="overflow-hidden rounded-[1.6rem] border border-border/70 bg-linear-to-r from-background via-muted/16 to-background shadow-[0_26px_76px_-56px_rgba(15,23,42,0.32)]">
-        <div className="flex flex-col gap-5 px-4 py-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <SectionLabel icon="monitor" text="Infrastructure view" />
-              <Badge variant="secondary">{trackedContainers} tracked</Badge>
-              <Badge variant="secondary">{runningContainers} running</Badge>
-              {selectedContainerName ? (
-                <Badge className="border-emerald-200/80 bg-emerald-50/90 text-emerald-700">
-                  Focus {selectedContainerName}
-                </Badge>
-              ) : (
-                <Badge className="border-border/60 bg-background/82 text-foreground">
-                  Fleet compare
-                </Badge>
-              )}
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                Metrics dashboard
-              </h1>
-            </div>
-            <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              <div className="rounded-full border border-border/60 bg-background/80 px-3 py-1.5">
-                Window {rangeLabel}
-              </div>
-              <div className="rounded-full border border-border/60 bg-background/80 px-3 py-1.5">
-                Load avg {loadAverageLabel}
-              </div>
-            </div>
+    <div className="space-y-4">
+      <section className="rounded-xl border border-border/70 bg-background p-3 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <SectionLabel icon="monitor" text="Infrastructure" />
+            <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground" variant="outline">
+              {trackedContainers} tracked
+            </Badge>
+            <Badge className="h-5 rounded-md border-emerald-200/80 bg-emerald-50/90 px-1.5 text-[11px] text-emerald-700">
+              {runningContainers} running
+            </Badge>
+            {selectedContainerName ? (
+              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground" variant="outline">
+                Focus {selectedContainerName}
+              </Badge>
+            ) : (
+              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground" variant="outline">
+                Fleet compare
+              </Badge>
+            )}
           </div>
 
-          <div className="flex max-w-3xl flex-wrap gap-2 xl:justify-end">
+          <div className="flex flex-wrap gap-1.5">
             {rangeOptions.map((option) => (
               <Button
                 aria-pressed={range === option.value}
                 className={cn(
-                  "rounded-full",
+                  "h-7 rounded-full px-3 text-xs",
                   range === option.value
-                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-[0_18px_40px_-32px_rgba(16,185,129,0.3)] hover:bg-emerald-50"
-                    : "border-border/60 bg-background/82 text-muted-foreground hover:text-foreground",
+                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 hover:bg-emerald-50"
+                    : "border-border/60 bg-background text-muted-foreground hover:text-foreground",
                 )}
                 key={option.value}
                 onClick={() => onRangeChangeAction(option.value)}
@@ -374,18 +379,26 @@ export function MetricsDashboardMainContent({
             ))}
           </div>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="rounded-md border border-border/60 bg-background px-2 py-0.5">
+            Window {rangeLabel}
+          </span>
+          <span className="rounded-md border border-border/60 bg-background px-2 py-0.5">
+            Load avg {loadAverageLabel}
+          </span>
+        </div>
       </section>
 
       <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold tracking-tight text-foreground">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Container load explorer
-          </div>
+          </h2>
 
           {isAllContainerHistoryLoading || containerHistoryStatusText ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {isAllContainerHistoryLoading ? (
-                <Badge variant="secondary">Refreshing history…</Badge>
+                <Badge className="rounded-md" variant="secondary">Refreshing history…</Badge>
               ) : null}
               {containerHistoryStatusText ? (
                 <span>{containerHistoryStatusText}</span>
@@ -394,7 +407,7 @@ export function MetricsDashboardMainContent({
           ) : null}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {containerPanels.map((panel) => (
             <ContainerMetricCard
               key={panel.id}

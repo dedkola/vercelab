@@ -104,19 +104,19 @@ export function WorkspaceHeader({
   }
 
   return (
-    <header className="flex h-15 shrink-0 items-center justify-between gap-4 border-b border-border/70 bg-linear-to-r from-background/98 via-muted/40 to-background/96 px-4 shadow-[0_20px_48px_-38px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+    <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border/70 bg-background/95 px-4 backdrop-blur">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/85 px-3.5 py-1.5 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.35)]">
+        <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
           <span className="text-sm font-semibold tracking-tight text-foreground">
             Vercelab
           </span>
         </div>
-        <Separator orientation="vertical" className="hidden h-5 md:block" />
+        <Separator orientation="vertical" className="hidden h-4 md:block" />
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold tracking-tight text-foreground">
+          <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">
             {title}
-          </div>
+          </h1>
         </div>
       </div>
 
