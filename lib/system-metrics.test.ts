@@ -144,9 +144,9 @@ describe("getMetricsSnapshot", () => {
   it("deduplicates concurrent in-flight builds", async () => {
     const { getMetricsSnapshot } = await import("@/lib/system-metrics");
 
-    let resolvePs!: () => void;
+    let releasePsCommand!: () => void;
     const psPending = new Promise<void>((resolve) => {
-      resolvePs = resolve;
+      releasePsCommand = resolve;
     });
 
     spawnMock.mockImplementation((_command: string, args: string[]) => {
@@ -169,7 +169,7 @@ describe("getMetricsSnapshot", () => {
     const promise1 = getMetricsSnapshot();
     const promise2 = getMetricsSnapshot();
 
-    resolvePs();
+    releasePsCommand();
 
     const [snapshot1, snapshot2] = await Promise.all([promise1, promise2]);
 
