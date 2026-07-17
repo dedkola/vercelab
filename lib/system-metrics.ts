@@ -119,6 +119,7 @@ const VIRTUAL_INTERFACE_RE =
 const IPV4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
 let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
+let inFlightSnapshotPromise: Promise<MetricsSnapshot> | null = null;
 let lastCpuCounters: SampleState<CpuCounters> | null = null;
 let lastNetworkCounters: SampleState<InterfaceCounters[]> | null = null;
 let lastDiskCounters: SampleState<DiskCounters> | null = null;
@@ -1243,20 +1244,30 @@ export async function getMetricsSnapshot() {
     return cachedSnapshot.value;
   }
 
-  const snapshot = await buildSnapshot();
-  cachedSnapshot = {
-    capturedAt: now,
-    value: snapshot,
-  };
+  if (inFlightSnapshotPromise) {
+    return inFlightSnapshotPromise;
+  }
 
-  void writeSnapshotToInflux(snapshot).catch((error) => {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to write metrics to InfluxDB.";
+  inFlightSnapshotPromise = buildSnapshot();
 
-    console.error(`[metrics] ${message}`);
-  });
+  try {
+    const snapshot = await inFlightSnapshotPromise;
+    cachedSnapshot = {
+      capturedAt: Date.now(),
+      value: snapshot,
+    };
 
-  return snapshot;
+    void writeSnapshotToInflux(snapshot).catch((error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to write metrics to InfluxDB.";
+
+      console.error(`[metrics] ${message}`);
+    });
+
+    return snapshot;
+  } finally {
+    inFlightSnapshotPromise = null;
+  }
 }
