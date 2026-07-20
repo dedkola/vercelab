@@ -21,7 +21,7 @@
   "dependencies": {
     "@derpdaderp/chartkit": "^0.4.1",
     "@homebridge/node-pty-prebuilt-multiarch": "^0.13.1",
-    "@radix-ui/react-checkbox": "^1.3.7",
+    "@radix-ui/react-checkbox": "^1.3.8",
     "@radix-ui/react-dialog": "^1.1.20",
     "@radix-ui/react-label": "^2.1.12",
     "@radix-ui/react-popover": "^1.1.19",
