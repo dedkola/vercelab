@@ -251,7 +251,7 @@ The installer:
 - installs Node.js and pnpm on the host
 - installs host packages required by the bootstrap scripts
 - installs and pins Docker Engine `28.x` plus the Compose plugin because this stack documents Docker `29.x` as incompatible with Traefik's Docker provider
-- runs `pnpm install --frozen-lockfile` and `pnpm run build` as a host-side smoke test
+- runs `pnpm install --frozen-lockfile`, then performs the production build in a clean temporary source copy so runtime data directories are never traced
 - creates a shared host root under `/home/<username>/vercelab` by default
 - auto-generates a reachable default base domain when one is not provided
 - generates a wildcard self-signed certificate for the base domain

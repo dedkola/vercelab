@@ -466,10 +466,7 @@ install_host_node_dependencies() {
 run_host_build_smoke_test() {
   log "Running a host-side production build smoke test."
 
-  (
-    cd "$REPO_ROOT"
-    pnpm run build
-  )
+  "$REPO_ROOT/scripts/host-build-smoke.sh" "$REPO_ROOT"
 }
 
 validate_absolute_path() {
