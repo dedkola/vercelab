@@ -803,6 +803,8 @@ ensure_influx_bootstrap() {
   local influx_recovery_host="http://127.0.0.1:8182"
   local retention_period="${VERCELAB_INFLUXDB_RETENTION_DAYS}d"
   local database_list_json=""
+  local database_list_compact=""
+  local database_create_output=""
   local token_command_output=""
 
   log "Ensuring InfluxDB token and metrics database are ready."
@@ -874,11 +876,17 @@ ensure_influx_bootstrap() {
     fail "Unable to authenticate to InfluxDB with the configured admin token."
   fi
 
-  if ! grep -Fq "\"name\":\"$VERCELAB_INFLUXDB_DATABASE\"" <<<"$database_list_json"; then
-    (
+  database_list_compact="${database_list_json//[[:space:]]/}"
+
+  if ! grep -Fq "\"name\":\"$VERCELAB_INFLUXDB_DATABASE\"" <<<"$database_list_compact"; then
+    if ! database_create_output="$(
       cd "$REPO_ROOT"
-      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 create database --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --retention-period '$retention_period' '$VERCELAB_INFLUXDB_DATABASE'"
-    ) || fail "Unable to create InfluxDB database $VERCELAB_INFLUXDB_DATABASE."
+      "${DOCKER_CMD[@]}" compose exec -T influxdb sh -lc "influxdb3 create database --host '$influx_host' --token '$VERCELAB_INFLUXDB_TOKEN' --retention-period '$retention_period' '$VERCELAB_INFLUXDB_DATABASE'" 2>&1
+    )"; then
+      if ! grep -Fqi 'resource that already exists' <<<"$database_create_output"; then
+        fail "Unable to create InfluxDB database $VERCELAB_INFLUXDB_DATABASE. Output: $database_create_output"
+      fi
+    fi
   fi
 
   write_influx_explorer_config
