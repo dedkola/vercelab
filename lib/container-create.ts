@@ -589,10 +589,19 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
   }
 
   const config = getAppConfig();
-  const stacksRoot = path.join(config.paths.appsDir, "manual-stacks");
-  const stackDir = path.join(stacksRoot, stackName);
-  const composePath = path.join(stackDir, ".vercelab.base.compose.yml");
-  const overridePath = path.join(stackDir, ".vercelab.proxy.compose.yml");
+  const stacksRoot = path.join(
+    /*turbopackIgnore: true*/ config.paths.appsDir,
+    "manual-stacks",
+  );
+  const stackDir = path.join(/*turbopackIgnore: true*/ stacksRoot, stackName);
+  const composePath = path.join(
+    /*turbopackIgnore: true*/ stackDir,
+    ".vercelab.base.compose.yml",
+  );
+  const overridePath = path.join(
+    /*turbopackIgnore: true*/ stackDir,
+    ".vercelab.proxy.compose.yml",
+  );
   const overrideServices: Record<string, unknown> = {};
   const routedHosts: string[] = [];
 

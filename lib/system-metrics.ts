@@ -6,6 +6,10 @@ import path from "node:path";
 import { getAppConfig } from "@/lib/app-config";
 import { extractTraefikHostFromLabels } from "@/lib/container-routing";
 
+function joinProcPath(basePath: string, relativePath: string) {
+  return path.join(/*turbopackIgnore: true*/ basePath, relativePath);
+}
+
 type CpuCounters = {
   idle: number;
   total: number;
@@ -272,7 +276,7 @@ function getCpuCount() {
 
 async function pathExists(targetPath: string) {
   try {
-    await access(targetPath);
+    await access(/*turbopackIgnore: true*/ targetPath);
     return true;
   } catch {
     return false;
@@ -282,13 +286,13 @@ async function pathExists(targetPath: string) {
 async function readProcFile(relativePath: string) {
   const config = getAppConfig();
   const candidates = [
-    path.join(config.runtime.hostProcPath, relativePath),
+    joinProcPath(config.runtime.hostProcPath, relativePath),
     path.join("/proc", relativePath),
   ];
 
   for (const candidate of candidates) {
     if (await pathExists(candidate)) {
-      return await readFile(candidate, "utf8");
+      return await readFile(/*turbopackIgnore: true*/ candidate, "utf8");
     }
   }
 
@@ -298,7 +302,7 @@ async function readProcFile(relativePath: string) {
 async function readFirstAvailableFile(candidates: string[]) {
   for (const candidate of candidates) {
     if (await pathExists(candidate)) {
-      return await readFile(candidate, "utf8");
+      return await readFile(/*turbopackIgnore: true*/ candidate, "utf8");
     }
   }
 
@@ -483,8 +487,8 @@ async function readDefaultNetworkInterfaceName() {
 
     return parseLinuxDefaultRouteInterface(
       await readFirstAvailableFile([
-        path.join(config.runtime.hostProcPath, "1/net/route"),
-        path.join(config.runtime.hostProcPath, "net/route"),
+        joinProcPath(config.runtime.hostProcPath, "1/net/route"),
+        joinProcPath(config.runtime.hostProcPath, "net/route"),
         path.join("/proc", "net/route"),
       ]),
     );
@@ -590,8 +594,8 @@ async function readNetworkCounters() {
     const config = getAppConfig();
     return parseLinuxNetworkCounters(
       await readFirstAvailableFile([
-        path.join(config.runtime.hostProcPath, "1/net/dev"),
-        path.join(config.runtime.hostProcPath, "net/dev"),
+        joinProcPath(config.runtime.hostProcPath, "1/net/dev"),
+        joinProcPath(config.runtime.hostProcPath, "net/dev"),
         path.join("/proc", "net/dev"),
       ]),
     );

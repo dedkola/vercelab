@@ -71,12 +71,16 @@ let cachedConfig: AppConfig | undefined;
 
 function buildConfig() {
   const parsed = envSchema.parse(process.env);
-  const projectRoot = /* turbopackIgnore: true */ process.cwd();
   const hostRoot = parsed.VERCELAB_HOST_ROOT;
-  const dataDir = path.join(projectRoot, "data");
-  const appsDir = parsed.VERCELAB_APPS_DIR ?? path.join(dataDir, "apps");
-  const logsDir = parsed.VERCELAB_LOGS_DIR ?? path.join(dataDir, "logs");
-  const locksDir = parsed.VERCELAB_LOCKS_DIR ?? path.join(dataDir, "locks");
+  const appsDir =
+    parsed.VERCELAB_APPS_DIR ??
+    path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "apps");
+  const logsDir =
+    parsed.VERCELAB_LOGS_DIR ??
+    path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "logs");
+  const locksDir =
+    parsed.VERCELAB_LOCKS_DIR ??
+    path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "locks");
   mkdirSync(appsDir, { recursive: true });
   mkdirSync(logsDir, { recursive: true });
   mkdirSync(locksDir, { recursive: true });
@@ -113,7 +117,7 @@ function buildConfig() {
       githubToken: parsed.VERCELAB_GITHUB_TOKEN ?? null,
     },
     paths: {
-      rootDir: projectRoot,
+      rootDir: /*turbopackIgnore: true*/ process.cwd(),
       hostRoot,
       appsDir,
       logsDir,
