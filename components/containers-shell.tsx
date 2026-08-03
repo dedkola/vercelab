@@ -56,6 +56,20 @@ const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LOG_TAIL_LINES = 150;
 const POST_ACTION_REFRESH_DELAYS_MS = [0, 700, 1800] as const;
 
+// Reuse formatter instances — `new Intl.DateTimeFormat` / `Intl.NumberFormat`
+// are expensive to construct and log rendering can call these many times.
+const LOG_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en", {
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZone: "UTC",
+});
+
+const COMPACT_COUNT_FORMATTER = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 type CatalogSearchResult = {
   description: string | null;
   isOfficial: boolean;
@@ -129,12 +143,7 @@ function isDocumentHidden() {
 }
 
 function createLogTimestamp(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "UTC",
-  }).format(new Date(value));
+  return LOG_TIMESTAMP_FORMATTER.format(new Date(value));
 }
 
 function formatContainerLogLines(output: string, containerId: string): LogLine[] {
@@ -162,10 +171,7 @@ function formatContainerLogLines(output: string, containerId: string): LogLine[]
 }
 
 function formatCompactCount(value: number) {
-  return new Intl.NumberFormat("en", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(Math.max(0, value));
+  return COMPACT_COUNT_FORMATTER.format(Math.max(0, value));
 }
 
 type ContainersShellProps = ContainersData;

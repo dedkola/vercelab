@@ -159,16 +159,20 @@ function serializeEnvVariableDrafts(rows: EnvVariableDraft[]) {
     .join("\n");
 }
 
+// Reuse formatter instance — `new Intl.DateTimeFormat` is expensive to construct
+// and source commits can be re-rendered frequently while switching deployments.
+const SOURCE_DATE_FORMATTER = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 function formatSourceDate(value: string | null) {
   if (!value) {
     return "Unknown date";
   }
 
   try {
-    return new Intl.DateTimeFormat("en", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
+    return SOURCE_DATE_FORMATTER.format(new Date(value));
   } catch {
     return value;
   }
