@@ -357,7 +357,12 @@ async function removeWorkspace(workspacePath: string) {
   const resolvedWorkspace = resolveRuntimePath(workspacePath);
   const appsRoot = resolveRuntimePath(getAppConfig().paths.appsDir);
 
-  if (!resolvedWorkspace.startsWith(appsRoot)) {
+  const relativePath = path.relative(appsRoot, resolvedWorkspace);
+  const isWithinAppsRoot =
+    relativePath === "" ||
+    (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+
+  if (!isWithinAppsRoot) {
     throw new Error(
         "Refusing to remove a workspace outside the Vercelab apps directory.",
     );
