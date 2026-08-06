@@ -12,9 +12,8 @@ type EChartSurfaceProps = {
   setOptionOptions?: SetOptionOpts;
 };
 
-let echartsModulePromise: Promise<
-  typeof import("@/lib/echarts-core").default
-> | null = null;
+let echartsModulePromise: Promise<import("@/lib/echarts-core").default> | null =
+  null;
 
 function loadECharts() {
   if (!echartsModulePromise) {
