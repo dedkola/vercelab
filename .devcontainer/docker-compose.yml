@@ -21,12 +21,17 @@ services:
     volumes:
       - ..:/workspaces/vercelab:cached
       - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/host/proc:ro
     # Some hosts expose docker.sock as root:root (0660).
     # Add group 0 so the non-root `node` user can still access Docker.
     group_add:
       - "0"
     command: sleep infinity
     environment:
+      PORT: "3100"
+      VERCELAB_TERMINAL_WS_PORT: "3101"
+      NEXT_PUBLIC_TERMINAL_WS_PORT: "3101"
+      VERCELAB_TERMINAL_TARGET: container
       VERCELAB_UI_DEV_MODE: "true"
       VERCELAB_HOST_ROOT: /workspaces/vercelab
       VERCELAB_DATA_ROOT: /workspaces/vercelab/data
@@ -52,6 +57,8 @@ services:
       postgres:
         condition: service_healthy
       influxdb:
+        condition: service_healthy
+      influxdb-explorer:
         condition: service_healthy
 
   postgres:
@@ -106,8 +113,18 @@ services:
     depends_on:
       influxdb:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     ports:
-      - 8888:8080
+      - "127.0.0.1:8888:8080"
     volumes:
       - influxdb-explorer-data:/db
       - ./influxdb-explorer-config:/app-root/config:ro

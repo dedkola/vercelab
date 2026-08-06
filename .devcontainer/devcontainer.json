@@ -7,16 +7,20 @@
 
   "features": {},
 
-  "forwardPorts": [3000],
+  "forwardPorts": [3100, 3101],
   "portsAttributes": {
-    "3000": {
-      "label": "Next.js Dev Server",
+    "3100": {
+      "label": "Vercelab UI",
       "onAutoForward": "notify"
+    },
+    "3101": {
+      "label": "Vercelab Terminal WS",
+      "onAutoForward": "silent"
     }
   },
 
   "postCreateCommand": "pnpm install --frozen-lockfile",
-  "postStartCommand": "bash .devcontainer/post-start.sh || true; git config --global --add safe.directory /workspaces/vercelab",
+  "postStartCommand": "git config --global --add safe.directory /workspaces/vercelab; bash .devcontainer/post-start.sh",
 
   "customizations": {
     "vscode": {
@@ -44,6 +48,10 @@
 
   "remoteUser": "node",
   "remoteEnv": {
+    "PORT": "3100",
+    "VERCELAB_TERMINAL_WS_PORT": "3101",
+    "NEXT_PUBLIC_TERMINAL_WS_PORT": "3101",
+    "VERCELAB_TERMINAL_TARGET": "container",
     "VERCELAB_UI_DEV_MODE": "true",
     "VERCELAB_HOST_ROOT": "/workspaces/vercelab",
     "VERCELAB_DATA_ROOT": "/workspaces/vercelab/data",

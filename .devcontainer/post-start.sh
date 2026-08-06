@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
-set -u
+set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-readonly DEVCONTAINER_COMPOSE_FILE="${REPO_ROOT}/.devcontainer/docker-compose.yml"
 readonly ENV_LOCAL_FILE="${REPO_ROOT}/.env.local"
 readonly EXPLORER_CONFIG_DIR="${REPO_ROOT}/.devcontainer/influxdb-explorer-config"
 readonly EXPLORER_CONFIG_FILE="${EXPLORER_CONFIG_DIR}/config.json"
+readonly INFLUX_CONTAINER="vercelab-influxdb"
+readonly EXPLORER_CONTAINER="vercelab-influxdb-explorer"
 readonly INFLUX_HOST="http://127.0.0.1:8181"
 readonly INFLUX_RECOVERY_HOST="http://127.0.0.1:8182"
 
@@ -54,18 +55,44 @@ write_explorer_config() {
   "DEFAULT_SERVER_NAME": "Vercelab InfluxDB"
 }
 EOF
+
+  chmod 0600 "${EXPLORER_CONFIG_FILE}"
 }
 
 run_influx_command() {
   local command="$1"
 
-  docker compose -f "${DEVCONTAINER_COMPOSE_FILE}" exec -T influxdb sh -lc "${command}" 2>&1
+  docker exec "${INFLUX_CONTAINER}" sh -lc "${command}" 2>&1
 }
 
 extract_token() {
   local source="$1"
 
   grep -Eo 'apiv3_[A-Za-z0-9_-]+' <<<"${source}" | head -n 1 || true
+}
+
+wait_for_explorer() {
+  local attempt=""
+  local state=""
+
+  for attempt in {1..30}; do
+    state="$(docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${EXPLORER_CONTAINER}" 2>/dev/null || true)"
+
+    case "${state}" in
+      "running healthy" | "running none")
+        return 0
+        ;;
+      "exited "* | "dead "*)
+        log "Influx Explorer stopped before becoming healthy (${state})."
+        return 1
+        ;;
+    esac
+
+    sleep 1
+  done
+
+  log "Timed out waiting for Influx Explorer to become healthy."
+  return 1
 }
 
 create_or_recover_token() {
@@ -92,13 +119,15 @@ main() {
   local retention_period="${retention_days}d"
   local token=""
   local list_output=""
+  local compact_list_output=""
+  local create_output=""
 
   if ! command -v docker >/dev/null 2>&1; then
     log "Docker CLI is unavailable; skipping Influx bootstrap."
     return 0
   fi
 
-  if ! docker compose -f "${DEVCONTAINER_COMPOSE_FILE}" ps influxdb >/dev/null 2>&1; then
+  if [[ "$(docker inspect --format '{{.State.Running}}' "${INFLUX_CONTAINER}" 2>/dev/null || true)" != "true" ]]; then
     log "influxdb service is not available yet; skipping Influx bootstrap."
     return 0
   fi
@@ -131,13 +160,21 @@ main() {
     list_output="$(run_influx_command "influxdb3 show databases --host '${INFLUX_HOST}' --token '${token}' --format json" || true)"
   fi
 
-  if ! grep -Fq "\"name\":\"${db_name}\"" <<<"${list_output}"; then
-    run_influx_command "influxdb3 create database --host '${INFLUX_HOST}' --token '${token}' --retention-period '${retention_period}' '${db_name}'" >/dev/null || true
+  compact_list_output="$(tr -d '[:space:]' <<<"${list_output}")"
+
+  if ! grep -Fq "\"name\":\"${db_name}\"" <<<"${compact_list_output}"; then
+    if ! create_output="$(run_influx_command "influxdb3 create database --host '${INFLUX_HOST}' --token '${token}' --retention-period '${retention_period}' '${db_name}'")"; then
+      if ! grep -Fqi "resource that already exists" <<<"${create_output}"; then
+        log "Unable to create Influx database: ${create_output}"
+        return 1
+      fi
+    fi
   fi
 
   write_explorer_config "${token}" "${db_name}"
 
-  docker compose -f "${DEVCONTAINER_COMPOSE_FILE}" up -d --no-deps influxdb-explorer >/dev/null 2>&1 || true
+  docker restart "${EXPLORER_CONTAINER}" >/dev/null
+  wait_for_explorer
 
   log "Influx bootstrap complete. Token is stored in .env.local for local dev."
 }
