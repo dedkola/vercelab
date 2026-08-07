@@ -164,6 +164,7 @@ function serializeEnvVariableDrafts(rows: EnvVariableDraft[]) {
 const SOURCE_DATE_FORMATTER = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
   timeStyle: "short",
+  timeZone: "UTC",
 });
 
 function formatSourceDate(value: string | null) {
