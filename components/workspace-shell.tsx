@@ -203,6 +203,19 @@ const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
 const VISIBILITY_REFRESH_DELAY_MS = 750;
 const ALL_CONTAINERS_ID = "__all-containers__";
 const STABLE_TIME_ZONE = "UTC";
+
+// Reuse formatter instances — `new Intl.DateTimeFormat` / `Intl.RelativeTimeFormat`
+// are expensive to construct and these helpers run on every render / poll cycle.
+const CLOCK_FORMATTER = new Intl.DateTimeFormat("en", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: STABLE_TIME_ZONE,
+});
+
+const RELATIVE_TIME_FORMATTER = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
+});
+
 const ALL_CONTAINERS_RANGE_OPTIONS = DASHBOARD_RANGE_OPTIONS.filter(
   (option) => option.value !== "90d",
 ) as ReadonlyArray<(typeof DASHBOARD_RANGE_OPTIONS)[number]>;
@@ -718,11 +731,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function formatClock(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: STABLE_TIME_ZONE,
-  }).format(new Date(value));
+  return CLOCK_FORMATTER.format(new Date(value));
 }
 
 
@@ -1754,15 +1763,13 @@ function formatRelativeTime(value: string) {
     ["minute", 60],
   ] as const;
 
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
   for (const [unit, divisor] of units) {
     if (Math.abs(seconds) >= divisor || unit === "minute") {
-      return formatter.format(Math.round(seconds / divisor), unit);
+      return RELATIVE_TIME_FORMATTER.format(Math.round(seconds / divisor), unit);
     }
   }
 
-  return formatter.format(seconds, "second");
+  return RELATIVE_TIME_FORMATTER.format(seconds, "second");
 }
 
 function getDeploymentStatusBadgeVariant(
