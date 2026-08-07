@@ -21,7 +21,29 @@ type MetricsApiResponse = {
   allContainerHistory?: AllContainersMetricsHistorySeries[];
 };
 
-export async function GET(request: Request) {
+type CacheEntry = {
+  expiresAt: number;
+  inFlight: Promise<MetricsApiResponse> | null;
+  payload: MetricsApiResponse | null;
+};
+
+const CACHE_TTL_MS = 2000;
+const responseCache = new Map<string, CacheEntry>();
+const isTestEnv = process.env.NODE_ENV === "test";
+
+function cleanupExpiredCacheEntries(now: number) {
+  for (const [key, entry] of responseCache) {
+    if (entry.expiresAt <= now && !entry.inFlight) {
+      responseCache.delete(key);
+    }
+  }
+}
+
+function buildCacheKey(url: URL) {
+  return `${url.pathname}${url.search}`;
+}
+
+async function buildMetricsPayload(request: Request): Promise<MetricsApiResponse> {
   const url = new URL(request.url);
   const allContainers = url.searchParams.get("allContainers") === "true";
   const includeHistory = url.searchParams.get("includeHistory") !== "false";
@@ -116,5 +138,51 @@ export async function GET(request: Request) {
     payload.allContainerHistory = allContainerHistory;
   }
 
-  return Response.json(payload);
+  return payload;
+}
+
+export async function GET(request: Request) {
+  if (isTestEnv) {
+    return Response.json(await buildMetricsPayload(request));
+  }
+
+  const url = new URL(request.url);
+  const key = buildCacheKey(url);
+  const now = Date.now();
+
+  cleanupExpiredCacheEntries(now);
+
+  const cached = responseCache.get(key);
+
+  if (cached && cached.expiresAt > now && cached.payload) {
+    return Response.json(cached.payload);
+  }
+
+  if (cached?.inFlight) {
+    const payload = await cached.inFlight;
+    return Response.json(payload);
+  }
+
+  const inFlight = buildMetricsPayload(request);
+
+  responseCache.set(key, {
+    expiresAt: now + CACHE_TTL_MS,
+    inFlight,
+    payload: null,
+  });
+
+  try {
+    const payload = await inFlight;
+
+    responseCache.set(key, {
+      expiresAt: Date.now() + CACHE_TTL_MS,
+      inFlight: null,
+      payload,
+    });
+
+    return Response.json(payload);
+  } catch (error) {
+    responseCache.delete(key);
+    throw error;
+  }
 }
