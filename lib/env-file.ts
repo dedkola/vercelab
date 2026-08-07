@@ -10,7 +10,7 @@ function normalizeEnvFile(source: string) {
 }
 
 export function getWorkspaceEnvPath() {
-  return path.join(process.cwd(), ".env");
+  return path.join(/*turbopackIgnore: true*/ process.cwd(), ".env");
 }
 
 export async function readWorkspaceEnvFile() {

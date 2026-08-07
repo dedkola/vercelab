@@ -37,6 +37,14 @@ type CommandOptions = {
   env?: Partial<NodeJS.ProcessEnv>;
 };
 
+function resolveRuntimePath(runtimePath: string) {
+  return path.resolve(/*turbopackIgnore: true*/ runtimePath);
+}
+
+function joinRuntimePath(runtimePath: string, ...segments: string[]) {
+  return path.join(/*turbopackIgnore: true*/ runtimePath, ...segments);
+}
+
 type RuntimeFiles = {
   composeMode: "dockerfile" | "compose";
   composeFile: string;
@@ -298,7 +306,7 @@ export function shouldFallbackToDockerComposeBinary(message: string) {
 
 async function pathExists(targetPath: string) {
   try {
-    await fs.access(targetPath);
+    await fs.access(/*turbopackIgnore: true*/ targetPath);
     return true;
   } catch {
     return false;
@@ -306,7 +314,7 @@ async function pathExists(targetPath: string) {
 }
 
 function getLockPath() {
-  return path.join(getAppConfig().paths.locksDir, "deployment-engine.lock");
+  return joinRuntimePath(getAppConfig().paths.locksDir, "deployment-engine.lock");
 }
 
 async function withDeploymentLock<T>(task: () => Promise<T>) {
@@ -346,10 +354,15 @@ async function ensureProxyNetwork() {
 }
 
 async function removeWorkspace(workspacePath: string) {
-  const resolvedWorkspace = path.resolve(workspacePath);
-  const appsRoot = path.resolve(getAppConfig().paths.appsDir);
+  const resolvedWorkspace = resolveRuntimePath(workspacePath);
+  const appsRoot = resolveRuntimePath(getAppConfig().paths.appsDir);
 
-  if (!resolvedWorkspace.startsWith(appsRoot)) {
+  const relativePath = path.relative(appsRoot, resolvedWorkspace);
+  const isWithinAppsRoot =
+    relativePath === "" ||
+    (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
+
+  if (!isWithinAppsRoot) {
     throw new Error(
         "Refusing to remove a workspace outside the Vercelab apps directory.",
     );
@@ -363,8 +376,8 @@ function getDefaultDomain(subdomain: string) {
 }
 
 async function cloneRepository(deployment: StoredDeployment) {
-  await removeWorkspace(deployment.workspacePath);
-  await fs.mkdir(deployment.workspacePath, { recursive: true });
+  await removeWorkspace(joinRuntimePath(deployment.workspacePath));
+  await fs.mkdir(joinRuntimePath(deployment.workspacePath), { recursive: true });
 
   const cloneUrl = buildGitCloneUrl(
       deployment.repositoryUrl,
@@ -377,7 +390,7 @@ async function cloneRepository(deployment: StoredDeployment) {
     args.push("--branch", deployment.branch);
   }
 
-  args.push(cloneUrl, deployment.workspacePath);
+  args.push(cloneUrl, joinRuntimePath(deployment.workspacePath));
 
   return await runCommand("git", args);
 }
@@ -391,14 +404,14 @@ async function checkoutPinnedCommit(deployment: StoredDeployment) {
       "git",
       ["fetch", "--depth", "1", "origin", deployment.commitSha],
       {
-        cwd: deployment.workspacePath,
+        cwd: joinRuntimePath(deployment.workspacePath),
       },
   );
   const checkoutOutput = await runCommand(
       "git",
       ["checkout", "--detach", deployment.commitSha],
       {
-        cwd: deployment.workspacePath,
+        cwd: joinRuntimePath(deployment.workspacePath),
       },
   );
 
@@ -412,7 +425,7 @@ async function deployWorkspace(
   await ensureProxyNetwork();
 
   const shouldClone =
-      syncWithGit || !(await pathExists(deployment.workspacePath));
+      syncWithGit || !(await pathExists(joinRuntimePath(deployment.workspacePath)));
   const cloneOutput = shouldClone ? await cloneRepository(deployment) : "";
   const checkoutOutput =
       shouldClone && deployment.commitSha
@@ -484,7 +497,7 @@ async function readWorkspaceBranch(workspacePath: string) {
 async function readWorkspaceCommit(
     deployment: StoredDeployment,
 ): Promise<DeploymentSourceCommit | null> {
-  if (!(await pathExists(deployment.workspacePath))) {
+  if (!(await pathExists(joinRuntimePath(deployment.workspacePath)))) {
     return null;
   }
 
@@ -493,7 +506,7 @@ async function readWorkspaceCommit(
         "git",
         ["log", "-1", "--pretty=format:%H%n%s%n%cI%n%an"],
         {
-          cwd: deployment.workspacePath,
+          cwd: joinRuntimePath(deployment.workspacePath),
         },
     );
     const [sha = "", message = "", committedAt = "", authorName = ""] =
@@ -533,7 +546,7 @@ async function detectRuntimeFiles(
   ];
 
   for (const candidate of composeCandidates) {
-    const composePath = path.join(deployment.workspacePath, candidate);
+    const composePath = joinRuntimePath(deployment.workspacePath, candidate);
 
     if (await pathExists(composePath)) {
       const { parse } = await import("yaml");
@@ -578,10 +591,7 @@ async function detectRuntimeFiles(
       const routerName = `${deployment.projectName}-${selectedService}`
           .toLowerCase()
           .replace(/[^a-z0-9-]/g, "-");
-      const overridePath = path.join(
-          deployment.workspacePath,
-          ".vercelab.override.compose.yml",
-      );
+      const overridePath = joinRuntimePath(deployment.workspacePath, ".vercelab.override.compose.yml");
 
       const proxyEnvironment: Record<string, string> = {
         HOSTNAME: "0.0.0.0",
@@ -651,10 +661,7 @@ async function detectRuntimeFiles(
       // services so they can't conflict with other deployments on the same host.
       // Docker Compose merges port lists additively, so the only reliable way to
       // suppress them is to rewrite the base file without them.
-      const basePath = path.join(
-          deployment.workspacePath,
-          ".vercelab.base.compose.yml",
-      );
+      const basePath = joinRuntimePath(deployment.workspacePath, ".vercelab.base.compose.yml");
       const cleanedParsed = parsed as {
         services?: Record<string, Record<string, unknown>>;
         [key: string]: unknown;
@@ -677,7 +684,7 @@ async function detectRuntimeFiles(
     }
   }
 
-  const dockerfilePath = path.join(deployment.workspacePath, "Dockerfile");
+  const dockerfilePath = joinRuntimePath(deployment.workspacePath, "Dockerfile");
 
   if (!(await pathExists(dockerfilePath))) {
     throw new Error(
@@ -688,10 +695,7 @@ async function detectRuntimeFiles(
   const routerName = `${deployment.projectName}-app`
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-");
-  const generatedComposePath = path.join(
-      deployment.workspacePath,
-      ".vercelab.generated.compose.yml",
-  );
+  const generatedComposePath = joinRuntimePath(deployment.workspacePath, ".vercelab.generated.compose.yml");
   const proxyEnvironment: Record<string, string> = {
     HOSTNAME: "0.0.0.0",
     ...deploymentEnvironment,
@@ -776,7 +780,7 @@ async function runComposeCommand(
     ...args,
   ];
   const commandOptions = {
-    cwd: deployment.workspacePath,
+    cwd: joinRuntimePath(deployment.workspacePath),
     env: {
       DOCKER_BUILDKIT: "1",
       COMPOSE_DOCKER_CLI_BUILD: "1",
@@ -1020,7 +1024,7 @@ export async function readDeploymentSourceState(input: {
 
   // Run independent local git reads in parallel
   const [currentBranch, currentCommit] = await Promise.all([
-    readWorkspaceBranch(deployment.workspacePath),
+    readWorkspaceBranch(joinRuntimePath(deployment.workspacePath)),
     readWorkspaceCommit(deployment),
   ]);
 
@@ -1148,7 +1152,7 @@ export async function stopDeploymentById(deploymentId: string) {
       deploymentId,
       "stop",
       async (deployment) => {
-        if (!(await pathExists(deployment.workspacePath))) {
+        if (!(await pathExists(joinRuntimePath(deployment.workspacePath)))) {
           return "Workspace already removed.";
         }
 
@@ -1185,7 +1189,7 @@ export async function removeDeploymentById(deploymentId: string) {
     try {
       let output = "";
 
-      if (await pathExists(deployment.workspacePath)) {
+      if (await pathExists(joinRuntimePath(deployment.workspacePath))) {
         try {
           const runtimeFiles = await detectRuntimeFiles(deployment);
           output = await runComposeCommand(deployment, runtimeFiles, [
@@ -1200,7 +1204,7 @@ export async function removeDeploymentById(deploymentId: string) {
         }
       }
 
-      await removeWorkspace(deployment.workspacePath);
+      await removeWorkspace(joinRuntimePath(deployment.workspacePath));
       await completeOperation(
           operationId,
           "success",
@@ -1267,7 +1271,7 @@ export async function readDeploymentContainerLogTail(
 ) {
   const deployment = await getStoredDeploymentById(deploymentId);
 
-  if (!(await pathExists(deployment.workspacePath))) {
+  if (!(await pathExists(joinRuntimePath(deployment.workspacePath)))) {
     return "Workspace is missing, so container logs are unavailable.";
   }
 

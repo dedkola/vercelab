@@ -608,7 +608,10 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
       .pop()
       ?.replace(/\.git$/, "") ?? "repo";
   const appSlug = toSlug(input.appName);
-  const workspacePath = path.join(getAppConfig().paths.appsDir, deploymentId);
+  const workspacePath = path.join(
+    /*turbopackIgnore: true*/ getAppConfig().paths.appsDir,
+    deploymentId,
+  );
   const projectName = `vercelab-${appSlug}-${deploymentId.slice(0, 8)}`;
 
   try {
