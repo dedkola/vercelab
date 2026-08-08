@@ -4,6 +4,9 @@ import { searchContainerCatalog } from "@/lib/container-create";
 
 export const dynamic = "force-dynamic";
 
+const CACHE_CONTROL_HEADER =
+  "public, max-age=300, stale-while-revalidate=300";
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
@@ -17,7 +20,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const results = await searchContainerCatalog(query);
-    return Response.json({ results });
+    return Response.json(
+      { results },
+      { headers: { "Cache-Control": CACHE_CONTROL_HEADER } },
+    );
   } catch (error) {
     return Response.json(
       {
