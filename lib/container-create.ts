@@ -326,7 +326,7 @@ export async function searchContainerCatalog(query: string) {
         Accept: 'application/json',
       },
       next: { revalidate: 300 },
-    },
+    }
   );
 
   if (!response.ok) {

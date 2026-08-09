@@ -2,8 +2,7 @@ import type { NextRequest } from 'next/server';
 
 import { searchContainerCatalog } from '@/lib/container-create';
 
-const CACHE_CONTROL_HEADER =
-  "public, max-age=300, stale-while-revalidate=300";
+const CACHE_CONTROL_HEADER = 'public, max-age=300, stale-while-revalidate=300';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim().length > 0) {
@@ -18,10 +17,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const results = await searchContainerCatalog(query);
-    return Response.json(
-      { results },
-      { headers: { "Cache-Control": CACHE_CONTROL_HEADER } },
-    );
+    return Response.json({ results }, { headers: { 'Cache-Control': CACHE_CONTROL_HEADER } });
   } catch (error) {
     return Response.json(
       {
@@ -29,8 +25,8 @@ export async function GET(request: NextRequest) {
       },
       {
         status: 400,
-        headers: { "Cache-Control": "no-store" },
-      },
+        headers: { 'Cache-Control': 'no-store' },
+      }
     );
   }
 }
