@@ -1,15 +1,15 @@
-import { execFileSync } from "node:child_process";
-import { accessSync, constants, readFileSync } from "node:fs";
-import http from "node:http";
-import os from "node:os";
-import path from "node:path";
+import { execFileSync } from 'node:child_process';
+import { accessSync, constants, readFileSync } from 'node:fs';
+import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
 
-import pty from "@homebridge/node-pty-prebuilt-multiarch";
-import { WebSocketServer } from "ws";
+import pty from '@homebridge/node-pty-prebuilt-multiarch';
+import { WebSocketServer } from 'ws';
 
 const DEFAULT_PORT = 3001;
-const HOST_SHELL = "/bin/bash";
-const TERMINAL_TYPE = "xterm-256color";
+const HOST_SHELL = '/bin/bash';
+const TERMINAL_TYPE = 'xterm-256color';
 
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
@@ -17,14 +17,14 @@ function shellQuote(value) {
 
 function isRunningInContainer() {
   try {
-    accessSync("/.dockerenv", constants.F_OK);
+    accessSync('/.dockerenv', constants.F_OK);
     return true;
   } catch {
     // Continue with cgroup detection below.
   }
 
   try {
-    const cgroup = readFileSync("/proc/1/cgroup", "utf8");
+    const cgroup = readFileSync('/proc/1/cgroup', 'utf8');
 
     return /docker|containerd|kubepods/i.test(cgroup);
   } catch {
@@ -35,20 +35,20 @@ function isRunningInContainer() {
 function getTerminalTarget() {
   const inContainer = isRunningInContainer();
 
-  if (process.env.VERCELAB_TERMINAL_TARGET === "container") {
-    return "container";
+  if (process.env.VERCELAB_TERMINAL_TARGET === 'container') {
+    return 'container';
   }
 
-  if (process.env.VERCELAB_TERMINAL_TARGET === "host") {
-    return inContainer ? "host" : "container";
+  if (process.env.VERCELAB_TERMINAL_TARGET === 'host') {
+    return inContainer ? 'host' : 'container';
   }
 
-  return inContainer ? "host" : "container";
+  return inContainer ? 'host' : 'container';
 }
 
 function readSelfContainerId() {
   try {
-    return readFileSync("/etc/hostname", "utf8").trim();
+    return readFileSync('/etc/hostname', 'utf8').trim();
   } catch {
     return os.hostname();
   }
@@ -62,68 +62,64 @@ function getHostTerminalImage() {
   }
 
   const containerId = readSelfContainerId();
-  const image = execFileSync(
-    "docker",
-    ["inspect", "--format", "{{.Config.Image}}", containerId],
-    {
-      encoding: "utf8",
-      timeout: 5000,
-    },
-  ).trim();
+  const image = execFileSync('docker', ['inspect', '--format', '{{.Config.Image}}', containerId], {
+    encoding: 'utf8',
+    timeout: 5000,
+  }).trim();
 
-  if (image && image !== "<no value>") {
+  if (image && image !== '<no value>') {
     return image;
   }
 
   throw new Error(
-    "Unable to resolve the control-plane image for host terminal access. Set VERCELAB_HOST_TERMINAL_IMAGE.",
+    'Unable to resolve the control-plane image for host terminal access. Set VERCELAB_HOST_TERMINAL_IMAGE.'
   );
 }
 
 function resolveHostWorkingDirectory(value) {
   const requested =
-    typeof value === "string" && value.trim().length > 0
+    typeof value === 'string' && value.trim().length > 0
       ? value.trim()
-      : (process.env.VERCELAB_HOST_ROOT ?? "/");
+      : (process.env.VERCELAB_HOST_ROOT ?? '/');
 
-  return path.posix.resolve("/", requested);
+  return path.posix.resolve('/', requested);
 }
 
 function buildPtyLaunch({ cwd }) {
   const target = getTerminalTarget();
 
-  if (target === "host") {
+  if (target === 'host') {
     const image = getHostTerminalImage();
     const hostCwd = resolveHostWorkingDirectory(cwd);
 
     return {
       args: [
-        "run",
-        "--rm",
-        "-it",
-        "--privileged",
-        "--pid=host",
-        "--network=host",
+        'run',
+        '--rm',
+        '-it',
+        '--privileged',
+        '--pid=host',
+        '--network=host',
         image,
-        "nsenter",
-        "--target",
-        "1",
-        "--mount",
-        "--uts",
-        "--ipc",
-        "--net",
-        "--pid",
-        "--",
+        'nsenter',
+        '--target',
+        '1',
+        '--mount',
+        '--uts',
+        '--ipc',
+        '--net',
+        '--pid',
+        '--',
         HOST_SHELL,
-        "-lc",
+        '-lc',
         [
           `export TERM=${shellQuote(TERMINAL_TYPE)}`,
-          "export COLORTERM=truecolor",
+          'export COLORTERM=truecolor',
           `cd ${shellQuote(hostCwd)} || cd /`,
           `exec ${HOST_SHELL} -l`,
-        ].join("; "),
+        ].join('; '),
       ],
-      command: "docker",
+      command: 'docker',
       cwd: process.cwd(),
       name: TERMINAL_TYPE,
       target,
@@ -131,16 +127,12 @@ function buildPtyLaunch({ cwd }) {
   }
 
   const shell =
-    process.env.SHELL && path.isAbsolute(process.env.SHELL)
-      ? process.env.SHELL
-      : HOST_SHELL;
+    process.env.SHELL && path.isAbsolute(process.env.SHELL) ? process.env.SHELL : HOST_SHELL;
   const localCwd =
-    typeof cwd === "string" && cwd.trim().length > 0
-      ? path.resolve(cwd)
-      : process.cwd();
+    typeof cwd === 'string' && cwd.trim().length > 0 ? path.resolve(cwd) : process.cwd();
 
   return {
-    args: ["-l"],
+    args: ['-l'],
     command: shell,
     cwd: localCwd,
     name: TERMINAL_TYPE,
@@ -154,14 +146,11 @@ function sendJson(socket, payload) {
   }
 }
 
-const port = Number.parseInt(
-  process.env.VERCELAB_TERMINAL_WS_PORT ?? String(DEFAULT_PORT),
-  10,
-);
+const port = Number.parseInt(process.env.VERCELAB_TERMINAL_WS_PORT ?? String(DEFAULT_PORT), 10);
 const server = http.createServer((request, response) => {
-  if (request.url === "/health") {
+  if (request.url === '/health') {
     response.writeHead(200, {
-      "content-type": "application/json",
+      'content-type': 'application/json',
     });
     response.end(JSON.stringify({ ok: true }));
     return;
@@ -171,15 +160,15 @@ const server = http.createServer((request, response) => {
   response.end();
 });
 const terminalServer = new WebSocketServer({
-  path: "/terminal/ws",
+  path: '/terminal/ws',
   server,
 });
 
-terminalServer.on("connection", (socket, request) => {
-  const url = new URL(request.url ?? "/terminal/ws", "http://127.0.0.1");
-  const cols = Number.parseInt(url.searchParams.get("cols") ?? "120", 10);
-  const rows = Number.parseInt(url.searchParams.get("rows") ?? "36", 10);
-  const cwd = url.searchParams.get("cwd") ?? undefined;
+terminalServer.on('connection', (socket, request) => {
+  const url = new URL(request.url ?? '/terminal/ws', 'http://127.0.0.1');
+  const cols = Number.parseInt(url.searchParams.get('cols') ?? '120', 10);
+  const rows = Number.parseInt(url.searchParams.get('rows') ?? '36', 10);
+  const cwd = url.searchParams.get('cwd') ?? undefined;
   let terminal = null;
 
   try {
@@ -192,7 +181,7 @@ terminalServer.on("connection", (socket, request) => {
       cwd: launch.cwd,
       env: {
         ...process.env,
-        COLORTERM: "truecolor",
+        COLORTERM: 'truecolor',
         TERM: TERMINAL_TYPE,
       },
       name: launch.name,
@@ -201,13 +190,13 @@ terminalServer.on("connection", (socket, request) => {
 
     sendJson(socket, {
       target: launch.target,
-      type: "ready",
+      type: 'ready',
     });
 
     terminal.onData((data) => {
       sendJson(socket, {
         data,
-        type: "output",
+        type: 'output',
       });
     });
 
@@ -215,23 +204,20 @@ terminalServer.on("connection", (socket, request) => {
       sendJson(socket, {
         exitCode,
         signal,
-        type: "exit",
+        type: 'exit',
       });
       socket.close();
     });
   } catch (error) {
     sendJson(socket, {
-      data:
-        error instanceof Error
-          ? error.message
-          : "Unable to start terminal session.",
-      type: "error",
+      data: error instanceof Error ? error.message : 'Unable to start terminal session.',
+      type: 'error',
     });
     socket.close();
     return;
   }
 
-  socket.on("message", (message) => {
+  socket.on('message', (message) => {
     if (!terminal) {
       return;
     }
@@ -239,11 +225,11 @@ terminalServer.on("connection", (socket, request) => {
     try {
       const payload = JSON.parse(message.toString());
 
-      if (payload.type === "input" && typeof payload.data === "string") {
+      if (payload.type === 'input' && typeof payload.data === 'string') {
         terminal.write(payload.data);
       }
 
-      if (payload.type === "resize") {
+      if (payload.type === 'resize') {
         const nextCols = Number.parseInt(String(payload.cols), 10);
         const nextRows = Number.parseInt(String(payload.rows), 10);
 
@@ -256,11 +242,11 @@ terminalServer.on("connection", (socket, request) => {
     }
   });
 
-  socket.on("close", () => {
+  socket.on('close', () => {
     terminal?.kill();
   });
 });
 
-server.listen(port, "0.0.0.0", () => {
+server.listen(port, '0.0.0.0', () => {
   console.log(`Vercelab terminal websocket listening on :${port}`);
 });

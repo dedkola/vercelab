@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ExternalLink,
   GitBranch,
@@ -17,22 +17,18 @@ import {
   Trash2,
   Undo2,
   X,
-} from "lucide-react";
-import { toast } from "sonner";
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupInput,
-  InputGroupSuffix,
-} from "@/components/ui/input-group";
-import type { DeploymentSummary } from "@/lib/persistence";
-import type { ExposureMode } from "@/lib/validation";
-import { cn } from "@/lib/utils";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
+import type { DeploymentSummary } from '@/lib/persistence';
+import type { ExposureMode } from '@/lib/validation';
+import { cn } from '@/lib/utils';
 
 type DeploymentSourceCommit = {
   authorName: string | null;
@@ -66,21 +62,14 @@ type EnvVariableDraft = {
   value: string;
 };
 
-type PendingAction =
-  | "delete"
-  | "fetch"
-  | "recreate"
-  | "save"
-  | "start"
-  | "stop"
-  | null;
+type PendingAction = 'delete' | 'fetch' | 'recreate' | 'save' | 'start' | 'stop' | null;
 
 type GitAppPageMainContentProps = {
   baseDomain?: string;
   deployment: DeploymentSummary;
   deploymentHref: string | null;
   deploymentStatusLabel: string;
-  deploymentStatusVariant: "success" | "warning" | "default";
+  deploymentStatusVariant: 'success' | 'warning' | 'default';
   onDeleteAction: () => Promise<void>;
   onFetchAction: () => Promise<void>;
   onRefreshAction: () => void;
@@ -105,21 +94,14 @@ type SettingsRowProps = {
 };
 
 function createDraftId() {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function createEnvVariableDraft(
-  key = "",
-  value = "",
-  enabled = true,
-): EnvVariableDraft {
+function createEnvVariableDraft(key = '', value = '', enabled = true): EnvVariableDraft {
   return {
     enabled,
     id: createDraftId(),
@@ -136,18 +118,18 @@ function buildEnvVariableDrafts(envVariables: string | null) {
   return envVariables
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith("#"))
+    .filter((line) => line.length > 0 && !line.startsWith('#'))
     .map((line) => {
-      const separatorIndex = line.indexOf("=");
+      const separatorIndex = line.indexOf('=');
 
       if (separatorIndex === -1) {
-        return createEnvVariableDraft(line, "", true);
+        return createEnvVariableDraft(line, '', true);
       }
 
       return createEnvVariableDraft(
         line.slice(0, separatorIndex),
         line.slice(separatorIndex + 1),
-        true,
+        true
       );
     });
 }
@@ -156,20 +138,20 @@ function serializeEnvVariableDrafts(rows: EnvVariableDraft[]) {
   return rows
     .filter((row) => row.enabled && row.key.trim().length > 0)
     .map((row) => `${row.key.trim()}=${row.value}`)
-    .join("\n");
+    .join('\n');
 }
 
 // Reuse formatter instance — `new Intl.DateTimeFormat` is expensive to construct
 // and source commits can be re-rendered frequently while switching deployments.
-const SOURCE_DATE_FORMATTER = new Intl.DateTimeFormat("en", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "UTC",
+const SOURCE_DATE_FORMATTER = new Intl.DateTimeFormat('en', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'UTC',
 });
 
 function formatSourceDate(value: string | null) {
   if (!value) {
-    return "Unknown date";
+    return 'Unknown date';
   }
 
   try {
@@ -182,13 +164,13 @@ function formatSourceDate(value: string | null) {
 function getRepositoryDescriptor(repositoryUrl: string) {
   try {
     const parsed = new URL(repositoryUrl);
-    const hostname = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    const hostname = parsed.hostname.replace(/^www\./i, '').toLowerCase();
     const pathSegments = parsed.pathname
-      .replace(/\.git$/i, "")
-      .split("/")
+      .replace(/\.git$/i, '')
+      .split('/')
       .filter(Boolean);
 
-    if (hostname === "github.com" && pathSegments.length >= 2) {
+    if (hostname === 'github.com' && pathSegments.length >= 2) {
       const [owner, name] = pathSegments;
 
       return {
@@ -198,7 +180,7 @@ function getRepositoryDescriptor(repositoryUrl: string) {
     }
 
     return {
-      fullName: pathSegments.join("/") || repositoryUrl,
+      fullName: pathSegments.join('/') || repositoryUrl,
       url: repositoryUrl,
     };
   } catch {
@@ -230,18 +212,14 @@ function SettingsRow({
   return (
     <div className="grid gap-2 px-3 py-2 md:grid-cols-[10rem_minmax(0,0.9fr)_minmax(0,1.15fr)_5rem] md:items-center">
       <div>
-        <div className="text-xs font-semibold tracking-tight text-foreground">
-          {label}
-        </div>
+        <div className="text-xs font-semibold tracking-tight text-foreground">{label}</div>
       </div>
 
       <div className="min-w-0 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5">
         <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
           Current
         </div>
-        <div className="min-w-0 text-sm leading-5 text-foreground">
-          {currentValue}
-        </div>
+        <div className="min-w-0 text-sm leading-5 text-foreground">{currentValue}</div>
       </div>
 
       <div className="min-w-0">
@@ -284,26 +262,18 @@ export function GitAppPageMainContent({
   publicDomainLabel,
 }: GitAppPageMainContentProps) {
   const [appName, setAppName] = useState(deployment.appName);
-  const [branchValue, setBranchValue] = useState(deployment.branch ?? "");
-  const [commitSha, setCommitSha] = useState(deployment.commitSha ?? "");
+  const [branchValue, setBranchValue] = useState(deployment.branch ?? '');
+  const [commitSha, setCommitSha] = useState(deployment.commitSha ?? '');
   const [envRows, setEnvRows] = useState<EnvVariableDraft[]>(() =>
-    buildEnvVariableDrafts(deployment.envVariables),
+    buildEnvVariableDrafts(deployment.envVariables)
   );
-  const [exposureMode, setExposureMode] = useState<ExposureMode>(
-    deployment.exposureMode ?? "http",
-  );
-  const [hostPort, setHostPort] = useState(
-    String(deployment.hostPort ?? ""),
-  );
+  const [exposureMode, setExposureMode] = useState<ExposureMode>(deployment.exposureMode ?? 'http');
+  const [hostPort, setHostPort] = useState(String(deployment.hostPort ?? ''));
   const [isSourceLoading, setIsSourceLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [port, setPort] = useState(String(deployment.port));
-  const [sourceData, setSourceData] = useState<DeploymentSourcePayload | null>(
-    null,
-  );
-  const [sourceDataDeploymentId, setSourceDataDeploymentId] = useState<
-    string | null
-  >(null);
+  const [sourceData, setSourceData] = useState<DeploymentSourcePayload | null>(null);
+  const [sourceDataDeploymentId, setSourceDataDeploymentId] = useState<string | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState(deployment.subdomain);
   const deferredBranch = useDeferredValue(branchValue);
@@ -324,10 +294,10 @@ export function GitAppPageMainContent({
       const searchParams = new URLSearchParams();
 
       if (branch.trim().length > 0) {
-        searchParams.set("branch", branch.trim());
+        searchParams.set('branch', branch.trim());
       }
 
-      const requestUrl = `/api/deployments/${deployment.id}/source${searchParams.size ? `?${searchParams.toString()}` : ""}`;
+      const requestUrl = `/api/deployments/${deployment.id}/source${searchParams.size ? `?${searchParams.toString()}` : ''}`;
 
       async function run() {
         setIsSourceLoading(true);
@@ -337,18 +307,16 @@ export function GitAppPageMainContent({
           const response = await fetch(requestUrl, {
             signal: controller.signal,
           });
-          const payload = (await response.json()) as
-            | DeploymentSourcePayload
-            | { error?: string };
+          const payload = (await response.json()) as DeploymentSourcePayload | { error?: string };
 
           if (!response.ok) {
             const errorMessage =
-              typeof payload === "object" &&
+              typeof payload === 'object' &&
               payload !== null &&
-              "error" in payload &&
-              typeof payload.error === "string"
+              'error' in payload &&
+              typeof payload.error === 'string'
                 ? payload.error
-                : "Unable to load repository source details.";
+                : 'Unable to load repository source details.';
 
             throw new Error(errorMessage);
           }
@@ -363,9 +331,7 @@ export function GitAppPageMainContent({
           setSourceData(null);
           setSourceDataDeploymentId(null);
           setSourceError(
-            error instanceof Error
-              ? error.message
-              : "Unable to load repository source details.",
+            error instanceof Error ? error.message : 'Unable to load repository source details.'
           );
         } finally {
           if (!controller.signal.aborted) {
@@ -376,7 +342,7 @@ export function GitAppPageMainContent({
 
       void run();
     },
-    [deployment.id],
+    [deployment.id]
   );
 
   const requestSourceData = useCallback(
@@ -385,7 +351,7 @@ export function GitAppPageMainContent({
       setSourceRequested(true);
       fetchSourceData(branch);
     },
-    [fetchSourceData],
+    [fetchSourceData]
   );
 
   // Clean up any in-flight request when the panel unmounts.
@@ -414,14 +380,13 @@ export function GitAppPageMainContent({
         return;
       }
 
-      requestSourceData(deployment.branch ?? "");
+      requestSourceData(deployment.branch ?? '');
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
   }, [deployment.branch, deployment.id, requestSourceData]);
 
-  const activeSourceData =
-    sourceDataDeploymentId === deployment.id ? sourceData : null;
+  const activeSourceData = sourceDataDeploymentId === deployment.id ? sourceData : null;
   const repositoryDescriptor = activeSourceData?.repository
     ? {
         fullName: activeSourceData.repository.fullName,
@@ -429,25 +394,20 @@ export function GitAppPageMainContent({
       }
     : getRepositoryDescriptor(deployment.repositoryUrl);
   const activeCommit = activeSourceData?.currentCommit;
-  const currentEnvPayload = deployment.envVariables ?? "";
+  const currentEnvPayload = deployment.envVariables ?? '';
   const envPayload = serializeEnvVariableDrafts(envRows);
   const liveHref = deploymentHref ?? `https://${publicDomainLabel}`;
-  const branchBrowserError =
-    sourceError ?? activeSourceData?.browserError ?? null;
+  const branchBrowserError = sourceError ?? activeSourceData?.browserError ?? null;
   const isBusy = pendingAction !== null;
   const normalizedCurrentEnvPayload = useMemo(
     () => serializeEnvVariableDrafts(buildEnvVariableDrafts(currentEnvPayload)),
-    [currentEnvPayload],
+    [currentEnvPayload]
   );
 
   const branchOptions = useMemo(() => {
     const seen = new Set<string>();
 
-    return [
-      branchValue.trim(),
-      deployment.branch ?? "",
-      ...(activeSourceData?.branches ?? []),
-    ]
+    return [branchValue.trim(), deployment.branch ?? '', ...(activeSourceData?.branches ?? [])]
       .filter((branch) => branch.length > 0)
       .filter((branch) => {
         if (seen.has(branch)) {
@@ -460,9 +420,9 @@ export function GitAppPageMainContent({
       .map((branch) => ({
         description:
           branch === deployment.branch
-            ? "Current saved branch"
+            ? 'Current saved branch'
             : branch === activeSourceData?.currentBranch
-              ? "Currently checked out"
+              ? 'Currently checked out'
               : undefined,
         label: branch,
         value: branch,
@@ -470,11 +430,11 @@ export function GitAppPageMainContent({
   }, [branchValue, deployment.branch, activeSourceData]);
 
   const commitOptions = useMemo(() => {
-    const seen = new Set<string>([""]);
+    const seen = new Set<string>(['']);
     const options = [
       {
-        label: "Latest on selected branch",
-        value: "",
+        label: 'Latest on selected branch',
+        value: '',
       },
     ];
 
@@ -502,13 +462,11 @@ export function GitAppPageMainContent({
   }, [commitSha, activeSourceData]);
 
   const hasAppNameChange = appName.trim() !== deployment.appName;
-  const hasBranchChange = branchValue.trim() !== (deployment.branch ?? "");
-  const hasCommitChange = commitSha.trim() !== (deployment.commitSha ?? "");
+  const hasBranchChange = branchValue.trim() !== (deployment.branch ?? '');
+  const hasCommitChange = commitSha.trim() !== (deployment.commitSha ?? '');
   const hasEnvChange = envPayload !== normalizedCurrentEnvPayload;
-  const hasExposureModeChange =
-    exposureMode !== (deployment.exposureMode ?? "http");
-  const hasHostPortChange =
-    hostPort.trim() !== String(deployment.hostPort ?? "");
+  const hasExposureModeChange = exposureMode !== (deployment.exposureMode ?? 'http');
+  const hasHostPortChange = hostPort.trim() !== String(deployment.hostPort ?? '');
   const hasPortChange = port.trim() !== String(deployment.port);
   const hasSubdomainChange = subdomain.trim() !== deployment.subdomain;
   const changeCount = [
@@ -523,8 +481,8 @@ export function GitAppPageMainContent({
   ].filter(Boolean).length;
 
   async function runPendingAction(
-    action: Exclude<PendingAction, "save" | null>,
-    task: () => Promise<void>,
+    action: Exclude<PendingAction, 'save' | null>,
+    task: () => Promise<void>
   ) {
     setPendingAction(action);
 
@@ -537,24 +495,24 @@ export function GitAppPageMainContent({
 
   async function handleSaveSettings() {
     if (changeCount === 0) {
-      toast.error("Change at least one setting before saving.");
+      toast.error('Change at least one setting before saving.');
       return;
     }
     const formData = new FormData();
 
-    formData.set("deploymentId", deployment.id);
-    formData.set("appName", appName.trim());
-    formData.set("branch", branchValue.trim());
-    formData.set("commitSha", commitSha.trim());
-    formData.set("envVariables", envPayload);
-    formData.set("exposureMode", exposureMode);
+    formData.set('deploymentId', deployment.id);
+    formData.set('appName', appName.trim());
+    formData.set('branch', branchValue.trim());
+    formData.set('commitSha', commitSha.trim());
+    formData.set('envVariables', envPayload);
+    formData.set('exposureMode', exposureMode);
     if (hostPort.trim()) {
-      formData.set("hostPort", hostPort.trim());
+      formData.set('hostPort', hostPort.trim());
     }
-    formData.set("port", port.trim());
-    formData.set("subdomain", subdomain.trim());
+    formData.set('port', port.trim());
+    formData.set('subdomain', subdomain.trim());
 
-    setPendingAction("save");
+    setPendingAction('save');
 
     try {
       await onSaveSettingsAction(formData);
@@ -565,7 +523,7 @@ export function GitAppPageMainContent({
 
   function handleBranchSelect(value: string) {
     setBranchValue(value);
-    setCommitSha("");
+    setCommitSha('');
   }
 
   function handleBranchComboboxOpen(open: boolean) {
@@ -590,14 +548,20 @@ export function GitAppPageMainContent({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground" variant="outline">
+              <Badge
+                className="rounded-md border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground"
+                variant="outline"
+              >
                 Deployment
               </Badge>
               <Badge className="rounded-md text-[11px]" variant={deploymentStatusVariant}>
                 {deploymentStatusLabel}
               </Badge>
-              <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
-                {deployment.composeMode ?? "auto"}
+              <Badge
+                className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
+                variant="outline"
+              >
+                {deployment.composeMode ?? 'auto'}
               </Badge>
             </div>
             <h1 className="text-base font-semibold tracking-tight text-foreground">
@@ -618,16 +582,22 @@ export function GitAppPageMainContent({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
-              Updated{" "}
-              {new Date(deployment.updatedAt).toLocaleString("en", {
-                hour: "2-digit",
-                minute: "2-digit",
-                month: "short",
-                day: "numeric",
+            <Badge
+              className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
+              variant="outline"
+            >
+              Updated{' '}
+              {new Date(deployment.updatedAt).toLocaleString('en', {
+                hour: '2-digit',
+                minute: '2-digit',
+                month: 'short',
+                day: 'numeric',
               })}
             </Badge>
-            <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
+            <Badge
+              className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
+              variant="outline"
+            >
               Port {deployment.port}
             </Badge>
           </div>
@@ -675,9 +645,7 @@ export function GitAppPageMainContent({
                 <div className="flex flex-wrap items-center gap-2">
                   <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>
-                    {activeSourceData?.currentBranch ??
-                      deployment.branch ??
-                      "Default branch"}
+                    {activeSourceData?.currentBranch ?? deployment.branch ?? 'Default branch'}
                   </span>
                   {deployment.branch ? (
                     <Badge className="border-border/60 bg-muted/45 text-foreground">
@@ -724,14 +692,14 @@ export function GitAppPageMainContent({
                       {activeCommit.message}
                       {activeCommit.committedAt
                         ? ` • ${formatSourceDate(activeCommit.committedAt)}`
-                        : ""}
+                        : ''}
                     </div>
                   </div>
                 ) : (
                   <span className="text-muted-foreground">
                     {!sourceRequested || isSourceLoading
-                      ? "Loading current commit in the background..."
-                      : "Current commit metadata is not available yet."}
+                      ? 'Loading current commit in the background...'
+                      : 'Current commit metadata is not available yet.'}
                   </span>
                 )
               }
@@ -740,12 +708,12 @@ export function GitAppPageMainContent({
 
           <div className="flex flex-wrap gap-2">
             <Button
-              disabled={isBusy || deployment.status !== "stopped"}
-              onClick={() => void runPendingAction("start", onStartAction)}
+              disabled={isBusy || deployment.status !== 'stopped'}
+              onClick={() => void runPendingAction('start', onStartAction)}
               size="sm"
               type="button"
             >
-              {pendingAction === "start" ? (
+              {pendingAction === 'start' ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
               ) : (
                 <Play className="h-4 w-4" />
@@ -753,13 +721,13 @@ export function GitAppPageMainContent({
               Start
             </Button>
             <Button
-              disabled={isBusy || deployment.status === "stopped"}
-              onClick={() => void runPendingAction("stop", onStopAction)}
+              disabled={isBusy || deployment.status === 'stopped'}
+              onClick={() => void runPendingAction('stop', onStopAction)}
               size="sm"
               type="button"
               variant="secondary"
             >
-              {pendingAction === "stop" ? (
+              {pendingAction === 'stop' ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
               ) : (
                 <Square className="h-4 w-4" />
@@ -768,12 +736,12 @@ export function GitAppPageMainContent({
             </Button>
             <Button
               disabled={isBusy}
-              onClick={() => void runPendingAction("fetch", onFetchAction)}
+              onClick={() => void runPendingAction('fetch', onFetchAction)}
               size="sm"
               type="button"
               variant="secondary"
             >
-              {pendingAction === "fetch" ? (
+              {pendingAction === 'fetch' ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCcw className="h-4 w-4" />
@@ -782,13 +750,11 @@ export function GitAppPageMainContent({
             </Button>
             <Button
               disabled={isBusy}
-              onClick={() =>
-                void runPendingAction("recreate", onRecreateAction)
-              }
+              onClick={() => void runPendingAction('recreate', onRecreateAction)}
               size="sm"
               type="button"
             >
-              {pendingAction === "recreate" ? (
+              {pendingAction === 'recreate' ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
               ) : (
                 <RotateCcw className="h-4 w-4" />
@@ -797,12 +763,12 @@ export function GitAppPageMainContent({
             </Button>
             <Button
               disabled={isBusy}
-              onClick={() => void runPendingAction("delete", onDeleteAction)}
+              onClick={() => void runPendingAction('delete', onDeleteAction)}
               size="sm"
               type="button"
               variant="danger"
             >
-              {pendingAction === "delete" ? (
+              {pendingAction === 'delete' ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
               ) : (
                 <Trash2 className="h-4 w-4" />
@@ -849,9 +815,7 @@ export function GitAppPageMainContent({
 
               <SettingsRow
                 currentValue={
-                  <span className="font-medium text-foreground">
-                    {publicDomainLabel}
-                  </span>
+                  <span className="font-medium text-foreground">{publicDomainLabel}</span>
                 }
                 editor={
                   <InputGroup className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none">
@@ -874,25 +838,23 @@ export function GitAppPageMainContent({
 
               <SettingsRow
                 currentValue={
-                  activeSourceData?.currentBranch ??
-                  deployment.branch ??
-                  "Default branch"
+                  activeSourceData?.currentBranch ?? deployment.branch ?? 'Default branch'
                 }
                 editor={
                   <Combobox
                     ariaLabel="Saved branch"
                     buttonClassName="h-8 rounded-lg border border-border/70 bg-background px-2.5 text-xs shadow-none"
                     disabled={isSourceLoading}
-                    emptyText={branchBrowserError ?? "No branches available"}
+                    emptyText={branchBrowserError ?? 'No branches available'}
                     onOpenChangeAction={handleBranchComboboxOpen}
                     onValueChangeAction={handleBranchSelect}
                     options={branchOptions}
                     placeholder={
                       isSourceLoading
-                        ? "Loading branches..."
+                        ? 'Loading branches...'
                         : sourceRequested
-                          ? "Select a branch"
-                          : "Click to load branches"
+                          ? 'Select a branch'
+                          : 'Click to load branches'
                     }
                     searchPlaceholder="Search branches"
                     value={branchValue}
@@ -900,8 +862,8 @@ export function GitAppPageMainContent({
                 }
                 label="Branch"
                 onReset={() => {
-                  setBranchValue(deployment.branch ?? "");
-                  setCommitSha(deployment.commitSha ?? "");
+                  setBranchValue(deployment.branch ?? '');
+                  setCommitSha(deployment.commitSha ?? '');
                 }}
                 resetDisabled={!hasBranchChange}
               />
@@ -909,13 +871,9 @@ export function GitAppPageMainContent({
               <SettingsRow
                 currentValue={
                   activeCommit ? (
-                    <span className="font-medium text-foreground">
-                      {activeCommit.shortSha}
-                    </span>
+                    <span className="font-medium text-foreground">{activeCommit.shortSha}</span>
                   ) : (
-                    <span className="text-muted-foreground">
-                      Latest branch head
-                    </span>
+                    <span className="text-muted-foreground">Latest branch head</span>
                   )
                 }
                 editor={
@@ -923,18 +881,16 @@ export function GitAppPageMainContent({
                     ariaLabel="Saved commit"
                     buttonClassName="h-8 rounded-lg border border-border/70 bg-background px-2.5 text-xs shadow-none"
                     disabled={isSourceLoading || Boolean(branchBrowserError)}
-                    emptyText={branchBrowserError ?? "No commits available"}
+                    emptyText={branchBrowserError ?? 'No commits available'}
                     onValueChangeAction={handleCommitSelect}
                     options={commitOptions}
-                    placeholder={
-                      isSourceLoading ? "Loading commits..." : "Select a commit"
-                    }
+                    placeholder={isSourceLoading ? 'Loading commits...' : 'Select a commit'}
                     searchPlaceholder="Search commits"
                     value={commitSha}
                   />
                 }
                 label="Commit"
-                onReset={() => setCommitSha(deployment.commitSha ?? "")}
+                onReset={() => setCommitSha(deployment.commitSha ?? '')}
                 resetDisabled={!hasCommitChange}
               />
 
@@ -954,13 +910,11 @@ export function GitAppPageMainContent({
               />
 
               <SettingsRow
-                currentValue={deployment.exposureMode ?? "http"}
+                currentValue={deployment.exposureMode ?? 'http'}
                 editor={
                   <select
                     className="h-8 w-full rounded-lg border border-input bg-background px-3 text-xs shadow-none"
-                    onChange={(event) =>
-                      setExposureMode(event.target.value as ExposureMode)
-                    }
+                    onChange={(event) => setExposureMode(event.target.value as ExposureMode)}
                     value={exposureMode}
                   >
                     <option value="http">HTTP — Traefik reverse proxy</option>
@@ -970,17 +924,13 @@ export function GitAppPageMainContent({
                   </select>
                 }
                 label="Exposure mode"
-                onReset={() =>
-                  setExposureMode(deployment.exposureMode ?? "http")
-                }
+                onReset={() => setExposureMode(deployment.exposureMode ?? 'http')}
                 resetDisabled={!hasExposureModeChange}
               />
 
-              {(exposureMode === "tcp" || exposureMode === "host") && (
+              {(exposureMode === 'tcp' || exposureMode === 'host') && (
                 <SettingsRow
-                  currentValue={
-                    deployment.hostPort ? `:${deployment.hostPort}` : "—"
-                  }
+                  currentValue={deployment.hostPort ? `:${deployment.hostPort}` : '—'}
                   editor={
                     <Input
                       className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none"
@@ -991,9 +941,7 @@ export function GitAppPageMainContent({
                     />
                   }
                   label="Host port"
-                  onReset={() =>
-                    setHostPort(String(deployment.hostPort ?? ""))
-                  }
+                  onReset={() => setHostPort(String(deployment.hostPort ?? ''))}
                   resetDisabled={!hasHostPortChange}
                 />
               )}
@@ -1009,10 +957,7 @@ export function GitAppPageMainContent({
               <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={() => {
-                    setEnvRows((current) => [
-                      ...current,
-                      createEnvVariableDraft(),
-                    ]);
+                    setEnvRows((current) => [...current, createEnvVariableDraft()]);
                   }}
                   size="xs"
                   type="button"
@@ -1060,8 +1005,8 @@ export function GitAppPageMainContent({
                                     ...item,
                                     enabled: event.target.checked,
                                   }
-                                : item,
-                            ),
+                                : item
+                            )
                           );
                         }}
                         type="checkbox"
@@ -1071,8 +1016,8 @@ export function GitAppPageMainContent({
 
                     <Input
                       className={cn(
-                        "h-8 rounded-lg border-border/70 bg-background text-xs shadow-none",
-                        !row.enabled && "opacity-65",
+                        'h-8 rounded-lg border-border/70 bg-background text-xs shadow-none',
+                        !row.enabled && 'opacity-65'
                       )}
                       onChange={(event) => {
                         setEnvRows((current) =>
@@ -1082,8 +1027,8 @@ export function GitAppPageMainContent({
                                   ...item,
                                   key: event.target.value,
                                 }
-                              : item,
-                          ),
+                              : item
+                          )
                         );
                       }}
                       placeholder="KEY"
@@ -1092,8 +1037,8 @@ export function GitAppPageMainContent({
 
                     <Input
                       className={cn(
-                        "h-8 rounded-lg border-border/70 bg-background text-xs shadow-none",
-                        !row.enabled && "opacity-65",
+                        'h-8 rounded-lg border-border/70 bg-background text-xs shadow-none',
+                        !row.enabled && 'opacity-65'
                       )}
                       onChange={(event) => {
                         setEnvRows((current) =>
@@ -1103,8 +1048,8 @@ export function GitAppPageMainContent({
                                   ...item,
                                   value: event.target.value,
                                 }
-                              : item,
-                          ),
+                              : item
+                          )
                         );
                       }}
                       placeholder="VALUE"
@@ -1114,9 +1059,7 @@ export function GitAppPageMainContent({
                     <div className="flex md:justify-end">
                       <Button
                         onClick={() => {
-                          setEnvRows((current) =>
-                            current.filter((item) => item.id !== row.id),
-                          );
+                          setEnvRows((current) => current.filter((item) => item.id !== row.id));
                         }}
                         size="icon"
                         type="button"
@@ -1130,8 +1073,8 @@ export function GitAppPageMainContent({
               </div>
             ) : (
               <div className="px-3 py-5 text-xs leading-5 text-muted-foreground">
-                No environment variables are configured yet. Add the ones you
-                need and include the row in the next save.
+                No environment variables are configured yet. Add the ones you need and include the
+                row in the next save.
               </div>
             )}
           </div>
@@ -1142,7 +1085,10 @@ export function GitAppPageMainContent({
                 Save changes
               </div>
               {changeCount > 0 ? (
-                <Badge className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground" variant="outline">
+                <Badge
+                  className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
+                  variant="outline"
+                >
                   {changeCount} pending
                 </Badge>
               ) : null}
@@ -1155,7 +1101,7 @@ export function GitAppPageMainContent({
                 size="sm"
                 type="button"
               >
-                {pendingAction === "save" ? (
+                {pendingAction === 'save' ? (
                   <LoaderCircle className="h-4 w-4 animate-spin" />
                 ) : (
                   <Save className="h-4 w-4" />

@@ -1,20 +1,20 @@
-import "server-only";
+import 'server-only';
 
-import { spawn } from "node:child_process";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { spawn } from 'node:child_process';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
-import { getAppConfig } from "@/lib/app-config";
+import { getAppConfig } from '@/lib/app-config';
 import {
   buildDefaultHostedDomain,
   buildTraefikLabels,
   buildTraefikRouterName,
   buildTraefikTcpLabels,
   toContainerSlug,
-} from "@/lib/container-routing";
-import type { ExposureMode } from "@/lib/validation";
+} from '@/lib/container-routing';
+import type { ExposureMode } from '@/lib/validation';
 
 export type CatalogImage = {
   description: string | null;
@@ -53,16 +53,14 @@ function parseEnvVariables(rawValue?: string) {
   for (const line of rawValue.split(/\r?\n/)) {
     const trimmed = line.trim();
 
-    if (!trimmed || trimmed.startsWith("#")) {
+    if (!trimmed || trimmed.startsWith('#')) {
       continue;
     }
 
-    const separatorIndex = trimmed.indexOf("=");
+    const separatorIndex = trimmed.indexOf('=');
 
     if (separatorIndex < 1) {
-      throw new Error(
-        `Invalid environment variable line "${trimmed}". Use KEY=VALUE format.`,
-      );
+      throw new Error(`Invalid environment variable line "${trimmed}". Use KEY=VALUE format.`);
     }
 
     const key = trimmed.slice(0, separatorIndex).trim();
@@ -70,7 +68,7 @@ function parseEnvVariables(rawValue?: string) {
 
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
       throw new Error(
-        `Invalid environment variable key "${key}". Use letters, numbers, and underscores only.`,
+        `Invalid environment variable key "${key}". Use letters, numbers, and underscores only.`
       );
     }
 
@@ -96,9 +94,7 @@ function parsePortMappings(rawValue?: string) {
     }
 
     if (!/^\d{1,5}(?::\d{1,5})?(?:\/(tcp|udp))?$/.test(trimmed)) {
-      throw new Error(
-        `Invalid port mapping "${trimmed}". Use HOST:CONTAINER or CONTAINER format.`,
-      );
+      throw new Error(`Invalid port mapping "${trimmed}". Use HOST:CONTAINER or CONTAINER format.`);
     }
 
     if (!seen.has(trimmed)) {
@@ -111,8 +107,8 @@ function parsePortMappings(rawValue?: string) {
 }
 
 function resolveInternalPortFromMapping(mapping: string) {
-  const normalized = mapping.trim().split("/")[0] ?? "";
-  const portSegment = normalized.split(":").at(-1) ?? "";
+  const normalized = mapping.trim().split('/')[0] ?? '';
+  const portSegment = normalized.split(':').at(-1) ?? '';
   const parsed = Number.parseInt(portSegment, 10);
 
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -120,9 +116,9 @@ function resolveInternalPortFromMapping(mapping: string) {
 
 function normalizePortValue(value: unknown) {
   const parsed =
-    typeof value === "number"
+    typeof value === 'number'
       ? value
-      : typeof value === "string"
+      : typeof value === 'string'
         ? Number.parseInt(value, 10)
         : Number.NaN;
 
@@ -130,9 +126,7 @@ function normalizePortValue(value: unknown) {
 }
 
 function choosePreferredPort(ports: Array<number | null>) {
-  const candidates = ports.filter(
-    (port): port is number => typeof port === "number" && port > 0,
-  );
+  const candidates = ports.filter((port): port is number => typeof port === 'number' && port > 0);
 
   if (!candidates.length) {
     return null;
@@ -149,20 +143,20 @@ function choosePreferredPort(ports: Array<number | null>) {
 
 async function ensureProxyNetwork(network: string) {
   try {
-    await runCommand("docker", ["network", "inspect", network]);
+    await runCommand('docker', ['network', 'inspect', network]);
   } catch {
-    await runCommand("docker", ["network", "create", network]);
+    await runCommand('docker', ['network', 'create', network]);
   }
 }
 
 async function inspectImageExposedPorts(image: string) {
   const inspect = async () =>
-    await runCommand("docker", [
-      "image",
-      "inspect",
+    await runCommand('docker', [
+      'image',
+      'inspect',
       image,
-      "--format",
-      "{{json .Config.ExposedPorts}}",
+      '--format',
+      '{{json .Config.ExposedPorts}}',
     ]);
 
   let output: string;
@@ -170,11 +164,11 @@ async function inspectImageExposedPorts(image: string) {
   try {
     output = await inspect();
   } catch {
-    await runCommand("docker", ["pull", image]);
+    await runCommand('docker', ['pull', image]);
     output = await inspect();
   }
 
-  if (!output || output === "null") {
+  if (!output || output === 'null') {
     return [] as number[];
   }
 
@@ -183,13 +177,8 @@ async function inspectImageExposedPorts(image: string) {
   return Object.keys(exposedPorts ?? {}).map(resolveInternalPortFromMapping);
 }
 
-async function resolveImageContainerPort(
-  image: string,
-  portMappings: string[],
-) {
-  const mappedPort = choosePreferredPort(
-    portMappings.map(resolveInternalPortFromMapping),
-  );
+async function resolveImageContainerPort(image: string, portMappings: string[]) {
+  const mappedPort = choosePreferredPort(portMappings.map(resolveInternalPortFromMapping));
 
   if (mappedPort) {
     return mappedPort;
@@ -199,31 +188,31 @@ async function resolveImageContainerPort(
 }
 
 function extractComposeNetworks(serviceConfig: unknown): string[] {
-  if (!serviceConfig || typeof serviceConfig !== "object") {
-    return ["default"];
+  if (!serviceConfig || typeof serviceConfig !== 'object') {
+    return ['default'];
   }
 
   const service = serviceConfig as { networks?: unknown };
 
   if (!service.networks) {
-    return ["default"];
+    return ['default'];
   }
 
   if (Array.isArray(service.networks)) {
     return service.networks
-      .filter((network): network is string => typeof network === "string")
+      .filter((network): network is string => typeof network === 'string')
       .filter(Boolean);
   }
 
-  if (typeof service.networks === "object") {
+  if (typeof service.networks === 'object') {
     return Object.keys(service.networks as Record<string, unknown>);
   }
 
-  return ["default"];
+  return ['default'];
 }
 
 function resolveComposeServicePort(serviceConfig: unknown) {
-  if (!serviceConfig || typeof serviceConfig !== "object") {
+  if (!serviceConfig || typeof serviceConfig !== 'object') {
     return null;
   }
 
@@ -235,18 +224,16 @@ function resolveComposeServicePort(serviceConfig: unknown) {
   if (Array.isArray(service.ports)) {
     const portFromMappings = choosePreferredPort(
       service.ports.map((entry) => {
-        if (typeof entry === "string") {
+        if (typeof entry === 'string') {
           return resolveInternalPortFromMapping(entry);
         }
 
-        if (entry && typeof entry === "object") {
-          return normalizePortValue(
-            (entry as { target?: unknown }).target,
-          );
+        if (entry && typeof entry === 'object') {
+          return normalizePortValue((entry as { target?: unknown }).target);
         }
 
         return null;
-      }),
+      })
     );
 
     if (portFromMappings) {
@@ -255,19 +242,13 @@ function resolveComposeServicePort(serviceConfig: unknown) {
   }
 
   if (Array.isArray(service.expose)) {
-    return choosePreferredPort(
-      service.expose.map((entry) => normalizePortValue(entry)),
-    );
+    return choosePreferredPort(service.expose.map((entry) => normalizePortValue(entry)));
   }
 
   return null;
 }
 
-async function runCommand(
-  command: string,
-  args: string[],
-  options: CommandOptions = {},
-) {
+async function runCommand(command: string, args: string[], options: CommandOptions = {}) {
   return await new Promise<string>((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
@@ -275,26 +256,26 @@ async function runCommand(
         ...process.env,
         ...options.env,
       },
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdout = "";
-    let stderr = "";
+    let stdout = '';
+    let stderr = '';
 
-    child.stdout.on("data", (chunk: Buffer | string) => {
+    child.stdout.on('data', (chunk: Buffer | string) => {
       stdout += chunk.toString();
     });
 
-    child.stderr.on("data", (chunk: Buffer | string) => {
+    child.stderr.on('data', (chunk: Buffer | string) => {
       stderr += chunk.toString();
     });
 
-    child.on("error", (error) => {
+    child.on('error', (error) => {
       reject(error);
     });
 
-    child.on("close", (code) => {
-      const output = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n");
+    child.on('close', (code) => {
+      const output = [stdout.trim(), stderr.trim()].filter(Boolean).join('\n');
 
       if (code === 0) {
         resolve(output);
@@ -303,34 +284,31 @@ async function runCommand(
 
       reject(
         new Error(
-          [output, `${command} ${args.join(" ")} exited with status ${code}.`]
+          [output, `${command} ${args.join(' ')} exited with status ${code}.`]
             .filter(Boolean)
-            .join("\n"),
-        ),
+            .join('\n')
+        )
       );
     });
   });
 }
 
-async function runComposeCommand(
-  composeArgs: string[],
-  options: CommandOptions = {},
-) {
+async function runComposeCommand(composeArgs: string[], options: CommandOptions = {}) {
   try {
-    return await runCommand("docker", ["compose", ...composeArgs], options);
+    return await runCommand('docker', ['compose', ...composeArgs], options);
   } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    const message = error instanceof Error ? error.message.toLowerCase() : '';
     const shouldFallbackToComposeBinary =
       message.includes("unknown shorthand flag: 'p' in -p") ||
-      message.includes("unknown flag: -p") ||
+      message.includes('unknown flag: -p') ||
       message.includes("docker: 'compose' is not a docker command") ||
-      message.includes("docker compose exited with status");
+      message.includes('docker compose exited with status');
 
     if (!shouldFallbackToComposeBinary) {
       throw error;
     }
 
-    return await runCommand("docker-compose", composeArgs, options);
+    return await runCommand('docker-compose', composeArgs, options);
   }
 }
 
@@ -344,11 +322,11 @@ export async function searchContainerCatalog(query: string) {
   const response = await fetch(
     `https://hub.docker.com/v2/search/repositories/?query=${encodeURIComponent(normalized)}&page_size=12&page=1`,
     {
-      cache: "no-store",
+      cache: 'no-store',
       headers: {
-        Accept: "application/json",
+        Accept: 'application/json',
       },
-    },
+    }
   );
 
   if (!response.ok) {
@@ -369,7 +347,7 @@ export async function searchContainerCatalog(query: string) {
     .map((entry) => ({
       description: entry.short_description ?? null,
       isOfficial: Boolean(entry.is_official),
-      name: entry.repo_name?.trim() ?? "",
+      name: entry.repo_name?.trim() ?? '',
       pullCount: Number(entry.pull_count ?? 0),
       starCount: Number(entry.star_count ?? 0),
     }))
@@ -380,25 +358,22 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
   const image = input.image.trim();
 
   if (!image) {
-    throw new Error("Image is required.");
+    throw new Error('Image is required.');
   }
 
-  const mode = input.exposureMode ?? "http";
+  const mode = input.exposureMode ?? 'http';
   const config = getAppConfig();
-  const normalizedName = input.containerName?.trim()
-    ? toContainerSlug(input.containerName)
-    : "";
-  const containerName =
-    normalizedName || `container-${Date.now().toString(36).slice(-8)}`;
+  const normalizedName = input.containerName?.trim() ? toContainerSlug(input.containerName) : '';
+  const containerName = normalizedName || `container-${Date.now().toString(36).slice(-8)}`;
 
   const baseArgs = [
-    "run",
-    "-d",
-    "--name",
+    'run',
+    '-d',
+    '--name',
     containerName,
-    "--restart",
-    "unless-stopped",
-    "--network",
+    '--restart',
+    'unless-stopped',
+    '--network',
     config.proxy.network,
   ];
 
@@ -406,13 +381,13 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
 
   await ensureProxyNetwork(config.proxy.network);
 
-  if (mode === "http") {
+  if (mode === 'http') {
     const portMappings = parsePortMappings(input.ports);
     const containerPort = await resolveImageContainerPort(image, portMappings);
 
     if (!containerPort) {
       throw new Error(
-        "Unable to determine a web port for this image. Add a port mapping or use an image that exposes an application port.",
+        'Unable to determine a web port for this image. Add a port mapping or use an image that exposes an application port.'
       );
     }
 
@@ -426,22 +401,22 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
         network: config.proxy.network,
         port: containerPort,
         routerName: buildTraefikRouterName(containerName),
-      }),
+      })
     )) {
-      args.push("--label", `${key}=${value}`);
+      args.push('--label', `${key}=${value}`);
     }
 
     for (const mapping of portMappings) {
-      args.push("-p", mapping);
+      args.push('-p', mapping);
     }
 
     for (const envVariable of envVariables) {
-      args.push("-e", `${envVariable.key}=${envVariable.value}`);
+      args.push('-e', `${envVariable.key}=${envVariable.value}`);
     }
 
     args.push(image);
 
-    const output = await runCommand("docker", args);
+    const output = await runCommand('docker', args);
     const containerId = output.split(/\r?\n/).filter(Boolean).at(-1) ?? output;
 
     return {
@@ -454,11 +429,11 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
     };
   }
 
-  if (mode === "tcp") {
+  if (mode === 'tcp') {
     const hostPort = input.hostPort;
 
     if (!hostPort) {
-      throw new Error("Host port is required for TCP exposure mode.");
+      throw new Error('Host port is required for TCP exposure mode.');
     }
 
     const entrypoint = `tcp-${hostPort}`;
@@ -470,20 +445,20 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
         network: config.proxy.network,
         port: hostPort,
         routerName: buildTraefikRouterName(containerName),
-      }),
+      })
     )) {
-      args.push("--label", `${key}=${value}`);
+      args.push('--label', `${key}=${value}`);
     }
 
     // No -p binding: Traefik owns the host port via its static entrypoint and
     // routes to the container via the Docker proxy network.
     for (const envVariable of envVariables) {
-      args.push("-e", `${envVariable.key}=${envVariable.value}`);
+      args.push('-e', `${envVariable.key}=${envVariable.value}`);
     }
 
     args.push(image);
 
-    const output = await runCommand("docker", args);
+    const output = await runCommand('docker', args);
     const containerId = output.split(/\r?\n/).filter(Boolean).at(-1) ?? output;
 
     return {
@@ -497,28 +472,26 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
     };
   }
 
-  if (mode === "host") {
+  if (mode === 'host') {
     const portMappings = parsePortMappings(input.ports);
 
     if (!portMappings.length) {
-      throw new Error(
-        "At least one port mapping is required for Host exposure mode.",
-      );
+      throw new Error('At least one port mapping is required for Host exposure mode.');
     }
 
-    const args = [...baseArgs, "--label", "traefik.enable=false"];
+    const args = [...baseArgs, '--label', 'traefik.enable=false'];
 
     for (const mapping of portMappings) {
-      args.push("-p", mapping);
+      args.push('-p', mapping);
     }
 
     for (const envVariable of envVariables) {
-      args.push("-e", `${envVariable.key}=${envVariable.value}`);
+      args.push('-e', `${envVariable.key}=${envVariable.value}`);
     }
 
     args.push(image);
 
-    const output = await runCommand("docker", args);
+    const output = await runCommand('docker', args);
     const containerId = output.split(/\r?\n/).filter(Boolean).at(-1) ?? output;
 
     return {
@@ -532,15 +505,15 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
   }
 
   // internal: no ports, no Traefik, still on proxy network for intra-Docker access
-  const args = [...baseArgs, "--label", "traefik.enable=false"];
+  const args = [...baseArgs, '--label', 'traefik.enable=false'];
 
   for (const envVariable of envVariables) {
-    args.push("-e", `${envVariable.key}=${envVariable.value}`);
+    args.push('-e', `${envVariable.key}=${envVariable.value}`);
   }
 
   args.push(image);
 
-  const output = await runCommand("docker", args);
+  const output = await runCommand('docker', args);
   const containerId = output.split(/\r?\n/).filter(Boolean).at(-1) ?? output;
 
   return {
@@ -557,7 +530,7 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
   const composeContent = input.composeContent.trim();
 
   if (!composeContent) {
-    throw new Error("Compose content is required.");
+    throw new Error('Compose content is required.');
   }
 
   let parsedCompose: unknown;
@@ -565,11 +538,11 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
   try {
     parsedCompose = parseYaml(composeContent);
   } catch {
-    throw new Error("Compose YAML is invalid.");
+    throw new Error('Compose YAML is invalid.');
   }
 
-  if (!parsedCompose || typeof parsedCompose !== "object") {
-    throw new Error("Compose YAML must define an object with services.");
+  if (!parsedCompose || typeof parsedCompose !== 'object') {
+    throw new Error('Compose YAML must define an object with services.');
   }
 
   const composeObject = parsedCompose as {
@@ -578,30 +551,21 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
   const services = Object.keys(composeObject.services ?? {});
 
   if (!services.length) {
-    throw new Error("Compose file must include at least one service.");
+    throw new Error('Compose file must include at least one service.');
   }
 
-  const requestedStackName = input.stackName?.trim() ?? "";
+  const requestedStackName = input.stackName?.trim() ?? '';
   const stackName = toContainerSlug(requestedStackName || `stack-${Date.now()}`);
 
   if (!stackName) {
-    throw new Error("Stack name is invalid.");
+    throw new Error('Stack name is invalid.');
   }
 
   const config = getAppConfig();
-  const stacksRoot = path.join(
-    /*turbopackIgnore: true*/ config.paths.appsDir,
-    "manual-stacks",
-  );
+  const stacksRoot = path.join(/*turbopackIgnore: true*/ config.paths.appsDir, 'manual-stacks');
   const stackDir = path.join(/*turbopackIgnore: true*/ stacksRoot, stackName);
-  const composePath = path.join(
-    /*turbopackIgnore: true*/ stackDir,
-    ".vercelab.base.compose.yml",
-  );
-  const overridePath = path.join(
-    /*turbopackIgnore: true*/ stackDir,
-    ".vercelab.proxy.compose.yml",
-  );
+  const composePath = path.join(/*turbopackIgnore: true*/ stackDir, '.vercelab.base.compose.yml');
+  const overridePath = path.join(/*turbopackIgnore: true*/ stackDir, '.vercelab.proxy.compose.yml');
   const overrideServices: Record<string, unknown> = {};
   const routedHosts: string[] = [];
 
@@ -614,12 +578,10 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
     }
 
     const routeSlug =
-      services.length === 1
-        ? stackName
-        : toContainerSlug(`${stackName}-${serviceName}`);
+      services.length === 1 ? stackName : toContainerSlug(`${stackName}-${serviceName}`);
     const routedHost = buildDefaultHostedDomain(routeSlug, config.baseDomain);
     const networks = Array.from(
-      new Set([...extractComposeNetworks(serviceConfig), config.proxy.network]),
+      new Set([...extractComposeNetworks(serviceConfig), config.proxy.network])
     );
 
     overrideServices[serviceName] = {
@@ -631,19 +593,19 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
         routerName: buildTraefikRouterName(`${stackName}-${serviceName}`),
       }),
       networks,
-      restart: "unless-stopped",
+      restart: 'unless-stopped',
     };
     routedHosts.push(routedHost);
   }
 
   if (!Object.keys(overrideServices).length) {
     throw new Error(
-      "Compose file must expose at least one service port so Vercelab can route it through Traefik.",
+      'Compose file must expose at least one service port so Vercelab can route it through Traefik.'
     );
   }
 
   await fs.mkdir(stackDir, { recursive: true });
-  await fs.writeFile(composePath, composeContent, "utf8");
+  await fs.writeFile(composePath, composeContent, 'utf8');
   await fs.writeFile(
     overridePath,
     stringifyYaml({
@@ -655,20 +617,11 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
         },
       },
     }),
-    "utf8",
+    'utf8'
   );
 
   await ensureProxyNetwork(config.proxy.network);
-  await runComposeCommand([
-    "-p",
-    stackName,
-    "-f",
-    composePath,
-    "-f",
-    overridePath,
-    "up",
-    "-d",
-  ]);
+  await runComposeCommand(['-p', stackName, '-f', composePath, '-f', overridePath, 'up', '-d']);
 
   return {
     composePath,

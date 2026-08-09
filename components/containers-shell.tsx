@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   useCallback,
@@ -7,30 +7,23 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
-} from "react";
+} from 'react';
 
-import { ContainersMainContent } from "@/components/workspace/containers-main-content";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
-import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-sidebar";
-import type {
-  ContainerListEntry,
-  DashboardLogView,
-  LogLine,
-} from "@/components/workspace-shell";
+import { ContainersMainContent } from '@/components/workspace/containers-main-content';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { DashboardLeftSidebar } from '@/components/workspace/dashboard-left-sidebar';
+import { DashboardRightSidebar } from '@/components/workspace/dashboard-right-sidebar';
+import type { ContainerListEntry, DashboardLogView, LogLine } from '@/components/workspace-shell';
 import {
   readStoredContainerAliases,
   subscribeToStoredContainerAliases,
   writeStoredContainerAliases,
-} from "@/lib/container-preferences";
-import type { ContainersData } from "@/lib/containers-data";
-import {
-  type ContainerAction,
-  getContainerInventoryMeta,
-} from "@/lib/container-inventory";
-import type { ContainerInspectData } from "@/lib/container-inspect";
-import type { RecreateChanges } from "@/lib/container-recreate";
+} from '@/lib/container-preferences';
+import type { ContainersData } from '@/lib/containers-data';
+import { type ContainerAction, getContainerInventoryMeta } from '@/lib/container-inventory';
+import type { ContainerInspectData } from '@/lib/container-inspect';
+import type { RecreateChanges } from '@/lib/container-recreate';
 import {
   ALL_CONTAINERS_ID,
   buildAggregateLogs,
@@ -38,13 +31,13 @@ import {
   formatStatusLabel,
   getStatusBadgeVariant,
   LOG_VIEW_OPTIONS,
-} from "@/lib/metrics-dashboard-metrics";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+} from '@/lib/metrics-dashboard-metrics';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 
-import type { ExposureMode } from "@/lib/validation";
+import type { ExposureMode } from '@/lib/validation';
 
-const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
-const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
+const LIST_PANEL_STORAGE_KEY = 'vercelab:containers-list-panel-width';
+const LOGS_PANEL_STORAGE_KEY = 'vercelab:containers-logs-panel-width';
 const DEFAULT_LIST_WIDTH_PX = 280;
 const DEFAULT_LOGS_WIDTH_PX = 320;
 const MIN_LIST_WIDTH_PX = 240;
@@ -58,15 +51,15 @@ const POST_ACTION_REFRESH_DELAYS_MS = [0, 700, 1800] as const;
 
 // Reuse formatter instances — `new Intl.DateTimeFormat` / `Intl.NumberFormat`
 // are expensive to construct and log rendering can call these many times.
-const LOG_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  timeZone: "UTC",
+const LOG_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('en', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  timeZone: 'UTC',
 });
 
-const COMPACT_COUNT_FORMATTER = new Intl.NumberFormat("en", {
-  notation: "compact",
+const COMPACT_COUNT_FORMATTER = new Intl.NumberFormat('en', {
+  notation: 'compact',
   maximumFractionDigits: 1,
 });
 
@@ -78,10 +71,10 @@ type CatalogSearchResult = {
   starCount: number;
 };
 
-type CreateMode = "image" | "compose";
+type CreateMode = 'image' | 'compose';
 
 function getStorage() {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return null;
   }
 
@@ -89,9 +82,9 @@ function getStorage() {
 
   if (
     !storage ||
-    typeof storage.getItem !== "function" ||
-    typeof storage.setItem !== "function" ||
-    typeof storage.removeItem !== "function"
+    typeof storage.getItem !== 'function' ||
+    typeof storage.setItem !== 'function' ||
+    typeof storage.removeItem !== 'function'
   ) {
     return null;
   }
@@ -107,7 +100,7 @@ function useStoredPanelWidth(
   key: string,
   initialWidth: number,
   minWidth: number,
-  maxWidth: number,
+  maxWidth: number
 ) {
   const [width, setWidth] = useState(initialWidth);
 
@@ -135,11 +128,11 @@ function useStoredPanelWidth(
 }
 
 function isDocumentHidden() {
-  if (typeof document === "undefined") {
+  if (typeof document === 'undefined') {
     return false;
   }
 
-  return document.visibilityState === "hidden";
+  return document.visibilityState === 'hidden';
 }
 
 function createLogTimestamp(value: string) {
@@ -160,10 +153,10 @@ function formatContainerLogLines(output: string, containerId: string): LogLine[]
       return {
         id: `${containerId}:${index}`,
         level: /error|fail|panic/i.test(message)
-          ? "warning"
+          ? 'warning'
           : /ready|started|listening|healthy/i.test(message)
-            ? "success"
-            : "info",
+            ? 'success'
+            : 'info',
         message,
         timestamp: createLogTimestamp(timestamp),
       } satisfies LogLine;
@@ -185,51 +178,45 @@ export function ContainersShell({
     LIST_PANEL_STORAGE_KEY,
     DEFAULT_LIST_WIDTH_PX,
     MIN_LIST_WIDTH_PX,
-    MAX_LIST_WIDTH_PX,
+    MAX_LIST_WIDTH_PX
   );
   const [logsWidth, setLogsWidth] = useStoredPanelWidth(
     LOGS_PANEL_STORAGE_KEY,
     DEFAULT_LOGS_WIDTH_PX,
     MIN_LOGS_WIDTH_PX,
-    MAX_LOGS_WIDTH_PX,
+    MAX_LOGS_WIDTH_PX
   );
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
   const [selectedContainerId, setSelectedContainerId] = useState(
-    initialSnapshot?.containers.all[0]?.id ?? ALL_CONTAINERS_ID,
+    initialSnapshot?.containers.all[0]?.id ?? ALL_CONTAINERS_ID
   );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dashboardLogView, setDashboardLogView] =
-    useState<DashboardLogView>("live");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dashboardLogView, setDashboardLogView] = useState<DashboardLogView>('live');
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [runtimeLogs, setRuntimeLogs] = useState<Record<string, LogLine[]>>({});
   const [logsError, setLogsError] = useState<string | null>(null);
   const [aliases, setAliases] = useState<Record<string, string>>({});
-  const [aliasDraft, setAliasDraft] = useState("");
+  const [aliasDraft, setAliasDraft] = useState('');
   const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
-  const [createMode, setCreateMode] = useState<CreateMode>("image");
-  const [catalogQuery, setCatalogQuery] = useState("");
-  const [catalogResults, setCatalogResults] = useState<CatalogSearchResult[]>(
-    [],
-  );
+  const [createMode, setCreateMode] = useState<CreateMode>('image');
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [catalogResults, setCatalogResults] = useState<CatalogSearchResult[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [imageReference, setImageReference] = useState("nginx:latest");
-  const [newContainerName, setNewContainerName] = useState("");
-  const [newContainerPorts, setNewContainerPorts] = useState("");
-  const [newContainerExposureMode, setNewContainerExposureMode] =
-    useState<ExposureMode>("http");
-  const [newContainerHostPort, setNewContainerHostPort] = useState("");
-  const [newContainerEnvVariables, setNewContainerEnvVariables] = useState("");
-  const [composeStackName, setComposeStackName] = useState("");
+  const [imageReference, setImageReference] = useState('nginx:latest');
+  const [newContainerName, setNewContainerName] = useState('');
+  const [newContainerPorts, setNewContainerPorts] = useState('');
+  const [newContainerExposureMode, setNewContainerExposureMode] = useState<ExposureMode>('http');
+  const [newContainerHostPort, setNewContainerHostPort] = useState('');
+  const [newContainerEnvVariables, setNewContainerEnvVariables] = useState('');
+  const [composeStackName, setComposeStackName] = useState('');
   const [composeContent, setComposeContent] = useState(
-    "services:\n  app:\n    image: nginx:latest\n    ports:\n      - \"8080:80\"",
+    'services:\n  app:\n    image: nginx:latest\n    ports:\n      - "8080:80"'
   );
   const [createPending, setCreatePending] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
-  const [actionPending, setActionPending] = useState<ContainerAction | null>(
-    null,
-  );
+  const [actionPending, setActionPending] = useState<ContainerAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [inspectData, setInspectData] = useState<ContainerInspectData | null>(null);
   const [inspectLoading, setInspectLoading] = useState(false);
@@ -237,7 +224,7 @@ export function ContainersShell({
   const [recreateError, setRecreateError] = useState<string | null>(null);
   const postActionRefreshTimeoutIdsRef = useRef<number[]>([]);
   const dragStateRef = useRef<{
-    kind: "list" | "logs" | null;
+    kind: 'list' | 'logs' | null;
     startWidth: number;
     startX: number;
   }>({
@@ -247,8 +234,8 @@ export function ContainersShell({
   });
 
   const refreshSnapshotNow = useCallback(async () => {
-    const response = await fetch("/api/metrics?mode=current", {
-      cache: "no-store",
+    const response = await fetch('/api/metrics?mode=current', {
+      cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -271,11 +258,10 @@ export function ContainersShell({
       window.clearTimeout(timeoutId);
     }
 
-    postActionRefreshTimeoutIdsRef.current = POST_ACTION_REFRESH_DELAYS_MS.map(
-      (delayMs) =>
-        window.setTimeout(() => {
-          void refreshSnapshotNow().catch(() => undefined);
-        }, delayMs),
+    postActionRefreshTimeoutIdsRef.current = POST_ACTION_REFRESH_DELAYS_MS.map((delayMs) =>
+      window.setTimeout(() => {
+        void refreshSnapshotNow().catch(() => undefined);
+      }, delayMs)
     );
   }, [refreshSnapshotNow]);
 
@@ -297,7 +283,7 @@ export function ContainersShell({
     const baseEntries = buildContainerListEntries(
       snapshot,
       initialAllContainerHistory,
-      initialDeployments,
+      initialDeployments
     );
 
     return baseEntries.map((entry) => {
@@ -344,55 +330,43 @@ export function ContainersShell({
       return containers;
     }
 
-    return containers.filter((entry) =>
-      entry.searchText.includes(normalizedQuery),
-    );
+    return containers.filter((entry) => entry.searchText.includes(normalizedQuery));
   }, [containers, searchQuery]);
 
   const isAllContainersSelected = selectedContainerId === ALL_CONTAINERS_ID;
   const selectedEntry = useMemo(
-    () =>
-      containers.find((entry) => entry.display.id === selectedContainerId) ??
-      null,
-    [containers, selectedContainerId],
+    () => containers.find((entry) => entry.display.id === selectedContainerId) ?? null,
+    [containers, selectedContainerId]
   );
   // Stable primitive — won't change on every metrics poll, only when the container actually changes.
   const selectedRuntimeId = selectedEntry?.runtime?.id ?? null;
   const inventoryMeta = getContainerInventoryMeta(selectedEntry);
   const aggregateLogs = useMemo(
-    () =>
-      buildAggregateLogs(
-        snapshot,
-        [],
-        initialAllContainerHistory,
-        initialDeployments,
-      ),
-    [initialAllContainerHistory, initialDeployments, snapshot],
+    () => buildAggregateLogs(snapshot, [], initialAllContainerHistory, initialDeployments),
+    [initialAllContainerHistory, initialDeployments, snapshot]
   );
   const previewLogs = isAllContainersSelected
     ? aggregateLogs[dashboardLogView]
-    : dashboardLogView === "live"
-      ? (runtimeLogs[selectedRuntimeId ?? ""] ?? [])
+    : dashboardLogView === 'live'
+      ? (runtimeLogs[selectedRuntimeId ?? ''] ?? [])
       : (selectedEntry?.display.logs[dashboardLogView] ?? []);
   const selectedContainerName = isAllContainersSelected
-    ? "All containers"
-    : (selectedEntry?.sidebarName ?? "Container");
+    ? 'All containers'
+    : (selectedEntry?.sidebarName ?? 'Container');
   const selectedContainerStatusLabel = selectedEntry
     ? formatStatusLabel(selectedEntry.display.status)
     : `${snapshot?.containers.running ?? 0} running`;
   const selectedContainerStatusVariant = selectedEntry
     ? getStatusBadgeVariant(selectedEntry.display.status)
-    : "default";
+    : 'default';
 
   useEffect(() => {
     setAliasDraft(
-      selectedEntry
-        ? (aliases[selectedEntry.display.id] ?? selectedEntry.sidebarName)
-        : "",
+      selectedEntry ? (aliases[selectedEntry.display.id] ?? selectedEntry.sidebarName) : ''
     );
-  // Use selectedContainerId (stable primitive) so this only fires when the selected
-  // container actually changes, not on every metrics poll that recreates selectedEntry.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Use selectedContainerId (stable primitive) so this only fires when the selected
+    // container actually changes, not on every metrics poll that recreates selectedEntry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aliases, selectedContainerId]);
 
   useEffect(() => {
@@ -408,7 +382,7 @@ export function ContainersShell({
     void (async () => {
       try {
         const response = await fetch(`/api/containers/${selectedRuntimeId}/inspect`, {
-          cache: "no-store",
+          cache: 'no-store',
         });
         const payload = (await response.json()) as ContainerInspectData & { error?: string };
 
@@ -465,8 +439,8 @@ export function ContainersShell({
       abortController = new AbortController();
 
       try {
-        const response = await fetch("/api/metrics?mode=current", {
-          cache: "no-store",
+        const response = await fetch('/api/metrics?mode=current', {
+          cache: 'no-store',
           signal: abortController.signal,
         });
 
@@ -486,10 +460,7 @@ export function ContainersShell({
           setSnapshot(payload.snapshot);
         }
       } catch (error) {
-        if (
-          !active ||
-          (error instanceof DOMException && error.name === "AbortError")
-        ) {
+        if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
           return;
         }
       } finally {
@@ -549,9 +520,9 @@ export function ContainersShell({
         const response = await fetch(
           `/api/containers/${selectedRuntimeId}/logs?tail=${LOG_TAIL_LINES}`,
           {
-            cache: "no-store",
+            cache: 'no-store',
             signal: abortController.signal,
-          },
+          }
         );
         const payload = (await response.json()) as {
           error?: string;
@@ -559,7 +530,7 @@ export function ContainersShell({
         };
 
         if (!response.ok) {
-          throw new Error(payload.error ?? "Unable to load container logs.");
+          throw new Error(payload.error ?? 'Unable to load container logs.');
         }
 
         if (!active) {
@@ -568,25 +539,15 @@ export function ContainersShell({
 
         setRuntimeLogs((current) => ({
           ...current,
-          [selectedRuntimeId]: formatContainerLogLines(
-            payload.output ?? "",
-            selectedRuntimeId,
-          ),
+          [selectedRuntimeId]: formatContainerLogLines(payload.output ?? '', selectedRuntimeId),
         }));
         setLogsError(null);
       } catch (error) {
-        if (
-          !active ||
-          (error instanceof DOMException && error.name === "AbortError")
-        ) {
+        if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
           return;
         }
 
-        setLogsError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load container logs.",
-        );
+        setLogsError(error instanceof Error ? error.message : 'Unable to load container logs.');
       } finally {
         if (active) {
           schedule(LIVE_POLL_INTERVAL_MS);
@@ -614,25 +575,23 @@ export function ContainersShell({
         return;
       }
 
-      if (dragStateRef.current.kind === "list") {
+      if (dragStateRef.current.kind === 'list') {
         setListWidth(
           clamp(
-            dragStateRef.current.startWidth +
-              (event.clientX - dragStateRef.current.startX),
+            dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
             MIN_LIST_WIDTH_PX,
-            MAX_LIST_WIDTH_PX,
-          ),
+            MAX_LIST_WIDTH_PX
+          )
         );
         return;
       }
 
       setLogsWidth(
         clamp(
-          dragStateRef.current.startWidth -
-            (event.clientX - dragStateRef.current.startX),
+          dragStateRef.current.startWidth - (event.clientX - dragStateRef.current.startX),
           MIN_LOGS_WIDTH_PX,
-          MAX_LOGS_WIDTH_PX,
-        ),
+          MAX_LOGS_WIDTH_PX
+        )
       );
     }
 
@@ -646,33 +605,30 @@ export function ContainersShell({
         startWidth: 0,
         startX: 0,
       };
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     }
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
   }, [setListWidth, setLogsWidth]);
 
-  const handleResizeStart = (
-    kind: "list" | "logs",
-    event: ReactMouseEvent<HTMLDivElement>,
-  ) => {
+  const handleResizeStart = (kind: 'list' | 'logs', event: ReactMouseEvent<HTMLDivElement>) => {
     dragStateRef.current = {
       kind,
-      startWidth: kind === "list" ? listWidth : logsWidth,
+      startWidth: kind === 'list' ? listWidth : logsWidth,
       startX: event.clientX,
     };
 
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
   };
 
   const handleAliasSave = () => {
@@ -694,7 +650,7 @@ export function ContainersShell({
 
     if (query.length < 2) {
       setCatalogResults([]);
-      setCatalogError("Type at least 2 characters to search images.");
+      setCatalogError('Type at least 2 characters to search images.');
       return;
     }
 
@@ -702,28 +658,21 @@ export function ContainersShell({
     setCatalogError(null);
 
     try {
-      const response = await fetch(
-        `/api/containers/catalog?query=${encodeURIComponent(query)}`,
-        {
-          cache: "no-store",
-        },
-      );
+      const response = await fetch(`/api/containers/catalog?query=${encodeURIComponent(query)}`, {
+        cache: 'no-store',
+      });
       const payload = (await response.json()) as {
         error?: string;
         results?: CatalogSearchResult[];
       };
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to search image catalog.");
+        throw new Error(payload.error ?? 'Unable to search image catalog.');
       }
 
       setCatalogResults(payload.results ?? []);
     } catch (error) {
-      setCatalogError(
-        error instanceof Error
-          ? error.message
-          : "Unable to search image catalog.",
-      );
+      setCatalogError(error instanceof Error ? error.message : 'Unable to search image catalog.');
     } finally {
       setCatalogLoading(false);
     }
@@ -736,7 +685,7 @@ export function ContainersShell({
 
     try {
       const body =
-        createMode === "image"
+        createMode === 'image'
           ? {
               containerName: newContainerName,
               envVariables: newContainerEnvVariables,
@@ -745,24 +694,22 @@ export function ContainersShell({
                 ? Number(newContainerHostPort.trim())
                 : undefined,
               image: imageReference,
-              mode: "image" as const,
+              mode: 'image' as const,
               ports:
-                newContainerExposureMode === "tcp"
-                  ? undefined
-                  : newContainerPorts || undefined,
+                newContainerExposureMode === 'tcp' ? undefined : newContainerPorts || undefined,
             }
           : {
               composeContent,
-              mode: "compose" as const,
+              mode: 'compose' as const,
               stackName: composeStackName,
             };
 
-      const response = await fetch("/api/containers/create", {
+      const response = await fetch('/api/containers/create', {
         body: JSON.stringify(body),
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        method: "POST",
+        method: 'POST',
       });
       const payload = (await response.json()) as {
         error?: string;
@@ -770,16 +717,14 @@ export function ContainersShell({
       };
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to create container.");
+        throw new Error(payload.error ?? 'Unable to create container.');
       }
 
-      setCreateSuccess(payload.message ?? "Container started.");
+      setCreateSuccess(payload.message ?? 'Container started.');
       setIsCreatePanelOpen(false);
       scheduleBackgroundSnapshotRefresh();
     } catch (error) {
-      setCreateError(
-        error instanceof Error ? error.message : "Unable to create container.",
-      );
+      setCreateError(error instanceof Error ? error.message : 'Unable to create container.');
     } finally {
       setCreatePending(false);
     }
@@ -794,27 +739,22 @@ export function ContainersShell({
     setActionError(null);
 
     try {
-      const response = await fetch(
-        `/api/containers/${selectedEntry.runtime.id}/actions`,
-        {
-          body: JSON.stringify({ action }),
-          headers: {
-            "Content-Type": "application/json",
-          },
-          method: "POST",
+      const response = await fetch(`/api/containers/${selectedEntry.runtime.id}/actions`, {
+        body: JSON.stringify({ action }),
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        method: 'POST',
+      });
       const payload = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Container action failed.");
+        throw new Error(payload.error ?? 'Container action failed.');
       }
 
       scheduleBackgroundSnapshotRefresh();
     } catch (error) {
-      setActionError(
-        error instanceof Error ? error.message : "Container action failed.",
-      );
+      setActionError(error instanceof Error ? error.message : 'Container action failed.');
     } finally {
       setActionPending(null);
     }
@@ -833,20 +773,18 @@ export function ContainersShell({
     try {
       const response = await fetch(`/api/containers/${runtimeId}/recreate`, {
         body: JSON.stringify(changes),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
       });
       const payload = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to recreate container.");
+        throw new Error(payload.error ?? 'Unable to recreate container.');
       }
 
       scheduleBackgroundSnapshotRefresh();
     } catch (error) {
-      setRecreateError(
-        error instanceof Error ? error.message : "Unable to recreate container.",
-      );
+      setRecreateError(error instanceof Error ? error.message : 'Unable to recreate container.');
     } finally {
       setRecreatePending(false);
     }
@@ -856,24 +794,24 @@ export function ContainersShell({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-1.5">
         <Button
-          onClick={() => setCreateMode("image")}
+          onClick={() => setCreateMode('image')}
           size="xs"
           type="button"
-          variant={createMode === "image" ? "default" : "secondary"}
+          variant={createMode === 'image' ? 'default' : 'secondary'}
         >
           Image
         </Button>
         <Button
-          onClick={() => setCreateMode("compose")}
+          onClick={() => setCreateMode('compose')}
           size="xs"
           type="button"
-          variant={createMode === "compose" ? "default" : "secondary"}
+          variant={createMode === 'compose' ? 'default' : 'secondary'}
         >
           Compose
         </Button>
       </div>
 
-      {createMode === "image" ? (
+      {createMode === 'image' ? (
         <div className="space-y-2.5">
           <div className="grid gap-2 md:grid-cols-[1fr_auto]">
             <Input
@@ -882,13 +820,8 @@ export function ContainersShell({
               placeholder="Search Docker Hub images"
               value={catalogQuery}
             />
-            <Button
-              disabled={catalogLoading}
-              onClick={handleCatalogSearch}
-              size="xs"
-              type="button"
-            >
-              {catalogLoading ? "Searching..." : "Search"}
+            <Button disabled={catalogLoading} onClick={handleCatalogSearch} size="xs" type="button">
+              {catalogLoading ? 'Searching...' : 'Search'}
             </Button>
           </div>
 
@@ -900,15 +833,14 @@ export function ContainersShell({
                   key={result.name}
                   onClick={() => {
                     setImageReference(`${result.name}:latest`);
-                    setNewContainerName(result.name.split("/").at(-1) ?? "");
+                    setNewContainerName(result.name.split('/').at(-1) ?? '');
                   }}
                   type="button"
                 >
-                  <span className="truncate font-medium text-foreground">
-                    {result.name}
-                  </span>
+                  <span className="truncate font-medium text-foreground">{result.name}</span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">
-                    {formatCompactCount(result.pullCount)} pulls · {formatCompactCount(result.starCount)} stars
+                    {formatCompactCount(result.pullCount)} pulls ·{' '}
+                    {formatCompactCount(result.starCount)} stars
                   </span>
                 </button>
               ))}
@@ -931,9 +863,7 @@ export function ContainersShell({
             <select
               aria-label="Exposure mode"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-              onChange={(event) =>
-                setNewContainerExposureMode(event.target.value as ExposureMode)
-              }
+              onChange={(event) => setNewContainerExposureMode(event.target.value as ExposureMode)}
               value={newContainerExposureMode}
             >
               <option value="http">HTTP — Traefik reverse proxy</option>
@@ -941,7 +871,7 @@ export function ContainersShell({
               <option value="host">Host port — bind directly to host</option>
               <option value="internal">Internal — no external exposure</option>
             </select>
-            {newContainerExposureMode === "tcp" ? (
+            {newContainerExposureMode === 'tcp' ? (
               <Input
                 aria-label="Host port"
                 inputMode="numeric"
@@ -949,14 +879,14 @@ export function ContainersShell({
                 placeholder="Host port (e.g. 27017)"
                 value={newContainerHostPort}
               />
-            ) : newContainerExposureMode !== "internal" ? (
+            ) : newContainerExposureMode !== 'internal' ? (
               <Input
                 aria-label="Port mappings"
                 onChange={(event) => setNewContainerPorts(event.target.value)}
                 placeholder={
-                  newContainerExposureMode === "host"
-                    ? "27017:27017, 6379:6379"
-                    : "8080:80, 8443:443"
+                  newContainerExposureMode === 'host'
+                    ? '27017:27017, 6379:6379'
+                    : '8080:80, 8443:443'
                 }
                 value={newContainerPorts}
               />
@@ -990,26 +920,21 @@ export function ContainersShell({
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs text-muted-foreground">
-          {catalogError ?? createError ?? createSuccess ?? ""}
+          {catalogError ?? createError ?? createSuccess ?? ''}
         </div>
-        <Button
-          disabled={createPending}
-          onClick={handleCreateContainer}
-          size="xs"
-          type="button"
-        >
-          {createPending ? "Creating..." : "Create"}
+        <Button disabled={createPending} onClick={handleCreateContainer} size="xs" type="button">
+          {createPending ? 'Creating...' : 'Create'}
         </Button>
       </div>
     </div>
   );
 
   const liveRailLogs =
-    logsError && dashboardLogView === "live" && !isAllContainersSelected
+    logsError && dashboardLogView === 'live' && !isAllContainersSelected
       ? [
           {
-            id: "containers-live-log-error",
-            level: "warning",
+            id: 'containers-live-log-error',
+            level: 'warning',
             message: logsError,
             timestamp: createLogTimestamp(new Date().toISOString()),
           } satisfies LogLine,
@@ -1031,11 +956,9 @@ export function ContainersShell({
           setCreateError(null);
           setCreateSuccess(null);
         }}
-        onAllContainersSelectAction={() =>
-          setSelectedContainerId(ALL_CONTAINERS_ID)
-        }
+        onAllContainersSelectAction={() => setSelectedContainerId(ALL_CONTAINERS_ID)}
         onContainerSelectAction={setSelectedContainerId}
-        onListResizeStartAction={(event) => handleResizeStart("list", event)}
+        onListResizeStartAction={(event) => handleResizeStart('list', event)}
         onSearchQueryChangeAction={setSearchQuery}
         runningContainersCount={snapshot?.containers.running ?? null}
         searchQuery={searchQuery}
@@ -1067,7 +990,7 @@ export function ContainersShell({
         onCollapseAction={() => setIsLogsCollapsed(true)}
         onExpandAction={() => setIsLogsCollapsed(false)}
         onLogViewChangeAction={setDashboardLogView}
-        onResizeStartAction={(event) => handleResizeStart("logs", event)}
+        onResizeStartAction={(event) => handleResizeStart('logs', event)}
         selectedContainerName={selectedContainerName}
         selectedContainerStatusLabel={selectedContainerStatusLabel}
         selectedContainerStatusVariant={selectedContainerStatusVariant}

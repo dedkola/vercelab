@@ -1,4 +1,4 @@
-"use server";
+'use server';
 
 import {
   createAndDeployFromForm,
@@ -7,17 +7,17 @@ import {
   removeDeploymentById,
   stopDeploymentById,
   updateDeploymentSettingsById,
-} from "@/lib/deployment-engine";
+} from '@/lib/deployment-engine';
 
 export type DeploymentActionResult = {
   message: string;
-  status: "success" | "error";
+  status: 'success' | 'error';
 };
 
 function getRequiredFormValue(formData: FormData, name: string): string {
   const value = formData.get(name);
 
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(`Missing required field: ${name}`);
   }
 
@@ -29,12 +29,12 @@ function getActionErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return "Unexpected deployment error.";
+  return 'Unexpected deployment error.';
 }
 
 function createActionResult(
-  status: DeploymentActionResult["status"],
-  message: string,
+  status: DeploymentActionResult['status'],
+  message: string
 ): DeploymentActionResult {
   return {
     message,
@@ -45,124 +45,118 @@ function createActionResult(
 export async function createDeploymentAction(formData: FormData) {
   try {
     const deployment = await createAndDeployFromForm({
-      repositoryUrl: getRequiredFormValue(formData, "repositoryUrl"),
-      githubToken: formData.get("githubToken"),
-      branch: formData.get("branch"),
-      serviceName: formData.get("serviceName"),
-      appName: getRequiredFormValue(formData, "appName"),
-      subdomain: getRequiredFormValue(formData, "subdomain"),
-      port: getRequiredFormValue(formData, "port"),
-      exposureMode: formData.get("exposureMode"),
-      hostPort: formData.get("hostPort"),
-      envVariables: formData.get("envVariables"),
+      repositoryUrl: getRequiredFormValue(formData, 'repositoryUrl'),
+      githubToken: formData.get('githubToken'),
+      branch: formData.get('branch'),
+      serviceName: formData.get('serviceName'),
+      appName: getRequiredFormValue(formData, 'appName'),
+      subdomain: getRequiredFormValue(formData, 'subdomain'),
+      port: getRequiredFormValue(formData, 'port'),
+      exposureMode: formData.get('exposureMode'),
+      hostPort: formData.get('hostPort'),
+      envVariables: formData.get('envVariables'),
     });
 
     let message: string;
-    if (deployment.exposureMode === "http" && deployment.domain) {
+    if (deployment.exposureMode === 'http' && deployment.domain) {
       message = `Deployment live at https://${deployment.domain}`;
-    } else if (deployment.exposureMode === "tcp" && deployment.hostPort) {
+    } else if (deployment.exposureMode === 'tcp' && deployment.hostPort) {
       message = `TCP service deployed on port ${deployment.hostPort}`;
-    } else if (deployment.exposureMode === "host" && deployment.hostPort) {
+    } else if (deployment.exposureMode === 'host' && deployment.hostPort) {
       message = `Deployment queued with host port ${deployment.hostPort}`;
     } else {
-      message = "Deployment created (internal only).";
+      message = 'Deployment created (internal only).';
     }
 
-    return createActionResult("success", message);
+    return createActionResult('success', message);
   } catch (error) {
-    return createActionResult("error", getActionErrorMessage(error));
+    return createActionResult('error', getActionErrorMessage(error));
   }
 }
 
 export async function redeployDeploymentAction(
-  formData: FormData,
+  formData: FormData
 ): Promise<DeploymentActionResult> {
-  const deploymentId = getRequiredFormValue(formData, "deploymentId");
+  const deploymentId = getRequiredFormValue(formData, 'deploymentId');
 
   try {
     const result = await redeployDeploymentById(deploymentId);
     const message =
-      result.exposureMode === "http"
+      result.exposureMode === 'http'
         ? `Redeployed ${result.appName} to https://${result.domain}`
         : `Redeployed ${result.appName}.`;
-    return createActionResult("success", message);
+    return createActionResult('success', message);
   } catch (error) {
-    return createActionResult("error", getActionErrorMessage(error));
+    return createActionResult('error', getActionErrorMessage(error));
   }
 }
 
 export async function fetchDeploymentFromGitAction(
-  formData: FormData,
+  formData: FormData
 ): Promise<DeploymentActionResult> {
-  const deploymentId = getRequiredFormValue(formData, "deploymentId");
+  const deploymentId = getRequiredFormValue(formData, 'deploymentId');
 
   try {
     const result = await fetchDeploymentFromGitById(deploymentId);
     const message =
-      result.exposureMode === "http"
+      result.exposureMode === 'http'
         ? `Fetched latest changes for ${result.appName} at https://${result.domain}`
         : `Fetched latest changes for ${result.appName}.`;
-    return createActionResult("success", message);
+    return createActionResult('success', message);
   } catch (error) {
-    return createActionResult("error", getActionErrorMessage(error));
+    return createActionResult('error', getActionErrorMessage(error));
   }
 }
 
-export async function stopDeploymentAction(
-  formData: FormData,
-): Promise<DeploymentActionResult> {
-  const deploymentId = getRequiredFormValue(formData, "deploymentId");
+export async function stopDeploymentAction(formData: FormData): Promise<DeploymentActionResult> {
+  const deploymentId = getRequiredFormValue(formData, 'deploymentId');
 
   try {
     const result = await stopDeploymentById(deploymentId);
-    return createActionResult("success", `Stopped ${result.appName}.`);
+    return createActionResult('success', `Stopped ${result.appName}.`);
   } catch (error) {
-    return createActionResult("error", getActionErrorMessage(error));
+    return createActionResult('error', getActionErrorMessage(error));
   }
 }
 
-export async function removeDeploymentAction(
-  formData: FormData,
-): Promise<DeploymentActionResult> {
-  const deploymentId = getRequiredFormValue(formData, "deploymentId");
+export async function removeDeploymentAction(formData: FormData): Promise<DeploymentActionResult> {
+  const deploymentId = getRequiredFormValue(formData, 'deploymentId');
 
   try {
     const result = await removeDeploymentById(deploymentId);
-    return createActionResult("success", `Removed ${result.appName}.`);
+    return createActionResult('success', `Removed ${result.appName}.`);
   } catch (error) {
-    return createActionResult("error", getActionErrorMessage(error));
+    return createActionResult('error', getActionErrorMessage(error));
   }
 }
 
-export async function updateDeploymentAction(
-  formData: FormData,
-): Promise<DeploymentActionResult> {
+export async function updateDeploymentAction(formData: FormData): Promise<DeploymentActionResult> {
   try {
     const result = await updateDeploymentSettingsById({
-      deploymentId: getRequiredFormValue(formData, "deploymentId"),
-      appName: getRequiredFormValue(formData, "appName"),
-      branch: formData.get("branch"),
-      commitSha: formData.get("commitSha"),
-      subdomain: getRequiredFormValue(formData, "subdomain"),
-      port: getRequiredFormValue(formData, "port"),
-      exposureMode: formData.get("exposureMode"),
-      hostPort: formData.get("hostPort"),
-      envVariables: formData.get("envVariables"),
+      deploymentId: getRequiredFormValue(formData, 'deploymentId'),
+      appName: getRequiredFormValue(formData, 'appName'),
+      branch: formData.get('branch'),
+      commitSha: formData.get('commitSha'),
+      subdomain: getRequiredFormValue(formData, 'subdomain'),
+      port: getRequiredFormValue(formData, 'port'),
+      exposureMode: formData.get('exposureMode'),
+      hostPort: formData.get('hostPort'),
+      envVariables: formData.get('envVariables'),
     });
 
     let message: string;
-    if (result.exposureMode === "http" && result.domain) {
+    if (result.exposureMode === 'http' && result.domain) {
       message = `Updated ${result.appName}. Deployment live at https://${result.domain}`;
-    } else if (result.exposureMode === "tcp" && result.hostPort) {
+    } else if (result.exposureMode === 'tcp' && result.hostPort) {
       message = `Updated ${result.appName}. TCP service on port ${result.hostPort}`;
-    } else if (result.exposureMode === "host" && result.hostPort) {
+    } else if (result.exposureMode === 'host' && result.hostPort) {
       message = `Updated ${result.appName}. Host port ${result.hostPort}`;
     } else {
       message = `Updated ${result.appName} (internal only).`;
     }
 
-    return createActionResult("success", message);
+    return createActionResult('success', message);
   } catch (error) {
-    return createActionResult("error", getActionErrorMessage(error));
+    return createActionResult('error', getActionErrorMessage(error));
   }
 }
