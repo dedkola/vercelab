@@ -625,8 +625,7 @@ export function MetricsDashboardShell({
         case 'metrics':
           setMetricsWidth(
             clamp(
-              dragStateRef.current.startWidth +
-                (clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth + (clientX - dragStateRef.current.startX),
               MIN_METRICS_WIDTH_PX,
               MAX_METRICS_WIDTH_PX
             )
@@ -635,8 +634,7 @@ export function MetricsDashboardShell({
         case 'list':
           setListWidth(
             clamp(
-              dragStateRef.current.startWidth +
-                (clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth + (clientX - dragStateRef.current.startX),
               MIN_LIST_WIDTH_PX,
               MAX_LIST_WIDTH_PX
             )
@@ -645,8 +643,7 @@ export function MetricsDashboardShell({
         case 'logs':
           setLogsWidth(
             clamp(
-              dragStateRef.current.startWidth -
-                (clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth - (clientX - dragStateRef.current.startX),
               MIN_LOGS_WIDTH_PX,
               MAX_LOGS_WIDTH_PX
             )
@@ -697,15 +694,15 @@ export function MetricsDashboardShell({
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
 
       if (animationFrameId !== null) {
         window.cancelAnimationFrame(animationFrameId);
       }
 
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
   }, [setListWidth, setLogsWidth, setMetricsWidth]);
 

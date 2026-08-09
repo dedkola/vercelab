@@ -563,8 +563,7 @@ export function WorkspaceChromeShell({
 
       setMetricsWidth(
         clamp(
-          dragStateRef.current.startWidth +
-            (clientX - dragStateRef.current.startX),
+          dragStateRef.current.startWidth + (clientX - dragStateRef.current.startX),
           MIN_METRICS_WIDTH_PX,
           MAX_METRICS_WIDTH_PX
         )
@@ -613,15 +612,15 @@ export function WorkspaceChromeShell({
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
 
       if (animationFrameId !== null) {
         window.cancelAnimationFrame(animationFrameId);
       }
 
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
   }, [setMetricsWidth]);
 
