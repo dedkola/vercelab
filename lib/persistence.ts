@@ -498,7 +498,7 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
         INNER JOIN deployments d ON d.id = o.deployment_id
         ORDER BY o.created_at DESC
         LIMIT 7
-      `,
+      `
     ),
     queryRows<DashboardTrendRow>(
       `
@@ -509,17 +509,12 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
         WHERE created_at >= $1
         ORDER BY created_at ASC
       `,
-      [sinceDate.toISOString()],
+      [sinceDate.toISOString()]
     ),
-    queryRows<{ count: string }>(
-      "SELECT COUNT(*) AS count FROM repositories",
-    ),
+    queryRows<{ count: string }>('SELECT COUNT(*) AS count FROM repositories'),
   ]);
 
-  const repositoryCount = Number.parseInt(
-    repositoryCountRows[0]?.count ?? "0",
-    10,
-  );
+  const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
   const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
 
   const stats = deployments.reduce(
