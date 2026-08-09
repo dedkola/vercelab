@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { useState } from 'react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -11,13 +11,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 type ComboboxOption = {
   value: string;
@@ -56,8 +52,7 @@ export function Combobox({
     setOpen(next);
     onOpenChangeProp?.(next);
   }
-  const selectedOption =
-    options.find((option) => option.value === value) ?? null;
+  const selectedOption = options.find((option) => option.value === value) ?? null;
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -67,20 +62,15 @@ export function Combobox({
           variant="secondary"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", buttonClassName)}
+          className={cn('w-full justify-between', buttonClassName)}
           disabled={disabled}
           size="sm"
         >
-          <span className="truncate text-left">
-            {selectedOption?.label ?? placeholder}
-          </span>
+          <span className="truncate text-left">{selectedOption?.label ?? placeholder}</span>
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-70" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-(--radix-popover-trigger-width) min-w-60 p-0"
-        align="start"
-      >
+      <PopoverContent className="w-(--radix-popover-trigger-width) min-w-60 p-0" align="start">
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
@@ -92,24 +82,19 @@ export function Combobox({
                 return (
                   <CommandItem
                     key={option.value}
-                    value={`${option.label} ${option.description ?? ""}`}
+                    value={`${option.label} ${option.description ?? ''}`}
                     onSelect={() => {
                       onValueChangeAction(option.value);
                       setOpen(false);
                     }}
                   >
                     <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        isSelected ? "opacity-100" : "opacity-0",
-                      )}
+                      className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
                     />
                     <span className="flex flex-col">
                       <span>{option.label}</span>
                       {option.description ? (
-                        <span className="text-xs text-muted-foreground">
-                          {option.description}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{option.description}</span>
                       ) : null}
                     </span>
                   </CommandItem>

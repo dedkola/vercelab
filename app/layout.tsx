@@ -1,24 +1,23 @@
-import type { Metadata } from "next";
-import { JetBrains_Mono, Manrope } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { JetBrains_Mono, Manrope } from 'next/font/google';
+import './globals.css';
 
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from '@/components/ui/sonner';
 
 const sans = Manrope({
-  subsets: ["latin"],
-  display: "swap",
+  subsets: ['latin'],
+  display: 'swap',
 });
 
 const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "Vercelab",
-  description:
-    "Internal homelab deployment control plane for Docker and Traefik.",
+  title: 'Vercelab',
+  description: 'Internal homelab deployment control plane for Docker and Traefik.',
 };
 
 export default function RootLayout({

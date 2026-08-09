@@ -1,33 +1,20 @@
-"use client";
+'use client';
 
-import type { FormEvent, MouseEvent as ReactMouseEvent } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  Search,
-  type LucideIcon,
-} from "lucide-react";
+import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react';
+import { ChevronDown, ChevronRight, Plus, Search, type LucideIcon } from 'lucide-react';
 
-import type {
-  DraftAppState,
-  RepositoryState,
-} from "@/components/workspace-shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Combobox } from "@/components/ui/combobox";
-import { Input } from "@/components/ui/input";
-import {
-  InputGroup,
-  InputGroupInput,
-  InputGroupSuffix,
-} from "@/components/ui/input-group";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import type { ExposureMode } from "@/lib/validation";
+import type { DraftAppState, RepositoryState } from '@/components/workspace-shell';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import type { ExposureMode } from '@/lib/validation';
 
-import { ResizeHandle, SectionLabel } from "./workspace-ui";
+import { ResizeHandle, SectionLabel } from './workspace-ui';
 
 type SelectOption = {
   description?: string;
@@ -45,7 +32,7 @@ type GitAppPageListItem = {
   isActive: boolean;
   relativeUpdatedAt: string;
   statusLabel: string;
-  statusVariant: "success" | "warning" | "default";
+  statusVariant: 'success' | 'warning' | 'default';
 };
 
 type GitAppPageLeftSidebarProps = {
@@ -62,9 +49,7 @@ type GitAppPageLeftSidebarProps = {
   listWidth: number;
   liveAppsCount: number;
   onAppSearchQueryChangeAction: (value: string) => void;
-  onCreateAppAction: (
-    event: FormEvent<HTMLFormElement>,
-  ) => void | Promise<void>;
+  onCreateAppAction: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onDraftChangeAction: (field: keyof DraftAppState, value: string) => void;
   onListResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onRepositorySelectAction: (value: string) => void;
@@ -77,51 +62,49 @@ type GitAppPageLeftSidebarProps = {
   totalAppsCount: number;
 };
 
-function getStatusDotClassName(
-  statusVariant: GitAppPageListItem["statusVariant"],
-) {
+function getStatusDotClassName(statusVariant: GitAppPageListItem['statusVariant']) {
   switch (statusVariant) {
-    case "success":
-      return "bg-emerald-500";
-    case "warning":
-      return "bg-amber-500";
+    case 'success':
+      return 'bg-emerald-500';
+    case 'warning':
+      return 'bg-amber-500';
     default:
-      return "bg-slate-400";
+      return 'bg-slate-400';
   }
 }
 
 function getAppMetaLabel(deployment: GitAppPageListItem) {
-  if (deployment.exposureMode === "internal") {
-    return "No public route";
+  if (deployment.exposureMode === 'internal') {
+    return 'No public route';
   }
 
   if (
-    (deployment.exposureMode === "tcp" || deployment.exposureMode === "host") &&
+    (deployment.exposureMode === 'tcp' || deployment.exposureMode === 'host') &&
     deployment.hostPort
   ) {
     return `Host port ${deployment.hostPort}`;
   }
 
-  return deployment.domain || "No public route";
+  return deployment.domain || 'No public route';
 }
 
 function getAppFreshnessLabel(deployment: GitAppPageListItem) {
-  return deployment.relativeUpdatedAt === "Unknown"
-    ? "Updated unknown"
+  return deployment.relativeUpdatedAt === 'Unknown'
+    ? 'Updated unknown'
     : `Updated ${deployment.relativeUpdatedAt}`;
 }
 
 function getAppExposureLabel(deployment: GitAppPageListItem) {
   switch (deployment.exposureMode) {
-    case "tcp":
-      return "tcp";
-    case "host":
-      return "host";
-    case "internal":
+    case 'tcp':
+      return 'tcp';
+    case 'host':
+      return 'host';
+    case 'internal':
       return null;
-    case "http":
+    case 'http':
     default:
-      return deployment.domain ? "routed" : null;
+      return deployment.domain ? 'routed' : null;
   }
 }
 
@@ -135,10 +118,10 @@ function SidebarIconBox({
   return (
     <span
       className={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors",
+        'flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors',
         isActive
-          ? "border-emerald-200 bg-background text-emerald-700"
-          : "border-border/70 bg-background text-muted-foreground group-hover:text-foreground",
+          ? 'border-emerald-200 bg-background text-emerald-700'
+          : 'border-border/70 bg-background text-muted-foreground group-hover:text-foreground'
       )}
     >
       <IconComponent aria-hidden="true" className="size-4" />
@@ -172,15 +155,14 @@ export function GitAppPageLeftSidebar({
   selectedRepositoryValue,
   totalAppsCount,
 }: GitAppPageLeftSidebarProps) {
-  const needsHostPort =
-    draftApp.exposureMode === "tcp" || draftApp.exposureMode === "host";
+  const needsHostPort = draftApp.exposureMode === 'tcp' || draftApp.exposureMode === 'host';
   const isCreateDisabled =
     isCreateAppPending ||
     repositoryState.isLoading ||
     (Boolean(draftApp.repositoryUrl) && isBranchLoading) ||
     !draftApp.repositoryUrl.trim() ||
     !draftApp.appName.trim() ||
-    (draftApp.exposureMode === "http" && !draftApp.subdomain.trim()) ||
+    (draftApp.exposureMode === 'http' && !draftApp.subdomain.trim()) ||
     !draftApp.port.trim() ||
     (needsHostPort && !draftApp.hostPort.trim());
 
@@ -212,9 +194,7 @@ export function GitAppPageLeftSidebar({
             <Input
               aria-label="Search apps"
               className="h-8 rounded-lg border-border/70 bg-background pl-8 text-xs"
-              onChange={(event) =>
-                onAppSearchQueryChangeAction(event.target.value)
-              }
+              onChange={(event) => onAppSearchQueryChangeAction(event.target.value)}
               placeholder="Search apps, repos, domains..."
               value={appSearchQuery}
             />
@@ -225,10 +205,10 @@ export function GitAppPageLeftSidebar({
           <div className="flex flex-col gap-2 p-2">
             <div
               className={cn(
-                "overflow-hidden rounded-lg border transition-colors",
+                'overflow-hidden rounded-lg border transition-colors',
                 isCreateAppExpanded
-                  ? "border-emerald-200 bg-emerald-50/55"
-                  : "border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40",
+                  ? 'border-emerald-200 bg-emerald-50/55'
+                  : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
               )}
             >
               <button
@@ -275,8 +255,8 @@ export function GitAppPageLeftSidebar({
                       options={repositoryOptions}
                       placeholder={
                         repositoryState.isLoading
-                          ? "Loading repositories..."
-                          : "Select a repository"
+                          ? 'Loading repositories...'
+                          : 'Select a repository'
                       }
                       searchPlaceholder="Search repositories"
                       value={selectedRepositoryValue}
@@ -293,46 +273,36 @@ export function GitAppPageLeftSidebar({
                       ariaLabel="Branch"
                       buttonClassName="h-8 rounded-lg border border-border/70 bg-background text-xs"
                       disabled={
-                        !selectedRepositoryValue ||
-                        isBranchLoading ||
-                        branchOptions.length === 0
+                        !selectedRepositoryValue || isBranchLoading || branchOptions.length === 0
                       }
                       emptyText={
                         selectedRepositoryValue
-                          ? (branchError ?? "No branches found")
-                          : "Select a repository first"
+                          ? (branchError ?? 'No branches found')
+                          : 'Select a repository first'
                       }
-                      onValueChangeAction={(value) =>
-                        onDraftChangeAction("branch", value)
-                      }
+                      onValueChangeAction={(value) => onDraftChangeAction('branch', value)}
                       options={branchOptions}
                       placeholder={
                         !selectedRepositoryValue
-                          ? "Select a repository first"
+                          ? 'Select a repository first'
                           : isBranchLoading
-                            ? "Loading branches..."
-                            : "Select a branch"
+                            ? 'Loading branches...'
+                            : 'Select a branch'
                       }
                       searchPlaceholder="Search branches"
                       value={draftApp.branch}
                     />
                     {branchHelperText ? (
-                      <div className="text-[11px] text-muted-foreground">
-                        {branchHelperText}
-                      </div>
+                      <div className="text-[11px] text-muted-foreground">{branchHelperText}</div>
                     ) : null}
                   </div>
 
                   <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        App name
-                      </Label>
+                      <Label className="text-xs font-medium text-muted-foreground">App name</Label>
                       <Input
                         className="h-8 rounded-lg border-border/70 bg-background text-xs"
-                        onChange={(event) =>
-                          onDraftChangeAction("appName", event.target.value)
-                        }
+                        onChange={(event) => onDraftChangeAction('appName', event.target.value)}
                         value={draftApp.appName}
                       />
                     </div>
@@ -343,9 +313,7 @@ export function GitAppPageLeftSidebar({
                       <Input
                         className="h-8 rounded-lg border-border/70 bg-background text-xs"
                         inputMode="numeric"
-                        onChange={(event) =>
-                          onDraftChangeAction("port", event.target.value)
-                        }
+                        onChange={(event) => onDraftChangeAction('port', event.target.value)}
                         value={draftApp.port}
                       />
                     </div>
@@ -357,60 +325,42 @@ export function GitAppPageLeftSidebar({
                     </Label>
                     <select
                       className="h-8 w-full rounded-lg border border-input bg-background px-3 text-xs"
-                      onChange={(event) =>
-                        onDraftChangeAction(
-                          "exposureMode",
-                          event.target.value,
-                        )
-                      }
+                      onChange={(event) => onDraftChangeAction('exposureMode', event.target.value)}
                       value={draftApp.exposureMode}
                     >
                       <option value="http">HTTP — Traefik reverse proxy</option>
                       <option value="tcp">
                         TCP — Traefik TCP passthrough (pre-configure entrypoint)
                       </option>
-                      <option value="host">
-                        Host port — bind directly to host
-                      </option>
-                      <option value="internal">
-                        Internal — no external exposure
-                      </option>
+                      <option value="host">Host port — bind directly to host</option>
+                      <option value="internal">Internal — no external exposure</option>
                     </select>
                   </div>
 
-                  {(draftApp.exposureMode === "tcp" ||
-                    draftApp.exposureMode === "host") && (
+                  {(draftApp.exposureMode === 'tcp' || draftApp.exposureMode === 'host') && (
                     <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Host port
-                      </Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Host port</Label>
                       <Input
                         className="h-8 rounded-lg border-border/70 bg-background text-xs"
                         inputMode="numeric"
-                        onChange={(event) =>
-                          onDraftChangeAction("hostPort", event.target.value)
-                        }
+                        onChange={(event) => onDraftChangeAction('hostPort', event.target.value)}
                         placeholder={
-                          draftApp.exposureMode === "tcp"
-                            ? "e.g. 27017 (TCP entrypoint)"
-                            : "e.g. 27017"
+                          draftApp.exposureMode === 'tcp'
+                            ? 'e.g. 27017 (TCP entrypoint)'
+                            : 'e.g. 27017'
                         }
                         value={draftApp.hostPort}
                       />
                     </div>
                   )}
 
-                  {draftApp.exposureMode === "http" && (
+                  {draftApp.exposureMode === 'http' && (
                     <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Subdomain
-                      </Label>
+                      <Label className="text-xs font-medium text-muted-foreground">Subdomain</Label>
                       <InputGroup className="h-8">
                         <InputGroupInput
                           className="text-xs"
-                          onChange={(event) =>
-                            onDraftChangeAction("subdomain", event.target.value)
-                          }
+                          onChange={(event) => onDraftChangeAction('subdomain', event.target.value)}
                           value={draftApp.subdomain}
                         />
                         {baseDomain ? (
@@ -434,11 +384,9 @@ export function GitAppPageLeftSidebar({
                     </div>
                   ) : null}
 
-                  {!repositoryState.tokenConfigured &&
-                  repositoryState.hasLoaded ? (
+                  {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (
                     <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-                      Configure a GitHub token to browse repositories from the
-                      sidebar.
+                      Configure a GitHub token to browse repositories from the sidebar.
                     </div>
                   ) : null}
 
@@ -447,7 +395,7 @@ export function GitAppPageLeftSidebar({
                     disabled={isCreateDisabled}
                     type="submit"
                   >
-                    {isCreateAppPending ? "Creating..." : "Create app"}
+                    {isCreateAppPending ? 'Creating...' : 'Create app'}
                   </Button>
                 </form>
               ) : null}
@@ -462,10 +410,10 @@ export function GitAppPageLeftSidebar({
                     <button
                       aria-label={`${deployment.appName} ${deployment.domain} ${deployment.statusLabel} ${deployment.relativeUpdatedAt}`}
                       className={cn(
-                        "group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors",
+                        'group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors',
                         deployment.isActive
-                          ? "border-emerald-200 bg-emerald-50/60"
-                          : "border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40",
+                          ? 'border-emerald-200 bg-emerald-50/60'
+                          : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
                       )}
                       key={deployment.id}
                       onClick={() => onSelectAppAction(deployment.id)}
@@ -474,8 +422,8 @@ export function GitAppPageLeftSidebar({
                       <div className="flex items-start gap-2.5">
                         <span
                           className={cn(
-                            "mt-1.5 size-1.5 shrink-0 rounded-full",
-                            getStatusDotClassName(deployment.statusVariant),
+                            'mt-1.5 size-1.5 shrink-0 rounded-full',
+                            getStatusDotClassName(deployment.statusVariant)
                           )}
                         />
                         <span className="min-w-0 flex-1">
@@ -493,12 +441,12 @@ export function GitAppPageLeftSidebar({
                             </span>
                             <span
                               className={cn(
-                                "truncate rounded-md border px-1.5 py-0.5 text-[11px] font-medium",
-                                deployment.statusVariant === "success"
-                                  ? "border-emerald-200/80 bg-emerald-50/80 text-emerald-700"
-                                  : deployment.statusVariant === "warning"
-                                    ? "border-amber-200/80 bg-amber-50/80 text-amber-700"
-                                    : "border-border/60 bg-background text-muted-foreground",
+                                'truncate rounded-md border px-1.5 py-0.5 text-[11px] font-medium',
+                                deployment.statusVariant === 'success'
+                                  ? 'border-emerald-200/80 bg-emerald-50/80 text-emerald-700'
+                                  : deployment.statusVariant === 'warning'
+                                    ? 'border-amber-200/80 bg-amber-50/80 text-amber-700'
+                                    : 'border-border/60 bg-background text-muted-foreground'
                               )}
                             >
                               {deployment.statusLabel}

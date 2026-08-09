@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
       day: wednesday
-      time: "09:00"
+      time: '09:00'
     assignees:
       - dedkola
     labels:
@@ -17,7 +17,7 @@ updates:
     schedule:
       interval: weekly
       day: wednesday
-      time: "09:00"
+      time: '09:00'
     assignees:
       - dedkola
     labels:

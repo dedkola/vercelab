@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { memo, useMemo } from "react";
+import { memo, useMemo } from 'react';
 
-import { EChartSurface } from "@/components/ui/echart-surface";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import type { DashboardRange } from "@/lib/metrics-range";
-import type { AllContainersMetricsHistorySeries } from "@/lib/influx-metrics";
-import type { DeploymentSummary } from "@/lib/persistence";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+import { EChartSurface } from '@/components/ui/echart-surface';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import type { DashboardRange } from '@/lib/metrics-range';
+import type { AllContainersMetricsHistorySeries } from '@/lib/influx-metrics';
+import type { DeploymentSummary } from '@/lib/persistence';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 import {
   buildContainerMetricPanels,
   formatAxisValue,
@@ -19,10 +19,10 @@ import {
   formatLoadAverage,
   formatMetricValue,
   type ContainerMetricPanel,
-} from "@/lib/metrics-dashboard-metrics";
+} from '@/lib/metrics-dashboard-metrics';
 
-import { SectionLabel } from "./workspace-ui";
-import type { EChartsCoreOption } from "echarts";
+import { SectionLabel } from './workspace-ui';
+import type { EChartsCoreOption } from 'echarts';
 
 type MetricsDashboardMainContentProps = {
   allContainerHistory: AllContainersMetricsHistorySeries[];
@@ -61,7 +61,7 @@ function createTooltipShell(title: string, rows: string) {
 }
 
 function createTooltipRow(label: string, value: string, color?: string) {
-  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:12px; line-height:1.5;"><span style="display:flex; align-items:center; gap:8px; color:#cbd5e1;"><span style="width:9px; height:9px; border-radius:999px; background:${color ?? "#94a3b8"};"></span>${label}</span><strong style="font-size:12px; color:#f8fafc;">${value}</strong></div>`;
+  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:12px; line-height:1.5;"><span style="display:flex; align-items:center; gap:8px; color:#cbd5e1;"><span style="width:9px; height:9px; border-radius:999px; background:${color ?? '#94a3b8'};"></span>${label}</span><strong style="font-size:12px; color:#f8fafc;">${value}</strong></div>`;
 }
 
 const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
@@ -74,9 +74,7 @@ function EmptyChartState({ message }: { message: string }) {
   );
 }
 
-function buildContainerChartOption(
-  panel: ContainerMetricPanel,
-): EChartsCoreOption {
+function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOption {
   const axisInterval = getLabelInterval(panel.labels.length);
   const hasSelectedSeries = panel.series.some((series) => series.isSelected);
 
@@ -91,80 +89,74 @@ function buildContainerChartOption(
       top: 44,
     },
     legend: {
-      icon: "roundRect",
+      icon: 'roundRect',
       itemHeight: 8,
       itemWidth: 12,
       left: 0,
-      pageIconColor: "#0f766e",
+      pageIconColor: '#0f766e',
       pageTextStyle: {
-        color: "rgba(71,85,105,0.88)",
+        color: 'rgba(71,85,105,0.88)',
       },
       right: 0,
       textStyle: {
-        color: "rgba(71,85,105,0.9)",
+        color: 'rgba(71,85,105,0.9)',
         fontSize: 11,
       },
       top: 8,
-      type: "scroll",
+      type: 'scroll',
     },
     tooltip: {
-      backgroundColor: "transparent",
+      backgroundColor: 'transparent',
       borderWidth: 0,
-      extraCssText: "box-shadow:none;",
+      extraCssText: 'box-shadow:none;',
       formatter: (value: unknown) => {
-        const params = (
-          Array.isArray(value) ? value : [value]
-        ) as TooltipPoint[];
+        const params = (Array.isArray(value) ? value : [value]) as TooltipPoint[];
         const safeParams = params
-          .filter((item) => typeof item.data === "number")
-          .sort(
-            (left, right) => Number(right.data ?? 0) - Number(left.data ?? 0),
-          );
+          .filter((item) => typeof item.data === 'number')
+          .sort((left, right) => Number(right.data ?? 0) - Number(left.data ?? 0));
         const index = safeParams[0]?.dataIndex ?? params[0]?.dataIndex ?? 0;
         const title = formatDetailedTimestamp(
-          panel.timestamps[index] ??
-            panel.labels[index] ??
-            new Date().toISOString(),
+          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString()
         );
 
         const rows = safeParams.length
           ? safeParams
               .map((item) =>
                 createTooltipRow(
-                  item.seriesName ?? "Series",
+                  item.seriesName ?? 'Series',
                   formatMetricValue(Number(item.data ?? 0), panel.format),
-                  item.color,
-                ),
+                  item.color
+                )
               )
-              .join("")
-          : createTooltipRow("No sample", "--");
+              .join('')
+          : createTooltipRow('No sample', '--');
 
         return createTooltipShell(title, rows);
       },
       padding: 0,
-      trigger: "axis",
+      trigger: 'axis',
       axisPointer: {
         label: {
-          backgroundColor: "#0f172a",
+          backgroundColor: '#0f172a',
           borderRadius: 8,
-          color: "#f8fafc",
+          color: '#f8fafc',
         },
         lineStyle: {
-          color: "rgba(15,23,42,0.26)",
+          color: 'rgba(15,23,42,0.26)',
         },
-        type: "cross",
+        type: 'cross',
       },
     },
     xAxis: {
       axisLabel: {
-        color: "rgba(71,85,105,0.88)",
+        color: 'rgba(71,85,105,0.88)',
         fontSize: 11,
         interval: axisInterval,
         margin: 14,
       },
       axisLine: {
         lineStyle: {
-          color: "rgba(148,163,184,0.24)",
+          color: 'rgba(148,163,184,0.24)',
         },
       },
       axisTick: {
@@ -172,11 +164,11 @@ function buildContainerChartOption(
       },
       boundaryGap: false,
       data: panel.labels,
-      type: "category",
+      type: 'category',
     },
     yAxis: {
       axisLabel: {
-        color: "rgba(100,116,139,0.82)",
+        color: 'rgba(100,116,139,0.82)',
         fontSize: 11,
         formatter: (value: number) => formatAxisValue(value, panel.format),
       },
@@ -188,11 +180,11 @@ function buildContainerChartOption(
       },
       splitLine: {
         lineStyle: {
-          color: "rgba(15,23,42,0.08)",
-          type: "dashed",
+          color: 'rgba(15,23,42,0.08)',
+          type: 'dashed',
         },
       },
-      type: "value",
+      type: 'value',
     },
     series: panel.series.map((series) => ({
       areaStyle: series.isSelected
@@ -208,7 +200,7 @@ function buildContainerChartOption(
                   offset: 1,
                 },
               ],
-              type: "linear",
+              type: 'linear',
               x: 0,
               x2: 0,
               y: 0,
@@ -219,7 +211,7 @@ function buildContainerChartOption(
       connectNulls: false,
       data: series.values,
       emphasis: {
-        focus: "series",
+        focus: 'series',
       },
       itemStyle: {
         color: series.color,
@@ -230,12 +222,12 @@ function buildContainerChartOption(
         width: series.isSelected ? 3.1 : 1.8,
       },
       name: series.label,
-      sampling: "lttb",
+      sampling: 'lttb',
       showSymbol: false,
-      smooth: panel.id !== "memory",
-      symbol: "circle",
+      smooth: panel.id !== 'memory',
+      symbol: 'circle',
       symbolSize: series.isSelected ? 7 : 5,
-      type: "line",
+      type: 'line',
       z: series.isSelected ? 3 : 1,
     })),
   };
@@ -271,21 +263,16 @@ const ContainerMetricCard = memo(function ContainerMetricCard({
             <span
               className="flex items-center gap-1"
               key={series.label}
-              style={{ color: series.isSelected ? "inherit" : "hsl(var(--muted-foreground))" }}
+              style={{ color: series.isSelected ? 'inherit' : 'hsl(var(--muted-foreground))' }}
             >
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: series.color }}
-              />
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: series.color }} />
               {series.label}
             </span>
           ))}
         </div>
       </CardHeader>
       <CardContent className="py-3">
-        {panel.series.some((series) =>
-          series.values.some((value) => value !== null),
-        ) ? (
+        {panel.series.some((series) => series.values.some((value) => value !== null)) ? (
           <EChartSurface
             ariaLabel={`${panel.title} chart`}
             className="h-72"
@@ -314,26 +301,20 @@ export function MetricsDashboardMainContent({
 }: MetricsDashboardMainContentProps) {
   const containerPanels = useMemo(
     () =>
-      buildContainerMetricPanels(
-        snapshot,
-        allContainerHistory,
-        selectedContainerId,
-        deployments,
-      ),
-    [allContainerHistory, deployments, selectedContainerId, snapshot],
+      buildContainerMetricPanels(snapshot, allContainerHistory, selectedContainerId, deployments),
+    [allContainerHistory, deployments, selectedContainerId, snapshot]
   );
   const rangeLabel = formatDashboardRangeLabel(range);
   const containerEmptyStateMessage = containerHistoryStatusText
     ? containerHistoryStatusText
     : isAllContainerHistoryLoading
-      ? "Refreshing container history for the selected range."
-      : "Waiting for InfluxDB buckets for the selected range.";
-  const trackedContainers =
-    snapshot?.containers.all.length ?? allContainerHistory.length;
+      ? 'Refreshing container history for the selected range.'
+      : 'Waiting for InfluxDB buckets for the selected range.';
+  const trackedContainers = snapshot?.containers.all.length ?? allContainerHistory.length;
   const runningContainers = snapshot?.containers.running ?? trackedContainers;
   const loadAverageLabel = snapshot
     ? formatLoadAverage(snapshot.system.loadAverage)
-    : "Waiting for load average";
+    : 'Waiting for load average';
 
   return (
     <div className="space-y-4">
@@ -341,18 +322,27 @@ export function MetricsDashboardMainContent({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <SectionLabel icon="monitor" text="Infrastructure" />
-            <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground" variant="outline">
+            <Badge
+              className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground"
+              variant="outline"
+            >
               {trackedContainers} tracked
             </Badge>
             <Badge className="h-5 rounded-md border-emerald-200/80 bg-emerald-50/90 px-1.5 text-[11px] text-emerald-700">
               {runningContainers} running
             </Badge>
             {selectedContainerName ? (
-              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground" variant="outline">
+              <Badge
+                className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground"
+                variant="outline"
+              >
                 Focus {selectedContainerName}
               </Badge>
             ) : (
-              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground" variant="outline">
+              <Badge
+                className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground"
+                variant="outline"
+              >
                 Fleet compare
               </Badge>
             )}
@@ -363,10 +353,10 @@ export function MetricsDashboardMainContent({
               <Button
                 aria-pressed={range === option.value}
                 className={cn(
-                  "h-7 rounded-full px-3 text-xs",
+                  'h-7 rounded-full px-3 text-xs',
                   range === option.value
-                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 hover:bg-emerald-50"
-                    : "border-border/60 bg-background text-muted-foreground hover:text-foreground",
+                    ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700 hover:bg-emerald-50'
+                    : 'border-border/60 bg-background text-muted-foreground hover:text-foreground'
                 )}
                 key={option.value}
                 onClick={() => onRangeChangeAction(option.value)}
@@ -398,11 +388,11 @@ export function MetricsDashboardMainContent({
           {isAllContainerHistoryLoading || containerHistoryStatusText ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {isAllContainerHistoryLoading ? (
-                <Badge className="rounded-md" variant="secondary">Refreshing history…</Badge>
+                <Badge className="rounded-md" variant="secondary">
+                  Refreshing history…
+                </Badge>
               ) : null}
-              {containerHistoryStatusText ? (
-                <span>{containerHistoryStatusText}</span>
-              ) : null}
+              {containerHistoryStatusText ? <span>{containerHistoryStatusText}</span> : null}
             </div>
           ) : null}
         </div>
