@@ -1,6 +1,6 @@
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
 
-import { searchContainerCatalog } from "@/lib/container-create";
+import { searchContainerCatalog } from '@/lib/container-create';
 
 const CACHE_CONTROL_HEADER =
   "public, max-age=300, stale-while-revalidate=300";
@@ -10,11 +10,11 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Unable to search container catalog.";
+  return 'Unable to search container catalog.';
 }
 
 export async function GET(request: NextRequest) {
-  const query = request.nextUrl.searchParams.get("query") ?? "";
+  const query = request.nextUrl.searchParams.get('query') ?? '';
 
   try {
     const results = await searchContainerCatalog(query);

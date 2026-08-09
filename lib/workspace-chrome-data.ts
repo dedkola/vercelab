@@ -1,9 +1,6 @@
-import { getAppConfig } from "@/lib/app-config";
-import {
-  getMetricsHistoryFromInflux,
-  type MetricsHistoryPoint,
-} from "@/lib/influx-metrics";
-import { getMetricsSnapshot, type MetricsSnapshot } from "@/lib/system-metrics";
+import { getAppConfig } from '@/lib/app-config';
+import { getMetricsHistoryFromInflux, type MetricsHistoryPoint } from '@/lib/influx-metrics';
+import { getMetricsSnapshot, type MetricsSnapshot } from '@/lib/system-metrics';
 
 export type WorkspaceChromeData = {
   influxExplorerUrl: string | null;
@@ -16,11 +13,13 @@ type WorkspaceChromeDataOptions = {
 };
 
 export async function loadWorkspaceChromeData(
-  options?: WorkspaceChromeDataOptions,
+  options?: WorkspaceChromeDataOptions
 ): Promise<WorkspaceChromeData> {
   const includeMetricsSnapshot = options?.includeMetricsSnapshot ?? true;
   const influxExplorerUrl = getAppConfig().metrics.influxExplorerUrl;
-  const initialSnapshot = includeMetricsSnapshot ? await getMetricsSnapshot().catch(() => null) : null;
+  const initialSnapshot = includeMetricsSnapshot
+    ? await getMetricsSnapshot().catch(() => null)
+    : null;
 
   if (!initialSnapshot) {
     return {

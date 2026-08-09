@@ -1,8 +1,8 @@
-import { getAppConfig } from "@/lib/app-config";
-import { getPlatformHealth } from "@/lib/platform-health";
-import { getDatabaseHealth } from "@/lib/persistence";
+import { getAppConfig } from '@/lib/app-config';
+import { getPlatformHealth } from '@/lib/platform-health';
+import { getDatabaseHealth } from '@/lib/persistence';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const config = getAppConfig();
@@ -20,6 +20,6 @@ export async function GET() {
     },
     {
       status: platform.ok ? 200 : 503,
-    },
+    }
   );
 }

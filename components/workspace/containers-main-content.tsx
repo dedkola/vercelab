@@ -1,62 +1,59 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import type { ContainerListEntry } from "@/components/workspace-shell";
-import type {
-  ContainerAction,
-  ContainerInventoryMeta,
-} from "@/lib/container-inventory";
-import type { ContainerInspectData } from "@/lib/container-inspect";
-import type { RecreateChanges } from "@/lib/container-recreate";
-import type { ExposureMode } from "@/lib/validation";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import type { ContainerListEntry } from '@/components/workspace-shell';
+import type { ContainerAction, ContainerInventoryMeta } from '@/lib/container-inventory';
+import type { ContainerInspectData } from '@/lib/container-inspect';
+import type { RecreateChanges } from '@/lib/container-recreate';
+import type { ExposureMode } from '@/lib/validation';
 
 const SENSITIVE_KEY_RE = /password|secret|token|key|auth|credential|private/i;
 
 function maskIfSensitive(key: string, value: string) {
-  return SENSITIVE_KEY_RE.test(key) ? "••••••••" : value;
+  return SENSITIVE_KEY_RE.test(key) ? '••••••••' : value;
 }
 
-function formatKindLabel(kind: ContainerInventoryMeta["kind"]) {
+function formatKindLabel(kind: ContainerInventoryMeta['kind']) {
   switch (kind) {
-    case "managed":
-      return "Managed workload";
-    case "system":
-      return "Protected system service";
-    case "unmanaged":
-      return "Unmanaged runtime";
+    case 'managed':
+      return 'Managed workload';
+    case 'system':
+      return 'Protected system service';
+    case 'unmanaged':
+      return 'Unmanaged runtime';
   }
 }
 
-function getKindBadgeVariant(kind: ContainerInventoryMeta["kind"]) {
+function getKindBadgeVariant(kind: ContainerInventoryMeta['kind']) {
   switch (kind) {
-    case "managed":
-      return "success" as const;
-    case "system":
-      return "warning" as const;
-    case "unmanaged":
-      return "default" as const;
+    case 'managed':
+      return 'success' as const;
+    case 'system':
+      return 'warning' as const;
+    case 'unmanaged':
+      return 'default' as const;
   }
 }
 
 function getActionLabel(action: ContainerAction) {
   switch (action) {
-    case "restart":
-      return "Restart";
-    case "stop":
-      return "Stop";
-    case "start":
-      return "Start";
-    case "remove":
-      return "Remove";
+    case 'restart':
+      return 'Restart';
+    case 'stop':
+      return 'Stop';
+    case 'start':
+      return 'Start';
+    case 'remove':
+      return 'Remove';
   }
 }
 
 function getActionVariant(action: ContainerAction) {
-  return action === "remove" ? ("danger" as const) : ("default" as const);
+  return action === 'remove' ? ('danger' as const) : ('default' as const);
 }
 
 type InfoChipProps = {
@@ -69,11 +66,9 @@ type InfoChipProps = {
 function InfoChip({ label, value, children, mono }: InfoChipProps) {
   return (
     <div className="rounded-md border border-border/60 bg-background px-2.5 py-2">
-      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd
-        className={`mt-1 truncate text-sm font-medium text-foreground ${mono ? "font-mono text-xs" : ""}`}
+        className={`mt-1 truncate text-sm font-medium text-foreground ${mono ? 'font-mono text-xs' : ''}`}
         title={value ?? undefined}
       >
         {children ?? value ?? <span className="text-muted-foreground">—</span>}
@@ -88,14 +83,8 @@ type EnvRowEditorProps = {
 };
 
 function EnvRowEditor({ envVars, onChange }: EnvRowEditorProps) {
-  const handleChange = (
-    index: number,
-    field: "key" | "value",
-    val: string,
-  ) => {
-    const next = envVars.map((row, i) =>
-      i === index ? { ...row, [field]: val } : row,
-    );
+  const handleChange = (index: number, field: 'key' | 'value', val: string) => {
+    const next = envVars.map((row, i) => (i === index ? { ...row, [field]: val } : row));
     onChange(next);
   };
 
@@ -104,7 +93,7 @@ function EnvRowEditor({ envVars, onChange }: EnvRowEditorProps) {
   };
 
   const handleAdd = () => {
-    onChange([...envVars, { key: "", value: "" }]);
+    onChange([...envVars, { key: '', value: '' }]);
   };
 
   return (
@@ -114,14 +103,14 @@ function EnvRowEditor({ envVars, onChange }: EnvRowEditorProps) {
           <Input
             aria-label={`Env key ${index + 1}`}
             className="h-8 flex-1 font-mono text-xs"
-            onChange={(e) => handleChange(index, "key", e.target.value)}
+            onChange={(e) => handleChange(index, 'key', e.target.value)}
             placeholder="KEY"
             value={row.key}
           />
           <Input
             aria-label={`Env value ${index + 1}`}
             className="h-8 flex-[2] font-mono text-xs"
-            onChange={(e) => handleChange(index, "value", e.target.value)}
+            onChange={(e) => handleChange(index, 'value', e.target.value)}
             placeholder="value"
             value={row.value}
           />
@@ -183,13 +172,11 @@ export function ContainersMainContent({
   const inspectEnvVars = inspectData?.envVars ?? [];
   const inspectPortBindings = inspectData?.portBindings ?? [];
 
-  const [editName, setEditName] = useState("");
-  const [editImage, setEditImage] = useState("");
-  const [editPort, setEditPort] = useState("");
-  const [editExposureMode, setEditExposureMode] = useState<ExposureMode>("http");
-  const [editEnvVars, setEditEnvVars] = useState<
-    Array<{ key: string; value: string }>
-  >([]);
+  const [editName, setEditName] = useState('');
+  const [editImage, setEditImage] = useState('');
+  const [editPort, setEditPort] = useState('');
+  const [editExposureMode, setEditExposureMode] = useState<ExposureMode>('http');
+  const [editEnvVars, setEditEnvVars] = useState<Array<{ key: string; value: string }>>([]);
 
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
@@ -199,19 +186,15 @@ export function ContainersMainContent({
     if (!isEditOpen && inspectData) {
       setEditName(inspectData.name);
       setEditImage(inspectData.image);
-      setEditPort(
-        inspectData.traefikPort ??
-          inspectData.appPort?.replace(/\/tcp$/, "") ??
-          "",
-      );
+      setEditPort(inspectData.traefikPort ?? inspectData.appPort?.replace(/\/tcp$/, '') ?? '');
       setEditExposureMode(
-        (inspectData.traefikMethod as ExposureMode | null) === "tcp"
-          ? "tcp"
+        (inspectData.traefikMethod as ExposureMode | null) === 'tcp'
+          ? 'tcp'
           : inspectData.traefikPort
-            ? "http"
+            ? 'http'
             : inspectPortBindings.length > 0
-              ? "host"
-              : "internal",
+              ? 'host'
+              : 'internal'
       );
       setEditEnvVars(inspectEnvVars.map((v) => ({ ...v })));
       setAvailableTags([]);
@@ -222,7 +205,7 @@ export function ContainersMainContent({
   };
 
   const handleFetchTags = async () => {
-    const imageName = editImage.trim().split(":")[0] ?? "";
+    const imageName = editImage.trim().split(':')[0] ?? '';
 
     if (!imageName) {
       return;
@@ -234,7 +217,7 @@ export function ContainersMainContent({
     try {
       const response = await fetch(
         `/api/containers/catalog/tags?image=${encodeURIComponent(imageName)}`,
-        { cache: "no-store" },
+        { cache: 'no-store' }
       );
       const payload = (await response.json()) as {
         tags?: string[];
@@ -242,19 +225,17 @@ export function ContainersMainContent({
       };
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Unable to fetch tags.");
+        throw new Error(payload.error ?? 'Unable to fetch tags.');
       }
 
       const tags = payload.tags ?? [];
       setAvailableTags(tags);
 
       if (tags.length === 0) {
-        setTagsError("No tags found or not a Docker Hub image.");
+        setTagsError('No tags found or not a Docker Hub image.');
       }
     } catch (err) {
-      setTagsError(
-        err instanceof Error ? err.message : "Unable to fetch tags.",
-      );
+      setTagsError(err instanceof Error ? err.message : 'Unable to fetch tags.');
     } finally {
       setTagsLoading(false);
     }
@@ -274,23 +255,23 @@ export function ContainersMainContent({
   };
 
   const url =
-    runtimeEntry?.display.endpoints[0]?.url ??
-    runtimeEntry?.display.endpoints[0]?.name ??
-    null;
+    runtimeEntry?.display.endpoints[0]?.url ?? runtimeEntry?.display.endpoints[0]?.name ?? null;
 
   return (
     <main className="min-w-0 flex-1 overflow-auto bg-muted/30 p-3 md:p-4">
       <div className="mx-auto flex max-w-7xl flex-col gap-3">
-
         {/* Header */}
         <section className="rounded-xl border border-border/70 bg-background px-3 py-2.5 shadow-sm">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <Badge className="rounded-md text-[11px]" variant={getKindBadgeVariant(inventoryMeta.kind)}>
+              <Badge
+                className="rounded-md text-[11px]"
+                variant={getKindBadgeVariant(inventoryMeta.kind)}
+              >
                 {formatKindLabel(inventoryMeta.kind)}
               </Badge>
               <h1 className="truncate text-sm font-semibold tracking-tight text-foreground md:text-base">
-                {runtimeEntry?.sidebarName ?? "Containers"}
+                {runtimeEntry?.sidebarName ?? 'Containers'}
               </h1>
             </div>
 
@@ -317,10 +298,7 @@ export function ContainersMainContent({
         <section className="rounded-xl border border-border/70 bg-background px-3 py-3 shadow-sm">
           {runtimeEntry ? (
             <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <InfoChip
-                label="Container name"
-                value={runtimeEntry.display.name}
-              />
+              <InfoChip label="Container name" value={runtimeEntry.display.name} />
               <InfoChip
                 label="Container ID"
                 mono
@@ -329,17 +307,14 @@ export function ContainersMainContent({
               <InfoChip
                 label="App port"
                 mono
-                value={inspectLoading ? "Loading…" : (inspectData?.appPort ?? "—")}
+                value={inspectLoading ? 'Loading…' : (inspectData?.appPort ?? '—')}
               />
               <InfoChip
                 label="Traefik port"
                 mono
-                value={inspectLoading ? "Loading…" : (inspectData?.traefikPort ?? "—")}
+                value={inspectLoading ? 'Loading…' : (inspectData?.traefikPort ?? '—')}
               />
-              <InfoChip
-                label="Label"
-                value={aliasDraft || runtimeEntry.sidebarName}
-              />
+              <InfoChip label="Label" value={aliasDraft || runtimeEntry.sidebarName} />
               <InfoChip label="URL" value={url}>
                 {url ? (
                   <a
@@ -357,16 +332,12 @@ export function ContainersMainContent({
               <InfoChip
                 label="Version"
                 mono
-                value={inspectLoading ? "Loading…" : (inspectData?.imageVersion ?? "—")}
+                value={inspectLoading ? 'Loading…' : (inspectData?.imageVersion ?? '—')}
               />
               <InfoChip
                 label="Image"
                 mono
-                value={
-                  inspectLoading
-                    ? "Loading…"
-                    : (inspectData?.image ?? "—")
-                }
+                value={inspectLoading ? 'Loading…' : (inspectData?.image ?? '—')}
               />
             </dl>
           ) : (
@@ -388,7 +359,7 @@ export function ContainersMainContent({
                 Environment Variables
                 {inspectData ? ` (${inspectEnvVars.length})` : null}
               </span>
-              <span className="text-muted-foreground">{isEnvOpen ? "▲" : "▼"}</span>
+              <span className="text-muted-foreground">{isEnvOpen ? '▲' : '▼'}</span>
             </button>
 
             {isEnvOpen ? (
@@ -446,7 +417,7 @@ export function ContainersMainContent({
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Edit Container
               </span>
-              <span className="text-muted-foreground">{isEditOpen ? "▲" : "▼"}</span>
+              <span className="text-muted-foreground">{isEditOpen ? '▲' : '▼'}</span>
             </button>
 
             {isEditOpen ? (
@@ -482,7 +453,7 @@ export function ContainersMainContent({
                   </div>
                 </div>
 
-                {inventoryMeta.kind === "system" ? (
+                {inventoryMeta.kind === 'system' ? (
                   <p className="rounded-md border border-amber-300/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
                     System containers cannot be edited or recreated from this page.
                   </p>
@@ -534,9 +505,7 @@ export function ContainersMainContent({
                         <select
                           className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm"
                           id="edit-exposure"
-                          onChange={(e) =>
-                            setEditExposureMode(e.target.value as ExposureMode)
-                          }
+                          onChange={(e) => setEditExposureMode(e.target.value as ExposureMode)}
                           value={editExposureMode}
                         >
                           <option value="http">HTTP — reverse proxy</option>
@@ -573,7 +542,7 @@ export function ContainersMainContent({
                           type="button"
                           variant="secondary"
                         >
-                          {tagsLoading ? "Loading…" : "Fetch tags"}
+                          {tagsLoading ? 'Loading…' : 'Fetch tags'}
                         </Button>
                       </div>
                       {tagsError ? (
@@ -582,7 +551,7 @@ export function ContainersMainContent({
                       {availableTags.length > 0 ? (
                         <div className="max-h-36 overflow-auto rounded-md border border-border/60 bg-background/70 p-1">
                           {availableTags.map((tag) => {
-                            const baseName = editImage.trim().split(":")[0] ?? "";
+                            const baseName = editImage.trim().split(':')[0] ?? '';
                             return (
                               <button
                                 className="flex w-full items-center rounded-md border border-transparent px-2 py-1 text-left text-xs transition hover:border-border/70 hover:bg-muted/20"
@@ -603,10 +572,7 @@ export function ContainersMainContent({
                       <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                         Environment Variables
                       </span>
-                      <EnvRowEditor
-                        envVars={editEnvVars}
-                        onChange={setEditEnvVars}
-                      />
+                      <EnvRowEditor envVars={editEnvVars} onChange={setEditEnvVars} />
                     </div>
 
                     {/* Recreate footer */}
@@ -615,7 +581,7 @@ export function ContainersMainContent({
                         {recreateError ? (
                           <span className="text-rose-700">{recreateError}</span>
                         ) : (
-                          "Recreate will stop and replace the running container."
+                          'Recreate will stop and replace the running container.'
                         )}
                       </div>
                       <Button
@@ -624,7 +590,7 @@ export function ContainersMainContent({
                         size="xs"
                         type="button"
                       >
-                        {recreatePending ? "Recreating…" : "Recreate"}
+                        {recreatePending ? 'Recreating…' : 'Recreate'}
                       </Button>
                     </div>
                   </>

@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-import { Icon } from "@/components/dashboard-kit";
-import { Badge } from "@/components/ui/badge";
-import { CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { DeploymentSummary } from "@/lib/persistence";
-import { cn } from "@/lib/utils";
+import { Icon } from '@/components/dashboard-kit';
+import { Badge } from '@/components/ui/badge';
+import { CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { DeploymentSummary } from '@/lib/persistence';
+import { cn } from '@/lib/utils';
 
-export type LogTab = "build" | "container";
+export type LogTab = 'build' | 'container';
 
 type GitLogPanelProps = {
-  currentView: "list" | "detail" | "create";
+  currentView: 'list' | 'detail' | 'create';
   deploymentId: string | null;
   deployments: DeploymentSummary[];
   initialActiveLogTab: LogTab;
@@ -21,7 +21,7 @@ type GitLogPanelProps = {
 };
 
 type DeploymentLogPayload = {
-  type: "build" | "container";
+  type: 'build' | 'container';
   deploymentId: string;
   appName: string;
   summary: string;
@@ -30,70 +30,67 @@ type DeploymentLogPayload = {
   updatedAt: string;
 };
 
-
 const LOG_REFRESH_INTERVAL_MS = 2000;
 
-function formatDeploymentStatus(status: DeploymentSummary["status"]) {
+function formatDeploymentStatus(status: DeploymentSummary['status']) {
   switch (status) {
-    case "deploying":
-      return "Deploying";
-    case "running":
-      return "Running";
-    case "failed":
-      return "Failed";
-    case "stopped":
-      return "Stopped";
-    case "removing":
-      return "Removing";
+    case 'deploying':
+      return 'Deploying';
+    case 'running':
+      return 'Running';
+    case 'failed':
+      return 'Failed';
+    case 'stopped':
+      return 'Stopped';
+    case 'removing':
+      return 'Removing';
     default:
       return status;
   }
 }
 
 function formatStatusBadgeVariant(
-  status: DeploymentSummary["status"],
-): "default" | "success" | "destructive" | "warning" | "info" {
+  status: DeploymentSummary['status']
+): 'default' | 'success' | 'destructive' | 'warning' | 'info' {
   switch (status) {
-    case "deploying":
-      return "info";
-    case "running":
-      return "success";
-    case "failed":
-      return "destructive";
-    case "stopped":
-      return "default";
-    case "removing":
-      return "warning";
+    case 'deploying':
+      return 'info';
+    case 'running':
+      return 'success';
+    case 'failed':
+      return 'destructive';
+    case 'stopped':
+      return 'default';
+    case 'removing':
+      return 'warning';
     default:
-      return "default";
+      return 'default';
   }
 }
 
-
 function getLogPanelEmptyState(
-  currentView: GitLogPanelProps["currentView"],
-  hasPendingDeployment: boolean,
+  currentView: GitLogPanelProps['currentView'],
+  hasPendingDeployment: boolean
 ) {
   if (hasPendingDeployment) {
     return {
       description:
-        "The selected deployment is still being resolved. Logs will appear here as soon as the workspace is ready.",
-      title: "Preparing logs",
+        'The selected deployment is still being resolved. Logs will appear here as soon as the workspace is ready.',
+      title: 'Preparing logs',
     };
   }
 
-  if (currentView === "create") {
+  if (currentView === 'create') {
     return {
-      description:
-        "Deploy an app to start streaming build and container output in this sidebar.",
-      title: "Logs are idle",
+      description: 'Deploy an app to start streaming build and container output in this sidebar.',
+      title: 'Logs are idle',
     };
   }
 
   return {
     description:
-      "Select an app from the list to inspect build and container logs without leaving the dashboard shell.",
-    title: "No app selected",
+      'Select an app from the list to inspect build and container logs without leaving the dashboard shell.',
+    title: 'No app selected',
   };
 }
 
@@ -119,8 +116,7 @@ export function GitLogPanel({
     payload: null,
   });
 
-  const deployment =
-    deployments.find((entry) => entry.id === deploymentId) ?? null;
+  const deployment = deployments.find((entry) => entry.id === deploymentId) ?? null;
   const emptyState = getLogPanelEmptyState(currentView, Boolean(deploymentId));
 
   useEffect(() => {
@@ -162,19 +158,14 @@ export function GitLogPanel({
       }));
 
       try {
-        const response = await fetch(
-          `/api/deployments/${deploymentId}/logs?type=${activeLogTab}`,
-          { cache: "no-store" },
-        );
-        const payload = (await response.json()) as
-          | DeploymentLogPayload
-          | { error?: string };
+        const response = await fetch(`/api/deployments/${deploymentId}/logs?type=${activeLogTab}`, {
+          cache: 'no-store',
+        });
+        const payload = (await response.json()) as DeploymentLogPayload | { error?: string };
 
         if (!response.ok) {
           throw new Error(
-            "error" in payload && payload.error
-              ? payload.error
-              : "Unable to load deployment logs.",
+            'error' in payload && payload.error ? payload.error : 'Unable to load deployment logs.'
           );
         }
 
@@ -195,10 +186,7 @@ export function GitLogPanel({
 
         setLogState((current) => ({
           ...current,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Unable to load deployment logs.",
+          error: error instanceof Error ? error.message : 'Unable to load deployment logs.',
           isLoading: false,
           isRefreshing: false,
         }));
@@ -213,7 +201,7 @@ export function GitLogPanel({
   }, [activeLogTab, deployment, deploymentId, logRefreshKey]);
 
   useEffect(() => {
-    if (!deploymentId || !deployment || activeLogTab !== "build") {
+    if (!deploymentId || !deployment || activeLogTab !== 'build') {
       return;
     }
 
@@ -226,15 +214,13 @@ export function GitLogPanel({
     };
   }, [activeLogTab, deployment, deploymentId]);
 
-  const logOutput =
-    logState.payload?.output ?? "No logs available for this deployment yet.";
-  const logLineCount = logOutput.split("\n").length;
-  const activeLogLabel =
-    activeLogTab === "build" ? "Build tail" : "Container tail";
+  const logOutput = logState.payload?.output ?? 'No logs available for this deployment yet.';
+  const logLineCount = logOutput.split('\n').length;
+  const activeLogLabel = activeLogTab === 'build' ? 'Build tail' : 'Container tail';
   const activeLogCommand =
-    activeLogTab === "build"
-      ? `deployment build output --follow ${deployment?.appName ?? ""}`.trim()
-      : `docker logs -f --tail 150 ${deployment?.appName ?? ""}`.trim();
+    activeLogTab === 'build'
+      ? `deployment build output --follow ${deployment?.appName ?? ''}`.trim()
+      : `docker logs -f --tail 150 ${deployment?.appName ?? ''}`.trim();
 
   return (
     <div className="flex h-full min-w-0 flex-col bg-linear-to-b from-background via-muted/10 to-background">
@@ -263,24 +249,24 @@ export function GitLogPanel({
         <div className="flex flex-wrap gap-2">
           {[
             {
-              icon: "bars" as const,
-              label: "Build log",
-              value: "build" as const,
+              icon: 'bars' as const,
+              label: 'Build log',
+              value: 'build' as const,
             },
             {
-              icon: "monitor" as const,
-              label: "Container log",
-              value: "container" as const,
+              icon: 'monitor' as const,
+              label: 'Container log',
+              value: 'container' as const,
             },
           ].map((option) => (
             <button
               key={option.value}
               type="button"
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-tight transition-all duration-200",
+                'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-tight transition-all duration-200',
                 activeLogTab === option.value
-                  ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-sm"
-                  : "border-border/60 bg-background/80 text-muted-foreground hover:text-foreground",
+                  ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-sm'
+                  : 'border-border/60 bg-background/80 text-muted-foreground hover:text-foreground'
               )}
               onClick={() => {
                 setActiveLogTab(option.value);
@@ -304,9 +290,7 @@ export function GitLogPanel({
                     <div className="text-sm font-semibold tracking-tight text-foreground">
                       {deployment.appName}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {activeLogCommand}
-                    </div>
+                    <div className="text-xs text-muted-foreground">{activeLogCommand}</div>
                   </div>
                   <Badge variant={formatStatusBadgeVariant(deployment.status)}>
                     {formatDeploymentStatus(deployment.status)}
@@ -327,9 +311,7 @@ export function GitLogPanel({
                     {activeLogLabel}
                   </div>
                   <div className="font-mono text-[11px] text-slate-400">
-                    {logState.isLoading
-                      ? "Loading..."
-                      : `${logLineCount} lines`}
+                    {logState.isLoading ? 'Loading...' : `${logLineCount} lines`}
                   </div>
                 </div>
 
@@ -343,7 +325,6 @@ export function GitLogPanel({
                   )}
                 </div>
               </div>
-
             </>
           ) : (
             <div className="flex min-w-0 flex-col space-y-3">
@@ -362,9 +343,7 @@ export function GitLogPanel({
                     <span className="h-2 w-2 rounded-full bg-slate-400" />
                     Tail preview
                   </div>
-                  <div className="font-mono text-[11px] text-slate-400">
-                    Idle
-                  </div>
+                  <div className="font-mono text-[11px] text-slate-400">Idle</div>
                 </div>
                 <div className="px-3 py-3 font-mono text-[12px] leading-5 text-slate-400">
                   {emptyState.description}
