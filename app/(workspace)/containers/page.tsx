@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
-import { ContainersShell } from "./containers-shell";
-import { loadContainersData } from "@/lib/containers-data";
+import { ContainersShell } from './containers-shell';
+import { loadContainersData } from '@/lib/containers-data';
 
 export const metadata: Metadata = {
   title: 'Containers | Vercelab',

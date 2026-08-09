@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
-import { WorkspaceShell } from "./workspace-shell";
-import { loadWorkspaceShellData } from "@/lib/workspace-shell-data";
+import { WorkspaceShell } from './workspace-shell';
+import { loadWorkspaceShellData } from '@/lib/workspace-shell-data';
 
 export const metadata: Metadata = {
   title: 'Git App Page | Vercelab',
