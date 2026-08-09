@@ -1,7 +1,7 @@
 'use client';
 
-import { memo, type MouseEvent as ReactMouseEvent } from "react";
-import { Box, Plus, Search, X } from "lucide-react";
+import { memo, type MouseEvent as ReactMouseEvent } from 'react';
+import { Box, Plus, Search, X } from 'lucide-react';
 
 import type { ContainerListEntry } from '@/components/workspace-shell';
 import { Badge } from '@/components/ui/badge';
@@ -135,7 +135,7 @@ type ContainerListItemProps = {
   name: string;
   onSelectAction: (containerName: string) => void;
   statusLabel: string;
-  statusVariant: "success" | "warning" | "default";
+  statusVariant: 'success' | 'warning' | 'default';
 };
 
 const ContainerListItem = memo(function ContainerListItem({
@@ -156,21 +156,16 @@ const ContainerListItem = memo(function ContainerListItem({
     <button
       aria-label={ariaLabel}
       className={cn(
-        "group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors",
+        'group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors',
         isActive
-          ? "border-emerald-200 bg-emerald-50/60"
-          : "border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40",
+          ? 'border-emerald-200 bg-emerald-50/60'
+          : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
       )}
       onClick={() => onSelectAction(containerId)}
       type="button"
     >
       <div className="flex items-start gap-2.5">
-        <span
-          className={cn(
-            "mt-1.5 size-1.5 shrink-0 rounded-full",
-            statusDotClassName,
-          )}
-        />
+        <span className={cn('mt-1.5 size-1.5 shrink-0 rounded-full', statusDotClassName)} />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center justify-between gap-2">
             <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
@@ -178,16 +173,14 @@ const ContainerListItem = memo(function ContainerListItem({
             </span>
             <span
               className={cn(
-                "shrink-0 text-[10px] font-semibold uppercase tracking-wide",
-                getStatusTextClassName(statusVariant),
+                'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
+                getStatusTextClassName(statusVariant)
               )}
             >
               {statusLabel}
             </span>
           </span>
-          <span className="block truncate text-[11px] text-muted-foreground">
-            {metaLabel}
-          </span>
+          <span className="block truncate text-[11px] text-muted-foreground">{metaLabel}</span>
           <span className="mt-1 flex min-w-0 items-center gap-1">
             <span className="truncate rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
               {loadLabel}
