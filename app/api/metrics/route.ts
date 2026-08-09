@@ -26,7 +26,7 @@ type CacheEntry = {
 
 const CACHE_TTL_MS = 2000;
 const responseCache = new Map<string, CacheEntry>();
-const isTestEnv = process.env.NODE_ENV === "test";
+const isTestEnv = process.env.NODE_ENV === 'test';
 
 function cleanupExpiredCacheEntries(now: number) {
   for (const [key, entry] of responseCache) {
