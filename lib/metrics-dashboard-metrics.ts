@@ -119,7 +119,7 @@ export type ContainerMetricPanel = {
 };
 
 export type ContainerDescriptor = {
-  deploymentStatus: DeploymentSummary["status"] | null;
+  deploymentStatus: DeploymentSummary['status'] | null;
   history: ContainerMetricsHistoryPoint[];
   id: string;
   label: string;
@@ -864,11 +864,10 @@ export function buildContainerListEntries(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
   deployments: DeploymentSummary[] = [],
-  descriptors?: ContainerDescriptor[],
+  descriptors?: ContainerDescriptor[]
 ): ContainerListEntry[] {
   const containerDescriptors =
-    descriptors ??
-    buildContainerDescriptors(snapshot, allContainerHistory, deployments);
+    descriptors ?? buildContainerDescriptors(snapshot, allContainerHistory, deployments);
 
   return containerDescriptors.map((descriptor) => {
     if (descriptor.runtime) {
@@ -962,15 +961,12 @@ export function buildAggregateLogs(
   history: MetricsHistoryPoint[],
   allContainerHistory: AllContainersMetricsHistorySeries[],
   deployments: DeploymentSummary[] = [],
-  descriptors?: ContainerDescriptor[],
+  descriptors?: ContainerDescriptor[]
 ) {
   const timestamp =
-    snapshot?.timestamp ??
-    history[history.length - 1]?.timestamp ??
-    new Date().toISOString();
+    snapshot?.timestamp ?? history[history.length - 1]?.timestamp ?? new Date().toISOString();
   const containerDescriptors =
-    descriptors ??
-    buildContainerDescriptors(snapshot, allContainerHistory, deployments);
+    descriptors ?? buildContainerDescriptors(snapshot, allContainerHistory, deployments);
   const hottestCpuRuntime =
     containerDescriptors
       .map((descriptor) => {
@@ -1006,8 +1002,8 @@ export function buildAggregateLogs(
     createLogLine(
       'fleet-event-1',
       timestamp,
-      "info",
-      `${snapshot?.containers.running ?? containerDescriptors.length} running containers are being compared in the explorer.`,
+      'info',
+      `${snapshot?.containers.running ?? containerDescriptors.length} running containers are being compared in the explorer.`
     ),
     createLogLine(
       'fleet-event-2',

@@ -41,12 +41,9 @@ import {
   LOG_VIEW_OPTIONS,
   METRICS_DASHBOARD_RANGE_OPTIONS,
   type ContainerDescriptor,
-} from "@/lib/metrics-dashboard-metrics";
-import type {
-  AllContainersMetricsHistorySeries,
-  MetricsHistoryPoint,
-} from "@/lib/influx-metrics";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+} from '@/lib/metrics-dashboard-metrics';
+import type { AllContainersMetricsHistorySeries, MetricsHistoryPoint } from '@/lib/influx-metrics';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 
 const METRICS_PANEL_STORAGE_KEY = 'vercelab:dashboard-metrics-panel-width';
 const LIST_PANEL_STORAGE_KEY = 'vercelab:dashboard-list-panel-width';
@@ -294,12 +291,8 @@ export function MetricsDashboardShell({
 
   const containerDescriptors = useMemo<ContainerDescriptor[]>(
     () =>
-      buildContainerDescriptors(
-        effectiveSidebarSnapshot,
-        allContainerHistory,
-        initialDeployments,
-      ),
-    [allContainerHistory, effectiveSidebarSnapshot, initialDeployments],
+      buildContainerDescriptors(effectiveSidebarSnapshot, allContainerHistory, initialDeployments),
+    [allContainerHistory, effectiveSidebarSnapshot, initialDeployments]
   );
   const workspaceContainers = useMemo(
     () =>
@@ -307,7 +300,7 @@ export function MetricsDashboardShell({
         effectiveSidebarSnapshot,
         allContainerHistory,
         initialDeployments,
-        containerDescriptors,
+        containerDescriptors
       ).map((entry) => {
         const alias = aliases[entry.display.id]?.trim();
 
@@ -325,7 +318,7 @@ export function MetricsDashboardShell({
           sidebarName: alias,
         };
       }),
-    [aliases, containerDescriptors, effectiveSidebarSnapshot],
+    [aliases, containerDescriptors, effectiveSidebarSnapshot]
   );
   const aggregateLogs = useMemo(
     () =>
@@ -334,14 +327,9 @@ export function MetricsDashboardShell({
         effectiveSidebarHistory,
         allContainerHistory,
         initialDeployments,
-        containerDescriptors,
+        containerDescriptors
       ),
-    [
-      allContainerHistory,
-      containerDescriptors,
-      effectiveSidebarHistory,
-      effectiveSidebarSnapshot,
-    ],
+    [allContainerHistory, containerDescriptors, effectiveSidebarHistory, effectiveSidebarSnapshot]
   );
 
   const filteredContainers = useMemo(() => {
