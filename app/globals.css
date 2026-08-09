@@ -1,7 +1,7 @@
-@import "tailwindcss" source(none);
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@xterm/xterm/css/xterm.css";
+@import 'tailwindcss' source(none);
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@xterm/xterm/css/xterm.css';
 @source "../app/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../components/**/*.{js,ts,jsx,tsx,mdx}";
 @source "../lib/**/*.{js,ts,jsx,tsx,mdx}";
@@ -98,16 +98,8 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(
-        circle at top left,
-        rgba(148, 163, 184, 0.16),
-        transparent 26%
-      ),
-      radial-gradient(
-        circle at top right,
-        rgba(226, 232, 240, 0.85),
-        transparent 30%
-      ),
+      radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 26%),
+      radial-gradient(circle at top right, rgba(226, 232, 240, 0.85), transparent 30%),
       linear-gradient(
         180deg,
         rgba(255, 255, 255, 0.98) 0%,
@@ -115,9 +107,9 @@
         rgba(255, 255, 255, 1) 100%
       );
     font-feature-settings:
-      "ss01" 1,
-      "cv05" 1,
-      "tnum" 1;
+      'ss01' 1,
+      'cv05' 1,
+      'tnum' 1;
     text-rendering: optimizeLegibility;
   }
 
@@ -131,7 +123,7 @@
   kbd,
   samp {
     font-family:
-      var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-      "Liberation Mono", "Courier New", monospace;
+      var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
   }
 }

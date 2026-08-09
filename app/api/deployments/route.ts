@@ -1,11 +1,11 @@
-import { createAndDeployFromForm } from "@/lib/deployment-engine";
+import { createAndDeployFromForm } from '@/lib/deployment-engine';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function getRequiredString(formData: FormData, name: string) {
   const value = formData.get(name);
 
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(`Missing required field: ${name}`);
   }
 
@@ -17,23 +17,23 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Unexpected deployment error.";
+  return 'Unexpected deployment error.';
 }
 
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const deployment = await createAndDeployFromForm({
-      repositoryUrl: getRequiredString(formData, "repositoryUrl"),
-      githubToken: formData.get("githubToken"),
-      branch: formData.get("branch"),
-      serviceName: formData.get("serviceName"),
-      appName: getRequiredString(formData, "appName"),
-      subdomain: getRequiredString(formData, "subdomain"),
-      port: getRequiredString(formData, "port"),
-      exposureMode: formData.get("exposureMode"),
-      hostPort: formData.get("hostPort"),
-      envVariables: formData.get("envVariables"),
+      repositoryUrl: getRequiredString(formData, 'repositoryUrl'),
+      githubToken: formData.get('githubToken'),
+      branch: formData.get('branch'),
+      serviceName: formData.get('serviceName'),
+      appName: getRequiredString(formData, 'appName'),
+      subdomain: getRequiredString(formData, 'subdomain'),
+      port: getRequiredString(formData, 'port'),
+      exposureMode: formData.get('exposureMode'),
+      hostPort: formData.get('hostPort'),
+      envVariables: formData.get('envVariables'),
     });
 
     return Response.json(deployment, { status: 201 });
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       },
       {
         status: 400,
-      },
+      }
     );
   }
 }

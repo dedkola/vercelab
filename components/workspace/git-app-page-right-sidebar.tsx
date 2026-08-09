@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
-import { Icon } from "@/components/dashboard-kit";
-import { GitLogPanel, type LogTab } from "@/components/git-log-panel";
-import { Button } from "@/components/ui/button";
-import type { DeploymentSummary } from "@/lib/persistence";
+import { Icon } from '@/components/dashboard-kit';
+import { GitLogPanel, type LogTab } from '@/components/git-log-panel';
+import { Button } from '@/components/ui/button';
+import type { DeploymentSummary } from '@/lib/persistence';
 
-import { ResizeHandle, SectionLabel } from "./workspace-ui";
+import { ResizeHandle, SectionLabel } from './workspace-ui';
 
 type GitAppPageRightSidebarProps = {
   activeLogTab: LogTab;
@@ -78,7 +78,7 @@ export function GitAppPageRightSidebar({
 
         <div className="min-h-0 flex-1">
           <GitLogPanel
-            currentView={deploymentId ? "detail" : "list"}
+            currentView={deploymentId ? 'detail' : 'list'}
             deploymentId={deploymentId}
             deployments={deployments}
             initialActiveLogTab={activeLogTab}

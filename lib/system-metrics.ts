@@ -1,10 +1,10 @@
-import { spawn } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { spawn } from 'node:child_process';
+import { access, readFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
-import { getAppConfig } from "@/lib/app-config";
-import { extractTraefikHostFromLabels } from "@/lib/container-routing";
+import { getAppConfig } from '@/lib/app-config';
+import { extractTraefikHostFromLabels } from '@/lib/container-routing';
 
 function joinProcPath(basePath: string, relativePath: string) {
   return path.join(/*turbopackIgnore: true*/ basePath, relativePath);
@@ -40,19 +40,9 @@ type ContainerIoCounters = {
 };
 
 export type ContainerRuntimeState =
-  | "running"
-  | "stopped"
-  | "paused"
-  | "restarting"
-  | "dead"
-  | "created"
-  | "unknown";
+  'running' | 'stopped' | 'paused' | 'restarting' | 'dead' | 'created' | 'unknown';
 
-export type ContainerHealthState =
-  | "healthy"
-  | "unhealthy"
-  | "starting"
-  | "none";
+export type ContainerHealthState = 'healthy' | 'unhealthy' | 'starting' | 'none';
 
 export type ContainerStats = {
   id: string;
@@ -118,8 +108,7 @@ export type MetricsSnapshot = {
 
 const CACHE_WINDOW_MS = 2500;
 const LOOPBACK_INTERFACE_RE = /^(lo|lo0)$/;
-const VIRTUAL_INTERFACE_RE =
-  /^(br-|cni|docker|flannel|kube|tap|tun|veth|virbr|zt)/;
+const VIRTUAL_INTERFACE_RE = /^(br-|cni|docker|flannel|kube|tap|tun|veth|virbr|zt)/;
 const IPV4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 
 let cachedSnapshot: SampleState<MetricsSnapshot> | null = null;
@@ -127,19 +116,16 @@ let inFlightSnapshotPromise: Promise<MetricsSnapshot> | null = null;
 let lastCpuCounters: SampleState<CpuCounters> | null = null;
 let lastNetworkCounters: SampleState<InterfaceCounters[]> | null = null;
 let lastDiskCounters: SampleState<DiskCounters> | null = null;
-let lastContainerIoCounters = new Map<
-  string,
-  SampleState<ContainerIoCounters>
->();
+let lastContainerIoCounters = new Map<string, SampleState<ContainerIoCounters>>();
 
 function escapeLineProtocol(value: string) {
-  return value.replace(/([ ,=])/g, "\\$1");
+  return value.replace(/([ ,=])/g, '\\$1');
 }
 
 function encodeLineProtocol(snapshot: MetricsSnapshot) {
   const timestampMs = Date.parse(snapshot.timestamp);
   const safeTimestamp = Number.isFinite(timestampMs) ? timestampMs : Date.now();
-  const hostTag = escapeLineProtocol(snapshot.hostIp || "unknown");
+  const hostTag = escapeLineProtocol(snapshot.hostIp || 'unknown');
   const lines: string[] = [
     `host_metrics,host=${hostTag} cpu_percent=${snapshot.system.cpuPercent},memory_percent=${snapshot.system.memoryPercent},memory_used_bytes=${snapshot.system.memoryUsedBytes},memory_total_bytes=${snapshot.system.memoryTotalBytes},load_1=${snapshot.system.loadAverage[0]},load_5=${snapshot.system.loadAverage[1]},load_15=${snapshot.system.loadAverage[2]},network_rx_bps=${snapshot.network.rxBytesPerSecond},network_tx_bps=${snapshot.network.txBytesPerSecond},disk_read_bps=${snapshot.system.diskReadBytesPerSecond},disk_write_bps=${snapshot.system.diskWriteBytesPerSecond} ${safeTimestamp}`,
     `container_metrics,host=${hostTag},scope=aggregate running=${snapshot.containers.running}i,cpu_percent=${snapshot.containers.cpuPercent},memory_percent=${snapshot.containers.memoryPercent},memory_used_bytes=${snapshot.containers.memoryUsedBytes} ${safeTimestamp}`,
@@ -148,30 +134,30 @@ function encodeLineProtocol(snapshot: MetricsSnapshot) {
   for (const iface of snapshot.network.interfaces) {
     const ifaceTag = escapeLineProtocol(iface.name);
     lines.push(
-      `network_interface,host=${hostTag},interface=${ifaceTag} rx_bps=${iface.rxBytesPerSecond},tx_bps=${iface.txBytesPerSecond} ${safeTimestamp}`,
+      `network_interface,host=${hostTag},interface=${ifaceTag} rx_bps=${iface.rxBytesPerSecond},tx_bps=${iface.txBytesPerSecond} ${safeTimestamp}`
     );
   }
 
   for (const container of snapshot.containers.top) {
     const containerTag = escapeLineProtocol(container.name);
     lines.push(
-      `container_metrics,host=${hostTag},scope=top,container=${containerTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes} ${safeTimestamp}`,
+      `container_metrics,host=${hostTag},scope=top,container=${containerTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes} ${safeTimestamp}`
     );
   }
 
   for (const container of snapshot.containers.all) {
     const containerTag = escapeLineProtocol(container.name);
     const containerIdTag = escapeLineProtocol(container.id);
-    const projectTag = escapeLineProtocol(container.projectName ?? "unknown");
-    const serviceTag = escapeLineProtocol(container.serviceName ?? "unknown");
+    const projectTag = escapeLineProtocol(container.projectName ?? 'unknown');
+    const serviceTag = escapeLineProtocol(container.serviceName ?? 'unknown');
     const statusTag = escapeLineProtocol(container.status);
     const healthTag = escapeLineProtocol(container.health);
     lines.push(
-      `container_metrics,host=${hostTag},scope=container,container=${containerTag},container_id=${containerIdTag},project=${projectTag},service=${serviceTag},status=${statusTag},health=${healthTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes},memory_percent=${container.memoryPercent},network_rx_bps=${container.networkRxBytesPerSecond},network_tx_bps=${container.networkTxBytesPerSecond},block_read_bps=${container.diskReadBytesPerSecond},block_write_bps=${container.diskWriteBytesPerSecond} ${safeTimestamp}`,
+      `container_metrics,host=${hostTag},scope=container,container=${containerTag},container_id=${containerIdTag},project=${projectTag},service=${serviceTag},status=${statusTag},health=${healthTag} cpu_percent=${container.cpuPercent},memory_used_bytes=${container.memoryBytes},memory_percent=${container.memoryPercent},network_rx_bps=${container.networkRxBytesPerSecond},network_tx_bps=${container.networkTxBytesPerSecond},block_read_bps=${container.diskReadBytesPerSecond},block_write_bps=${container.diskWriteBytesPerSecond} ${safeTimestamp}`
     );
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 async function writeSnapshotToInflux(snapshot: MetricsSnapshot) {
@@ -181,12 +167,12 @@ async function writeSnapshotToInflux(snapshot: MetricsSnapshot) {
     return;
   }
 
-  const writeUrl = new URL("/write", config.metrics.influxUrl);
-  writeUrl.searchParams.set("db", config.metrics.influxDatabase);
-  writeUrl.searchParams.set("precision", "ms");
+  const writeUrl = new URL('/write', config.metrics.influxUrl);
+  writeUrl.searchParams.set('db', config.metrics.influxDatabase);
+  writeUrl.searchParams.set('precision', 'ms');
 
   const headers: Record<string, string> = {
-    "Content-Type": "text/plain; charset=utf-8",
+    'Content-Type': 'text/plain; charset=utf-8',
   };
 
   if (config.metrics.influxToken) {
@@ -194,7 +180,7 @@ async function writeSnapshotToInflux(snapshot: MetricsSnapshot) {
   }
 
   const response = await fetch(writeUrl, {
-    method: "POST",
+    method: 'POST',
     headers,
     body: encodeLineProtocol(snapshot),
   });
@@ -218,20 +204,18 @@ function isValidIpv4(value: string) {
     return false;
   }
 
-  return value
-    .split(".")
-    .every((segment) => Number(segment) >= 0 && Number(segment) <= 255);
+  return value.split('.').every((segment) => Number(segment) >= 0 && Number(segment) <= 255);
 }
 
 function parseHostIpv4FromBaseDomain(baseDomain: string) {
-  const normalized = baseDomain.trim().toLowerCase().replace(/\.$/, "");
+  const normalized = baseDomain.trim().toLowerCase().replace(/\.$/, '');
 
-  for (const suffix of [".sslip.io", ".nip.io"]) {
+  for (const suffix of ['.sslip.io', '.nip.io']) {
     if (!normalized.endsWith(suffix)) {
       continue;
     }
 
-    const candidate = normalized.slice(0, -suffix.length).replaceAll("-", ".");
+    const candidate = normalized.slice(0, -suffix.length).replaceAll('-', '.');
 
     if (isValidIpv4(candidate)) {
       return candidate;
@@ -259,17 +243,17 @@ function resolveHostLanIp() {
   for (const iface of Object.values(ifaces)) {
     if (!iface) continue;
     for (const addr of iface) {
-      if (addr.family === "IPv4" && !addr.internal) {
+      if (addr.family === 'IPv4' && !addr.internal) {
         return addr.address;
       }
     }
   }
 
-  return "unknown";
+  return 'unknown';
 }
 
 function getCpuCount() {
-  return typeof os.availableParallelism === "function"
+  return typeof os.availableParallelism === 'function'
     ? os.availableParallelism()
     : os.cpus().length;
 }
@@ -287,12 +271,12 @@ async function readProcFile(relativePath: string) {
   const config = getAppConfig();
   const candidates = [
     joinProcPath(config.runtime.hostProcPath, relativePath),
-    path.join("/proc", relativePath),
+    path.join('/proc', relativePath),
   ];
 
   for (const candidate of candidates) {
     if (await pathExists(candidate)) {
-      return await readFile(/*turbopackIgnore: true*/ candidate, "utf8");
+      return await readFile(/*turbopackIgnore: true*/ candidate, 'utf8');
     }
   }
 
@@ -302,36 +286,36 @@ async function readProcFile(relativePath: string) {
 async function readFirstAvailableFile(candidates: string[]) {
   for (const candidate of candidates) {
     if (await pathExists(candidate)) {
-      return await readFile(/*turbopackIgnore: true*/ candidate, "utf8");
+      return await readFile(/*turbopackIgnore: true*/ candidate, 'utf8');
     }
   }
 
-  throw new Error(`Unable to read any file from ${candidates.join(", ")}.`);
+  throw new Error(`Unable to read any file from ${candidates.join(', ')}.`);
 }
 
 async function runCommand(command: string, args: string[]) {
   return await new Promise<string>((resolve, reject) => {
     const child = spawn(command, args, {
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdout = "";
-    let stderr = "";
+    let stdout = '';
+    let stderr = '';
 
-    child.stdout.on("data", (chunk: Buffer | string) => {
+    child.stdout.on('data', (chunk: Buffer | string) => {
       stdout += chunk.toString();
     });
 
-    child.stderr.on("data", (chunk: Buffer | string) => {
+    child.stderr.on('data', (chunk: Buffer | string) => {
       stderr += chunk.toString();
     });
 
-    child.on("error", (error) => {
+    child.on('error', (error) => {
       reject(error);
     });
 
-    child.on("close", (code) => {
-      const output = [stdout.trim(), stderr.trim()].filter(Boolean).join("\n");
+    child.on('close', (code) => {
+      const output = [stdout.trim(), stderr.trim()].filter(Boolean).join('\n');
 
       if (code === 0) {
         resolve(output);
@@ -340,20 +324,20 @@ async function runCommand(command: string, args: string[]) {
 
       reject(
         new Error(
-          [output, `${command} ${args.join(" ")} exited with status ${code}.`]
+          [output, `${command} ${args.join(' ')} exited with status ${code}.`]
             .filter(Boolean)
-            .join("\n"),
-        ),
+            .join('\n')
+        )
       );
     });
   });
 }
 
 function parseProcCpuCounters(source: string): CpuCounters {
-  const line = source.split("\n").find((entry) => entry.startsWith("cpu "));
+  const line = source.split('\n').find((entry) => entry.startsWith('cpu '));
 
   if (!line) {
-    throw new Error("Unable to find CPU counters in proc stat output.");
+    throw new Error('Unable to find CPU counters in proc stat output.');
   }
 
   const values = line
@@ -376,24 +360,20 @@ function readOsCpuCounters(): CpuCounters {
     (accumulator, cpu) => {
       accumulator.idle += cpu.times.idle;
       accumulator.total +=
-        cpu.times.user +
-        cpu.times.nice +
-        cpu.times.sys +
-        cpu.times.idle +
-        cpu.times.irq;
+        cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.idle + cpu.times.irq;
 
       return accumulator;
     },
     {
       idle: 0,
       total: 0,
-    },
+    }
   );
 }
 
 async function readCpuCounters() {
   try {
-    return parseProcCpuCounters(await readProcFile("stat"));
+    return parseProcCpuCounters(await readProcFile('stat'));
   } catch {
     return readOsCpuCounters();
   }
@@ -401,7 +381,7 @@ async function readCpuCounters() {
 
 async function readLoadAverage() {
   try {
-    const source = await readProcFile("loadavg");
+    const source = await readProcFile('loadavg');
     const [one, five, fifteen] = source
       .trim()
       .split(/\s+/)
@@ -411,24 +391,18 @@ async function readLoadAverage() {
     return [one, five, fifteen] as [number, number, number];
   } catch {
     const values = os.loadavg();
-    return [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0] as [
-      number,
-      number,
-      number,
-    ];
+    return [values[0] ?? 0, values[1] ?? 0, values[2] ?? 0] as [number, number, number];
   }
 }
 
 async function readMemorySnapshot() {
   try {
-    const source = await readProcFile("meminfo");
+    const source = await readProcFile('meminfo');
     const totalMatch = source.match(/^MemTotal:\s+(\d+)\s+kB$/m);
     const availableMatch = source.match(/^MemAvailable:\s+(\d+)\s+kB$/m);
     const freeMatch = source.match(/^MemFree:\s+(\d+)\s+kB$/m);
 
-    const totalBytes = totalMatch
-      ? Number.parseInt(totalMatch[1], 10) * 1024
-      : 0;
+    const totalBytes = totalMatch ? Number.parseInt(totalMatch[1], 10) * 1024 : 0;
     const availableBytes = availableMatch
       ? Number.parseInt(availableMatch[1], 10) * 1024
       : freeMatch
@@ -459,18 +433,18 @@ function isRelevantInterface(name: string) {
 
 export function parseLinuxDefaultRouteInterface(source: string) {
   const candidates = source
-    .split("\n")
+    .split('\n')
     .slice(1)
     .map((line) => line.trim().split(/\s+/))
     .filter((columns) => {
       const destination = columns[1]?.toLowerCase();
-      const flags = Number.parseInt(columns[3] ?? "0", 16);
+      const flags = Number.parseInt(columns[3] ?? '0', 16);
 
-      return columns[0] && destination === "00000000" && (flags & 1) === 1;
+      return columns[0] && destination === '00000000' && (flags & 1) === 1;
     })
     .map((columns) => ({
       name: columns[0],
-      metric: Number.parseInt(columns[6] ?? "0", 10) || 0,
+      metric: Number.parseInt(columns[6] ?? '0', 10) || 0,
     }))
     .sort((left, right) => left.metric - right.metric);
 
@@ -487,16 +461,16 @@ async function readDefaultNetworkInterfaceName() {
 
     return parseLinuxDefaultRouteInterface(
       await readFirstAvailableFile([
-        joinProcPath(config.runtime.hostProcPath, "1/net/route"),
-        joinProcPath(config.runtime.hostProcPath, "net/route"),
-        path.join("/proc", "net/route"),
-      ]),
+        joinProcPath(config.runtime.hostProcPath, '1/net/route'),
+        joinProcPath(config.runtime.hostProcPath, 'net/route'),
+        path.join('/proc', 'net/route'),
+      ])
     );
   } catch {
-    if (process.platform === "darwin") {
+    if (process.platform === 'darwin') {
       try {
         return parseDarwinDefaultRouteInterface(
-          await runCommand("route", ["-n", "get", "default"]),
+          await runCommand('route', ['-n', 'get', 'default'])
         );
       } catch {
         return null;
@@ -509,12 +483,12 @@ async function readDefaultNetworkInterfaceName() {
 
 function parseLinuxNetworkCounters(source: string) {
   return source
-    .split("\n")
+    .split('\n')
     .slice(2)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [rawName, rawValues] = line.split(":");
+      const [rawName, rawValues] = line.split(':');
 
       if (!rawName || !rawValues) {
         return null;
@@ -541,28 +515,26 @@ function parseLinuxNetworkCounters(source: string) {
 }
 
 function parseDarwinNetworkCounters(source: string) {
-  const lines = source.split("\n").filter(Boolean);
-  const headerLine = lines.find(
-    (line) => /\bIbytes\b/.test(line) && /\bObytes\b/.test(line),
-  );
+  const lines = source.split('\n').filter(Boolean);
+  const headerLine = lines.find((line) => /\bIbytes\b/.test(line) && /\bObytes\b/.test(line));
 
   if (!headerLine) {
-    throw new Error("Unable to parse netstat output.");
+    throw new Error('Unable to parse netstat output.');
   }
 
   const headers = headerLine.trim().split(/\s+/);
-  const rxIndex = headers.indexOf("Ibytes");
-  const txIndex = headers.indexOf("Obytes");
-  const nameIndex = headers.indexOf("Name");
+  const rxIndex = headers.indexOf('Ibytes');
+  const txIndex = headers.indexOf('Obytes');
+  const nameIndex = headers.indexOf('Name');
 
   if (rxIndex === -1 || txIndex === -1 || nameIndex === -1) {
-    throw new Error("netstat output is missing byte counters.");
+    throw new Error('netstat output is missing byte counters.');
   }
 
   const byInterface = new Map<string, InterfaceCounters>();
 
   for (const line of lines) {
-    if (line === headerLine || line.startsWith("Name")) {
+    if (line === headerLine || line.startsWith('Name')) {
       continue;
     }
 
@@ -573,8 +545,8 @@ function parseDarwinNetworkCounters(source: string) {
       continue;
     }
 
-    const rxBytes = Number.parseInt(columns[rxIndex] ?? "0", 10);
-    const txBytes = Number.parseInt(columns[txIndex] ?? "0", 10);
+    const rxBytes = Number.parseInt(columns[rxIndex] ?? '0', 10);
+    const txBytes = Number.parseInt(columns[txIndex] ?? '0', 10);
     const existing = byInterface.get(name);
 
     if (!existing || rxBytes + txBytes > existing.rxBytes + existing.txBytes) {
@@ -594,14 +566,14 @@ async function readNetworkCounters() {
     const config = getAppConfig();
     return parseLinuxNetworkCounters(
       await readFirstAvailableFile([
-        joinProcPath(config.runtime.hostProcPath, "1/net/dev"),
-        joinProcPath(config.runtime.hostProcPath, "net/dev"),
-        path.join("/proc", "net/dev"),
-      ]),
+        joinProcPath(config.runtime.hostProcPath, '1/net/dev'),
+        joinProcPath(config.runtime.hostProcPath, 'net/dev'),
+        path.join('/proc', 'net/dev'),
+      ])
     );
   } catch {
-    if (process.platform === "darwin") {
-      return parseDarwinNetworkCounters(await runCommand("netstat", ["-ibn"]));
+    if (process.platform === 'darwin') {
+      return parseDarwinNetworkCounters(await runCommand('netstat', ['-ibn']));
     }
 
     return [];
@@ -609,14 +581,12 @@ async function readNetworkCounters() {
 }
 
 function isRelevantDiskDevice(name: string) {
-  return /^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+n\d+|mmcblk\d+|md\d+|dm-\d+)$/.test(
-    name,
-  );
+  return /^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme\d+n\d+|mmcblk\d+|md\d+|dm-\d+)$/.test(name);
 }
 
 function parseLinuxDiskCounters(source: string): DiskCounters {
   return source
-    .split("\n")
+    .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
     .reduce<DiskCounters>(
@@ -628,26 +598,24 @@ function parseLinuxDiskCounters(source: string): DiskCounters {
           return accumulator;
         }
 
-        const sectorsRead = Number.parseInt(columns[5] ?? "0", 10);
-        const sectorsWritten = Number.parseInt(columns[9] ?? "0", 10);
+        const sectorsRead = Number.parseInt(columns[5] ?? '0', 10);
+        const sectorsWritten = Number.parseInt(columns[9] ?? '0', 10);
 
-        accumulator.readBytes +=
-          (Number.isFinite(sectorsRead) ? sectorsRead : 0) * 512;
-        accumulator.writeBytes +=
-          (Number.isFinite(sectorsWritten) ? sectorsWritten : 0) * 512;
+        accumulator.readBytes += (Number.isFinite(sectorsRead) ? sectorsRead : 0) * 512;
+        accumulator.writeBytes += (Number.isFinite(sectorsWritten) ? sectorsWritten : 0) * 512;
 
         return accumulator;
       },
       {
         readBytes: 0,
         writeBytes: 0,
-      },
+      }
     );
 }
 
 async function readDiskCounters() {
   try {
-    return parseLinuxDiskCounters(await readProcFile("diskstats"));
+    return parseLinuxDiskCounters(await readProcFile('diskstats'));
   } catch {
     return {
       readBytes: 0,
@@ -657,15 +625,15 @@ async function readDiskCounters() {
 }
 
 function parsePercent(value: string | number | null | undefined) {
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     return value;
   }
 
-  if (typeof value !== "string") {
+  if (typeof value !== 'string') {
     return 0;
   }
 
-  return Number.parseFloat(value.replace(/%/g, "").trim()) || 0;
+  return Number.parseFloat(value.replace(/%/g, '').trim()) || 0;
 }
 
 function parseByteSize(input: string) {
@@ -676,7 +644,7 @@ function parseByteSize(input: string) {
   }
 
   const value = Number.parseFloat(match[1]);
-  const unit = (match[2] ?? "b").toLowerCase();
+  const unit = (match[2] ?? 'b').toLowerCase();
 
   const multipliers: Record<string, number> = {
     b: 1,
@@ -698,11 +666,11 @@ function parseDockerMemoryUsage(value: string | null | undefined) {
     return 0;
   }
 
-  const [usage] = value.split("/");
+  const [usage] = value.split('/');
   return parseByteSize(usage);
 }
 
-function getContainerCounterKey(kind: "id" | "name", value: string) {
+function getContainerCounterKey(kind: 'id' | 'name', value: string) {
   return `${kind}:${value}`;
 }
 
@@ -714,7 +682,7 @@ function parseDockerTransferCounters(value: string | null | undefined) {
     };
   }
 
-  const [first = "0 B", second = "0 B"] = value.split("/");
+  const [first = '0 B', second = '0 B'] = value.split('/');
 
   return {
     firstBytes: parseByteSize(first),
@@ -723,35 +691,32 @@ function parseDockerTransferCounters(value: string | null | undefined) {
 }
 
 function normalizeContainerName(value: string | null | undefined) {
-  const normalized = (value ?? "")
-    .split(",")
+  const normalized = (value ?? '')
+    .split(',')
     .map((entry) => entry.trim())
     .filter(Boolean)[0]
-    ?.replace(/^\//, "");
+    ?.replace(/^\//, '');
 
-  return normalized || "container";
+  return normalized || 'container';
 }
 
 function parseDockerLabels(value: string | null | undefined) {
   const labels = new Map<string, string>();
 
-  for (const entry of (value ?? "").split(",")) {
+  for (const entry of (value ?? '').split(',')) {
     const trimmed = entry.trim();
 
     if (!trimmed) {
       continue;
     }
 
-    const separatorIndex = trimmed.indexOf("=");
+    const separatorIndex = trimmed.indexOf('=');
 
     if (separatorIndex < 1) {
       continue;
     }
 
-    labels.set(
-      trimmed.slice(0, separatorIndex),
-      trimmed.slice(separatorIndex + 1),
-    );
+    labels.set(trimmed.slice(0, separatorIndex), trimmed.slice(separatorIndex + 1));
   }
 
   return labels;
@@ -759,66 +724,59 @@ function parseDockerLabels(value: string | null | undefined) {
 
 function normalizeContainerRuntimeState(
   state: string | null | undefined,
-  statusText: string | null | undefined,
+  statusText: string | null | undefined
 ): ContainerRuntimeState {
-  const normalizedState = (state ?? "").trim().toLowerCase();
+  const normalizedState = (state ?? '').trim().toLowerCase();
 
-  if (normalizedState === "running") {
-    return "running";
+  if (normalizedState === 'running') {
+    return 'running';
   }
 
-  if (["exited", "removing", "stopped"].includes(normalizedState)) {
-    return "stopped";
+  if (['exited', 'removing', 'stopped'].includes(normalizedState)) {
+    return 'stopped';
   }
 
-  if (["paused", "restarting", "dead", "created"].includes(normalizedState)) {
+  if (['paused', 'restarting', 'dead', 'created'].includes(normalizedState)) {
     return normalizedState as ContainerRuntimeState;
   }
 
-  const normalizedStatus = (statusText ?? "").trim().toLowerCase();
+  const normalizedStatus = (statusText ?? '').trim().toLowerCase();
 
-  if (normalizedStatus.startsWith("up ")) {
-    return "running";
+  if (normalizedStatus.startsWith('up ')) {
+    return 'running';
   }
 
-  if (normalizedStatus.startsWith("exited ")) {
-    return "stopped";
+  if (normalizedStatus.startsWith('exited ')) {
+    return 'stopped';
   }
 
-  return "unknown";
+  return 'unknown';
 }
 
-function normalizeContainerHealth(
-  statusText: string | null | undefined,
-): ContainerHealthState {
-  const normalizedStatus = (statusText ?? "").trim().toLowerCase();
+function normalizeContainerHealth(statusText: string | null | undefined): ContainerHealthState {
+  const normalizedStatus = (statusText ?? '').trim().toLowerCase();
 
-  if (normalizedStatus.includes("(healthy)")) {
-    return "healthy";
+  if (normalizedStatus.includes('(healthy)')) {
+    return 'healthy';
   }
 
-  if (normalizedStatus.includes("(unhealthy)")) {
-    return "unhealthy";
+  if (normalizedStatus.includes('(unhealthy)')) {
+    return 'unhealthy';
   }
 
-  if (normalizedStatus.includes("starting")) {
-    return "starting";
+  if (normalizedStatus.includes('starting')) {
+    return 'starting';
   }
 
-  return "none";
+  return 'none';
 }
 
 async function readContainerStats(totalMemoryBytes: number) {
   try {
     const capturedAt = Date.now();
     const [statsOutput, containerListOutput] = await Promise.all([
-      runCommand("docker", [
-        "stats",
-        "--no-stream",
-        "--format",
-        "{{ json . }}",
-      ]).catch(() => ""),
-      runCommand("docker", ["ps", "-a", "--format", "{{ json . }}"]),
+      runCommand('docker', ['stats', '--no-stream', '--format', '{{ json . }}']).catch(() => ''),
+      runCommand('docker', ['ps', '-a', '--format', '{{ json . }}']),
     ]);
 
     const statsById = new Map<
@@ -847,26 +805,17 @@ async function readContainerStats(totalMemoryBytes: number) {
         diskTotalBytesPerSecond: number;
       }
     >();
-    const nextContainerIoCounters = new Map<
-      string,
-      SampleState<ContainerIoCounters>
-    >();
+    const nextContainerIoCounters = new Map<string, SampleState<ContainerIoCounters>>();
 
     for (const row of statsOutput
-      .split("\n")
+      .split('\n')
       .map((line) => line.trim())
       .filter(Boolean)
       .map((line) => JSON.parse(line) as Record<string, string>)) {
-      const id = row.ID ?? row.Container ?? row.Name ?? "container";
-      const name = normalizeContainerName(
-        row.Name ?? row.Container ?? row.Names ?? row.ID,
-      );
-      const networkCounters = parseDockerTransferCounters(
-        row.NetIO ?? row.NetworkIO,
-      );
-      const blockCounters = parseDockerTransferCounters(
-        row.BlockIO ?? row.BlockIo,
-      );
+      const id = row.ID ?? row.Container ?? row.Name ?? 'container';
+      const name = normalizeContainerName(row.Name ?? row.Container ?? row.Names ?? row.ID);
+      const networkCounters = parseDockerTransferCounters(row.NetIO ?? row.NetworkIO);
+      const blockCounters = parseDockerTransferCounters(row.BlockIO ?? row.BlockIo);
       const currentIoCounters = {
         networkRxBytes: networkCounters.firstBytes,
         networkTxBytes: networkCounters.secondBytes,
@@ -874,41 +823,33 @@ async function readContainerStats(totalMemoryBytes: number) {
         blockWriteBytes: blockCounters.secondBytes,
       } satisfies ContainerIoCounters;
       const previousIoCounters =
-        lastContainerIoCounters.get(getContainerCounterKey("id", id)) ??
-        lastContainerIoCounters.get(getContainerCounterKey("name", name));
+        lastContainerIoCounters.get(getContainerCounterKey('id', id)) ??
+        lastContainerIoCounters.get(getContainerCounterKey('name', name));
       const seconds = previousIoCounters
         ? Math.max((capturedAt - previousIoCounters.capturedAt) / 1000, 1)
         : 1;
       const networkRxBytesPerSecond = previousIoCounters
         ? Math.max(
             0,
-            (currentIoCounters.networkRxBytes -
-              previousIoCounters.value.networkRxBytes) /
-              seconds,
+            (currentIoCounters.networkRxBytes - previousIoCounters.value.networkRxBytes) / seconds
           )
         : 0;
       const networkTxBytesPerSecond = previousIoCounters
         ? Math.max(
             0,
-            (currentIoCounters.networkTxBytes -
-              previousIoCounters.value.networkTxBytes) /
-              seconds,
+            (currentIoCounters.networkTxBytes - previousIoCounters.value.networkTxBytes) / seconds
           )
         : 0;
       const diskReadBytesPerSecond = previousIoCounters
         ? Math.max(
             0,
-            (currentIoCounters.blockReadBytes -
-              previousIoCounters.value.blockReadBytes) /
-              seconds,
+            (currentIoCounters.blockReadBytes - previousIoCounters.value.blockReadBytes) / seconds
           )
         : 0;
       const diskWriteBytesPerSecond = previousIoCounters
         ? Math.max(
             0,
-            (currentIoCounters.blockWriteBytes -
-              previousIoCounters.value.blockWriteBytes) /
-              seconds,
+            (currentIoCounters.blockWriteBytes - previousIoCounters.value.blockWriteBytes) / seconds
           )
         : 0;
       const metric = {
@@ -916,14 +857,10 @@ async function readContainerStats(totalMemoryBytes: number) {
         memoryBytes: parseDockerMemoryUsage(row.MemUsage ?? row.MemoryUsage),
         networkRxBytesPerSecond: round(networkRxBytesPerSecond),
         networkTxBytesPerSecond: round(networkTxBytesPerSecond),
-        networkTotalBytesPerSecond: round(
-          networkRxBytesPerSecond + networkTxBytesPerSecond,
-        ),
+        networkTotalBytesPerSecond: round(networkRxBytesPerSecond + networkTxBytesPerSecond),
         diskReadBytesPerSecond: round(diskReadBytesPerSecond),
         diskWriteBytesPerSecond: round(diskWriteBytesPerSecond),
-        diskTotalBytesPerSecond: round(
-          diskReadBytesPerSecond + diskWriteBytesPerSecond,
-        ),
+        diskTotalBytesPerSecond: round(diskReadBytesPerSecond + diskWriteBytesPerSecond),
       };
 
       const ioSample = {
@@ -933,26 +870,21 @@ async function readContainerStats(totalMemoryBytes: number) {
 
       statsById.set(id, metric);
       statsByName.set(name, metric);
-      nextContainerIoCounters.set(getContainerCounterKey("id", id), ioSample);
-      nextContainerIoCounters.set(
-        getContainerCounterKey("name", name),
-        ioSample,
-      );
+      nextContainerIoCounters.set(getContainerCounterKey('id', id), ioSample);
+      nextContainerIoCounters.set(getContainerCounterKey('name', name), ioSample);
     }
 
     lastContainerIoCounters = nextContainerIoCounters;
 
     const all = containerListOutput
-      .split("\n")
+      .split('\n')
       .map((line) => line.trim())
       .filter(Boolean)
       .map((line) => JSON.parse(line) as Record<string, string>)
       .map((row) => {
         const id = row.ID ?? row.Id ?? row.Container ?? crypto.randomUUID();
-        const name = normalizeContainerName(
-          row.Names ?? row.Name ?? row.Container ?? row.ID,
-        );
-        const labels = parseDockerLabels(row.Labels ?? row.Label ?? "");
+        const name = normalizeContainerName(row.Names ?? row.Name ?? row.Container ?? row.ID);
+        const labels = parseDockerLabels(row.Labels ?? row.Label ?? '');
         const stats = statsById.get(id) ?? statsByName.get(name);
         const memoryBytes = stats?.memoryBytes ?? 0;
 
@@ -962,9 +894,7 @@ async function readContainerStats(totalMemoryBytes: number) {
           cpuPercent: stats?.cpuPercent ?? 0,
           memoryBytes,
           memoryPercent:
-            totalMemoryBytes > 0
-              ? clamp((memoryBytes / totalMemoryBytes) * 100, 0, 100)
-              : 0,
+            totalMemoryBytes > 0 ? clamp((memoryBytes / totalMemoryBytes) * 100, 0, 100) : 0,
           networkRxBytesPerSecond: stats?.networkRxBytesPerSecond ?? 0,
           networkTxBytesPerSecond: stats?.networkTxBytesPerSecond ?? 0,
           networkTotalBytesPerSecond: stats?.networkTotalBytesPerSecond ?? 0,
@@ -973,38 +903,31 @@ async function readContainerStats(totalMemoryBytes: number) {
           diskTotalBytesPerSecond: stats?.diskTotalBytesPerSecond ?? 0,
           status: normalizeContainerRuntimeState(row.State, row.Status),
           health: normalizeContainerHealth(row.Status),
-          projectName: labels.get("com.docker.compose.project") ?? null,
-          serviceName: labels.get("com.docker.compose.service") ?? null,
+          projectName: labels.get('com.docker.compose.project') ?? null,
+          serviceName: labels.get('com.docker.compose.service') ?? null,
           routedHost: extractTraefikHostFromLabels(labels),
         } satisfies ContainerStats;
       })
       .sort(
-        (left, right) =>
-          right.cpuPercent - left.cpuPercent ||
-          right.memoryBytes - left.memoryBytes,
+        (left, right) => right.cpuPercent - left.cpuPercent || right.memoryBytes - left.memoryBytes
       );
 
     const totalCpuPercent = all.reduce((sum, item) => sum + item.cpuPercent, 0);
-    const memoryUsedBytes = all.reduce(
-      (sum, item) => sum + item.memoryBytes,
-      0,
-    );
+    const memoryUsedBytes = all.reduce((sum, item) => sum + item.memoryBytes, 0);
     const healthy = all.filter(
-      (item) => item.status === "running" && item.health !== "unhealthy",
+      (item) => item.status === 'running' && item.health !== 'unhealthy'
     ).length;
-    const unhealthy = all.filter((item) => item.health === "unhealthy").length;
+    const unhealthy = all.filter((item) => item.health === 'unhealthy').length;
     const stopped = all.filter(
-      (item) => item.status !== "running" && item.health !== "unhealthy",
+      (item) => item.status !== 'running' && item.health !== 'unhealthy'
     ).length;
 
     return {
-      running: all.filter((item) => item.status === "running").length,
+      running: all.filter((item) => item.status === 'running').length,
       total: all.length,
       cpuPercent: clamp(totalCpuPercent / getCpuCount(), 0, 100),
       memoryPercent:
-        totalMemoryBytes > 0
-          ? clamp((memoryUsedBytes / totalMemoryBytes) * 100, 0, 100)
-          : 0,
+        totalMemoryBytes > 0 ? clamp((memoryUsedBytes / totalMemoryBytes) * 100, 0, 100) : 0,
       memoryUsedBytes,
       statusBreakdown: {
         healthy,
@@ -1032,7 +955,7 @@ async function readContainerStats(totalMemoryBytes: number) {
       warning:
         error instanceof Error
           ? `Container metrics unavailable: ${error.message}`
-          : "Container metrics unavailable.",
+          : 'Container metrics unavailable.',
     };
   }
 }
@@ -1069,15 +992,15 @@ async function buildSystemMetrics() {
   if (lastDiskCounters) {
     const seconds = Math.max(
       (currentDiskSample.capturedAt - lastDiskCounters.capturedAt) / 1000,
-      1,
+      1
     );
     diskReadBytesPerSecond = Math.max(
       0,
-      (diskCounters.readBytes - lastDiskCounters.value.readBytes) / seconds,
+      (diskCounters.readBytes - lastDiskCounters.value.readBytes) / seconds
     );
     diskWriteBytesPerSecond = Math.max(
       0,
-      (diskCounters.writeBytes - lastDiskCounters.value.writeBytes) / seconds,
+      (diskCounters.writeBytes - lastDiskCounters.value.writeBytes) / seconds
     );
   }
 
@@ -1086,11 +1009,7 @@ async function buildSystemMetrics() {
 
   return {
     cpuPercent: round(cpuPercent),
-    loadAverage: loadAverage.map((value) => round(value, 2)) as [
-      number,
-      number,
-      number,
-    ],
+    loadAverage: loadAverage.map((value) => round(value, 2)) as [number, number, number],
     memoryPercent: round(memory.percent),
     memoryUsedBytes: memory.usedBytes,
     memoryTotalBytes: memory.totalBytes,
@@ -1101,12 +1020,10 @@ async function buildSystemMetrics() {
 
 function pickDefaultNetworkInterface(
   interfaces: InterfaceRate[],
-  defaultInterfaceName: string | null,
+  defaultInterfaceName: string | null
 ) {
   if (defaultInterfaceName) {
-    const defaultInterface = interfaces.find(
-      (entry) => entry.name === defaultInterfaceName,
-    );
+    const defaultInterface = interfaces.find((entry) => entry.name === defaultInterfaceName);
 
     if (defaultInterface) {
       return defaultInterface;
@@ -1114,9 +1031,7 @@ function pickDefaultNetworkInterface(
   }
 
   return (
-    interfaces.find((entry) => !VIRTUAL_INTERFACE_RE.test(entry.name)) ??
-    interfaces[0] ??
-    null
+    interfaces.find((entry) => !VIRTUAL_INTERFACE_RE.test(entry.name)) ?? interfaces[0] ?? null
   );
 }
 
@@ -1153,47 +1068,31 @@ async function buildNetworkMetrics() {
     };
   }
 
-  const seconds = Math.max(
-    (sample.capturedAt - lastNetworkCounters.capturedAt) / 1000,
-    1,
-  );
-  const previousByName = new Map(
-    lastNetworkCounters.value.map((entry) => [entry.name, entry]),
-  );
+  const seconds = Math.max((sample.capturedAt - lastNetworkCounters.capturedAt) / 1000, 1);
+  const previousByName = new Map(lastNetworkCounters.value.map((entry) => [entry.name, entry]));
   const interfaces = counters
     .map((entry) => {
       const previous = previousByName.get(entry.name);
 
       return {
         name: entry.name,
-        rxBytesPerSecond: previous
-          ? Math.max(0, (entry.rxBytes - previous.rxBytes) / seconds)
-          : 0,
-        txBytesPerSecond: previous
-          ? Math.max(0, (entry.txBytes - previous.txBytes) / seconds)
-          : 0,
+        rxBytesPerSecond: previous ? Math.max(0, (entry.rxBytes - previous.rxBytes) / seconds) : 0,
+        txBytesPerSecond: previous ? Math.max(0, (entry.txBytes - previous.txBytes) / seconds) : 0,
       };
     })
     .sort(
       (left, right) =>
         right.rxBytesPerSecond +
         right.txBytesPerSecond -
-        (left.rxBytesPerSecond + left.txBytesPerSecond),
+        (left.rxBytesPerSecond + left.txBytesPerSecond)
     );
-  const selectedInterface = pickDefaultNetworkInterface(
-    interfaces,
-    defaultInterfaceName,
-  );
+  const selectedInterface = pickDefaultNetworkInterface(interfaces, defaultInterfaceName);
 
   lastNetworkCounters = sample;
 
   return {
-    rxBytesPerSecond: selectedInterface
-      ? round(selectedInterface.rxBytesPerSecond)
-      : 0,
-    txBytesPerSecond: selectedInterface
-      ? round(selectedInterface.txBytesPerSecond)
-      : 0,
+    rxBytesPerSecond: selectedInterface ? round(selectedInterface.rxBytesPerSecond) : 0,
+    txBytesPerSecond: selectedInterface ? round(selectedInterface.txBytesPerSecond) : 0,
     interfaces: selectedInterface
       ? [
           {
@@ -1217,7 +1116,7 @@ async function buildSnapshot(): Promise<MetricsSnapshot> {
   }
 
   if (network.interfaces.length === 0) {
-    warnings.push("Network interface counters are unavailable.");
+    warnings.push('Network interface counters are unavailable.');
   }
 
   const hostIp = resolveHostLanIp();
@@ -1263,9 +1162,7 @@ export async function getMetricsSnapshot() {
 
     void writeSnapshotToInflux(snapshot).catch((error) => {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to write metrics to InfluxDB.";
+        error instanceof Error ? error.message : 'Unable to write metrics to InfluxDB.';
 
       console.error(`[metrics] ${message}`);
     });
