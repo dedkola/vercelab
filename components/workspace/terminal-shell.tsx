@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { FitAddon } from "@xterm/addon-fit";
-import { WebLinksAddon } from "@xterm/addon-web-links";
-import { Terminal } from "@xterm/xterm";
+import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { Terminal } from '@xterm/xterm';
 import {
   Clipboard,
   ClipboardCheck,
@@ -11,17 +11,12 @@ import {
   PlugZap,
   TerminalSquare,
   Trash2,
-} from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { toast } from "sonner";
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type TerminalHost = {
   arch: string;
@@ -30,7 +25,7 @@ type TerminalHost = {
   osName: string;
   platform: string;
   shell: string;
-  target?: "container" | "host";
+  target?: 'container' | 'host';
   username: string;
 };
 
@@ -39,38 +34,38 @@ type TerminalHostError = {
 };
 
 type TerminalMessage =
-  | { data: string; type: "error" | "output" }
-  | { target: "container" | "host"; type: "ready" }
-  | { exitCode: number; signal?: number; type: "exit" };
+  | { data: string; type: 'error' | 'output' }
+  | { target: 'container' | 'host'; type: 'ready' }
+  | { exitCode: number; signal?: number; type: 'exit' };
 
-type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
+type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 const FONT_SIZES = [11, 12, 13, 14, 15, 16] as const;
 const DEFAULT_FONT_SIZE = 13;
 
 // Tokyo Night-inspired theme — rich, high-contrast, looks great with JetBrains Mono
 const TERMINAL_THEME = {
-  background: "#0d0f17",
-  foreground: "#c0caf5",
-  cursor: "#c0caf5",
-  cursorAccent: "#0d0f17",
-  selectionBackground: "#283457",
-  black: "#15161e",
-  red: "#f7768e",
-  green: "#9ece6a",
-  yellow: "#e0af68",
-  blue: "#7aa2f7",
-  magenta: "#bb9af7",
-  cyan: "#7dcfff",
-  white: "#a9b1d6",
-  brightBlack: "#414868",
-  brightRed: "#f7768e",
-  brightGreen: "#9ece6a",
-  brightYellow: "#e0af68",
-  brightBlue: "#7aa2f7",
-  brightMagenta: "#bb9af7",
-  brightCyan: "#7dcfff",
-  brightWhite: "#c0caf5",
+  background: '#0d0f17',
+  foreground: '#c0caf5',
+  cursor: '#c0caf5',
+  cursorAccent: '#0d0f17',
+  selectionBackground: '#283457',
+  black: '#15161e',
+  red: '#f7768e',
+  green: '#9ece6a',
+  yellow: '#e0af68',
+  blue: '#7aa2f7',
+  magenta: '#bb9af7',
+  cyan: '#7dcfff',
+  white: '#a9b1d6',
+  brightBlack: '#414868',
+  brightRed: '#f7768e',
+  brightGreen: '#9ece6a',
+  brightYellow: '#e0af68',
+  brightBlue: '#7aa2f7',
+  brightMagenta: '#bb9af7',
+  brightCyan: '#7dcfff',
+  brightWhite: '#c0caf5',
 };
 
 function buildTerminalWebSocketUrl(host: TerminalHost | null) {
@@ -80,18 +75,15 @@ function buildTerminalWebSocketUrl(host: TerminalHost | null) {
     return configuredUrl;
   }
 
-  const url = new URL("/terminal/ws", window.location.href);
-  url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const url = new URL('/terminal/ws', window.location.href);
+  url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
-  if (
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-  ) {
-    url.port = process.env.NEXT_PUBLIC_TERMINAL_WS_PORT ?? "3001";
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    url.port = process.env.NEXT_PUBLIC_TERMINAL_WS_PORT ?? '3001';
   }
 
   if (host?.cwd) {
-    url.searchParams.set("cwd", host.cwd);
+    url.searchParams.set('cwd', host.cwd);
   }
 
   return url.toString();
@@ -102,14 +94,14 @@ function getTerminalBufferText(terminal: Terminal) {
   const lines: string[] = [];
 
   for (let index = 0; index < buffer.length; index += 1) {
-    lines.push(buffer.getLine(index)?.translateToString(true) ?? "");
+    lines.push(buffer.getLine(index)?.translateToString(true) ?? '');
   }
 
-  return lines.join("\n").trimEnd();
+  return lines.join('\n').trimEnd();
 }
 
-function parseTerminalMessage(data: MessageEvent["data"]) {
-  if (typeof data !== "string") return null;
+function parseTerminalMessage(data: MessageEvent['data']) {
+  if (typeof data !== 'string') return null;
 
   try {
     return JSON.parse(data) as TerminalMessage;
@@ -122,11 +114,11 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
   return (
     <span
       className={cn(
-        "inline-block h-1.5 w-1.5 rounded-full",
-        status === "connected" && "animate-pulse bg-emerald-400",
-        status === "connecting" && "animate-pulse bg-amber-400",
-        status === "disconnected" && "bg-zinc-500",
-        status === "error" && "bg-red-500",
+        'inline-block h-1.5 w-1.5 rounded-full',
+        status === 'connected' && 'animate-pulse bg-emerald-400',
+        status === 'connecting' && 'animate-pulse bg-amber-400',
+        status === 'disconnected' && 'bg-zinc-500',
+        status === 'error' && 'bg-red-500'
       )}
       aria-hidden="true"
     />
@@ -134,8 +126,7 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
 }
 
 export function TerminalShell() {
-  const [connectionStatus, setConnectionStatus] =
-    useState<ConnectionStatus>("connecting");
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [host, setHost] = useState<TerminalHost | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
@@ -145,10 +136,10 @@ export function TerminalShell() {
   const webSocketRef = useRef<WebSocket | null>(null);
 
   const statusLabel: Record<ConnectionStatus, string> = {
-    connected: "Connected",
-    connecting: "Connecting…",
-    disconnected: "Disconnected",
-    error: "Connection error",
+    connected: 'Connected',
+    connecting: 'Connecting…',
+    disconnected: 'Disconnected',
+    error: 'Connection error',
   };
 
   const sendResize = useCallback(() => {
@@ -161,9 +152,7 @@ export function TerminalShell() {
     fitAddon.fit();
 
     if (webSocket?.readyState === WebSocket.OPEN) {
-      webSocket.send(
-        JSON.stringify({ cols: terminal.cols, rows: terminal.rows, type: "resize" }),
-      );
+      webSocket.send(JSON.stringify({ cols: terminal.cols, rows: terminal.rows, type: 'resize' }));
     }
   }, []);
 
@@ -172,43 +161,43 @@ export function TerminalShell() {
     if (!terminal) return;
 
     webSocketRef.current?.close();
-    setConnectionStatus("connecting");
+    setConnectionStatus('connecting');
     terminal.clear();
-    terminal.writeln("\x1b[90mOpening host terminal…\x1b[0m");
+    terminal.writeln('\x1b[90mOpening host terminal…\x1b[0m');
 
     const webSocket = new WebSocket(buildTerminalWebSocketUrl(host));
     webSocketRef.current = webSocket;
 
-    webSocket.addEventListener("open", () => {
-      setConnectionStatus("connected");
+    webSocket.addEventListener('open', () => {
+      setConnectionStatus('connected');
       terminal.focus();
       sendResize();
     });
 
-    webSocket.addEventListener("message", (event) => {
+    webSocket.addEventListener('message', (event) => {
       const message = parseTerminalMessage(event.data);
       if (!message) return;
 
-      if (message.type === "output") terminal.write(message.data);
-      if (message.type === "error") {
+      if (message.type === 'output') terminal.write(message.data);
+      if (message.type === 'error') {
         terminal.writeln(`\r\n\x1b[31m${message.data}\x1b[0m`);
-        setConnectionStatus("error");
+        setConnectionStatus('error');
       }
-      if (message.type === "exit") {
-        terminal.writeln("\r\n\x1b[90mSession closed.\x1b[0m");
-        setConnectionStatus("disconnected");
+      if (message.type === 'exit') {
+        terminal.writeln('\r\n\x1b[90mSession closed.\x1b[0m');
+        setConnectionStatus('disconnected');
       }
     });
 
-    webSocket.addEventListener("close", () => {
+    webSocket.addEventListener('close', () => {
       if (webSocketRef.current === webSocket) {
-        setConnectionStatus((c) => (c === "error" ? c : "disconnected"));
+        setConnectionStatus((c) => (c === 'error' ? c : 'disconnected'));
       }
     });
 
-    webSocket.addEventListener("error", () => {
-      setConnectionStatus("error");
-      terminal.writeln("\r\n\x1b[31mUnable to connect to the terminal server.\x1b[0m");
+    webSocket.addEventListener('error', () => {
+      setConnectionStatus('error');
+      terminal.writeln('\r\n\x1b[31mUnable to connect to the terminal server.\x1b[0m');
     });
   }, [host, sendResize]);
 
@@ -218,23 +207,25 @@ export function TerminalShell() {
 
     async function loadHost() {
       try {
-        const response = await fetch("/api/terminal/execute", { cache: "no-store" });
+        const response = await fetch('/api/terminal/execute', { cache: 'no-store' });
         const text = await response.text();
         const payload = text ? (JSON.parse(text) as TerminalHostError) : null;
 
-        if (!response.ok) throw new Error(payload?.error ?? "Unable to open host shell.");
+        if (!response.ok) throw new Error(payload?.error ?? 'Unable to open host shell.');
         if (isActive) setHost(payload as TerminalHost);
       } catch (error) {
         if (!isActive) return;
-        setConnectionStatus("error");
+        setConnectionStatus('error');
         terminalRef.current?.writeln(
-          `\x1b[31m${error instanceof Error ? error.message : "Unable to open host shell."}\x1b[0m`,
+          `\x1b[31m${error instanceof Error ? error.message : 'Unable to open host shell.'}\x1b[0m`
         );
       }
     }
 
     void loadHost();
-    return () => { isActive = false; };
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   // Initialize xterm
@@ -245,7 +236,7 @@ export function TerminalShell() {
       allowProposedApi: false,
       convertEol: true,
       cursorBlink: true,
-      cursorStyle: "block",
+      cursorStyle: 'block',
       fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize,
       lineHeight: 1.2,
@@ -261,7 +252,7 @@ export function TerminalShell() {
 
     // Ctrl+L → clear
     terminal.attachCustomKeyEventHandler((e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "l") {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
         e.preventDefault();
         terminal.clear();
         terminal.focus();
@@ -273,7 +264,7 @@ export function TerminalShell() {
     terminal.onData((data) => {
       const ws = webSocketRef.current;
       if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ data, type: "input" }));
+        ws.send(JSON.stringify({ data, type: 'input' }));
       }
     });
 
@@ -315,21 +306,21 @@ export function TerminalShell() {
     if (!selection) return;
     try {
       await navigator.clipboard.writeText(selection);
-      toast.success("Selection copied");
+      toast.success('Selection copied');
     } catch {
-      toast.error("Unable to copy selection");
+      toast.error('Unable to copy selection');
     }
   }
 
   async function handleCopyOutput() {
     const terminal = terminalRef.current;
-    const output = terminal ? getTerminalBufferText(terminal) : "";
+    const output = terminal ? getTerminalBufferText(terminal) : '';
     if (!output) return;
     try {
       await navigator.clipboard.writeText(output);
-      toast.success("Terminal output copied");
+      toast.success('Terminal output copied');
     } catch {
-      toast.error("Unable to copy terminal output");
+      toast.error('Unable to copy terminal output');
     }
   }
 
@@ -341,7 +332,7 @@ export function TerminalShell() {
         <div className="flex items-center gap-2.5">
           <TerminalSquare className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden="true" />
           <span className="font-mono text-[11px] font-medium text-zinc-300 leading-none">
-            {host ? `${host.username}@${host.hostname}` : "terminal"}
+            {host ? `${host.username}@${host.hostname}` : 'terminal'}
           </span>
           <span className="hidden items-center gap-1.5 sm:flex">
             <StatusDot status={connectionStatus} />
@@ -385,8 +376,8 @@ export function TerminalShell() {
             size="icon"
             variant="ghost"
             className={cn(
-              "h-6 w-6 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700/50",
-              !hasSelection && "opacity-40 pointer-events-none",
+              'h-6 w-6 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700/50',
+              !hasSelection && 'opacity-40 pointer-events-none'
             )}
             onClick={handleCopySelection}
             title="Copy selection"
@@ -410,14 +401,17 @@ export function TerminalShell() {
             size="icon"
             variant="ghost"
             className="h-6 w-6 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700/50"
-            onClick={() => { terminalRef.current?.clear(); terminalRef.current?.focus(); }}
+            onClick={() => {
+              terminalRef.current?.clear();
+              terminalRef.current?.focus();
+            }}
             title="Clear (Ctrl+L)"
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
 
           {/* Reconnect — only shown when disconnected/error */}
-          {(connectionStatus === "disconnected" || connectionStatus === "error") && (
+          {(connectionStatus === 'disconnected' || connectionStatus === 'error') && (
             <Button
               size="sm"
               variant="ghost"
@@ -433,24 +427,20 @@ export function TerminalShell() {
       </div>
 
       {/* xterm canvas */}
-      <div
-        className="min-h-0 flex-1 overflow-hidden p-1"
-        ref={terminalElementRef}
-      />
+      <div className="min-h-0 flex-1 overflow-hidden p-1" ref={terminalElementRef} />
 
       {/* Footer — host metadata */}
       <div className="flex shrink-0 items-center gap-4 border-t border-white/[0.06] bg-zinc-900/60 px-3 py-1.5">
         <span className="text-[10px] text-zinc-600">
-          <span className="text-zinc-500">os</span>{" "}
-          {host?.osName ?? "…"}
+          <span className="text-zinc-500">os</span> {host?.osName ?? '…'}
         </span>
         <span className="text-[10px] text-zinc-600">
-          <span className="text-zinc-500">shell</span>{" "}
-          <span className="font-mono">{host?.shell ?? "…"}</span>
+          <span className="text-zinc-500">shell</span>{' '}
+          <span className="font-mono">{host?.shell ?? '…'}</span>
         </span>
         <span className="text-[10px] text-zinc-600">
-          <span className="text-zinc-500">target</span>{" "}
-          {host?.target === "host" ? "Ubuntu host" : "container"}
+          <span className="text-zinc-500">target</span>{' '}
+          {host?.target === 'host' ? 'Ubuntu host' : 'container'}
         </span>
       </div>
     </div>
