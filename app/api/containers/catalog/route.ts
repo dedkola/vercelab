@@ -2,8 +2,6 @@ import type { NextRequest } from "next/server";
 
 import { searchContainerCatalog } from "@/lib/container-create";
 
-export const dynamic = "force-dynamic";
-
 const CACHE_CONTROL_HEADER =
   "public, max-age=300, stale-while-revalidate=300";
 
@@ -31,6 +29,7 @@ export async function GET(request: NextRequest) {
       },
       {
         status: 400,
+        headers: { "Cache-Control": "no-store" },
       },
     );
   }
