@@ -1,7 +1,7 @@
-import { WorkspaceChromeShell } from "@/components/workspace/workspace-chrome-shell";
-import { loadWorkspaceChromeData } from "@/lib/workspace-chrome-data";
+import { WorkspaceChromeShell } from '@/components/workspace/workspace-chrome-shell';
+import { loadWorkspaceChromeData } from '@/lib/workspace-chrome-data';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export default async function WorkspaceLayout({
   children,
@@ -12,7 +12,5 @@ export default async function WorkspaceLayout({
     includeMetricsSnapshot: false,
   });
 
-  return (
-    <WorkspaceChromeShell {...chromeData}>{children}</WorkspaceChromeShell>
-  );
+  return <WorkspaceChromeShell {...chromeData}>{children}</WorkspaceChromeShell>;
 }

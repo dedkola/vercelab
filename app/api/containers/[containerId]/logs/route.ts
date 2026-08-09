@@ -1,22 +1,19 @@
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
 
-import { readContainerRuntimeLog } from "@/lib/container-runtime";
+import { readContainerRuntimeLog } from '@/lib/container-runtime';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
 
-  return "Unable to load container logs.";
+  return 'Unable to load container logs.';
 }
 
 function getTail(request: NextRequest) {
-  const value = Number.parseInt(
-    request.nextUrl.searchParams.get("tail") ?? "150",
-    10,
-  );
+  const value = Number.parseInt(request.nextUrl.searchParams.get('tail') ?? '150', 10);
 
   if (!Number.isFinite(value)) {
     return 150;
@@ -27,7 +24,7 @@ function getTail(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ containerId: string }> },
+  { params }: { params: Promise<{ containerId: string }> }
 ) {
   const { containerId } = await params;
 
@@ -45,7 +42,7 @@ export async function GET(
       },
       {
         status: 400,
-      },
+      }
     );
   }
 }

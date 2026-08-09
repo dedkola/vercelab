@@ -1,14 +1,11 @@
-"use client";
+'use client';
 
 type WorkspaceFooterProps = {
   activeViewLabel: string;
   updatedAtLabel: string;
 };
 
-export function WorkspaceFooter({
-  activeViewLabel,
-  updatedAtLabel,
-}: WorkspaceFooterProps) {
+export function WorkspaceFooter({ activeViewLabel, updatedAtLabel }: WorkspaceFooterProps) {
   return (
     <footer
       aria-label="Workspace footer"

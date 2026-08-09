@@ -1,47 +1,43 @@
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function parseImageName(image: string): {
   registry: string | null;
   namespace: string | null;
   name: string;
 } {
-  const trimmed = image.split(":")[0] ?? image;
-  const parts = trimmed.split("/");
+  const trimmed = image.split(':')[0] ?? image;
+  const parts = trimmed.split('/');
 
   if (parts.length === 1) {
-    return { registry: null, namespace: null, name: parts[0] ?? "" };
+    return { registry: null, namespace: null, name: parts[0] ?? '' };
   }
 
-  const maybeRegistry = parts[0] ?? "";
-  const hasRegistryPrefix =
-    maybeRegistry.includes(".") || maybeRegistry.includes(":");
+  const maybeRegistry = parts[0] ?? '';
+  const hasRegistryPrefix = maybeRegistry.includes('.') || maybeRegistry.includes(':');
 
   if (hasRegistryPrefix) {
     return {
       registry: maybeRegistry,
       namespace: parts[1] ?? null,
-      name: parts[2] ?? parts[1] ?? "",
+      name: parts[2] ?? parts[1] ?? '',
     };
   }
 
   if (parts.length === 2) {
-    return { registry: null, namespace: parts[0] ?? null, name: parts[1] ?? "" };
+    return { registry: null, namespace: parts[0] ?? null, name: parts[1] ?? '' };
   }
 
-  return { registry: null, namespace: parts[0] ?? null, name: parts.slice(1).join("/") };
+  return { registry: null, namespace: parts[0] ?? null, name: parts.slice(1).join('/') };
 }
 
-async function fetchDockerHubTags(
-  namespace: string | null,
-  name: string,
-): Promise<string[]> {
+async function fetchDockerHubTags(namespace: string | null, name: string): Promise<string[]> {
   const repo = namespace ? `${namespace}/${name}` : `library/${name}`;
   const url = `https://hub.docker.com/v2/repositories/${repo}/tags?page_size=25&ordering=last_updated`;
 
   const response = await fetch(url, {
-    headers: { Accept: "application/json" },
+    headers: { Accept: 'application/json' },
     next: { revalidate: 300 },
   });
 
@@ -54,7 +50,7 @@ async function fetchDockerHubTags(
   };
 
   return (payload.results ?? [])
-    .map((r) => r.name ?? "")
+    .map((r) => r.name ?? '')
     .filter((tag) => tag.length > 0)
     .slice(0, 25);
 }
@@ -64,11 +60,11 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Unable to fetch image tags.";
+  return 'Unable to fetch image tags.';
 }
 
 export async function GET(request: NextRequest) {
-  const image = request.nextUrl.searchParams.get("image")?.trim() ?? "";
+  const image = request.nextUrl.searchParams.get('image')?.trim() ?? '';
 
   if (!image) {
     return Response.json({ tags: [] });
@@ -85,9 +81,6 @@ export async function GET(request: NextRequest) {
     const tags = await fetchDockerHubTags(namespace, name);
     return Response.json({ tags });
   } catch (error) {
-    return Response.json(
-      { error: getErrorMessage(error), tags: [] },
-      { status: 200 },
-    );
+    return Response.json({ error: getErrorMessage(error), tags: [] }, { status: 200 });
   }
 }

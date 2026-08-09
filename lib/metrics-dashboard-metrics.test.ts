@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import { buildSystemMetricPanels } from "@/lib/metrics-dashboard-metrics";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+import { buildSystemMetricPanels } from '@/lib/metrics-dashboard-metrics';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 
-describe("buildSystemMetricPanels", () => {
-  it("labels the host default network panel as download and upload", () => {
+describe('buildSystemMetricPanels', () => {
+  it('labels the host default network panel as download and upload', () => {
     const snapshot = {
       containers: {
         all: [],
@@ -20,11 +20,11 @@ describe("buildSystemMetricPanels", () => {
         top: [],
         total: 0,
       },
-      hostIp: "192.168.1.10",
+      hostIp: '192.168.1.10',
       network: {
         interfaces: [
           {
-            name: "enp4s0",
+            name: 'enp4s0',
             rxBytesPerSecond: 32_000,
             txBytesPerSecond: 12_000,
           },
@@ -41,7 +41,7 @@ describe("buildSystemMetricPanels", () => {
         memoryTotalBytes: 1_000,
         memoryUsedBytes: 200,
       },
-      timestamp: "2026-04-25T10:00:00.000Z",
+      timestamp: '2026-04-25T10:00:00.000Z',
       warnings: [],
     } satisfies MetricsSnapshot;
 
@@ -56,25 +56,21 @@ describe("buildSystemMetricPanels", () => {
         networkIn: 32_000,
         networkOut: 12_000,
         networkTotal: 44_000,
-        timestamp: "2026-04-25T10:00:00.000Z",
+        timestamp: '2026-04-25T10:00:00.000Z',
       },
     ]);
-    const networkPanel = panels.find((panel) => panel.id === "network");
+    const networkPanel = panels.find((panel) => panel.id === 'network');
 
     expect(networkPanel).toMatchObject({
-      currentCaption: "enp4s0 default interface",
-      primaryLabel: "Download",
-      secondaryLabel: "Upload",
-      title: "Host Network",
+      currentCaption: 'enp4s0 default interface',
+      primaryLabel: 'Download',
+      secondaryLabel: 'Upload',
+      title: 'Host Network',
     });
-    expect(networkPanel?.stats.map((stat) => stat.label)).toEqual([
-      "Download",
-      "Upload",
-      "Peak",
-    ]);
+    expect(networkPanel?.stats.map((stat) => stat.label)).toEqual(['Download', 'Upload', 'Peak']);
   });
 
-  it("labels the host disk panel as host read and host write", () => {
+  it('labels the host disk panel as host read and host write', () => {
     const snapshot = {
       containers: {
         all: [],
@@ -90,7 +86,7 @@ describe("buildSystemMetricPanels", () => {
         top: [],
         total: 0,
       },
-      hostIp: "192.168.1.10",
+      hostIp: '192.168.1.10',
       network: {
         interfaces: [],
         rxBytesPerSecond: 0,
@@ -105,7 +101,7 @@ describe("buildSystemMetricPanels", () => {
         memoryTotalBytes: 1_000,
         memoryUsedBytes: 200,
       },
-      timestamp: "2026-04-25T10:00:00.000Z",
+      timestamp: '2026-04-25T10:00:00.000Z',
       warnings: [],
     } satisfies MetricsSnapshot;
 
@@ -120,15 +116,15 @@ describe("buildSystemMetricPanels", () => {
         networkIn: 0,
         networkOut: 0,
         networkTotal: 0,
-        timestamp: "2026-04-25T10:00:00.000Z",
+        timestamp: '2026-04-25T10:00:00.000Z',
       },
     ]);
-    const diskPanel = panels.find((panel) => panel.id === "disk");
+    const diskPanel = panels.find((panel) => panel.id === 'disk');
 
     expect(diskPanel).toMatchObject({
-      primaryLabel: "Host read",
-      secondaryLabel: "Host write",
-      title: "Host disk",
+      primaryLabel: 'Host read',
+      secondaryLabel: 'Host write',
+      title: 'Host disk',
     });
     expect(diskPanel?.primaryValues).toEqual([40_000]);
     expect(diskPanel?.secondaryValues).toEqual([12_000]);

@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { redirect } from 'next/navigation';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -12,11 +12,9 @@ function getSearchParamValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: DashboardPageProps) {
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = searchParams ? await searchParams : undefined;
   const range = getSearchParamValue(params?.range);
 
-  redirect(range ? `/?range=${encodeURIComponent(range)}` : "/");
+  redirect(range ? `/?range=${encodeURIComponent(range)}` : '/');
 }
