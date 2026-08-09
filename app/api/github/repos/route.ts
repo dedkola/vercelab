@@ -1,14 +1,14 @@
-import { getAppConfig } from "@/lib/app-config";
-import { listGitHubRepositories } from "@/lib/github";
+import { getAppConfig } from '@/lib/app-config';
+import { listGitHubRepositories } from '@/lib/github';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
 
-  return "Unable to load repositories from GitHub.";
+  return 'Unable to load repositories from GitHub.';
 }
 
 export async function GET() {
@@ -16,7 +16,7 @@ export async function GET() {
     const token = getAppConfig().security.githubToken;
 
     if (!token) {
-      throw new Error("Set a GitHub token before loading repositories.");
+      throw new Error('Set a GitHub token before loading repositories.');
     }
 
     const repositories = await listGitHubRepositories(token);
@@ -28,9 +28,9 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
         },
-      },
+      }
     );
   } catch (error) {
     return Response.json(
@@ -41,7 +41,7 @@ export async function GET() {
       },
       {
         status: 400,
-      },
+      }
     );
   }
 }
