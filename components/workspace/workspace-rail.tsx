@@ -1,8 +1,8 @@
 'use client';
 
-import type { LucideIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { memo, useCallback, useEffect } from "react";
+import type { LucideIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { memo, useCallback, useEffect } from 'react';
 
 import type { WorkspaceView } from '@/components/workspace-shell';
 import { cn } from '@/lib/utils';
@@ -70,7 +70,7 @@ const WorkspaceRailItem = memo(function WorkspaceRailItem({
 
   const handleClick = useCallback(() => {
     if (isExternal) {
-      window.open(item.href, "_blank", "noopener,noreferrer");
+      window.open(item.href, '_blank', 'noopener,noreferrer');
       return;
     }
 
@@ -89,10 +89,10 @@ const WorkspaceRailItem = memo(function WorkspaceRailItem({
     <button
       aria-label={item.label}
       className={cn(
-        "group flex h-8 w-8 items-center justify-center rounded-lg border-0 bg-transparent transition-colors",
+        'group flex h-8 w-8 items-center justify-center rounded-lg border-0 bg-transparent transition-colors',
         active
-          ? "bg-emerald-50 text-emerald-700"
-          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          ? 'bg-emerald-50 text-emerald-700'
+          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
       )}
       onClick={handleClick}
       onFocus={handlePrefetch}
@@ -100,12 +100,7 @@ const WorkspaceRailItem = memo(function WorkspaceRailItem({
       title={item.description}
       type="button"
     >
-      <PageIcon
-        className={cn(
-          "h-4 w-4",
-          active ? "text-emerald-700" : "text-current",
-        )}
-      />
+      <PageIcon className={cn('h-4 w-4', active ? 'text-emerald-700' : 'text-current')} />
     </button>
   );
 });
