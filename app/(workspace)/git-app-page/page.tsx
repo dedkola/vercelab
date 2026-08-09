@@ -1,15 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next';
 
 import { WorkspaceShell } from "./workspace-shell";
 import { loadWorkspaceShellData } from "@/lib/workspace-shell-data";
 
 export const metadata: Metadata = {
-  title: "Git App Page | Vercelab",
-  description:
-    "Git app page for creating, reviewing, and updating repository deployments.",
+  title: 'Git App Page | Vercelab',
+  description: 'Git app page for creating, reviewing, and updating repository deployments.',
 };
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type GitAppPageRouteProps = {
   searchParams?: Promise<{
@@ -18,10 +17,8 @@ type GitAppPageRouteProps = {
   }>;
 };
 
-export default async function GitAppPageRoute({
-  searchParams,
-}: GitAppPageRouteProps) {
-  const pageData = await loadWorkspaceShellData(searchParams, "git-app-page", {
+export default async function GitAppPageRoute({ searchParams }: GitAppPageRouteProps) {
+  const pageData = await loadWorkspaceShellData(searchParams, 'git-app-page', {
     includeMetricsHistory: false,
     includeMetricsSnapshot: false,
   });

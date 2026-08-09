@@ -1,6 +1,6 @@
-import "server-only";
+import 'server-only';
 
-import { spawn } from "node:child_process";
+import { spawn } from 'node:child_process';
 
 export type ContainerPortBinding = {
   containerPort: string;
@@ -37,24 +37,24 @@ type DockerInspectRaw = {
 
 async function runDockerInspect(containerId: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
-    const child = spawn("docker", ["inspect", "--format", "{{json .}}", containerId], {
-      stdio: ["ignore", "pipe", "pipe"],
+    const child = spawn('docker', ['inspect', '--format', '{{json .}}', containerId], {
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdout = "";
-    let stderr = "";
+    let stdout = '';
+    let stderr = '';
 
-    child.stdout.on("data", (chunk: Buffer | string) => {
+    child.stdout.on('data', (chunk: Buffer | string) => {
       stdout += chunk.toString();
     });
 
-    child.stderr.on("data", (chunk: Buffer | string) => {
+    child.stderr.on('data', (chunk: Buffer | string) => {
       stderr += chunk.toString();
     });
 
-    child.on("error", reject);
+    child.on('error', reject);
 
-    child.on("close", (code) => {
+    child.on('close', (code) => {
       if (code === 0) {
         resolve(stdout.trim());
       } else {
@@ -65,12 +65,12 @@ async function runDockerInspect(containerId: string): Promise<string> {
 }
 
 function extractImageVersion(image: string): string {
-  const colonIndex = image.lastIndexOf(":");
+  const colonIndex = image.lastIndexOf(':');
   if (colonIndex === -1) {
-    return "latest";
+    return 'latest';
   }
   const tag = image.slice(colonIndex + 1);
-  return tag || "latest";
+  return tag || 'latest';
 }
 
 function parseEnvVars(envArray: string[] | null): Array<{ key: string; value: string }> {
@@ -80,9 +80,9 @@ function parseEnvVars(envArray: string[] | null): Array<{ key: string; value: st
 
   return envArray
     .map((entry) => {
-      const eqIndex = entry.indexOf("=");
+      const eqIndex = entry.indexOf('=');
       if (eqIndex === -1) {
-        return { key: entry, value: "" };
+        return { key: entry, value: '' };
       }
       return {
         key: entry.slice(0, eqIndex),
@@ -93,7 +93,7 @@ function parseEnvVars(envArray: string[] | null): Array<{ key: string; value: st
 }
 
 function parsePortBindings(
-  portBindings: Record<string, Array<{ HostPort: string }> | null> | null,
+  portBindings: Record<string, Array<{ HostPort: string }> | null> | null
 ): ContainerPortBinding[] {
   if (!portBindings) {
     return [];
@@ -115,9 +115,7 @@ function parsePortBindings(
   return result;
 }
 
-function extractFirstExposedPort(
-  exposedPorts: Record<string, unknown> | null,
-): string | null {
+function extractFirstExposedPort(exposedPorts: Record<string, unknown> | null): string | null {
   if (!exposedPorts) {
     return null;
   }
@@ -139,30 +137,31 @@ function extractTraefikInfo(labels: Record<string, string> | null): {
   let traefikRouterName: string | null = null;
 
   for (const [key, value] of Object.entries(labels)) {
-    const httpServiceMatch =
-      /^traefik\.http\.services\.([^.]+)\.loadbalancer\.server\.port$/.exec(key);
+    const httpServiceMatch = /^traefik\.http\.services\.([^.]+)\.loadbalancer\.server\.port$/.exec(
+      key
+    );
 
     if (httpServiceMatch) {
       traefikPort = value;
-      traefikMethod = "http";
+      traefikMethod = 'http';
       traefikRouterName ??= httpServiceMatch[1];
       continue;
     }
 
-    const tcpServiceMatch =
-      /^traefik\.tcp\.services\.([^.]+)\.loadbalancer\.server\.port$/.exec(key);
+    const tcpServiceMatch = /^traefik\.tcp\.services\.([^.]+)\.loadbalancer\.server\.port$/.exec(
+      key
+    );
 
     if (tcpServiceMatch) {
       traefikPort = value;
-      traefikMethod = "tcp";
+      traefikMethod = 'tcp';
       traefikRouterName ??= tcpServiceMatch[1];
       continue;
     }
 
-    const entrypointMatch =
-      /^traefik\.http\.routers\.([^.]+)\.entrypoints$/.exec(key);
+    const entrypointMatch = /^traefik\.http\.routers\.([^.]+)\.entrypoints$/.exec(key);
 
-    if (entrypointMatch && traefikMethod !== "tcp") {
+    if (entrypointMatch && traefikMethod !== 'tcp') {
       traefikMethod = value;
       traefikRouterName ??= entrypointMatch[1];
     }
@@ -179,7 +178,7 @@ export async function inspectContainer(containerId: string): Promise<ContainerIn
   try {
     parsed = JSON.parse(raw) as DockerInspectRaw;
   } catch {
-    throw new Error("Unable to parse docker inspect output.");
+    throw new Error('Unable to parse docker inspect output.');
   }
 
   const labels = parsed.Config.Labels ?? {};
@@ -188,12 +187,12 @@ export async function inspectContainer(containerId: string): Promise<ContainerIn
   const appPort =
     extractFirstExposedPort(parsed.Config.ExposedPorts) ??
     (parsed.HostConfig.PortBindings
-      ? Object.keys(parsed.HostConfig.PortBindings)[0] ?? null
+      ? (Object.keys(parsed.HostConfig.PortBindings)[0] ?? null)
       : null);
 
   return {
     id: parsed.Id,
-    name: parsed.Name.replace(/^\//, ""),
+    name: parsed.Name.replace(/^\//, ''),
     image: parsed.Config.Image,
     imageVersion: extractImageVersion(parsed.Config.Image),
     appPort,

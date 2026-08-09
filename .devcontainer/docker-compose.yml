@@ -25,14 +25,14 @@ services:
     # Some hosts expose docker.sock as root:root (0660).
     # Add group 0 so the non-root `node` user can still access Docker.
     group_add:
-      - "0"
+      - '0'
     command: sleep infinity
     environment:
-      PORT: "3100"
-      VERCELAB_TERMINAL_WS_PORT: "3101"
-      NEXT_PUBLIC_TERMINAL_WS_PORT: "3101"
+      PORT: '3100'
+      VERCELAB_TERMINAL_WS_PORT: '3101'
+      NEXT_PUBLIC_TERMINAL_WS_PORT: '3101'
       VERCELAB_TERMINAL_TARGET: container
-      VERCELAB_UI_DEV_MODE: "true"
+      VERCELAB_UI_DEV_MODE: 'true'
       VERCELAB_HOST_ROOT: /workspaces/vercelab
       VERCELAB_DATA_ROOT: /workspaces/vercelab/data
       VERCELAB_APPS_DIR: /workspaces/vercelab/data/apps
@@ -70,7 +70,7 @@ services:
       POSTGRES_PASSWORD: vercelab
       POSTGRES_DB: vercelab
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vercelab -d vercelab"]
+      test: ['CMD-SHELL', 'pg_isready -U vercelab -d vercelab']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -92,7 +92,7 @@ services:
       - --data-dir=/var/lib/influxdb3/data
       - --admin-token-recovery-http-bind=127.0.0.1:8182
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -x influxdb3 >/dev/null"]
+      test: ['CMD-SHELL', 'pgrep -x influxdb3 >/dev/null']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -114,17 +114,13 @@ services:
       influxdb:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ || exit 1",
-        ]
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ || exit 1']
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
     ports:
-      - "127.0.0.1:8888:8080"
+      - '127.0.0.1:8888:8080'
     volumes:
       - influxdb-explorer-data:/db
       - ./influxdb-explorer-config:/app-root/config:ro
