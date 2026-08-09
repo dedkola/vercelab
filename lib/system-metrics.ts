@@ -40,7 +40,13 @@ type ContainerIoCounters = {
 };
 
 export type ContainerRuntimeState =
-  'running' | 'stopped' | 'paused' | 'restarting' | 'dead' | 'created' | 'unknown';
+  | 'running'
+  | 'stopped'
+  | 'paused'
+  | 'restarting'
+  | 'dead'
+  | 'created'
+  | 'unknown';
 
 export type ContainerHealthState = 'healthy' | 'unhealthy' | 'starting' | 'none';
 
@@ -1110,10 +1116,7 @@ async function buildSnapshot(): Promise<MetricsSnapshot> {
 
   // System and network counters are independent; run them in parallel so the
   // snapshot waits for the slower of the two instead of their sum.
-  const [system, network] = await Promise.all([
-    buildSystemMetrics(),
-    buildNetworkMetrics(),
-  ]);
+  const [system, network] = await Promise.all([buildSystemMetrics(), buildNetworkMetrics()]);
   const containers = await readContainerStats(system.memoryTotalBytes);
 
   if (containers.warning) {
