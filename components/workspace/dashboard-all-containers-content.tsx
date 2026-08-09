@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import type { DashboardRange } from "@/lib/metrics-range";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import type { DashboardRange } from '@/lib/metrics-range';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 
 type AggregateChartLine = {
   id: string;
@@ -19,7 +19,7 @@ export type AllContainersMetricChart = {
   summaryLabel: string;
   summaryValue: string;
   title: string;
-  variant: "cpu" | "memory" | "network" | "disk";
+  variant: 'cpu' | 'memory' | 'network' | 'disk';
 };
 
 type DashboardAllContainersContentProps = {
@@ -34,45 +34,45 @@ type DashboardAllContainersContentProps = {
 };
 
 const LINE_COLORS = [
-  "hsla(159, 72%, 38%, 0.62)",
-  "hsla(214, 78%, 48%, 0.58)",
-  "hsla(24, 84%, 54%, 0.56)",
-  "hsla(333, 76%, 52%, 0.56)",
-  "hsla(268, 62%, 56%, 0.54)",
-  "hsla(48, 92%, 48%, 0.52)",
-  "hsla(187, 78%, 40%, 0.58)",
-  "hsla(352, 70%, 50%, 0.5)",
+  'hsla(159, 72%, 38%, 0.62)',
+  'hsla(214, 78%, 48%, 0.58)',
+  'hsla(24, 84%, 54%, 0.56)',
+  'hsla(333, 76%, 52%, 0.56)',
+  'hsla(268, 62%, 56%, 0.54)',
+  'hsla(48, 92%, 48%, 0.52)',
+  'hsla(187, 78%, 40%, 0.58)',
+  'hsla(352, 70%, 50%, 0.5)',
 ] as const;
 
-function getChartClasses(variant: AllContainersMetricChart["variant"]) {
+function getChartClasses(variant: AllContainersMetricChart['variant']) {
   switch (variant) {
-    case "cpu":
+    case 'cpu':
       return {
-        badge: "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
-        border: "border-emerald-200/70",
-        surface: "from-emerald-50/80 via-background to-background",
-        grid: "rgba(5, 150, 105, 0.1)",
+        badge: 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700',
+        border: 'border-emerald-200/70',
+        surface: 'from-emerald-50/80 via-background to-background',
+        grid: 'rgba(5, 150, 105, 0.1)',
       };
-    case "memory":
+    case 'memory':
       return {
-        badge: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-        border: "border-amber-200/70",
-        surface: "from-amber-50/80 via-background to-background",
-        grid: "rgba(217, 119, 6, 0.1)",
+        badge: 'border-amber-200/80 bg-amber-50/90 text-amber-700',
+        border: 'border-amber-200/70',
+        surface: 'from-amber-50/80 via-background to-background',
+        grid: 'rgba(217, 119, 6, 0.1)',
       };
-    case "network":
+    case 'network':
       return {
-        badge: "border-sky-200/80 bg-sky-50/90 text-sky-700",
-        border: "border-sky-200/70",
-        surface: "from-sky-50/80 via-background to-background",
-        grid: "rgba(2, 132, 199, 0.1)",
+        badge: 'border-sky-200/80 bg-sky-50/90 text-sky-700',
+        border: 'border-sky-200/70',
+        surface: 'from-sky-50/80 via-background to-background',
+        grid: 'rgba(2, 132, 199, 0.1)',
       };
-    case "disk":
+    case 'disk':
       return {
-        badge: "border-rose-200/80 bg-rose-50/90 text-rose-700",
-        border: "border-rose-200/70",
-        surface: "from-rose-50/80 via-background to-background",
-        grid: "rgba(225, 29, 72, 0.1)",
+        badge: 'border-rose-200/80 bg-rose-50/90 text-rose-700',
+        border: 'border-rose-200/70',
+        surface: 'from-rose-50/80 via-background to-background',
+        grid: 'rgba(225, 29, 72, 0.1)',
       };
   }
 }
@@ -88,13 +88,13 @@ function buildLinePath(
   paddingX: number,
   paddingY: number,
   minValue: number,
-  maxValue: number,
+  maxValue: number
 ) {
   const safeHeight = height - paddingY * 2;
   const safeWidth = width - paddingX * 2;
   const range = maxValue - minValue || 1;
   const step = points.length > 1 ? safeWidth / (points.length - 1) : safeWidth;
-  let path = "";
+  let path = '';
   let hasOpenSegment = false;
 
   points.forEach((value, index) => {
@@ -121,7 +121,7 @@ function LargeMultiLineChart({ chart }: { chart: AllContainersMetricChart }) {
   const paddingX = 18;
   const paddingY = 18;
   const allValues = chart.series.flatMap((line) =>
-    line.points.filter((value): value is number => value !== null),
+    line.points.filter((value): value is number => value !== null)
   );
 
   if (!allValues.length) {
@@ -142,9 +142,9 @@ function LargeMultiLineChart({ chart }: { chart: AllContainersMetricChart }) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[1.45rem] border bg-linear-to-br px-4 py-4 shadow-[0_24px_64px_-48px_rgba(15,23,42,0.28)]",
+        'overflow-hidden rounded-[1.45rem] border bg-linear-to-br px-4 py-4 shadow-[0_24px_64px_-48px_rgba(15,23,42,0.28)]',
         chartClasses.border,
-        chartClasses.surface,
+        chartClasses.surface
       )}
     >
       <svg
@@ -170,7 +170,7 @@ function LargeMultiLineChart({ chart }: { chart: AllContainersMetricChart }) {
             paddingX,
             paddingY,
             minValue,
-            maxValue,
+            maxValue
           );
 
           if (!path) {
@@ -263,10 +263,10 @@ export function DashboardAllContainersContent({
               <Button
                 aria-pressed={range === option.value}
                 className={cn(
-                  "rounded-full",
+                  'rounded-full',
                   range === option.value
-                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-[0_18px_40px_-32px_rgba(16,185,129,0.3)] hover:bg-emerald-50"
-                    : "border-border/60 bg-background/82 text-muted-foreground hover:text-foreground",
+                    ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-[0_18px_40px_-32px_rgba(16,185,129,0.3)] hover:bg-emerald-50'
+                    : 'border-border/60 bg-background/82 text-muted-foreground hover:text-foreground'
                 )}
                 key={option.value}
                 onClick={() => onRangeChangeAction(option.value)}

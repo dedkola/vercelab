@@ -1,20 +1,15 @@
-import path from "node:path";
+import path from 'node:path';
 
-import { Pool, type PoolClient } from "pg";
+import { Pool, type PoolClient } from 'pg';
 
-import { getAppConfig } from "@/lib/app-config";
-import { decryptSecret, encryptSecret } from "@/lib/crypto";
-import type { CreateDeploymentInput, ExposureMode } from "@/lib/validation";
+import { getAppConfig } from '@/lib/app-config';
+import { decryptSecret, encryptSecret } from '@/lib/crypto';
+import type { CreateDeploymentInput, ExposureMode } from '@/lib/validation';
 
-export type DeploymentStatus =
-  | "deploying"
-  | "running"
-  | "failed"
-  | "stopped"
-  | "removing";
-export type DeploymentMode = "dockerfile" | "compose" | null;
-export type OperationType = "deploy" | "redeploy" | "stop" | "remove";
-export type OperationStatus = "pending" | "success" | "failed";
+export type DeploymentStatus = 'deploying' | 'running' | 'failed' | 'stopped' | 'removing';
+export type DeploymentMode = 'dockerfile' | 'compose' | null;
+export type OperationType = 'deploy' | 'redeploy' | 'stop' | 'remove';
+export type OperationStatus = 'pending' | 'success' | 'failed';
 
 export type StoredDeployment = {
   id: string;
@@ -98,7 +93,7 @@ export type DashboardStatusDistribution = {
 };
 
 export type DashboardModeDistribution = {
-  mode: "dockerfile" | "compose" | "unknown";
+  mode: 'dockerfile' | 'compose' | 'unknown';
   count: number;
 };
 
@@ -192,7 +187,7 @@ type DashboardTrendRow = {
 
 let pool: Pool | undefined;
 let initPromise: Promise<void> | undefined;
-const trendLabelFormatter = new Intl.DateTimeFormat("en", { weekday: "short" });
+const trendLabelFormatter = new Intl.DateTimeFormat('en', { weekday: 'short' });
 const deploymentSummarySelect = `
   SELECT
     d.id,
@@ -230,8 +225,8 @@ function toSlug(value: string): string {
   return value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 40);
 }
 
@@ -245,10 +240,10 @@ function serializeOutput(value: string | null): string | null {
 
 function isUniqueViolation(error: unknown) {
   return (
-    typeof error === "object" &&
+    typeof error === 'object' &&
     error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "23505"
+    'code' in error &&
+    (error as { code?: string }).code === '23505'
   );
 }
 
@@ -265,7 +260,7 @@ function mapStoredDeployment(row: StoredDeploymentRow): StoredDeployment {
     appSlug: row.app_slug,
     subdomain: row.subdomain,
     port: row.port,
-    exposureMode: row.exposure_mode ?? "http",
+    exposureMode: row.exposure_mode ?? 'http',
     hostPort: row.host_port ?? null,
     envVariables: row.env_variables,
     serviceName: row.service_name,
@@ -291,7 +286,7 @@ function mapDeploymentSummary(row: DeploymentSummaryRow): DeploymentSummary {
     appName: row.app_name,
     subdomain: row.subdomain,
     port: row.port,
-    exposureMode: row.exposure_mode ?? "http",
+    exposureMode: row.exposure_mode ?? 'http',
     hostPort: row.host_port ?? null,
     envVariables: row.env_variables,
     serviceName: row.service_name,
@@ -306,10 +301,7 @@ function mapDeploymentSummary(row: DeploymentSummaryRow): DeploymentSummary {
   };
 }
 
-function buildTrendPoints(
-  rows: DashboardTrendRow[],
-  days = 8,
-): DashboardTrendPoint[] {
+function buildTrendPoints(rows: DashboardTrendRow[], days = 8): DashboardTrendPoint[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -337,11 +329,11 @@ function buildTrendPoints(
 
     bucket.total += 1;
 
-    if (row.status === "success") {
+    if (row.status === 'success') {
       bucket.success += 1;
     }
 
-    if (row.status === "failed") {
+    if (row.status === 'failed') {
       bucket.failed += 1;
     }
   }
@@ -421,15 +413,11 @@ async function initDatabase() {
           CREATE INDEX IF NOT EXISTS idx_operations_deployment_id ON operations(deployment_id);
           CREATE INDEX IF NOT EXISTS idx_operations_created_at ON operations(created_at DESC);
         `);
+        await client.query('ALTER TABLE repositories ADD COLUMN IF NOT EXISTS commit_sha TEXT');
         await client.query(
-          "ALTER TABLE repositories ADD COLUMN IF NOT EXISTS commit_sha TEXT",
+          "ALTER TABLE deployments ADD COLUMN IF NOT EXISTS exposure_mode TEXT NOT NULL DEFAULT 'http'"
         );
-        await client.query(
-          "ALTER TABLE deployments ADD COLUMN IF NOT EXISTS exposure_mode TEXT NOT NULL DEFAULT 'http'",
-        );
-        await client.query(
-          "ALTER TABLE deployments ADD COLUMN IF NOT EXISTS host_port INTEGER",
-        );
+        await client.query('ALTER TABLE deployments ADD COLUMN IF NOT EXISTS host_port INTEGER');
       } finally {
         client.release();
       }
@@ -442,7 +430,7 @@ async function initDatabase() {
 async function queryRows<T>(
   statement: string,
   values: unknown[] = [],
-  client?: PoolClient,
+  client?: PoolClient
 ): Promise<T[]> {
   await initDatabase();
   const result = client
@@ -457,12 +445,12 @@ async function withTransaction<T>(task: (client: PoolClient) => Promise<T>) {
   const client = await getPool().connect();
 
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     const result = await task(client);
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     throw error;
   } finally {
     client.release();
@@ -472,14 +460,12 @@ async function withTransaction<T>(task: (client: PoolClient) => Promise<T>) {
 export async function getDatabaseHealth() {
   const config = getAppConfig();
   await initDatabase();
-  const rows = await queryRows<{ version: string }>(
-    "SELECT version() AS version",
-  );
+  const rows = await queryRows<{ version: string }>('SELECT version() AS version');
 
   return {
     provider: config.database.provider,
     postgresUrl: config.database.postgresUrl,
-    version: rows[0]?.version ?? "unknown",
+    version: rows[0]?.version ?? 'unknown',
   };
 }
 
@@ -492,9 +478,7 @@ export async function listDeploymentSummaries(): Promise<DeploymentSummary[]> {
 }
 
 export async function listWorkspaceData(): Promise<WorkspaceData> {
-  const deployments = (await queryDeploymentSummaryRows()).map(
-    mapDeploymentSummary,
-  );
+  const deployments = (await queryDeploymentSummaryRows()).map(mapDeploymentSummary);
 
   const sinceDate = new Date();
   sinceDate.setHours(0, 0, 0, 0);
@@ -536,16 +520,17 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
     repositoryCountRows[0]?.count ?? "0",
     10,
   );
+  const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
 
   const stats = deployments.reduce(
     (accumulator, deployment) => {
       accumulator.totalDeployments += 1;
 
-      if (deployment.status === "running") {
+      if (deployment.status === 'running') {
         accumulator.runningDeployments += 1;
       }
 
-      if (deployment.status === "failed") {
+      if (deployment.status === 'failed') {
         accumulator.failedDeployments += 1;
       }
 
@@ -555,25 +540,21 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
       totalDeployments: 0,
       runningDeployments: 0,
       failedDeployments: 0,
-    },
+    }
   );
 
-  const statusDistribution = (
-    ["running", "deploying", "failed", "stopped", "removing"] as const
-  )
+  const statusDistribution = (['running', 'deploying', 'failed', 'stopped', 'removing'] as const)
     .map((status) => ({
       status,
-      count: deployments.filter((deployment) => deployment.status === status)
-        .length,
+      count: deployments.filter((deployment) => deployment.status === status).length,
     }))
     .filter((entry) => entry.count > 0);
 
-  const modeDistribution = (["dockerfile", "compose", "unknown"] as const)
+  const modeDistribution = (['dockerfile', 'compose', 'unknown'] as const)
     .map((mode) => ({
       mode,
-      count: deployments.filter(
-        (deployment) => (deployment.composeMode ?? "unknown") === mode,
-      ).length,
+      count: deployments.filter((deployment) => (deployment.composeMode ?? 'unknown') === mode)
+        .length,
     }))
     .filter((entry) => entry.count > 0);
 
@@ -605,13 +586,13 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
   const deploymentId = crypto.randomUUID();
   const repoName =
     input.repositoryUrl
-      .split("/")
+      .split('/')
       .pop()
-      ?.replace(/\.git$/, "") ?? "repo";
+      ?.replace(/\.git$/, '') ?? 'repo';
   const appSlug = toSlug(input.appName);
   const workspacePath = path.join(
     /*turbopackIgnore: true*/ getAppConfig().paths.appsDir,
-    deploymentId,
+    deploymentId
   );
   const projectName = `vercelab-${appSlug}-${deploymentId.slice(0, 8)}`;
 
@@ -640,7 +621,7 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
           now,
           now,
         ],
-        client,
+        client
       );
 
       await queryRows(
@@ -674,11 +655,11 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
           appSlug,
           input.subdomain,
           input.port,
-          input.exposureMode ?? "http",
+          input.exposureMode ?? 'http',
           input.hostPort ?? null,
           input.envVariables ?? null,
           input.serviceName ?? null,
-          "deploying",
+          'deploying',
           null,
           null,
           projectName,
@@ -688,14 +669,12 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
           now,
           null,
         ],
-        client,
+        client
       );
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
-      throw new Error(
-        "That subdomain is already reserved by another deployment.",
-      );
+      throw new Error('That subdomain is already reserved by another deployment.');
     }
 
     throw error;
@@ -705,15 +684,13 @@ export async function createDeploymentRecord(input: CreateDeploymentInput) {
     deploymentId,
     projectName,
     domain:
-      (input.exposureMode ?? "http") === "http"
+      (input.exposureMode ?? 'http') === 'http'
         ? `${input.subdomain}.${getAppConfig().baseDomain}`
         : null,
   };
 }
 
-export async function getStoredDeploymentById(
-  deploymentId: string,
-): Promise<StoredDeployment> {
+export async function getStoredDeploymentById(deploymentId: string): Promise<StoredDeployment> {
   const rows = await queryRows<StoredDeploymentRow>(
     `
       SELECT
@@ -743,28 +720,24 @@ export async function getStoredDeploymentById(
       INNER JOIN repositories r ON r.id = d.repository_id
       WHERE d.id = $1
     `,
-    [deploymentId],
+    [deploymentId]
   );
 
   const row = rows[0];
 
   if (!row) {
-    throw new Error("Deployment not found.");
+    throw new Error('Deployment not found.');
   }
 
   return mapStoredDeployment(row);
 }
 
-export async function readDeploymentSecretToken(
-  deploymentId: string,
-): Promise<string | null> {
-  return decryptSecret(
-    (await getStoredDeploymentById(deploymentId)).encryptedToken,
-  );
+export async function readDeploymentSecretToken(deploymentId: string): Promise<string | null> {
+  return decryptSecret((await getStoredDeploymentById(deploymentId)).encryptedToken);
 }
 
 export async function getLatestDeploymentOperation(
-  deploymentId: string,
+  deploymentId: string
 ): Promise<DeploymentOperationLog | null> {
   const rows = await queryRows<DeploymentOperationRow>(
     `
@@ -781,7 +754,7 @@ export async function getLatestDeploymentOperation(
       ORDER BY created_at DESC
       LIMIT 1
     `,
-    [deploymentId],
+    [deploymentId]
   );
 
   const row = rows[0];
@@ -824,73 +797,62 @@ type DeploymentRepositoryUpdate = Partial<{
   commitSha: string | null;
 }>;
 
-export async function updateDeploymentRecord(
-  deploymentId: string,
-  update: DeploymentUpdate,
-) {
-  const entries = Object.entries(update).filter(
-    ([, value]) => value !== undefined,
-  );
+export async function updateDeploymentRecord(deploymentId: string, update: DeploymentUpdate) {
+  const entries = Object.entries(update).filter(([, value]) => value !== undefined);
 
   if (entries.length === 0) {
     return;
   }
 
   const columnMap: Record<string, string> = {
-    appName: "app_name",
-    appSlug: "app_slug",
-    subdomain: "subdomain",
-    port: "port",
-    exposureMode: "exposure_mode",
-    hostPort: "host_port",
-    envVariables: "env_variables",
-    serviceName: "service_name",
-    status: "status",
-    composeMode: "compose_mode",
-    composeFile: "compose_file",
-    projectName: "project_name",
-    workspacePath: "workspace_path",
-    lastOutput: "last_output",
-    deployedAt: "deployed_at",
+    appName: 'app_name',
+    appSlug: 'app_slug',
+    subdomain: 'subdomain',
+    port: 'port',
+    exposureMode: 'exposure_mode',
+    hostPort: 'host_port',
+    envVariables: 'env_variables',
+    serviceName: 'service_name',
+    status: 'status',
+    composeMode: 'compose_mode',
+    composeFile: 'compose_file',
+    projectName: 'project_name',
+    workspacePath: 'workspace_path',
+    lastOutput: 'last_output',
+    deployedAt: 'deployed_at',
   };
 
   const values = entries.map(([key, value]) =>
-    key === "lastOutput" ? serializeOutput(value as string | null) : value,
+    key === 'lastOutput' ? serializeOutput(value as string | null) : value
   );
-  const assignments = entries.map(
-    ([key], index) => `${columnMap[key]} = $${index + 1}`,
-  );
+  const assignments = entries.map(([key], index) => `${columnMap[key]} = $${index + 1}`);
 
   values.push(new Date().toISOString());
   assignments.push(`updated_at = $${values.length}`);
   values.push(deploymentId);
 
   await queryRows(
-    `UPDATE deployments SET ${assignments.join(", ")} WHERE id = $${values.length}`,
-    values,
+    `UPDATE deployments SET ${assignments.join(', ')} WHERE id = $${values.length}`,
+    values
   );
 }
 
 export async function updateDeploymentRepositorySettingsById(
   deploymentId: string,
-  update: DeploymentRepositoryUpdate,
+  update: DeploymentRepositoryUpdate
 ) {
-  const entries = Object.entries(update).filter(
-    ([, value]) => value !== undefined,
-  );
+  const entries = Object.entries(update).filter(([, value]) => value !== undefined);
 
   if (entries.length === 0) {
     return;
   }
 
   const columnMap: Record<string, string> = {
-    branch: "branch",
-    commitSha: "commit_sha",
+    branch: 'branch',
+    commitSha: 'commit_sha',
   };
   const values = entries.map(([, value]) => value);
-  const assignments = entries.map(
-    ([key], index) => `${columnMap[key]} = $${index + 1}`,
-  );
+  const assignments = entries.map(([key], index) => `${columnMap[key]} = $${index + 1}`);
 
   values.push(new Date().toISOString());
   assignments.push(`updated_at = $${values.length}`);
@@ -899,18 +861,18 @@ export async function updateDeploymentRepositorySettingsById(
   await queryRows(
     `
       UPDATE repositories AS r
-      SET ${assignments.join(", ")}
+      SET ${assignments.join(', ')}
       FROM deployments AS d
       WHERE d.repository_id = r.id AND d.id = $${values.length}
     `,
-    values,
+    values
   );
 }
 
 export async function createOperation(
   deploymentId: string,
   operationType: OperationType,
-  summary: string,
+  summary: string
 ) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -928,7 +890,7 @@ export async function createOperation(
         updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `,
-    [id, deploymentId, operationType, "pending", summary, null, now, now],
+    [id, deploymentId, operationType, 'pending', summary, null, now, now]
   );
 
   return id;
@@ -938,7 +900,7 @@ export async function completeOperation(
   operationId: string,
   status: OperationStatus,
   summary: string,
-  output: string | null,
+  output: string | null
 ) {
   const now = new Date().toISOString();
 
@@ -948,44 +910,36 @@ export async function completeOperation(
       SET status = $1, summary = $2, output = $3, updated_at = $4
       WHERE id = $5
     `,
-    [status, summary, serializeOutput(output), now, operationId],
+    [status, summary, serializeOutput(output), now, operationId]
   );
 }
 
 export async function deleteDeploymentRecord(deploymentId: string) {
   await withTransaction(async (client) => {
     const deploymentRows = await queryRows<{ repository_id: string }>(
-      "SELECT repository_id FROM deployments WHERE id = $1",
+      'SELECT repository_id FROM deployments WHERE id = $1',
       [deploymentId],
-      client,
+      client
     );
 
     const deployment = deploymentRows[0];
 
     if (!deployment) {
-      throw new Error("Deployment not found.");
+      throw new Error('Deployment not found.');
     }
 
-    await queryRows(
-      "DELETE FROM deployments WHERE id = $1",
-      [deploymentId],
-      client,
-    );
+    await queryRows('DELETE FROM deployments WHERE id = $1', [deploymentId], client);
 
     const remainingRows = await queryRows<{ count: string }>(
-      "SELECT COUNT(*) AS count FROM deployments WHERE repository_id = $1",
+      'SELECT COUNT(*) AS count FROM deployments WHERE repository_id = $1',
       [deployment.repository_id],
-      client,
+      client
     );
 
-    const remaining = Number.parseInt(remainingRows[0]?.count ?? "0", 10);
+    const remaining = Number.parseInt(remainingRows[0]?.count ?? '0', 10);
 
     if (remaining === 0) {
-      await queryRows(
-        "DELETE FROM repositories WHERE id = $1",
-        [deployment.repository_id],
-        client,
-      );
+      await queryRows('DELETE FROM repositories WHERE id = $1', [deployment.repository_id], client);
     }
   });
 }

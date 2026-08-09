@@ -7,7 +7,7 @@ export type GitHubRepository = {
   url: string;
   defaultBranch: string;
   branches?: string[];
-  visibility: "public" | "private" | "internal";
+  visibility: 'public' | 'private' | 'internal';
   description: string | null;
   updatedAt: string;
 };
@@ -34,7 +34,7 @@ type GitHubRepositoryResponse = {
   clone_url: string;
   default_branch: string;
   private: boolean;
-  visibility?: "public" | "private" | "internal";
+  visibility?: 'public' | 'private' | 'internal';
   description: string | null;
   updated_at: string;
   owner: {
@@ -54,46 +54,46 @@ type GitHubCommitResponse = {
   };
 };
 
-const GITHUB_API_BASE = "https://api.github.com";
+const GITHUB_API_BASE = 'https://api.github.com';
 const COMMITS_PAGE_SIZE = 25;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 5;
 
 function mapVisibility(
-  repository: Pick<GitHubRepositoryResponse, "private" | "visibility">,
-): GitHubRepository["visibility"] {
-  if (repository.visibility === "internal") {
-    return "internal";
+  repository: Pick<GitHubRepositoryResponse, 'private' | 'visibility'>
+): GitHubRepository['visibility'] {
+  if (repository.visibility === 'internal') {
+    return 'internal';
   }
 
-  return repository.private ? "private" : "public";
+  return repository.private ? 'private' : 'public';
 }
 
 function getGitHubErrorMessage(status: number) {
   switch (status) {
     case 401:
-      return "GitHub rejected the token. Check that it is valid and has repository access.";
+      return 'GitHub rejected the token. Check that it is valid and has repository access.';
     case 403:
-      return "GitHub refused the request. The token may be missing scope or the rate limit was hit.";
+      return 'GitHub refused the request. The token may be missing scope or the rate limit was hit.';
     default:
       return `GitHub repository request failed with status ${status}.`;
   }
 }
 
 export function parseGitHubRepositoryReference(
-  repositoryUrl: string,
+  repositoryUrl: string
 ): GitHubRepositoryReference | null {
   try {
     const parsed = new URL(repositoryUrl);
-    const hostname = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    const hostname = parsed.hostname.replace(/^www\./i, '').toLowerCase();
 
-    if (hostname !== "github.com") {
+    if (hostname !== 'github.com') {
       return null;
     }
 
     const pathSegments = parsed.pathname
-      .replace(/\.git$/i, "")
-      .split("/")
+      .replace(/\.git$/i, '')
+      .split('/')
       .filter(Boolean);
 
     if (pathSegments.length < 2) {
@@ -113,9 +113,7 @@ export function parseGitHubRepositoryReference(
   }
 }
 
-export async function listGitHubRepositories(
-  token: string,
-): Promise<GitHubRepository[]> {
+export async function listGitHubRepositories(token: string): Promise<GitHubRepository[]> {
   const repositories: GitHubRepository[] = [];
 
   for (let page = 1; page <= MAX_PAGES; page += 1) {
@@ -123,20 +121,19 @@ export async function listGitHubRepositories(
       `${GITHUB_API_BASE}/user/repos?affiliation=owner,collaborator,organization_member&sort=updated&per_page=${PAGE_SIZE}&page=${page}`,
       {
         headers: {
-          Accept: "application/vnd.github+json",
+          Accept: 'application/vnd.github+json',
           Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2022-11-28",
+          'X-GitHub-Api-Version': '2022-11-28',
         },
         next: { revalidate: 60 },
-      },
+      }
     );
 
     if (!response.ok) {
       throw new Error(getGitHubErrorMessage(response.status));
     }
 
-    const pageRepositories =
-      (await response.json()) as GitHubRepositoryResponse[];
+    const pageRepositories = (await response.json()) as GitHubRepositoryResponse[];
 
     repositories.push(
       ...pageRepositories.map((repository) => ({
@@ -150,7 +147,7 @@ export async function listGitHubRepositories(
         visibility: mapVisibility(repository),
         description: repository.description,
         updatedAt: repository.updated_at,
-      })),
+      }))
     );
 
     if (pageRepositories.length < PAGE_SIZE) {
@@ -164,7 +161,7 @@ export async function listGitHubRepositories(
 export async function listGitHubBranches(
   token: string,
   owner: string,
-  repo: string,
+  repo: string
 ): Promise<string[]> {
   const branches: string[] = [];
   const pageSize = 100;
@@ -176,12 +173,12 @@ export async function listGitHubBranches(
       `${GITHUB_API_BASE}/repos/${owner}/${repo}/branches?per_page=${pageSize}&page=${page}`,
       {
         headers: {
-          Accept: "application/vnd.github+json",
+          Accept: 'application/vnd.github+json',
           Authorization: `Bearer ${token}`,
-          "X-GitHub-Api-Version": "2022-11-28",
+          'X-GitHub-Api-Version': '2022-11-28',
         },
         next: { revalidate: 60 },
-      },
+      }
     );
 
     if (!response.ok) {
@@ -206,26 +203,26 @@ export async function listGitHubCommits(
   token: string,
   owner: string,
   repo: string,
-  refName?: string,
+  refName?: string
 ): Promise<GitHubCommit[]> {
   const searchParams = new URLSearchParams({
     per_page: String(COMMITS_PAGE_SIZE),
   });
 
   if (refName) {
-    searchParams.set("sha", refName);
+    searchParams.set('sha', refName);
   }
 
   const response = await fetch(
     `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?${searchParams.toString()}`,
     {
       headers: {
-        Accept: "application/vnd.github+json",
+        Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
+        'X-GitHub-Api-Version': '2022-11-28',
       },
-      cache: "no-store",
-    },
+      cache: 'no-store',
+    }
   );
 
   if (!response.ok) {
@@ -237,7 +234,7 @@ export async function listGitHubCommits(
   return commits.map((commit) => ({
     authorName: commit.commit.author?.name ?? null,
     committedAt: commit.commit.author?.date ?? null,
-    message: commit.commit.message.split("\n")[0] ?? "Commit",
+    message: commit.commit.message.split('\n')[0] ?? 'Commit',
     sha: commit.sha,
     url: commit.html_url,
   }));

@@ -1,14 +1,7 @@
-"use client";
+'use client';
 
-import {
-  Activity,
-  Box,
-  GitBranch,
-  Home,
-  Terminal,
-  type LucideIcon,
-} from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Activity, Box, GitBranch, Home, Terminal, type LucideIcon } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   createContext,
   useCallback,
@@ -19,30 +12,24 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
-} from "react";
+} from 'react';
 
-import type { WorkspaceView } from "@/components/workspace-shell";
-import { WorkspaceFooter } from "@/components/workspace/workspace-footer";
-import { WorkspaceHeader } from "@/components/workspace/workspace-header";
+import type { WorkspaceView } from '@/components/workspace-shell';
+import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
+import { WorkspaceHeader } from '@/components/workspace/workspace-header';
 import {
   HostMetricsSidebar,
   type HostMetricsSidebarProps,
-} from "@/components/workspace/host-metrics-sidebar";
-import { WorkspaceRail } from "@/components/workspace/workspace-rail";
-import type { WorkspaceChromeData } from "@/lib/workspace-chrome-data";
-import type { GitHubRepository } from "@/lib/github";
-import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
-import {
-  buildSystemMetricPanels,
-  formatClock,
-} from "@/lib/metrics-dashboard-metrics";
-import {
-  normalizeDashboardRange,
-  type DashboardRange,
-} from "@/lib/metrics-range";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+} from '@/components/workspace/host-metrics-sidebar';
+import { WorkspaceRail } from '@/components/workspace/workspace-rail';
+import type { WorkspaceChromeData } from '@/lib/workspace-chrome-data';
+import type { GitHubRepository } from '@/lib/github';
+import type { MetricsHistoryPoint } from '@/lib/influx-metrics';
+import { buildSystemMetricPanels, formatClock } from '@/lib/metrics-dashboard-metrics';
+import { normalizeDashboardRange, type DashboardRange } from '@/lib/metrics-range';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 
-const METRICS_PANEL_STORAGE_KEY = "vercelab:workspace-metrics-panel-width";
+const METRICS_PANEL_STORAGE_KEY = 'vercelab:workspace-metrics-panel-width';
 const DEFAULT_METRICS_WIDTH_PX = 232;
 const MIN_METRICS_WIDTH_PX = 200;
 const MAX_METRICS_WIDTH_PX = 360;
@@ -79,36 +66,35 @@ const WORKSPACE_PAGES: Array<{
   label: string;
 }> = [
   {
-    description: "Live containers and host load",
+    description: 'Live containers and host load',
     iconComponent: Home,
-    id: "dashboard",
-    label: "Dashboard",
+    id: 'dashboard',
+    label: 'Dashboard',
   },
   {
-    description: "Deployments and repo wiring",
+    description: 'Deployments and repo wiring',
     iconComponent: GitBranch,
-    id: "git-app-page",
-    label: "Git App Page",
+    id: 'git-app-page',
+    label: 'Git App Page',
   },
   {
-    description: "Container inventory, runtime logs, and lifecycle controls",
+    description: 'Container inventory, runtime logs, and lifecycle controls',
     iconComponent: Box,
-    id: "containers",
-    label: "Containers",
+    id: 'containers',
+    label: 'Containers',
   },
   {
-    description: "Host terminal for this server",
+    description: 'Host terminal for this server',
     iconComponent: Terminal,
-    id: "terminal",
-    label: "Terminal",
+    id: 'terminal',
+    label: 'Terminal',
   },
 ];
 
-const WorkspaceChromeContext =
-  createContext<WorkspaceChromeContextValue | null>(null);
+const WorkspaceChromeContext = createContext<WorkspaceChromeContextValue | null>(null);
 
 function getStorage() {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return null;
   }
 
@@ -116,9 +102,9 @@ function getStorage() {
 
   if (
     !storage ||
-    typeof storage.getItem !== "function" ||
-    typeof storage.setItem !== "function" ||
-    typeof storage.removeItem !== "function"
+    typeof storage.getItem !== 'function' ||
+    typeof storage.setItem !== 'function' ||
+    typeof storage.removeItem !== 'function'
   ) {
     return null;
   }
@@ -130,26 +116,24 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function buildMetricsRequestUrl(
-  searchParams: Record<string, string | undefined>,
-) {
+function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>) {
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(searchParams)) {
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       params.set(key, value);
     }
   }
 
-  return "/api/metrics?" + params.toString();
+  return '/api/metrics?' + params.toString();
 }
 
 function formatHeaderPillLabel(panel: {
   currentCaption: string;
-  id: "cpu" | "memory" | "network" | "disk";
+  id: 'cpu' | 'memory' | 'network' | 'disk';
   stats: Array<{ label: string; value: string }>;
 }) {
-  if (panel.id === "network" || panel.id === "disk") {
+  if (panel.id === 'network' || panel.id === 'disk') {
     const primaryStat = panel.stats[0];
     const secondaryStat = panel.stats[1];
 
@@ -163,15 +147,15 @@ function formatHeaderPillLabel(panel: {
 
 function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
   const pathname =
-    view === "git-app-page"
-      ? "/git-app-page"
-      : view === "containers"
-        ? "/containers"
-        : view === "terminal"
-          ? "/terminal"
-        : "/";
+    view === 'git-app-page'
+      ? '/git-app-page'
+      : view === 'containers'
+        ? '/containers'
+        : view === 'terminal'
+          ? '/terminal'
+          : '/';
 
-  if (range === "15m") {
+  if (range === '15m') {
     return pathname;
   }
 
@@ -183,18 +167,18 @@ function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
 }
 
 function isDocumentHidden() {
-  if (typeof document === "undefined") {
+  if (typeof document === 'undefined') {
     return false;
   }
 
-  return document.visibilityState === "hidden";
+  return document.visibilityState === 'hidden';
 }
 
 function useStoredPanelWidth(
   key: string,
   initialWidth: number,
   minWidth: number,
-  maxWidth: number,
+  maxWidth: number
 ) {
   const [width, setWidth] = useState(initialWidth);
 
@@ -240,26 +224,22 @@ export function WorkspaceChromeShell({
     METRICS_PANEL_STORAGE_KEY,
     DEFAULT_METRICS_WIDTH_PX,
     MIN_METRICS_WIDTH_PX,
-    MAX_METRICS_WIDTH_PX,
+    MAX_METRICS_WIDTH_PX
   );
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
-  const [dashboardRange, setDashboardRangeState] = useState<DashboardRange>(
-    () => normalizeDashboardRange(searchParams.get("range")),
+  const [dashboardRange, setDashboardRangeState] = useState<DashboardRange>(() =>
+    normalizeDashboardRange(searchParams.get('range'))
   );
-  const [sidebarSnapshot, setSidebarSnapshot] =
-    useState<MetricsSnapshot | null>(initialSnapshot);
-  const [sidebarHistory, setSidebarHistory] =
-    useState<MetricsHistoryPoint[]>(initialHistory);
+  const [sidebarSnapshot, setSidebarSnapshot] = useState<MetricsSnapshot | null>(initialSnapshot);
+  const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>(initialHistory);
   const [metricsError, setMetricsError] = useState<string | null>(null);
-  const [repositoryState, setRepositoryState] = useState<SharedRepositoryState>(
-    {
-      error: null,
-      hasLoaded: false,
-      isLoading: false,
-      repositories: [],
-      tokenConfigured: false,
-    },
-  );
+  const [repositoryState, setRepositoryState] = useState<SharedRepositoryState>({
+    error: null,
+    hasLoaded: false,
+    isLoading: false,
+    repositories: [],
+    tokenConfigured: false,
+  });
   const dragStateRef = useRef<{
     startWidth: number;
     startX: number;
@@ -270,16 +250,16 @@ export function WorkspaceChromeShell({
   const resetHandlersRef = useRef(new Set<ResetHandler>());
 
   const activeView =
-    pathname === "/git-app-page"
-      ? "git-app-page"
-      : pathname === "/containers"
-        ? "containers"
-        : pathname === "/terminal"
-          ? "terminal"
-        : "dashboard";
+    pathname === '/git-app-page'
+      ? 'git-app-page'
+      : pathname === '/containers'
+        ? 'containers'
+        : pathname === '/terminal'
+          ? 'terminal'
+          : 'dashboard';
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
-    [sidebarHistory, sidebarSnapshot],
+    [sidebarHistory, sidebarSnapshot]
   );
   const headerStatusPills = useMemo(
     () =>
@@ -288,9 +268,8 @@ export function WorkspaceChromeShell({
           label: formatHeaderPillLabel(panel),
         }))
         .filter((pill) => pill.label.length > 0),
-    [systemPanels],
+    [systemPanels]
   );
-
 
   const loadRepositories = useCallback(async () => {
     if (repositoryState.hasLoaded || repositoryState.isLoading) {
@@ -309,8 +288,8 @@ export function WorkspaceChromeShell({
 
     const request = (async () => {
       try {
-        const response = await fetch("/api/github/repos", {
-          cache: "no-store",
+        const response = await fetch('/api/github/repos', {
+          cache: 'no-store',
         });
         const payload = (await response.json()) as {
           error?: string;
@@ -319,9 +298,7 @@ export function WorkspaceChromeShell({
         };
 
         if (!response.ok) {
-          throw new Error(
-            payload.error ?? "Unable to load repositories from GitHub.",
-          );
+          throw new Error(payload.error ?? 'Unable to load repositories from GitHub.');
         }
 
         setRepositoryState({
@@ -335,9 +312,7 @@ export function WorkspaceChromeShell({
         setRepositoryState((current) => ({
           ...current,
           error:
-            error instanceof Error
-              ? error.message
-              : "Unable to load repositories from GitHub.",
+            error instanceof Error ? error.message : 'Unable to load repositories from GitHub.',
           hasLoaded: true,
           isLoading: false,
         }));
@@ -360,7 +335,7 @@ export function WorkspaceChromeShell({
         tokenConfigured: payload.tokenConfigured,
       });
     },
-    [],
+    []
   );
 
   const registerResetHandler = useCallback((handler: ResetHandler) => {
@@ -375,12 +350,10 @@ export function WorkspaceChromeShell({
     setDashboardRangeState(range);
   }, []);
 
-  const handleViewPrefetch = useCallback(
-    (_view: WorkspaceView) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-      // Repos are loaded lazily on Add button press — no prefetch needed.
-    },
-    [],
-  );
+  const handleViewPrefetch = useCallback((_view: WorkspaceView) => {
+    // eslint-disable-line @typescript-eslint/no-unused-vars
+    // Repos are loaded lazily on Add button press — no prefetch needed.
+  }, []);
 
   const handleViewChange = useCallback(
     (view: WorkspaceView) => {
@@ -390,7 +363,7 @@ export function WorkspaceChromeShell({
 
       router.push(getWorkspaceViewHref(view, dashboardRange));
     },
-    [activeView, dashboardRange, router],
+    [activeView, dashboardRange, router]
   );
 
   const workspaceRailItems = useMemo(() => {
@@ -406,12 +379,12 @@ export function WorkspaceChromeShell({
     return [
       ...internalItems,
       {
-        description: "Open the InfluxDB Explorer UI",
+        description: 'Open the InfluxDB Explorer UI',
         external: true,
         href: influxExplorerUrl,
         iconComponent: Activity,
-        id: "influx-explorer",
-        label: "Influx Explorer",
+        id: 'influx-explorer',
+        label: 'Influx Explorer',
       },
     ];
   }, [influxExplorerUrl]);
@@ -429,31 +402,29 @@ export function WorkspaceChromeShell({
   }, [setMetricsWidth]);
 
   useEffect(() => {
-    const nextRange = normalizeDashboardRange(searchParams.get("range"));
+    const nextRange = normalizeDashboardRange(searchParams.get('range'));
 
-    setDashboardRangeState((current) =>
-      current === nextRange ? current : nextRange,
-    );
+    setDashboardRangeState((current) => (current === nextRange ? current : nextRange));
   }, [searchParams]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return;
     }
 
     const nextUrl = new URL(window.location.href);
 
-    if (dashboardRange === "15m") {
-      nextUrl.searchParams.delete("range");
+    if (dashboardRange === '15m') {
+      nextUrl.searchParams.delete('range');
     } else {
-      nextUrl.searchParams.set("range", dashboardRange);
+      nextUrl.searchParams.set('range', dashboardRange);
     }
 
     const nextHref = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
     const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
     if (nextHref !== currentHref) {
-      window.history.replaceState(window.history.state, "", nextHref);
+      window.history.replaceState(window.history.state, '', nextHref);
     }
   }, [dashboardRange]);
 
@@ -498,13 +469,13 @@ export function WorkspaceChromeShell({
       try {
         const response = await fetch(
           buildMetricsRequestUrl({
-            includeHistory: "true",
-            mode: "current",
+            includeHistory: 'true',
+            mode: 'current',
           }),
           {
-            cache: "no-store",
+            cache: 'no-store',
             signal: abortController.signal,
-          },
+          }
         );
 
         if (!response.ok) {
@@ -531,22 +502,12 @@ export function WorkspaceChromeShell({
         setMetricsError(null);
         errorBackoffMs = LIVE_POLL_INTERVAL_MS;
       } catch (error) {
-        if (
-          !active ||
-          (error instanceof DOMException && error.name === "AbortError")
-        ) {
+        if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
           return;
         }
 
-        setMetricsError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load live metrics.",
-        );
-        errorBackoffMs = Math.min(
-          errorBackoffMs * 2,
-          LIVE_POLL_ERROR_BACKOFF_MAX_MS,
-        );
+        setMetricsError(error instanceof Error ? error.message : 'Unable to load live metrics.');
+        errorBackoffMs = Math.min(errorBackoffMs * 2, LIVE_POLL_ERROR_BACKOFF_MAX_MS);
       } finally {
         livePollInFlightRef.current = false;
         abortController = null;
@@ -562,14 +523,14 @@ export function WorkspaceChromeShell({
     scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") {
+      if (document.visibilityState !== 'visible') {
         return;
       }
 
       scheduleNextPoll(VISIBILITY_REFRESH_DELAY_MS);
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       active = false;
@@ -580,7 +541,7 @@ export function WorkspaceChromeShell({
         window.clearTimeout(timeoutId);
       }
 
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [initialHistory.length, initialSnapshot]);
 
@@ -592,11 +553,10 @@ export function WorkspaceChromeShell({
 
       setMetricsWidth(
         clamp(
-          dragStateRef.current.startWidth +
-            (event.clientX - dragStateRef.current.startX),
+          dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
           MIN_METRICS_WIDTH_PX,
-          MAX_METRICS_WIDTH_PX,
-        ),
+          MAX_METRICS_WIDTH_PX
+        )
       );
     }
 
@@ -606,18 +566,18 @@ export function WorkspaceChromeShell({
       }
 
       dragStateRef.current = null;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     }
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
   }, [setMetricsWidth]);
 
@@ -632,10 +592,10 @@ export function WorkspaceChromeShell({
     }
 
     syncResponsivePanels();
-    window.addEventListener("resize", syncResponsivePanels);
+    window.addEventListener('resize', syncResponsivePanels);
 
     return () => {
-      window.removeEventListener("resize", syncResponsivePanels);
+      window.removeEventListener('resize', syncResponsivePanels);
     };
   }, []);
 
@@ -646,39 +606,38 @@ export function WorkspaceChromeShell({
         startX: event.clientX,
       };
 
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
     },
-    [metricsWidth],
+    [metricsWidth]
   );
 
   const activeViewMeta =
-    WORKSPACE_PAGES.find((page) => page.id === activeView) ??
-    WORKSPACE_PAGES[0]!;
+    WORKSPACE_PAGES.find((page) => page.id === activeView) ?? WORKSPACE_PAGES[0]!;
   const activeViewTitle =
-    activeView === "dashboard"
-      ? "Metrics dashboard"
-      : activeView === "git-app-page"
-        ? "Git App Page"
-        : activeView === "terminal"
-          ? "Host terminal"
-        : "Containers";
+    activeView === 'dashboard'
+      ? 'Metrics dashboard'
+      : activeView === 'git-app-page'
+        ? 'Git App Page'
+        : activeView === 'terminal'
+          ? 'Host terminal'
+          : 'Containers';
   const activeViewDescription =
-    activeView === "dashboard"
-      ? "Live host and container observability inside the shared workspace shell."
-      : activeView === "git-app-page"
-        ? "Create, review, and edit live deployments in the same shared workspace shell."
-        : activeView === "terminal"
-          ? "Host shell for the Ubuntu server running this control plane."
-        : "Runtime inventory, protected system services, and per-container log inspection.";
+    activeView === 'dashboard'
+      ? 'Live host and container observability inside the shared workspace shell.'
+      : activeView === 'git-app-page'
+        ? 'Create, review, and edit live deployments in the same shared workspace shell.'
+        : activeView === 'terminal'
+          ? 'Host shell for the Ubuntu server running this control plane.'
+          : 'Runtime inventory, protected system services, and per-container log inspection.';
   const activeViewStatusLabel =
-    activeView === "dashboard"
-      ? "Live runtime"
-      : activeView === "git-app-page"
-        ? "Live deployments"
-        : activeView === "terminal"
-          ? "Host shell"
-        : "Live containers";
+    activeView === 'dashboard'
+      ? 'Live runtime'
+      : activeView === 'git-app-page'
+        ? 'Live deployments'
+        : activeView === 'terminal'
+          ? 'Host shell'
+          : 'Live containers';
   const hostMetricsProps = {
     isCollapsed: isMetricsCollapsed,
     metricCards: [],
@@ -709,15 +668,12 @@ export function WorkspaceChromeShell({
       setDashboardRange,
       sidebarHistory,
       sidebarSnapshot,
-    ],
+    ]
   );
 
   return (
     <WorkspaceChromeContext.Provider value={contextValue}>
-      <section
-        aria-label="Workspace shell"
-        className="flex h-screen flex-col bg-background"
-      >
+      <section aria-label="Workspace shell" className="flex h-screen flex-col bg-background">
         <WorkspaceHeader
           activeViewDescription={activeViewDescription}
           activeViewLabel={activeViewMeta.label}
@@ -744,9 +700,7 @@ export function WorkspaceChromeShell({
         <WorkspaceFooter
           activeViewLabel={activeViewMeta.label}
           updatedAtLabel={
-            sidebarSnapshot
-              ? formatClock(sidebarSnapshot.timestamp)
-              : "Waiting for metrics"
+            sidebarSnapshot ? formatClock(sidebarSnapshot.timestamp) : 'Waiting for metrics'
           }
         />
       </section>

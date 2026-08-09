@@ -1,7 +1,7 @@
-import { listGitHubBranches } from "@/lib/github";
-import { getAppConfig } from "@/lib/app-config";
+import { listGitHubBranches } from '@/lib/github';
+import { getAppConfig } from '@/lib/app-config';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: Request,
@@ -19,33 +19,22 @@ export async function GET(
     const config = getAppConfig();
 
     if (!config.security.githubToken) {
-      return Response.json(
-        { error: "GitHub token not configured" },
-        { status: 400 }
-      );
+      return Response.json({ error: 'GitHub token not configured' }, { status: 400 });
     }
 
-    const branches = await listGitHubBranches(
-      config.security.githubToken,
-      owner,
-      name,
-    );
+    const branches = await listGitHubBranches(config.security.githubToken, owner, name);
 
     return Response.json(
       { branches },
       {
         status: 200,
         headers: {
-          "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+          'Cache-Control': 'private, max-age=60, stale-while-revalidate=300',
         },
-      },
+      }
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch branches";
-    return Response.json(
-      { error: message },
-      { status: 400 }
-    );
+    const message = error instanceof Error ? error.message : 'Failed to fetch branches';
+    return Response.json({ error: message }, { status: 400 });
   }
 }
