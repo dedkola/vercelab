@@ -1208,8 +1208,13 @@ async function buildNetworkMetrics() {
 
 async function buildSnapshot(): Promise<MetricsSnapshot> {
   const warnings: string[] = [];
-  const system = await buildSystemMetrics();
-  const network = await buildNetworkMetrics();
+
+  // System and network counters are independent; run them in parallel so the
+  // snapshot waits for the slower of the two instead of their sum.
+  const [system, network] = await Promise.all([
+    buildSystemMetrics(),
+    buildNetworkMetrics(),
+  ]);
   const containers = await readContainerStats(system.memoryTotalBytes);
 
   if (containers.warning) {
