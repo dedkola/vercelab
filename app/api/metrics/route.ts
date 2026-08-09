@@ -113,7 +113,7 @@ export async function GET(request: Request) {
 
   return Response.json(payload, {
     headers: {
-      "Cache-Control": "private, max-age=2, must-revalidate",
+      'Cache-Control': 'private, max-age=2, must-revalidate',
     },
   });
 }
