@@ -20,21 +20,15 @@ import { WorkspaceHeader } from '@/components/workspace/workspace-header';
 import {
   HostMetricsSidebar,
   type HostMetricsSidebarProps,
-} from "@/components/workspace/host-metrics-sidebar";
-import { WorkspaceRail } from "@/components/workspace/workspace-rail";
-import type { WorkspaceChromeData } from "@/lib/workspace-chrome-data";
-import type { GitHubRepository } from "@/lib/github";
-import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
-import {
-  buildSystemMetricPanels,
-  formatClock,
-} from "@/lib/metrics-dashboard-metrics";
-import {
-  normalizeDashboardRange,
-  type DashboardRange,
-} from "@/lib/metrics-range";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
-import { useLiveMetricsPolling } from "@/lib/use-live-metrics-polling";
+} from '@/components/workspace/host-metrics-sidebar';
+import { WorkspaceRail } from '@/components/workspace/workspace-rail';
+import type { WorkspaceChromeData } from '@/lib/workspace-chrome-data';
+import type { GitHubRepository } from '@/lib/github';
+import type { MetricsHistoryPoint } from '@/lib/influx-metrics';
+import { buildSystemMetricPanels, formatClock } from '@/lib/metrics-dashboard-metrics';
+import { normalizeDashboardRange, type DashboardRange } from '@/lib/metrics-range';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
+import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
 
 const METRICS_PANEL_STORAGE_KEY = 'vercelab:workspace-metrics-panel-width';
 const DEFAULT_METRICS_WIDTH_PX = 232;

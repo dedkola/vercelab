@@ -39,13 +39,10 @@ import {
   getStatusBadgeVariant,
   LOG_VIEW_OPTIONS,
   METRICS_DASHBOARD_RANGE_OPTIONS,
-} from "@/lib/metrics-dashboard-metrics";
-import type {
-  AllContainersMetricsHistorySeries,
-  MetricsHistoryPoint,
-} from "@/lib/influx-metrics";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
-import { useLiveMetricsPolling } from "@/lib/use-live-metrics-polling";
+} from '@/lib/metrics-dashboard-metrics';
+import type { AllContainersMetricsHistorySeries, MetricsHistoryPoint } from '@/lib/influx-metrics';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
+import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
 
 const METRICS_PANEL_STORAGE_KEY = 'vercelab:dashboard-metrics-panel-width';
 const LIST_PANEL_STORAGE_KEY = 'vercelab:dashboard-list-panel-width';
@@ -232,17 +229,13 @@ export function MetricsDashboardShell({
   const setEffectiveDashboardRange = isEmbedded
     ? sharedChrome.setDashboardRange
     : setDashboardRange;
-  const effectiveSidebarSnapshot = isEmbedded
-    ? sharedChrome.sidebarSnapshot
-    : sidebarSnapshot;
-  const effectiveSidebarHistory = isEmbedded
-    ? sharedChrome.sidebarHistory
-    : sidebarHistory;
+  const effectiveSidebarSnapshot = isEmbedded ? sharedChrome.sidebarSnapshot : sidebarSnapshot;
+  const effectiveSidebarHistory = isEmbedded ? sharedChrome.sidebarHistory : sidebarHistory;
   const updateLiveSnapshot = useCallback(
     (snapshot: MetricsSnapshot) => {
       setSidebarSnapshot(snapshot);
     },
-    [dashboardRange],
+    [dashboardRange]
   );
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory),

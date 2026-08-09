@@ -40,7 +40,13 @@ type ContainerIoCounters = {
 };
 
 export type ContainerRuntimeState =
-  'running' | 'stopped' | 'paused' | 'restarting' | 'dead' | 'created' | 'unknown';
+  | 'running'
+  | 'stopped'
+  | 'paused'
+  | 'restarting'
+  | 'dead'
+  | 'created'
+  | 'unknown';
 
 export type ContainerHealthState = 'healthy' | 'unhealthy' | 'starting' | 'none';
 

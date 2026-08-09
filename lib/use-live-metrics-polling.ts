@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from 'react';
 
-import type { MetricsHistoryPoint } from "@/lib/influx-metrics";
-import type { MetricsSnapshot } from "@/lib/system-metrics";
+import type { MetricsHistoryPoint } from '@/lib/influx-metrics';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
@@ -20,7 +20,7 @@ type LiveMetricsPollingOptions = {
 };
 
 function isDocumentHidden() {
-  return document.visibilityState === "hidden";
+  return document.visibilityState === 'hidden';
 }
 
 export function useLiveMetricsPolling({
@@ -80,13 +80,10 @@ export function useLiveMetricsPolling({
       abortController = new AbortController();
 
       try {
-        const response = await fetch(
-          "/api/metrics?includeHistory=true&mode=current",
-          {
-            cache: "no-store",
-            signal: abortController.signal,
-          },
-        );
+        const response = await fetch('/api/metrics?includeHistory=true&mode=current', {
+          cache: 'no-store',
+          signal: abortController.signal,
+        });
 
         if (!response.ok) {
           throw new Error(`Metrics request failed with ${response.status}.`);
@@ -112,22 +109,12 @@ export function useLiveMetricsPolling({
         updateError(null);
         errorBackoffMs = LIVE_POLL_INTERVAL_MS;
       } catch (error) {
-        if (
-          !active ||
-          (error instanceof DOMException && error.name === "AbortError")
-        ) {
+        if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
           return;
         }
 
-        updateError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load live metrics.",
-        );
-        errorBackoffMs = Math.min(
-          errorBackoffMs * 2,
-          LIVE_POLL_ERROR_BACKOFF_MAX_MS,
-        );
+        updateError(error instanceof Error ? error.message : 'Unable to load live metrics.');
+        errorBackoffMs = Math.min(errorBackoffMs * 2, LIVE_POLL_ERROR_BACKOFF_MAX_MS);
       } finally {
         inFlightRef.current = false;
         abortController = null;
@@ -143,14 +130,14 @@ export function useLiveMetricsPolling({
     scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") {
+      if (document.visibilityState !== 'visible') {
         return;
       }
 
       scheduleNextPoll(VISIBILITY_REFRESH_DELAY_MS);
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       active = false;
@@ -161,14 +148,7 @@ export function useLiveMetricsPolling({
         window.clearTimeout(timeoutId);
       }
 
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [
-    enabled,
-    initialHistory.length,
-    initialSnapshot,
-    onError,
-    onHistory,
-    onSnapshot,
-  ]);
+  }, [enabled, initialHistory.length, initialSnapshot, onError, onHistory, onSnapshot]);
 }
