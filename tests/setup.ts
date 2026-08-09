@@ -1,5 +1,5 @@
-import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
 
 class ResizeObserverMock {
   observe() {}
@@ -7,7 +7,7 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
-vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+vi.stubGlobal('ResizeObserver', ResizeObserverMock);
 
 class LocalStorageMock implements Storage {
   private readonly values = new Map<string, string>();
@@ -39,14 +39,14 @@ class LocalStorageMock implements Storage {
 
 const localStorageMock = new LocalStorageMock();
 
-Object.defineProperty(window, "localStorage", {
+Object.defineProperty(window, 'localStorage', {
   configurable: true,
   value: localStorageMock,
 });
 
-vi.stubGlobal("localStorage", localStorageMock);
+vi.stubGlobal('localStorage', localStorageMock);
 
-Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
   configurable: true,
   value() {},
 });
@@ -57,4 +57,4 @@ class IntersectionObserverMock {
   disconnect() {}
 }
 
-vi.stubGlobal("IntersectionObserver", IntersectionObserverMock);
+vi.stubGlobal('IntersectionObserver', IntersectionObserverMock);

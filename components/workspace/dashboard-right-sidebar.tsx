@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
-import type { DashboardLogView, LogLine } from "@/components/workspace-shell";
-import { Icon } from "@/components/dashboard-kit";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import type { DashboardLogView, LogLine } from '@/components/workspace-shell';
+import { Icon } from '@/components/dashboard-kit';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
-import { ResizeHandle, SectionLabel } from "./workspace-ui";
+import { ResizeHandle, SectionLabel } from './workspace-ui';
 
 type DashboardLogOption = {
   label: string;
@@ -28,19 +28,19 @@ type DashboardRightSidebarProps = {
   onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
   selectedContainerName: string;
   selectedContainerStatusLabel: string;
-  selectedContainerStatusVariant: "success" | "warning" | "default";
+  selectedContainerStatusVariant: 'success' | 'warning' | 'default';
   selectedPreviewAvailable: boolean;
   width: number;
 };
 
-function getLogDotClassName(level: LogLine["level"]) {
+function getLogDotClassName(level: LogLine['level']) {
   switch (level) {
-    case "success":
-      return "bg-emerald-500";
-    case "warning":
-      return "bg-amber-500";
-    case "info":
-      return "bg-slate-400";
+    case 'success':
+      return 'bg-emerald-500';
+    case 'warning':
+      return 'bg-amber-500';
+    case 'info':
+      return 'bg-slate-400';
   }
 }
 
@@ -90,8 +90,8 @@ export function DashboardRightSidebar({
             <SectionLabel icon="syslog" text="Logs" />
             <div className="text-[11px] text-muted-foreground">
               {isAggregateSelection
-                ? "Grouped history context for the full container fleet."
-                : "Tail preview for the selected container."}
+                ? 'Grouped history context for the full container fleet.'
+                : 'Tail preview for the selected container.'}
             </div>
           </div>
           <Button
@@ -111,10 +111,10 @@ export function DashboardRightSidebar({
             {logOptions.map((option) => (
               <button
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
                   activeLogView === option.value
-                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700"
-                    : "border-border/60 bg-background text-muted-foreground hover:text-foreground",
+                    ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700'
+                    : 'border-border/60 bg-background text-muted-foreground hover:text-foreground'
                 )}
                 key={option.value}
                 onClick={() => onLogViewChangeAction(option.value)}
@@ -136,7 +136,7 @@ export function DashboardRightSidebar({
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {isAggregateSelection
-                      ? "Grouped Influx history and range-aware fleet context"
+                      ? 'Grouped Influx history and range-aware fleet context'
                       : `docker logs -f --tail 150 ${selectedContainerName}`}
                   </div>
                 </div>
@@ -152,9 +152,7 @@ export function DashboardRightSidebar({
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
                   Tail preview
                 </div>
-                <div className="font-mono text-[11px] text-slate-500">
-                  {logs.length} lines
-                </div>
+                <div className="font-mono text-[11px] text-slate-500">{logs.length} lines</div>
               </div>
 
               <div className="space-y-1.5 p-3 font-mono text-[11px] leading-5 text-slate-200">
@@ -163,23 +161,21 @@ export function DashboardRightSidebar({
                     <div className="flex gap-2" key={line.id}>
                       <span
                         className={cn(
-                          "mt-1.5 h-1 w-1 shrink-0 rounded-full",
-                          getLogDotClassName(line.level),
+                          'mt-1.5 h-1 w-1 shrink-0 rounded-full',
+                          getLogDotClassName(line.level)
                         )}
                       />
-                      <span className="shrink-0 text-slate-500">
-                        {line.timestamp}
-                      </span>
+                      <span className="shrink-0 text-slate-500">{line.timestamp}</span>
                       <span className="text-slate-100">{line.message}</span>
                     </div>
                   ))
                 ) : (
                   <div className="text-slate-400">
                     {isAggregateSelection
-                      ? "Aggregate selection does not expose preview log lines. Pick a single container to inspect the log rail."
+                      ? 'Aggregate selection does not expose preview log lines. Pick a single container to inspect the log rail.'
                       : selectedPreviewAvailable
-                        ? "No lines in this preview view for the selected container."
-                        : "Live container logs are not wired into this page yet."}
+                        ? 'No lines in this preview view for the selected container.'
+                        : 'Live container logs are not wired into this page yet.'}
                   </div>
                 )}
               </div>

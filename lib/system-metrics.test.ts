@@ -1,69 +1,68 @@
-import { EventEmitter } from "node:events";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { EventEmitter } from 'node:events';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { parseLinuxDefaultRouteInterface } from "@/lib/system-metrics";
+import { parseLinuxDefaultRouteInterface } from '@/lib/system-metrics';
 
-const { accessMock, readFileMock, spawnMock, osMock, getAppConfigMock } =
-  vi.hoisted(() => ({
-    accessMock: vi.fn(),
-    readFileMock: vi.fn(),
-    spawnMock: vi.fn(),
-    osMock: {
-      cpus: vi.fn(),
-      loadavg: vi.fn(),
-      totalmem: vi.fn(),
-      freemem: vi.fn(),
-      networkInterfaces: vi.fn(),
-    },
-    getAppConfigMock: vi.fn(),
-  }));
+const { accessMock, readFileMock, spawnMock, osMock, getAppConfigMock } = vi.hoisted(() => ({
+  accessMock: vi.fn(),
+  readFileMock: vi.fn(),
+  spawnMock: vi.fn(),
+  osMock: {
+    cpus: vi.fn(),
+    loadavg: vi.fn(),
+    totalmem: vi.fn(),
+    freemem: vi.fn(),
+    networkInterfaces: vi.fn(),
+  },
+  getAppConfigMock: vi.fn(),
+}));
 
-vi.mock("node:fs/promises", () => ({
+vi.mock('node:fs/promises', () => ({
   default: { access: accessMock, readFile: readFileMock },
   access: accessMock,
   readFile: readFileMock,
 }));
 
-vi.mock("node:child_process", () => ({
+vi.mock('node:child_process', () => ({
   default: { spawn: spawnMock },
   spawn: spawnMock,
 }));
 
-vi.mock("node:os", () => ({
+vi.mock('node:os', () => ({
   default: osMock,
 }));
 
-vi.mock("@/lib/app-config", () => ({
+vi.mock('@/lib/app-config', () => ({
   getAppConfig: getAppConfigMock,
 }));
 
-vi.mock("@/lib/container-routing", () => ({
+vi.mock('@/lib/container-routing', () => ({
   extractTraefikHostFromLabels: vi.fn().mockReturnValue(null),
 }));
 
-describe("parseLinuxDefaultRouteInterface", () => {
-  it("chooses the lowest metric default route interface", () => {
+describe('parseLinuxDefaultRouteInterface', () => {
+  it('chooses the lowest metric default route interface', () => {
     const routeTable = [
-      "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT",
-      "docker0\t00000000\t00000000\t0001\t0\t0\t500\t00000000\t0\t0\t0",
-      "enp4s0\t00000000\t0101A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0",
-      "enp4s0\t0001A8C0\t00000000\t0001\t0\t0\t100\t00FFFFFF\t0\t0\t0",
-    ].join("\n");
+      'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT',
+      'docker0\t00000000\t00000000\t0001\t0\t0\t500\t00000000\t0\t0\t0',
+      'enp4s0\t00000000\t0101A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0',
+      'enp4s0\t0001A8C0\t00000000\t0001\t0\t0\t100\t00FFFFFF\t0\t0\t0',
+    ].join('\n');
 
-    expect(parseLinuxDefaultRouteInterface(routeTable)).toBe("enp4s0");
+    expect(parseLinuxDefaultRouteInterface(routeTable)).toBe('enp4s0');
   });
 
-  it("returns null when the route table has no default route", () => {
+  it('returns null when the route table has no default route', () => {
     const routeTable = [
-      "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT",
-      "enp4s0\t0001A8C0\t00000000\t0001\t0\t0\t100\t00FFFFFF\t0\t0\t0",
-    ].join("\n");
+      'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT',
+      'enp4s0\t0001A8C0\t00000000\t0001\t0\t0\t100\t00FFFFFF\t0\t0\t0',
+    ].join('\n');
 
     expect(parseLinuxDefaultRouteInterface(routeTable)).toBeNull();
   });
 });
 
-describe("getMetricsSnapshot", () => {
+describe('getMetricsSnapshot', () => {
   function makeSpawnChild(exitCode = 1) {
     const child = new EventEmitter() as NodeJS.EventEmitter & {
       stdout: NodeJS.EventEmitter;
@@ -73,7 +72,7 @@ describe("getMetricsSnapshot", () => {
     child.stdout = new EventEmitter();
     child.stderr = new EventEmitter();
 
-    Promise.resolve().then(() => child.emit("close", exitCode));
+    Promise.resolve().then(() => child.emit('close', exitCode));
 
     return child;
   }
@@ -82,26 +81,20 @@ describe("getMetricsSnapshot", () => {
     vi.resetModules();
     vi.clearAllMocks();
 
-    accessMock.mockRejectedValue(
-      Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
-    );
-    readFileMock.mockRejectedValue(
-      Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
-    );
+    accessMock.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+    readFileMock.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
     spawnMock.mockImplementation(() => makeSpawnChild(1));
 
-    osMock.cpus.mockReturnValue([
-      { times: { user: 100, nice: 0, sys: 100, idle: 800, irq: 0 } },
-    ]);
+    osMock.cpus.mockReturnValue([{ times: { user: 100, nice: 0, sys: 100, idle: 800, irq: 0 } }]);
     osMock.loadavg.mockReturnValue([0.5, 0.5, 0.5]);
     osMock.totalmem.mockReturnValue(8 * 1024 ** 3);
     osMock.freemem.mockReturnValue(4 * 1024 ** 3);
     osMock.networkInterfaces.mockReturnValue({});
 
     getAppConfigMock.mockReturnValue({
-      baseDomain: "apps.example.com",
+      baseDomain: 'apps.example.com',
       runtime: {
-        hostProcPath: "/nonexistent/proc",
+        hostProcPath: '/nonexistent/proc',
         hostLanIp: null,
       },
       metrics: {
@@ -112,8 +105,8 @@ describe("getMetricsSnapshot", () => {
     });
   });
 
-  it("returns the cached snapshot on repeated calls within the TTL window", async () => {
-    const { getMetricsSnapshot } = await import("@/lib/system-metrics");
+  it('returns the cached snapshot on repeated calls within the TTL window', async () => {
+    const { getMetricsSnapshot } = await import('@/lib/system-metrics');
 
     const snapshot1 = await getMetricsSnapshot();
     const callsAfterFirstBuild = accessMock.mock.calls.length;
@@ -124,10 +117,10 @@ describe("getMetricsSnapshot", () => {
     expect(accessMock.mock.calls.length).toBe(callsAfterFirstBuild);
   });
 
-  it("builds a new snapshot after the TTL expires", async () => {
-    const dateSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+  it('builds a new snapshot after the TTL expires', async () => {
+    const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(0);
 
-    const { getMetricsSnapshot } = await import("@/lib/system-metrics");
+    const { getMetricsSnapshot } = await import('@/lib/system-metrics');
 
     await getMetricsSnapshot();
     const callsAfterFirstBuild = accessMock.mock.calls.length;
@@ -141,8 +134,8 @@ describe("getMetricsSnapshot", () => {
     dateSpy.mockRestore();
   });
 
-  it("deduplicates concurrent in-flight builds", async () => {
-    const { getMetricsSnapshot } = await import("@/lib/system-metrics");
+  it('deduplicates concurrent in-flight builds', async () => {
+    const { getMetricsSnapshot } = await import('@/lib/system-metrics');
 
     let releasePsCommand!: () => void;
     const psPending = new Promise<void>((resolve) => {
@@ -157,10 +150,10 @@ describe("getMetricsSnapshot", () => {
       child.stdout = new EventEmitter();
       child.stderr = new EventEmitter();
 
-      if (args[0] === "ps") {
-        psPending.then(() => child.emit("close", 1));
+      if (args[0] === 'ps') {
+        psPending.then(() => child.emit('close', 1));
       } else {
-        Promise.resolve().then(() => child.emit("close", 1));
+        Promise.resolve().then(() => child.emit('close', 1));
       }
 
       return child;
@@ -178,28 +171,26 @@ describe("getMetricsSnapshot", () => {
     expect(snapshot1).toBe(snapshot2);
   });
 
-  it("clears the in-flight promise on failure so the next call retries", async () => {
-    const { getMetricsSnapshot } = await import("@/lib/system-metrics");
+  it('clears the in-flight promise on failure so the next call retries', async () => {
+    const { getMetricsSnapshot } = await import('@/lib/system-metrics');
 
     osMock.cpus.mockImplementation(() => {
-      throw new Error("cpu unavailable");
+      throw new Error('cpu unavailable');
     });
 
-    await expect(getMetricsSnapshot()).rejects.toThrow("cpu unavailable");
+    await expect(getMetricsSnapshot()).rejects.toThrow('cpu unavailable');
 
-    osMock.cpus.mockReturnValue([
-      { times: { user: 100, nice: 0, sys: 100, idle: 800, irq: 0 } },
-    ]);
+    osMock.cpus.mockReturnValue([{ times: { user: 100, nice: 0, sys: 100, idle: 800, irq: 0 } }]);
 
     const snapshot = await getMetricsSnapshot();
 
     expect(snapshot).toBeDefined();
   });
 
-  it("records capturedAt from build completion, not build start", async () => {
-    const dateSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+  it('records capturedAt from build completion, not build start', async () => {
+    const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(0);
 
-    const { getMetricsSnapshot } = await import("@/lib/system-metrics");
+    const { getMetricsSnapshot } = await import('@/lib/system-metrics');
 
     // Advance Date.now() to 1000ms inside the spawn calls, which happen
     // after buildSystemMetrics and buildNetworkMetrics (i.e. late in the build).
@@ -212,7 +203,7 @@ describe("getMetricsSnapshot", () => {
       };
       child.stdout = new EventEmitter();
       child.stderr = new EventEmitter();
-      Promise.resolve().then(() => child.emit("close", 1));
+      Promise.resolve().then(() => child.emit('close', 1));
 
       return child;
     });
