@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from 'react';
 
-import { cn } from "@/lib/utils";
-import type { EChartsCoreOption, EChartsType, SetOptionOpts } from "echarts";
+import { cn } from '@/lib/utils';
+import type { EChartsCoreOption, EChartsType, SetOptionOpts } from 'echarts';
 
 type EChartSurfaceProps = {
   ariaLabel: string;
@@ -12,15 +12,11 @@ type EChartSurfaceProps = {
   setOptionOptions?: SetOptionOpts;
 };
 
-let echartsModulePromise: Promise<
-  typeof import("@/lib/echarts-client").echarts
-> | null = null;
+let echartsModulePromise: Promise<typeof import('@/lib/echarts-client').echarts> | null = null;
 
 function loadECharts() {
   if (!echartsModulePromise) {
-    echartsModulePromise = import("@/lib/echarts-client").then(
-      (module) => module.echarts,
-    );
+    echartsModulePromise = import('@/lib/echarts-client').then((module) => module.echarts);
   }
 
   return echartsModulePromise;
@@ -38,7 +34,7 @@ export const EChartSurface = memo(function EChartSurface({
   const setOptionOptionsRef = useRef(setOptionOptions);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return;
     }
 
@@ -46,7 +42,7 @@ export const EChartSurface = memo(function EChartSurface({
       void loadECharts();
     };
 
-    if ("requestIdleCallback" in window) {
+    if ('requestIdleCallback' in window) {
       const handle = window.requestIdleCallback(warmCharts, {
         timeout: 1500,
       });
@@ -85,8 +81,7 @@ export const EChartSurface = memo(function EChartSurface({
         return;
       }
 
-      const instance =
-        echarts.getInstanceByDom(element) ?? echarts.init(element);
+      const instance = echarts.getInstanceByDom(element) ?? echarts.init(element);
 
       chartRef.current = instance;
       instance.setOption(optionRef.current, setOptionOptionsRef.current);
@@ -96,7 +91,7 @@ export const EChartSurface = memo(function EChartSurface({
       resizeObserver.observe(element);
     };
 
-    if (typeof IntersectionObserver !== "function") {
+    if (typeof IntersectionObserver !== 'function') {
       void initializeChart();
     } else {
       intersectionObserver = new IntersectionObserver(
@@ -109,7 +104,7 @@ export const EChartSurface = memo(function EChartSurface({
           intersectionObserver = null;
           void initializeChart();
         },
-        { rootMargin: "240px 0px" },
+        { rootMargin: '240px 0px' }
       );
 
       intersectionObserver.observe(element);
@@ -133,7 +128,7 @@ export const EChartSurface = memo(function EChartSurface({
   return (
     <div
       aria-label={ariaLabel}
-      className={cn("min-h-44 w-full", className)}
+      className={cn('min-h-44 w-full', className)}
       ref={elementRef}
       role="img"
     />

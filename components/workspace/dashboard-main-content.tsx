@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import type { PreviewContainer } from "@/components/workspace-shell";
-import type { ContainerStats } from "@/lib/system-metrics";
-import type { DashboardRange } from "@/lib/metrics-range";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import type { PreviewContainer } from '@/components/workspace-shell';
+import type { ContainerStats } from '@/lib/system-metrics';
+import type { DashboardRange } from '@/lib/metrics-range';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
-import { getToneClasses, Sparkline, usePercentWidthRef } from "./workspace-ui";
+import { getToneClasses, Sparkline, usePercentWidthRef } from './workspace-ui';
 
 type FocusedMetricLegend = {
   label: string;
@@ -23,7 +23,7 @@ export type FocusedMetricChart = {
   trendPoints: number[];
   title: string;
   value: string;
-  variant: "cpu" | "memory" | "network" | "disk";
+  variant: 'cpu' | 'memory' | 'network' | 'disk';
 };
 
 type DashboardMainContentProps = {
@@ -41,7 +41,7 @@ type DashboardMainContentProps = {
   selectedContainer: PreviewContainer;
   selectedRuntimeContainer: ContainerStats | null;
   selectedStatusLabel: string;
-  selectedStatusVariant: "success" | "warning" | "default";
+  selectedStatusVariant: 'success' | 'warning' | 'default';
   serviceOrPortLabel: string;
 };
 
@@ -59,9 +59,7 @@ function EndpointLoadBar({ load }: { load: number }) {
 }
 
 function getChartSeries(points: number[]) {
-  const safePoints = points.length
-    ? points
-    : Array.from({ length: 12 }, () => 0);
+  const safePoints = points.length ? points : Array.from({ length: 12 }, () => 0);
   const width = 224;
   const height = 108;
   const paddingX = 10;
@@ -70,18 +68,14 @@ function getChartSeries(points: number[]) {
   const min = Math.min(...safePoints);
   const range = max - min || 1;
   const step =
-    safePoints.length > 1
-      ? (width - paddingX * 2) / (safePoints.length - 1)
-      : width - paddingX * 2;
+    safePoints.length > 1 ? (width - paddingX * 2) / (safePoints.length - 1) : width - paddingX * 2;
 
   const pointsData = safePoints.map((value, index) => {
     const normalized = (value - min) / range;
 
     return {
       x: Number((paddingX + index * step).toFixed(2)),
-      y: Number(
-        (height - paddingY - normalized * (height - paddingY * 2)).toFixed(2),
-      ),
+      y: Number((height - paddingY - normalized * (height - paddingY * 2)).toFixed(2)),
     };
   });
 
@@ -90,9 +84,9 @@ function getChartSeries(points: number[]) {
       `${paddingX},${height - paddingY}`,
       ...pointsData.map((point) => `${point.x},${point.y}`),
       `${width - paddingX},${height - paddingY}`,
-    ].join(" "),
+    ].join(' '),
     height,
-    linePoints: pointsData.map((point) => `${point.x},${point.y}`).join(" "),
+    linePoints: pointsData.map((point) => `${point.x},${point.y}`).join(' '),
     pointsData,
     width,
   };
@@ -157,9 +151,7 @@ function MemoryLoadChart({ points }: { points: number[] }) {
     return <MetricChartEmptyState />;
   }
 
-  const safePoints = points.length
-    ? points
-    : Array.from({ length: 12 }, () => 0);
+  const safePoints = points.length ? points : Array.from({ length: 12 }, () => 0);
   const max = Math.max(...safePoints, 1);
   const barWidth = Math.max(8, Math.floor(188 / safePoints.length));
   const gap = 5;
@@ -183,9 +175,7 @@ function MemoryLoadChart({ points }: { points: number[] }) {
 
           return (
             <rect
-              fill={
-                isLast ? "rgba(217, 119, 6, 0.88)" : "rgba(245, 158, 11, 0.34)"
-              }
+              fill={isLast ? 'rgba(217, 119, 6, 0.88)' : 'rgba(245, 158, 11, 0.34)'}
               height={height}
               key={`${point}-${index}`}
               rx="6"
@@ -228,10 +218,7 @@ function DualLineChart({
           strokeDasharray="4 5"
           strokeWidth="1"
         />
-        <polygon
-          fill="rgba(56, 189, 248, 0.14)"
-          points={primarySeries.areaPoints}
-        />
+        <polygon fill="rgba(56, 189, 248, 0.14)" points={primarySeries.areaPoints} />
         <polyline
           fill="none"
           points={primarySeries.linePoints}
@@ -295,10 +282,7 @@ function DiskIoChart({
         {safePrimary.map((point, index) => {
           const x = 12 + index * (laneWidth + gap);
           const topHeight = Math.max(4, (point / maxPrimary) * laneHeight);
-          const bottomHeight = Math.max(
-            4,
-            (safeSecondary[index] / maxSecondary) * laneHeight,
-          );
+          const bottomHeight = Math.max(4, (safeSecondary[index] / maxSecondary) * laneHeight);
 
           return (
             <g key={`${point}-${safeSecondary[index]}-${index}`}>
@@ -328,27 +312,27 @@ function DiskIoChart({
 
 function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
   const cardClassName =
-    chart.variant === "cpu"
-      ? "from-emerald-50/80 via-background to-background"
-      : chart.variant === "memory"
-        ? "from-amber-50/80 via-background to-background"
-        : chart.variant === "network"
-          ? "from-sky-50/80 via-background to-background"
-          : "from-rose-50/80 via-background to-background";
+    chart.variant === 'cpu'
+      ? 'from-emerald-50/80 via-background to-background'
+      : chart.variant === 'memory'
+        ? 'from-amber-50/80 via-background to-background'
+        : chart.variant === 'network'
+          ? 'from-sky-50/80 via-background to-background'
+          : 'from-rose-50/80 via-background to-background';
   const badgeClassName =
-    chart.variant === "cpu"
-      ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700"
-      : chart.variant === "memory"
-        ? "border-amber-200/80 bg-amber-50/90 text-amber-700"
-        : chart.variant === "network"
-          ? "border-sky-200/80 bg-sky-50/90 text-sky-700"
-          : "border-rose-200/80 bg-rose-50/90 text-rose-700";
+    chart.variant === 'cpu'
+      ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700'
+      : chart.variant === 'memory'
+        ? 'border-amber-200/80 bg-amber-50/90 text-amber-700'
+        : chart.variant === 'network'
+          ? 'border-sky-200/80 bg-sky-50/90 text-sky-700'
+          : 'border-rose-200/80 bg-rose-50/90 text-rose-700';
 
   return (
     <Card
       className={cn(
-        "overflow-hidden border-border/70 bg-linear-to-br shadow-[0_24px_64px_-48px_rgba(15,23,42,0.3)]",
-        cardClassName,
+        'overflow-hidden border-border/70 bg-linear-to-br shadow-[0_24px_64px_-48px_rgba(15,23,42,0.3)]',
+        cardClassName
       )}
     >
       <CardHeader className="border-b border-border/60">
@@ -360,9 +344,7 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
-        <div className="text-2xl font-semibold tracking-tight text-foreground">
-          {chart.value}
-        </div>
+        <div className="text-2xl font-semibold tracking-tight text-foreground">{chart.value}</div>
         <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           {chart.legends.map((legend) => (
             <div
@@ -373,11 +355,11 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
             </div>
           ))}
         </div>
-        {chart.variant === "cpu" ? (
+        {chart.variant === 'cpu' ? (
           <CpuLoadChart points={chart.primaryPoints} />
-        ) : chart.variant === "memory" ? (
+        ) : chart.variant === 'memory' ? (
           <MemoryLoadChart points={chart.primaryPoints} />
-        ) : chart.variant === "network" ? (
+        ) : chart.variant === 'network' ? (
           <DualLineChart
             primaryPoints={chart.primaryPoints}
             secondaryPoints={chart.secondaryPoints ?? []}
@@ -393,15 +375,15 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
   );
 }
 
-function getFocusedMetricTone(variant: FocusedMetricChart["variant"]) {
+function getFocusedMetricTone(variant: FocusedMetricChart['variant']) {
   switch (variant) {
-    case "cpu":
-      return "emerald" as const;
-    case "memory":
-    case "disk":
-      return "amber" as const;
-    case "network":
-      return "slate" as const;
+    case 'cpu':
+      return 'emerald' as const;
+    case 'memory':
+    case 'disk':
+      return 'amber' as const;
+    case 'network':
+      return 'slate' as const;
   }
 }
 
@@ -436,33 +418,25 @@ export function DashboardMainContent({
               <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                 Runtime
               </span>
-              <span className="font-semibold text-foreground">
-                {runtimePillLabel}
-              </span>
+              <span className="font-semibold text-foreground">{runtimePillLabel}</span>
             </div>
             <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
               <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                {selectedRuntimeContainer ? "Health" : "Node"}
+                {selectedRuntimeContainer ? 'Health' : 'Node'}
               </span>
-              <span className="font-semibold text-foreground">
-                {healthOrNodeLabel}
-              </span>
+              <span className="font-semibold text-foreground">{healthOrNodeLabel}</span>
             </div>
             <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
               <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                {selectedRuntimeContainer ? "Project" : "Region"}
+                {selectedRuntimeContainer ? 'Project' : 'Region'}
               </span>
-              <span className="font-semibold text-foreground">
-                {projectOrRegionLabel}
-              </span>
+              <span className="font-semibold text-foreground">{projectOrRegionLabel}</span>
             </div>
             <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
               <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                {selectedRuntimeContainer ? "Service" : "Exposed port"}
+                {selectedRuntimeContainer ? 'Service' : 'Exposed port'}
               </span>
-              <span className="font-semibold text-foreground">
-                {serviceOrPortLabel}
-              </span>
+              <span className="font-semibold text-foreground">{serviceOrPortLabel}</span>
             </div>
           </div>
         </div>
@@ -481,10 +455,10 @@ export function DashboardMainContent({
               <Button
                 aria-pressed={range === option.value}
                 className={cn(
-                  "rounded-full",
+                  'rounded-full',
                   range === option.value
-                    ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-[0_18px_40px_-32px_rgba(16,185,129,0.3)] hover:bg-emerald-50"
-                    : "border-border/60 bg-background/82 text-muted-foreground hover:text-foreground",
+                    ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-[0_18px_40px_-32px_rgba(16,185,129,0.3)] hover:bg-emerald-50'
+                    : 'border-border/60 bg-background/82 text-muted-foreground hover:text-foreground'
                 )}
                 key={option.value}
                 onClick={() => onRangeChangeAction(option.value)}
@@ -512,16 +486,14 @@ export function DashboardMainContent({
           </CardHeader>
           <CardContent className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-4 pt-4">
             {focusedMetricCharts.map((chart) => {
-              const toneClasses = getToneClasses(
-                getFocusedMetricTone(chart.variant),
-              );
+              const toneClasses = getToneClasses(getFocusedMetricTone(chart.variant));
 
               return (
                 <div
                   className={cn(
-                    "rounded-[1.35rem] border bg-linear-to-br px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.22)]",
+                    'rounded-[1.35rem] border bg-linear-to-br px-4 py-4 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.22)]',
                     toneClasses.border,
-                    toneClasses.surface,
+                    toneClasses.surface
                   )}
                   key={chart.title}
                 >
@@ -529,9 +501,7 @@ export function DashboardMainContent({
                     <div className="text-sm font-semibold tracking-tight text-foreground">
                       {chart.title}
                     </div>
-                    <div
-                      className={cn("text-xs font-semibold", toneClasses.delta)}
-                    >
+                    <div className={cn('text-xs font-semibold', toneClasses.delta)}>
                       {chart.delta}
                     </div>
                   </div>
@@ -615,16 +585,13 @@ export function DashboardMainContent({
                       <div className="font-semibold tracking-tight text-foreground">
                         {event.label}
                       </div>
-                      <div className="text-xs leading-5 text-muted-foreground">
-                        {event.detail}
-                      </div>
+                      <div className="text-xs leading-5 text-muted-foreground">{event.detail}</div>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="text-xs leading-5 text-muted-foreground">
-                  Runtime notes will appear here when richer container
-                  inspection data is connected.
+                  Runtime notes will appear here when richer container inspection data is connected.
                 </div>
               )}
             </div>
@@ -647,12 +614,8 @@ export function DashboardMainContent({
                   className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
                   key={item.key}
                 >
-                  <div className="text-xs text-muted-foreground">
-                    {item.key}
-                  </div>
-                  <div className="mt-1 font-mono text-sm text-foreground">
-                    {item.value}
-                  </div>
+                  <div className="text-xs text-muted-foreground">{item.key}</div>
+                  <div className="mt-1 font-mono text-sm text-foreground">{item.value}</div>
                 </div>
               ))
             ) : (
@@ -672,9 +635,7 @@ export function DashboardMainContent({
                   className="rounded-[1.2rem] border border-border/60 bg-background/80 px-4 py-3"
                   key={volume}
                 >
-                  <div className="font-mono text-sm text-foreground">
-                    {volume}
-                  </div>
+                  <div className="font-mono text-sm text-foreground">{volume}</div>
                 </div>
               ))
             ) : (
@@ -685,10 +646,7 @@ export function DashboardMainContent({
             {selectedContainer.tags.length ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 {selectedContainer.tags.map((tag) => (
-                  <Badge
-                    className="border-border/60 bg-muted/70 text-foreground"
-                    key={tag}
-                  >
+                  <Badge className="border-border/60 bg-muted/70 text-foreground" key={tag}>
                     {tag}
                   </Badge>
                 ))}

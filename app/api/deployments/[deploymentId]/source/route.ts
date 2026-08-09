@@ -1,26 +1,26 @@
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
 
-import { readDeploymentSourceState } from "@/lib/deployment-engine";
+import { readDeploymentSourceState } from '@/lib/deployment-engine';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
 
-  return "Unable to load deployment source details.";
+  return 'Unable to load deployment source details.';
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ deploymentId: string }> },
+  { params }: { params: Promise<{ deploymentId: string }> }
 ) {
   const { deploymentId } = await params;
 
   try {
     const payload = await readDeploymentSourceState({
-      branch: request.nextUrl.searchParams.get("branch"),
+      branch: request.nextUrl.searchParams.get('branch'),
       deploymentId,
     });
 
@@ -29,7 +29,7 @@ export async function GET(
         // Cache in the browser for 30 s so quick page switches don't re-hit
         // the GitHub API. The response is deployment-specific (private) and
         // the client refetches whenever branch / updatedAt changes anyway.
-        "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+        'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
       },
     });
   } catch (error) {
@@ -39,7 +39,7 @@ export async function GET(
       },
       {
         status: 400,
-      },
+      }
     );
   }
 }
