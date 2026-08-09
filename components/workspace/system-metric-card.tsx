@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { memo, useMemo } from "react";
-import type { EChartsCoreOption } from "echarts";
+import { memo, useMemo } from 'react';
+import type { EChartsCoreOption } from 'echarts';
 
-import { EChartSurface } from "@/components/ui/echart-surface";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { SystemMetricPanel } from "@/lib/metrics-dashboard-metrics";
+import { EChartSurface } from '@/components/ui/echart-surface';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { SystemMetricPanel } from '@/lib/metrics-dashboard-metrics';
 import {
   formatAxisValue,
   formatDetailedTimestamp,
   formatMetricValue,
-} from "@/lib/metrics-dashboard-metrics";
-import { cn } from "@/lib/utils";
+} from '@/lib/metrics-dashboard-metrics';
+import { cn } from '@/lib/utils';
 
 type TooltipPoint = {
   color?: string;
@@ -24,43 +24,43 @@ type TooltipPoint = {
 
 const SYSTEM_STYLES = {
   cpu: {
-    badge: "border-emerald-200/80 bg-emerald-50/90 text-emerald-700",
-    border: "border-emerald-200/70",
-    chartTone: "rgba(15, 118, 110, 0.96)",
-    grid: "rgba(15, 118, 110, 0.12)",
-    surface: "from-emerald-50/88 via-background to-background",
-    tooltipAccent: "#0f766e",
+    badge: 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700',
+    border: 'border-emerald-200/70',
+    chartTone: 'rgba(15, 118, 110, 0.96)',
+    grid: 'rgba(15, 118, 110, 0.12)',
+    surface: 'from-emerald-50/88 via-background to-background',
+    tooltipAccent: '#0f766e',
   },
   disk: {
-    badge: "border-rose-200/80 bg-rose-50/90 text-rose-700",
-    border: "border-rose-200/70",
-    chartTone: "rgba(225, 29, 72, 0.94)",
-    grid: "rgba(225, 29, 72, 0.12)",
-    surface: "from-rose-50/88 via-background to-background",
-    tooltipAccent: "#e11d48",
+    badge: 'border-rose-200/80 bg-rose-50/90 text-rose-700',
+    border: 'border-rose-200/70',
+    chartTone: 'rgba(225, 29, 72, 0.94)',
+    grid: 'rgba(225, 29, 72, 0.12)',
+    surface: 'from-rose-50/88 via-background to-background',
+    tooltipAccent: '#e11d48',
   },
   memory: {
-    badge: "border-amber-200/80 bg-amber-50/90 text-amber-700",
-    border: "border-amber-200/70",
-    chartTone: "rgba(217, 119, 6, 0.96)",
-    grid: "rgba(217, 119, 6, 0.12)",
-    surface: "from-amber-50/88 via-background to-background",
-    tooltipAccent: "#d97706",
+    badge: 'border-amber-200/80 bg-amber-50/90 text-amber-700',
+    border: 'border-amber-200/70',
+    chartTone: 'rgba(217, 119, 6, 0.96)',
+    grid: 'rgba(217, 119, 6, 0.12)',
+    surface: 'from-amber-50/88 via-background to-background',
+    tooltipAccent: '#d97706',
   },
   network: {
-    badge: "border-sky-200/80 bg-sky-50/90 text-sky-700",
-    border: "border-sky-200/70",
-    chartTone: "rgba(2, 132, 199, 0.96)",
-    grid: "rgba(2, 132, 199, 0.12)",
-    surface: "from-sky-50/88 via-background to-background",
-    tooltipAccent: "#0284c7",
+    badge: 'border-sky-200/80 bg-sky-50/90 text-sky-700',
+    border: 'border-sky-200/70',
+    chartTone: 'rgba(2, 132, 199, 0.96)',
+    grid: 'rgba(2, 132, 199, 0.12)',
+    surface: 'from-sky-50/88 via-background to-background',
+    tooltipAccent: '#0284c7',
   },
 } as const;
 
 const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
 
 function stripMeridiem(label: string) {
-  return label.replace(/\s?(AM|PM)$/i, "");
+  return label.replace(/\s?(AM|PM)$/i, '');
 }
 
 function getLabelInterval(length: number) {
@@ -76,7 +76,7 @@ function createTooltipShell(title: string, rows: string) {
 }
 
 function createTooltipRow(label: string, value: string, color?: string) {
-  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:12px; line-height:1.5;"><span style="display:flex; align-items:center; gap:8px; color:#cbd5e1;"><span style="width:9px; height:9px; border-radius:999px; background:${color ?? "#94a3b8"};"></span>${label}</span><strong style="font-size:12px; color:#f8fafc;">${value}</strong></div>`;
+  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:12px; line-height:1.5;"><span style="display:flex; align-items:center; gap:8px; color:#cbd5e1;"><span style="width:9px; height:9px; border-radius:999px; background:${color ?? '#94a3b8'};"></span>${label}</span><strong style="font-size:12px; color:#f8fafc;">${value}</strong></div>`;
 }
 
 function EmptyChartState({ message }: { message: string }) {
@@ -101,56 +101,48 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       top: 16,
     },
     tooltip: {
-      backgroundColor: "transparent",
+      backgroundColor: 'transparent',
       borderWidth: 0,
-      extraCssText: "box-shadow:none;",
+      extraCssText: 'box-shadow:none;',
       formatter: (value: unknown) => {
-        const params = Array.isArray(value)
-          ? (value as TooltipPoint[])
-          : [value as TooltipPoint];
+        const params = Array.isArray(value) ? (value as TooltipPoint[]) : [value as TooltipPoint];
         const index = params[0]?.dataIndex ?? 0;
         const title = formatDetailedTimestamp(
-          panel.timestamps[index] ??
-            panel.labels[index] ??
-            new Date().toISOString(),
+          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString()
         );
         const rows = [
           createTooltipRow(
             panel.primaryLabel ?? panel.title,
             formatMetricValue(panel.primaryValues[index] ?? 0, panel.format),
-            style.tooltipAccent,
+            style.tooltipAccent
           ),
         ];
 
         if (panel.secondaryValues?.length) {
           rows.push(
             createTooltipRow(
-              panel.secondaryLabel ??
-                (panel.id === "network" ? "Upload" : "Write"),
-              formatMetricValue(
-                panel.secondaryValues[index] ?? 0,
-                panel.format,
-              ),
-              panel.id === "network" ? "#475569" : "#fb7185",
-            ),
+              panel.secondaryLabel ?? (panel.id === 'network' ? 'Upload' : 'Write'),
+              formatMetricValue(panel.secondaryValues[index] ?? 0, panel.format),
+              panel.id === 'network' ? '#475569' : '#fb7185'
+            )
           );
         }
 
-        return createTooltipShell(title, rows.join(""));
+        return createTooltipShell(title, rows.join(''));
       },
       padding: 0,
-      trigger: "axis",
+      trigger: 'axis',
       axisPointer: {
         lineStyle: {
           color: style.chartTone,
           width: 1,
         },
-        type: "line",
+        type: 'line',
       },
     },
     xAxis: {
       axisLabel: {
-        color: "rgba(71,85,105,0.88)",
+        color: 'rgba(71,85,105,0.88)',
         formatter: (value: string) => stripMeridiem(value),
         fontSize: 10,
         interval: axisInterval,
@@ -158,19 +150,19 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       },
       axisLine: {
         lineStyle: {
-          color: "rgba(148,163,184,0.24)",
+          color: 'rgba(148,163,184,0.24)',
         },
       },
       axisTick: {
         show: false,
       },
-      boundaryGap: panel.variant === "bars" || panel.variant === "banded",
+      boundaryGap: panel.variant === 'bars' || panel.variant === 'banded',
       data: panel.labels,
-      type: "category",
+      type: 'category',
     },
     yAxis: {
       axisLabel: {
-        color: "rgba(100,116,139,0.82)",
+        color: 'rgba(100,116,139,0.82)',
         fontSize: 10,
         formatter: (value: number) => formatAxisValue(value, panel.format),
       },
@@ -183,14 +175,14 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       splitLine: {
         lineStyle: {
           color: style.grid,
-          type: "dashed",
+          type: 'dashed',
         },
       },
-      type: "value",
+      type: 'value',
     },
   } satisfies EChartsCoreOption;
 
-  if (panel.variant === "area") {
+  if (panel.variant === 'area') {
     return {
       ...common,
       series: [
@@ -199,15 +191,15 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
             color: {
               colorStops: [
                 {
-                  color: "rgba(16,185,129,0.34)",
+                  color: 'rgba(16,185,129,0.34)',
                   offset: 0,
                 },
                 {
-                  color: "rgba(16,185,129,0.03)",
+                  color: 'rgba(16,185,129,0.03)',
                   offset: 1,
                 },
               ],
-              type: "linear",
+              type: 'linear',
               x: 0,
               x2: 0,
               y: 0,
@@ -216,67 +208,67 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
           },
           data: panel.primaryValues,
           itemStyle: {
-            color: "#0f766e",
+            color: '#0f766e',
           },
           lineStyle: {
-            color: "#0f766e",
+            color: '#0f766e',
             width: 3,
           },
           showSymbol: false,
           smooth: true,
-          type: "line",
+          type: 'line',
         },
       ],
     };
   }
 
-  if (panel.variant === "bars") {
+  if (panel.variant === 'bars') {
     return {
       ...common,
       series: [
         {
-          barWidth: "56%",
+          barWidth: '56%',
           data: panel.primaryValues,
           itemStyle: {
             borderRadius: [8, 8, 0, 0],
-            color: "rgba(245, 158, 11, 0.78)",
+            color: 'rgba(245, 158, 11, 0.78)',
           },
-          type: "bar",
+          type: 'bar',
         },
       ],
     };
   }
 
-  if (panel.variant === "dual-line") {
+  if (panel.variant === 'dual-line') {
     return {
       ...common,
       series: [
         {
           data: panel.primaryValues,
           itemStyle: {
-            color: "#0284c7",
+            color: '#0284c7',
           },
           lineStyle: {
-            color: "#0284c7",
+            color: '#0284c7',
             width: 2.8,
           },
           showSymbol: false,
           smooth: true,
-          type: "line",
+          type: 'line',
         },
         {
           data: panel.secondaryValues ?? [],
           itemStyle: {
-            color: "#475569",
+            color: '#475569',
           },
           lineStyle: {
-            color: "#475569",
-            type: "dashed",
+            color: '#475569',
+            type: 'dashed',
             width: 2.2,
           },
           showSymbol: false,
           smooth: true,
-          type: "line",
+          type: 'line',
         },
       ],
     };
@@ -286,24 +278,24 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
     ...common,
     series: [
       {
-        barGap: "30%",
-        barWidth: "34%",
+        barGap: '30%',
+        barWidth: '34%',
         data: panel.primaryValues,
         itemStyle: {
           borderRadius: [8, 8, 0, 0],
-          color: "rgba(244, 63, 94, 0.72)",
+          color: 'rgba(244, 63, 94, 0.72)',
         },
-        type: "bar",
+        type: 'bar',
       },
       {
-        barGap: "30%",
-        barWidth: "34%",
+        barGap: '30%',
+        barWidth: '34%',
         data: panel.secondaryValues ?? [],
         itemStyle: {
           borderRadius: [8, 8, 0, 0],
-          color: "rgba(251, 146, 60, 0.58)",
+          color: 'rgba(251, 146, 60, 0.58)',
         },
-        type: "bar",
+        type: 'bar',
       },
     ],
   };
@@ -341,19 +333,11 @@ export const SystemMetricCard = memo(
 
     return (
       <Card
-        className={cn(
-          "overflow-hidden rounded-xl border bg-background shadow-sm",
-          style.border,
-        )}
+        className={cn('overflow-hidden rounded-xl border bg-background shadow-sm', style.border)}
       >
         <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/60 pb-2 pt-3">
           <CardTitle>{panel.title}</CardTitle>
-          <Badge
-            className={cn(
-              "max-w-[140px] truncate text-[11px] shadow-none",
-              style.badge,
-            )}
-          >
+          <Badge className={cn('max-w-[140px] truncate text-[11px] shadow-none', style.badge)}>
             {panel.currentCaption}
           </Badge>
         </CardHeader>
@@ -372,5 +356,5 @@ export const SystemMetricCard = memo(
       </Card>
     );
   },
-  (prev, next) => arePanelDataEqual(prev.panel, next.panel),
+  (prev, next) => arePanelDataEqual(prev.panel, next.panel)
 );

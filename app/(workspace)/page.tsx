@@ -1,15 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata } from 'next';
 
-import { MetricsDashboardShell } from "@/components/metrics-dashboard-shell";
-import { loadMetricsDashboardData } from "@/lib/metrics-dashboard-data";
+import { MetricsDashboardShell } from '@/components/metrics-dashboard-shell';
+import { loadMetricsDashboardData } from '@/lib/metrics-dashboard-data';
 
 export const metadata: Metadata = {
-  title: "Dashboard | Vercelab",
-  description:
-    "Live dashboard for host load, container activity, and infrastructure metrics.",
+  title: 'Dashboard | Vercelab',
+  description: 'Live dashboard for host load, container activity, and infrastructure metrics.',
 };
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 type HomeProps = {
   searchParams?: Promise<{

@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
 import type { LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useEffect } from "react";
 
-import type { WorkspaceView } from "@/components/workspace-shell";
-import { cn } from "@/lib/utils";
+import type { WorkspaceView } from '@/components/workspace-shell';
+import { cn } from '@/lib/utils';
 
 type WorkspaceRailItemData = {
   description: string;
@@ -33,20 +33,20 @@ type WorkspaceRailItemProps = {
 
 function getWorkspaceRailHref(view: WorkspaceView) {
   const pathname =
-    view === "dashboard"
-      ? "/"
-      : view === "terminal"
-        ? "/terminal"
-      : view === "git-app-page"
-        ? "/git-app-page"
-        : "/containers";
+    view === 'dashboard'
+      ? '/'
+      : view === 'terminal'
+        ? '/terminal'
+        : view === 'git-app-page'
+          ? '/git-app-page'
+          : '/containers';
 
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return pathname;
   }
 
   const searchParams = new URLSearchParams(window.location.search);
-  const range = searchParams.get("range");
+  const range = searchParams.get('range');
 
   if (!range) {
     return pathname;
@@ -127,7 +127,7 @@ export function WorkspaceRail({
       void router.prefetch(getWorkspaceRailHref(view));
       onViewPrefetchAction?.(view);
     },
-    [activeView, onViewPrefetchAction, router],
+    [activeView, onViewPrefetchAction, router]
   );
 
   useEffect(() => {

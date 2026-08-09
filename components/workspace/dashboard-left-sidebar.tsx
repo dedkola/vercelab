@@ -1,26 +1,26 @@
-"use client";
+'use client';
 
-import type { MouseEvent as ReactMouseEvent } from "react";
-import { Box, Plus, Search, X } from "lucide-react";
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import { Box, Plus, Search, X } from 'lucide-react';
 
-import type { ContainerListEntry } from "@/components/workspace-shell";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import type { ContainerListEntry } from '@/components/workspace-shell';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
-import { ResizeHandle, SectionLabel } from "./workspace-ui";
+import { ResizeHandle, SectionLabel } from './workspace-ui';
 
 function getContainerAriaLabel(container: ContainerListEntry) {
   if (container.deploymentStatus) {
-    if (container.runtime?.health && container.runtime.health !== "none") {
+    if (container.runtime?.health && container.runtime.health !== 'none') {
       return `${container.sidebarName} ${container.deploymentStatus} ${container.runtime.health}`;
     }
 
     return `${container.sidebarName} ${container.deploymentStatus}`;
   }
 
-  if (container.runtime?.health && container.runtime.health !== "none") {
+  if (container.runtime?.health && container.runtime.health !== 'none') {
     return `${container.sidebarName} ${container.runtime.health}`;
   }
 
@@ -33,72 +33,72 @@ function getContainerAriaLabel(container: ContainerListEntry) {
 
 function formatContainerStatusLabel(container: ContainerListEntry) {
   if (container.deploymentStatus) {
-    return container.deploymentStatus === "running" ? "Up" : "Dn";
+    return container.deploymentStatus === 'running' ? 'Up' : 'Dn';
   }
 
   if (container.runtime) {
-    return container.runtime.status === "running" ? "Up" : "Dn";
+    return container.runtime.status === 'running' ? 'Up' : 'Dn';
   }
 
-  return container.display.status === "running" ? "Up" : "Dn";
+  return container.display.status === 'running' ? 'Up' : 'Dn';
 }
 
 function getContainerStatusVariant(
-  container: ContainerListEntry,
-): "success" | "warning" | "default" {
+  container: ContainerListEntry
+): 'success' | 'warning' | 'default' {
   if (container.deploymentStatus) {
     switch (container.deploymentStatus) {
-      case "running":
-        return "success";
-      case "failed":
-      case "deploying":
-        return "warning";
+      case 'running':
+        return 'success';
+      case 'failed':
+      case 'deploying':
+        return 'warning';
       default:
-        return "default";
+        return 'default';
     }
   }
 
-  if (container.runtime?.health === "unhealthy") {
-    return "warning";
+  if (container.runtime?.health === 'unhealthy') {
+    return 'warning';
   }
 
-  if (container.runtime?.health === "starting") {
-    return "warning";
+  if (container.runtime?.health === 'starting') {
+    return 'warning';
   }
 
   if (container.runtime) {
-    return container.runtime.status === "running" ? "success" : "default";
+    return container.runtime.status === 'running' ? 'success' : 'default';
   }
 
   switch (container.display.status) {
-    case "running":
-      return "success";
-    case "degraded":
-      return "warning";
+    case 'running':
+      return 'success';
+    case 'degraded':
+      return 'warning';
     default:
-      return "default";
+      return 'default';
   }
 }
 
-function getStatusDotClassName(variant: "success" | "warning" | "default") {
+function getStatusDotClassName(variant: 'success' | 'warning' | 'default') {
   switch (variant) {
-    case "success":
-      return "bg-emerald-500";
-    case "warning":
-      return "bg-amber-500";
+    case 'success':
+      return 'bg-emerald-500';
+    case 'warning':
+      return 'bg-amber-500';
     default:
-      return "bg-slate-400";
+      return 'bg-slate-400';
   }
 }
 
-function getStatusTextClassName(variant: "success" | "warning" | "default") {
+function getStatusTextClassName(variant: 'success' | 'warning' | 'default') {
   switch (variant) {
-    case "success":
-      return "text-emerald-700";
-    case "warning":
-      return "text-amber-700";
+    case 'success':
+      return 'text-emerald-700';
+    case 'warning':
+      return 'text-amber-700';
     default:
-      return "text-muted-foreground";
+      return 'text-muted-foreground';
   }
 }
 
@@ -122,7 +122,7 @@ function getContainerLoadLabel(container: ContainerListEntry) {
     return `${cpu} CPU / ${memory}`;
   }
 
-  return cpu || memory || "No samples";
+  return cpu || memory || 'No samples';
 }
 
 type DashboardLeftSidebarProps = {
@@ -180,16 +180,12 @@ export function DashboardLeftSidebar({
               </Badge>
               {onAddContainerAction ? (
                 <button
-                  aria-label={
-                    isAddPanelOpen
-                      ? "Close add container panel"
-                      : "Add new container"
-                  }
+                  aria-label={isAddPanelOpen ? 'Close add container panel' : 'Add new container'}
                   className={cn(
-                    "flex size-6 items-center justify-center rounded-md border transition",
+                    'flex size-6 items-center justify-center rounded-md border transition',
                     isAddPanelOpen
-                      ? "border-emerald-300/80 bg-emerald-50/90 text-emerald-700 hover:bg-emerald-100/80"
-                      : "border-border/60 bg-background/80 text-muted-foreground hover:border-emerald-300/70 hover:bg-emerald-50/70 hover:text-emerald-700",
+                      ? 'border-emerald-300/80 bg-emerald-50/90 text-emerald-700 hover:bg-emerald-100/80'
+                      : 'border-border/60 bg-background/80 text-muted-foreground hover:border-emerald-300/70 hover:bg-emerald-50/70 hover:text-emerald-700'
                   )}
                   onClick={onAddContainerAction}
                   type="button"
@@ -211,9 +207,7 @@ export function DashboardLeftSidebar({
             <Input
               aria-label="Search containers"
               className="h-8 rounded-lg border-border/70 bg-background pl-8 text-xs"
-              onChange={(event) =>
-                onSearchQueryChangeAction(event.target.value)
-              }
+              onChange={(event) => onSearchQueryChangeAction(event.target.value)}
               placeholder="Search containers…"
               value={searchQuery}
             />
@@ -234,11 +228,10 @@ export function DashboardLeftSidebar({
               <button
                 aria-label="All containers"
                 className={cn(
-                  "group w-full rounded-lg border px-2.5 py-2 text-left transition-colors",
-                  isAllContainersSelected ||
-                    activeContainerId === "__all-containers__"
-                    ? "border-emerald-200 bg-emerald-50/60"
-                    : "border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40",
+                  'group w-full rounded-lg border px-2.5 py-2 text-left transition-colors',
+                  isAllContainersSelected || activeContainerId === '__all-containers__'
+                    ? 'border-emerald-200 bg-emerald-50/60'
+                    : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
                 )}
                 onClick={onAllContainersSelectAction}
                 type="button"
@@ -246,11 +239,10 @@ export function DashboardLeftSidebar({
                 <div className="flex items-center gap-2.5">
                   <span
                     className={cn(
-                      "flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors",
-                      isAllContainersSelected ||
-                        activeContainerId === "__all-containers__"
-                        ? "border-emerald-200 bg-background text-emerald-700"
-                        : "border-border/70 bg-background text-muted-foreground group-hover:text-foreground",
+                      'flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors',
+                      isAllContainersSelected || activeContainerId === '__all-containers__'
+                        ? 'border-emerald-200 bg-background text-emerald-700'
+                        : 'border-border/70 bg-background text-muted-foreground group-hover:text-foreground'
                     )}
                   >
                     <Box aria-hidden="true" className="size-4" />
@@ -272,30 +264,27 @@ export function DashboardLeftSidebar({
               {containers.length ? (
                 containers.map((container) => {
                   const statusVariant = getContainerStatusVariant(container);
-                  const statusDotClassName =
-                    getStatusDotClassName(statusVariant);
+                  const statusDotClassName = getStatusDotClassName(statusVariant);
                   const isActive = activeContainerId === container.display.id;
 
                   return (
                     <button
                       aria-label={getContainerAriaLabel(container)}
                       className={cn(
-                        "group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors",
+                        'group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors',
                         isActive
-                          ? "border-emerald-200 bg-emerald-50/60"
-                          : "border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40",
+                          ? 'border-emerald-200 bg-emerald-50/60'
+                          : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
                       )}
                       key={container.display.id}
-                      onClick={() =>
-                        onContainerSelectAction(container.display.id)
-                      }
+                      onClick={() => onContainerSelectAction(container.display.id)}
                       type="button"
                     >
                       <div className="flex items-start gap-2.5">
                         <span
                           className={cn(
-                            "mt-1.5 size-1.5 shrink-0 rounded-full",
-                            statusDotClassName,
+                            'mt-1.5 size-1.5 shrink-0 rounded-full',
+                            statusDotClassName
                           )}
                         />
                         <span className="min-w-0 flex-1">
@@ -305,8 +294,8 @@ export function DashboardLeftSidebar({
                             </span>
                             <span
                               className={cn(
-                                "shrink-0 text-[10px] font-semibold uppercase tracking-wide",
-                                getStatusTextClassName(statusVariant),
+                                'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
+                                getStatusTextClassName(statusVariant)
                               )}
                             >
                               {formatContainerStatusLabel(container)}
