@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
-import type { MetricCard } from "@/components/workspace-shell";
-import { Icon } from "@/components/dashboard-kit";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { SystemMetricPanel } from "@/lib/metrics-dashboard-metrics";
-import { cn } from "@/lib/utils";
+import type { MetricCard } from '@/components/workspace-shell';
+import { Icon } from '@/components/dashboard-kit';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { SystemMetricPanel } from '@/lib/metrics-dashboard-metrics';
+import { cn } from '@/lib/utils';
 
-import { getToneClasses, ResizeHandle, Sparkline } from "./workspace-ui";
-import { SystemMetricCard } from "./system-metric-card";
+import { getToneClasses, ResizeHandle, Sparkline } from './workspace-ui';
+import { SystemMetricCard } from './system-metric-card';
 
 export type HostMetricsSidebarProps = {
   isCollapsed: boolean;
@@ -78,7 +78,7 @@ export function HostMetricsSidebar({
                   <SystemMetricCard key={panel.id} panel={panel} />
                 ))}
               </div>
-            )             : (
+            ) : (
               metricCards.map((metric) => {
                 const toneClasses = getToneClasses(metric.tone);
 
@@ -90,7 +90,7 @@ export function HostMetricsSidebar({
                     <CardHeader className="gap-2 border-b border-border/60 pb-2 pt-3">
                       <div className="flex items-start justify-between gap-3">
                         <CardTitle>{metric.title}</CardTitle>
-                        <Badge className={cn("shadow-none", toneClasses.badge)}>
+                        <Badge className={cn('shadow-none', toneClasses.badge)}>
                           {metric.delta}
                         </Badge>
                       </div>

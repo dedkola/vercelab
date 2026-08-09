@@ -1,16 +1,13 @@
-import type { NextRequest } from "next/server";
+import type { NextRequest } from 'next/server';
 
-import {
-  readDeploymentBuildLog,
-  readDeploymentContainerLog,
-} from "@/lib/deployment-engine";
+import { readDeploymentBuildLog, readDeploymentContainerLog } from '@/lib/deployment-engine';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 function getLogType(request: NextRequest) {
-  const value = request.nextUrl.searchParams.get("type");
+  const value = request.nextUrl.searchParams.get('type');
 
-  return value === "container" ? "container" : "build";
+  return value === 'container' ? 'container' : 'build';
 }
 
 function getErrorMessage(error: unknown) {
@@ -18,19 +15,19 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Unable to load deployment logs.";
+  return 'Unable to load deployment logs.';
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ deploymentId: string }> },
+  { params }: { params: Promise<{ deploymentId: string }> }
 ) {
   const { deploymentId } = await params;
 
   try {
     const logType = getLogType(request);
     const payload =
-      logType === "container"
+      logType === 'container'
         ? await readDeploymentContainerLog(deploymentId)
         : await readDeploymentBuildLog(deploymentId);
 
@@ -42,7 +39,7 @@ export async function GET(
       },
       {
         status: 400,
-      },
+      }
     );
   }
 }

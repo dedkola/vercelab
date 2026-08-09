@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 import {
   useCallback,
   useEffect,
@@ -9,32 +9,32 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
   type FormEvent,
-} from "react";
-import { Activity, GitBranch, Home, type LucideIcon } from "lucide-react";
-import { toast } from "sonner";
+} from 'react';
+import { Activity, GitBranch, Home, type LucideIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
-import { DashboardLeftSidebar } from "@/components/workspace/dashboard-left-sidebar";
+import { DashboardLeftSidebar } from '@/components/workspace/dashboard-left-sidebar';
 import {
   DashboardAllContainersContent,
   type AllContainersMetricChart,
-} from "@/components/workspace/dashboard-all-containers-content";
+} from '@/components/workspace/dashboard-all-containers-content';
 import {
   DashboardMainContent,
   type FocusedMetricChart,
-} from "@/components/workspace/dashboard-main-content";
-import { DashboardRightSidebar } from "@/components/workspace/dashboard-right-sidebar";
-import { GitAppPageLeftSidebar } from "@/components/workspace/git-app-page-left-sidebar";
-import { GitAppPageMainContent } from "@/components/workspace/git-app-page-main-content";
-import { GitAppPageRightSidebar } from "@/components/workspace/git-app-page-right-sidebar";
-import { useOptionalWorkspaceChrome } from "@/components/workspace/workspace-chrome-shell";
+} from '@/components/workspace/dashboard-main-content';
+import { DashboardRightSidebar } from '@/components/workspace/dashboard-right-sidebar';
+import { GitAppPageLeftSidebar } from '@/components/workspace/git-app-page-left-sidebar';
+import { GitAppPageMainContent } from '@/components/workspace/git-app-page-main-content';
+import { GitAppPageRightSidebar } from '@/components/workspace/git-app-page-right-sidebar';
+import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
 import {
   HostMetricsSidebar,
   type HostMetricsSidebarProps,
-} from "@/components/workspace/host-metrics-sidebar";
-import { WorkspaceFooter } from "@/components/workspace/workspace-footer";
-import { WorkspaceHeader } from "@/components/workspace/workspace-header";
-import { WorkspaceRail } from "@/components/workspace/workspace-rail";
-import { SectionLabel } from "@/components/workspace/workspace-ui";
+} from '@/components/workspace/host-metrics-sidebar';
+import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
+import { WorkspaceHeader } from '@/components/workspace/workspace-header';
+import { WorkspaceRail } from '@/components/workspace/workspace-rail';
+import { SectionLabel } from '@/components/workspace/workspace-ui';
 import {
   fetchDeploymentFromGitAction,
   redeployDeploymentAction,
@@ -42,36 +42,29 @@ import {
   stopDeploymentAction,
   updateDeploymentAction,
   type DeploymentActionResult,
-} from "@/app/actions";
-import type { LogTab } from "./git-log-panel";
+} from '@/app/actions';
+import type { LogTab } from './git-log-panel';
 import {
   readStoredContainerAliases,
   subscribeToStoredContainerAliases,
-} from "@/lib/container-preferences";
-import { getContainerTone } from "@/lib/container-tone";
-import type { GitHubRepository } from "@/lib/github";
+} from '@/lib/container-preferences';
+import { getContainerTone } from '@/lib/container-tone';
+import type { GitHubRepository } from '@/lib/github';
 import type {
   AllContainersMetricsHistorySeries,
   ContainerMetricsHistoryPoint,
   MetricsHistoryPoint,
-} from "@/lib/influx-metrics";
-import { buildSystemMetricPanels } from "@/lib/metrics-dashboard-metrics";
-import {
-  DASHBOARD_RANGE_OPTIONS,
-  type DashboardRange,
-} from "@/lib/metrics-range";
-import type { DeploymentSummary } from "@/lib/persistence";
-import type { ContainerStats, MetricsSnapshot } from "@/lib/system-metrics";
-import type { ExposureMode } from "@/lib/validation";
+} from '@/lib/influx-metrics';
+import { buildSystemMetricPanels } from '@/lib/metrics-dashboard-metrics';
+import { DASHBOARD_RANGE_OPTIONS, type DashboardRange } from '@/lib/metrics-range';
+import type { DeploymentSummary } from '@/lib/persistence';
+import type { ContainerStats, MetricsSnapshot } from '@/lib/system-metrics';
+import type { ExposureMode } from '@/lib/validation';
 
-export type MetricTone = "emerald" | "amber" | "slate";
-export type PreviewContainerStatus = "running" | "degraded" | "idle";
-export type DashboardLogView = "live" | "events" | "alerts";
-export type WorkspaceView =
-  | "dashboard"
-  | "git-app-page"
-  | "containers"
-  | "terminal";
+export type MetricTone = 'emerald' | 'amber' | 'slate';
+export type PreviewContainerStatus = 'running' | 'degraded' | 'idle';
+export type DashboardLogView = 'live' | 'events' | 'alerts';
+export type WorkspaceView = 'dashboard' | 'git-app-page' | 'containers' | 'terminal';
 
 export type MetricCard = {
   title: string;
@@ -102,7 +95,7 @@ type Endpoint = {
 export type LogLine = {
   id: string;
   timestamp: string;
-  level: "info" | "success" | "warning";
+  level: 'info' | 'success' | 'warning';
   message: string;
 };
 
@@ -133,7 +126,7 @@ export type PreviewContainer = {
 };
 
 export type ContainerListEntry = {
-  deploymentStatus: DeploymentSummary["status"] | null;
+  deploymentStatus: DeploymentSummary['status'] | null;
   display: PreviewContainer;
   dotClassName: string;
   preview: PreviewContainer | null;
@@ -179,9 +172,9 @@ type BranchState = {
   isLoading: boolean;
 };
 
-const METRICS_PANEL_STORAGE_KEY = "vercelab:containers-metrics-panel-width";
-const LIST_PANEL_STORAGE_KEY = "vercelab:containers-list-panel-width";
-const LOGS_PANEL_STORAGE_KEY = "vercelab:containers-logs-panel-width";
+const METRICS_PANEL_STORAGE_KEY = 'vercelab:containers-metrics-panel-width';
+const LIST_PANEL_STORAGE_KEY = 'vercelab:containers-list-panel-width';
+const LOGS_PANEL_STORAGE_KEY = 'vercelab:containers-logs-panel-width';
 
 const DEFAULT_METRICS_WIDTH_PX = 232;
 const DEFAULT_LIST_WIDTH_PX = 280;
@@ -201,498 +194,489 @@ const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
 const VISIBILITY_REFRESH_DELAY_MS = 750;
-const ALL_CONTAINERS_ID = "__all-containers__";
-const STABLE_TIME_ZONE = "UTC";
+const ALL_CONTAINERS_ID = '__all-containers__';
+const STABLE_TIME_ZONE = 'UTC';
 
 // Reuse formatter instances — `new Intl.DateTimeFormat` / `Intl.RelativeTimeFormat`
 // are expensive to construct and these helpers run on every render / poll cycle.
-const CLOCK_FORMATTER = new Intl.DateTimeFormat("en", {
-  hour: "2-digit",
-  minute: "2-digit",
+const CLOCK_FORMATTER = new Intl.DateTimeFormat('en', {
+  hour: '2-digit',
+  minute: '2-digit',
   timeZone: STABLE_TIME_ZONE,
 });
 
-const RELATIVE_TIME_FORMATTER = new Intl.RelativeTimeFormat("en", {
-  numeric: "auto",
+const RELATIVE_TIME_FORMATTER = new Intl.RelativeTimeFormat('en', {
+  numeric: 'auto',
 });
 
 const ALL_CONTAINERS_RANGE_OPTIONS = DASHBOARD_RANGE_OPTIONS.filter(
-  (option) => option.value !== "90d",
+  (option) => option.value !== '90d'
 ) as ReadonlyArray<(typeof DASHBOARD_RANGE_OPTIONS)[number]>;
 
 const PREVIEW_CONTAINERS: PreviewContainer[] = [
   {
-    id: "control-plane",
-    name: "control-plane",
-    stack: "vercelab",
-    image: "ghcr.io/dedkola/vercelab:preview",
-    node: "edge-a / arm64",
-    status: "running",
+    id: 'control-plane',
+    name: 'control-plane',
+    stack: 'vercelab',
+    image: 'ghcr.io/dedkola/vercelab:preview',
+    node: 'edge-a / arm64',
+    status: 'running',
     summary:
-      "Primary dashboard surface with deployment controls, health signals, and background orchestration hooks.",
-    uptime: "3d 14h",
-    port: "3000 -> 3000",
-    cpu: "18%",
-    memory: "612 MB",
+      'Primary dashboard surface with deployment controls, health signals, and background orchestration hooks.',
+    uptime: '3d 14h',
+    port: '3000 -> 3000',
+    cpu: '18%',
+    memory: '612 MB',
     restarts: 0,
-    requestRate: "148 req/min",
-    region: "fra-1",
-    deployedAt: "Today, 08:15",
-    tags: ["Next.js", "Control plane", "Traefik"],
-    volumes: ["./data:/app/data", "./logs:/app/logs", "/var/run/docker.sock"],
+    requestRate: '148 req/min',
+    region: 'fra-1',
+    deployedAt: 'Today, 08:15',
+    tags: ['Next.js', 'Control plane', 'Traefik'],
+    volumes: ['./data:/app/data', './logs:/app/logs', '/var/run/docker.sock'],
     environment: [
-      { key: "NODE_ENV", value: "production" },
-      { key: "NEXT_RUNTIME", value: "nodejs" },
-      { key: "METRICS_MODE", value: "preview" },
-      { key: "LOG_LEVEL", value: "info" },
+      { key: 'NODE_ENV', value: 'production' },
+      { key: 'NEXT_RUNTIME', value: 'nodejs' },
+      { key: 'METRICS_MODE', value: 'preview' },
+      { key: 'LOG_LEVEL', value: 'info' },
     ],
     endpoints: [
-      { name: "/dashboard", latency: "112 ms", uptime: "99.98%", load: 72 },
-      { name: "/api/metrics", latency: "74 ms", uptime: "99.94%", load: 56 },
+      { name: '/dashboard', latency: '112 ms', uptime: '99.98%', load: 72 },
+      { name: '/api/metrics', latency: '74 ms', uptime: '99.94%', load: 56 },
       {
-        name: "/api/deployments",
-        latency: "128 ms",
-        uptime: "99.89%",
+        name: '/api/deployments',
+        latency: '128 ms',
+        uptime: '99.89%',
         load: 68,
       },
     ],
     activity: [24, 28, 33, 35, 39, 42, 46, 45, 49, 47, 43, 40],
     signals: [
       {
-        label: "CPU trend",
-        value: "18%",
-        delta: "-2%",
-        caption: "Healthy render cadence and API idle time.",
-        tone: "emerald",
+        label: 'CPU trend',
+        value: '18%',
+        delta: '-2%',
+        caption: 'Healthy render cadence and API idle time.',
+        tone: 'emerald',
         points: [16, 17, 18, 20, 19, 22, 24, 22, 21, 19, 18, 18],
       },
       {
-        label: "Memory trend",
-        value: "612 MB",
-        delta: "+48 MB",
-        caption: "Resident set stayed stable after the last deploy.",
-        tone: "amber",
+        label: 'Memory trend',
+        value: '612 MB',
+        delta: '+48 MB',
+        caption: 'Resident set stayed stable after the last deploy.',
+        tone: 'amber',
         points: [420, 440, 470, 500, 520, 536, 548, 570, 586, 598, 604, 612],
       },
       {
-        label: "Network trend",
-        value: "148 req/min",
-        delta: "+12%",
-        caption: "Traffic mirrors the morning sync window.",
-        tone: "slate",
+        label: 'Network trend',
+        value: '148 req/min',
+        delta: '+12%',
+        caption: 'Traffic mirrors the morning sync window.',
+        tone: 'slate',
         points: [78, 82, 84, 90, 102, 110, 126, 138, 145, 151, 148, 148],
       },
     ],
     timeline: [
-      { label: "Last deploy", detail: "Merged preview branch 23 min ago." },
+      { label: 'Last deploy', detail: 'Merged preview branch 23 min ago.' },
       {
-        label: "Health check",
-        detail: "Traefik and Postgres probes are green.",
+        label: 'Health check',
+        detail: 'Traefik and Postgres probes are green.',
       },
-      { label: "Queue depth", detail: "No pending background operations." },
+      { label: 'Queue depth', detail: 'No pending background operations.' },
     ],
     logs: {
       live: [
         {
-          id: "cp-live-1",
-          timestamp: "09:14:10",
-          level: "info",
-          message: "GET /api/metrics 200 in 42 ms",
+          id: 'cp-live-1',
+          timestamp: '09:14:10',
+          level: 'info',
+          message: 'GET /api/metrics 200 in 42 ms',
         },
         {
-          id: "cp-live-2",
-          timestamp: "09:14:11",
-          level: "success",
-          message: "Rendered dashboard workspace with 5 live panels",
+          id: 'cp-live-2',
+          timestamp: '09:14:11',
+          level: 'success',
+          message: 'Rendered dashboard workspace with 5 live panels',
         },
         {
-          id: "cp-live-3",
-          timestamp: "09:14:16",
-          level: "info",
-          message: "Polling Influx snapshot for sidebar telemetry",
+          id: 'cp-live-3',
+          timestamp: '09:14:16',
+          level: 'info',
+          message: 'Polling Influx snapshot for sidebar telemetry',
         },
         {
-          id: "cp-live-4",
-          timestamp: "09:14:19",
-          level: "warning",
-          message: "Soft latency bump on /api/deployments list query",
+          id: 'cp-live-4',
+          timestamp: '09:14:19',
+          level: 'warning',
+          message: 'Soft latency bump on /api/deployments list query',
         },
       ],
       events: [
         {
-          id: "cp-event-1",
-          timestamp: "08:51:22",
-          level: "success",
-          message: "Preview deployment marked ready",
+          id: 'cp-event-1',
+          timestamp: '08:51:22',
+          level: 'success',
+          message: 'Preview deployment marked ready',
         },
         {
-          id: "cp-event-2",
-          timestamp: "08:42:07",
-          level: "info",
-          message: "Background sync refreshed repository metadata",
+          id: 'cp-event-2',
+          timestamp: '08:42:07',
+          level: 'info',
+          message: 'Background sync refreshed repository metadata',
         },
         {
-          id: "cp-event-3",
-          timestamp: "08:31:03",
-          level: "info",
-          message: "Sidebars restored saved panel widths from local storage",
+          id: 'cp-event-3',
+          timestamp: '08:31:03',
+          level: 'info',
+          message: 'Sidebars restored saved panel widths from local storage',
         },
       ],
       alerts: [
         {
-          id: "cp-alert-1",
-          timestamp: "09:14:19",
-          level: "warning",
-          message: "Latency crossed design target for a single request window",
+          id: 'cp-alert-1',
+          timestamp: '09:14:19',
+          level: 'warning',
+          message: 'Latency crossed design target for a single request window',
         },
       ],
     },
   },
   {
-    id: "edge-proxy",
-    name: "edge-proxy",
-    stack: "traefik",
-    image: "traefik:v3.3",
-    node: "edge-a / arm64",
-    status: "running",
-    summary:
-      "Public ingress, TLS termination, and request routing for all managed workloads.",
-    uptime: "9d 05h",
-    port: "443 -> 443",
-    cpu: "9%",
-    memory: "186 MB",
+    id: 'edge-proxy',
+    name: 'edge-proxy',
+    stack: 'traefik',
+    image: 'traefik:v3.3',
+    node: 'edge-a / arm64',
+    status: 'running',
+    summary: 'Public ingress, TLS termination, and request routing for all managed workloads.',
+    uptime: '9d 05h',
+    port: '443 -> 443',
+    cpu: '9%',
+    memory: '186 MB',
     restarts: 0,
-    requestRate: "1.2k req/min",
-    region: "fra-1",
-    deployedAt: "Yesterday, 19:40",
-    tags: ["Ingress", "TLS", "Routing"],
-    volumes: ["/etc/traefik", "./dynamic", "./acme.json"],
+    requestRate: '1.2k req/min',
+    region: 'fra-1',
+    deployedAt: 'Yesterday, 19:40',
+    tags: ['Ingress', 'TLS', 'Routing'],
+    volumes: ['/etc/traefik', './dynamic', './acme.json'],
     environment: [
-      { key: "TRAEFIK_LOG_LEVEL", value: "WARN" },
-      { key: "TRAEFIK_PROVIDERS", value: "docker,file" },
+      { key: 'TRAEFIK_LOG_LEVEL', value: 'WARN' },
+      { key: 'TRAEFIK_PROVIDERS', value: 'docker,file' },
     ],
     endpoints: [
-      { name: "TLS handshake", latency: "34 ms", uptime: "99.99%", load: 82 },
-      { name: "Router sync", latency: "19 ms", uptime: "99.97%", load: 58 },
-      { name: "Dashboard", latency: "41 ms", uptime: "99.95%", load: 44 },
+      { name: 'TLS handshake', latency: '34 ms', uptime: '99.99%', load: 82 },
+      { name: 'Router sync', latency: '19 ms', uptime: '99.97%', load: 58 },
+      { name: 'Dashboard', latency: '41 ms', uptime: '99.95%', load: 44 },
     ],
     activity: [42, 46, 48, 51, 56, 60, 62, 65, 61, 58, 54, 52],
     signals: [
       {
-        label: "CPU trend",
-        value: "9%",
-        delta: "-1%",
-        caption: "Proxy is largely limited by network bursts.",
-        tone: "emerald",
+        label: 'CPU trend',
+        value: '9%',
+        delta: '-1%',
+        caption: 'Proxy is largely limited by network bursts.',
+        tone: 'emerald',
         points: [8, 7, 9, 8, 10, 11, 12, 11, 10, 9, 9, 9],
       },
       {
-        label: "Memory trend",
-        value: "186 MB",
-        delta: "+14 MB",
-        caption: "TLS sessions warmed slightly during the last hour.",
-        tone: "amber",
+        label: 'Memory trend',
+        value: '186 MB',
+        delta: '+14 MB',
+        caption: 'TLS sessions warmed slightly during the last hour.',
+        tone: 'amber',
         points: [142, 148, 151, 154, 160, 166, 170, 173, 178, 182, 186, 186],
       },
       {
-        label: "Network trend",
-        value: "1.2k req/min",
-        delta: "+6%",
-        caption: "Ingress rose with the latest preview rollout.",
-        tone: "slate",
-        points: [
-          680, 720, 740, 790, 860, 910, 1020, 1110, 1180, 1210, 1200, 1200,
-        ],
+        label: 'Network trend',
+        value: '1.2k req/min',
+        delta: '+6%',
+        caption: 'Ingress rose with the latest preview rollout.',
+        tone: 'slate',
+        points: [680, 720, 740, 790, 860, 910, 1020, 1110, 1180, 1210, 1200, 1200],
       },
     ],
     timeline: [
-      { label: "Certificate sync", detail: "ACME renewals valid for 54 days." },
-      { label: "Router drift", detail: "No stale routes detected." },
+      { label: 'Certificate sync', detail: 'ACME renewals valid for 54 days.' },
+      { label: 'Router drift', detail: 'No stale routes detected.' },
       {
-        label: "Connection pressure",
-        detail: "Peak concurrency held below 40%.",
+        label: 'Connection pressure',
+        detail: 'Peak concurrency held below 40%.',
       },
     ],
     logs: {
       live: [
         {
-          id: "ep-live-1",
-          timestamp: "09:14:15",
-          level: "info",
-          message: "Handled tls-alpn challenge lookup for preview domain",
+          id: 'ep-live-1',
+          timestamp: '09:14:15',
+          level: 'info',
+          message: 'Handled tls-alpn challenge lookup for preview domain',
         },
         {
-          id: "ep-live-2",
-          timestamp: "09:14:17",
-          level: "success",
-          message: "Routed request to control-plane@docker",
+          id: 'ep-live-2',
+          timestamp: '09:14:17',
+          level: 'success',
+          message: 'Routed request to control-plane@docker',
         },
       ],
       events: [
         {
-          id: "ep-event-1",
-          timestamp: "07:50:44",
-          level: "info",
-          message: "Dynamic file provider reloaded 12 routers and 9 services",
+          id: 'ep-event-1',
+          timestamp: '07:50:44',
+          level: 'info',
+          message: 'Dynamic file provider reloaded 12 routers and 9 services',
         },
       ],
       alerts: [],
     },
   },
   {
-    id: "postgres-primary",
-    name: "postgres-primary",
-    stack: "database",
-    image: "postgres:17",
-    node: "edge-b / amd64",
-    status: "degraded",
-    summary:
-      "Main relational store backing repositories, deployments, and operation history.",
-    uptime: "12d 02h",
-    port: "5432 -> 5432",
-    cpu: "31%",
-    memory: "2.8 GB",
+    id: 'postgres-primary',
+    name: 'postgres-primary',
+    stack: 'database',
+    image: 'postgres:17',
+    node: 'edge-b / amd64',
+    status: 'degraded',
+    summary: 'Main relational store backing repositories, deployments, and operation history.',
+    uptime: '12d 02h',
+    port: '5432 -> 5432',
+    cpu: '31%',
+    memory: '2.8 GB',
     restarts: 1,
-    requestRate: "420 tx/min",
-    region: "fra-1",
-    deployedAt: "Today, 02:10",
-    tags: ["Database", "Persistent", "Replica pending"],
-    volumes: ["/var/lib/postgresql/data", "./backup"],
+    requestRate: '420 tx/min',
+    region: 'fra-1',
+    deployedAt: 'Today, 02:10',
+    tags: ['Database', 'Persistent', 'Replica pending'],
+    volumes: ['/var/lib/postgresql/data', './backup'],
     environment: [
-      { key: "PGDATA", value: "/var/lib/postgresql/data" },
-      { key: "MAX_CONNECTIONS", value: "200" },
+      { key: 'PGDATA', value: '/var/lib/postgresql/data' },
+      { key: 'MAX_CONNECTIONS', value: '200' },
     ],
     endpoints: [
-      { name: "Primary reads", latency: "12 ms", uptime: "99.92%", load: 74 },
-      { name: "Writes", latency: "26 ms", uptime: "99.85%", load: 81 },
-      { name: "Replication", latency: "214 ms", uptime: "98.84%", load: 32 },
+      { name: 'Primary reads', latency: '12 ms', uptime: '99.92%', load: 74 },
+      { name: 'Writes', latency: '26 ms', uptime: '99.85%', load: 81 },
+      { name: 'Replication', latency: '214 ms', uptime: '98.84%', load: 32 },
     ],
     activity: [34, 36, 40, 44, 49, 51, 55, 58, 56, 53, 48, 46],
     signals: [
       {
-        label: "CPU trend",
-        value: "31%",
-        delta: "+8%",
-        caption: "Write bursts are slightly higher than the morning baseline.",
-        tone: "amber",
+        label: 'CPU trend',
+        value: '31%',
+        delta: '+8%',
+        caption: 'Write bursts are slightly higher than the morning baseline.',
+        tone: 'amber',
         points: [20, 22, 24, 27, 29, 31, 34, 36, 35, 33, 31, 31],
       },
       {
-        label: "Memory trend",
-        value: "2.8 GB",
-        delta: "+0.3 GB",
-        caption: "Shared buffers expanded after vacuum and analytics jobs.",
-        tone: "amber",
-        points: [
-          1900, 1950, 2010, 2140, 2220, 2310, 2440, 2520, 2640, 2710, 2790,
-          2800,
-        ],
+        label: 'Memory trend',
+        value: '2.8 GB',
+        delta: '+0.3 GB',
+        caption: 'Shared buffers expanded after vacuum and analytics jobs.',
+        tone: 'amber',
+        points: [1900, 1950, 2010, 2140, 2220, 2310, 2440, 2520, 2640, 2710, 2790, 2800],
       },
       {
-        label: "Network trend",
-        value: "420 tx/min",
-        delta: "+14%",
-        caption: "Burst queue still below the alert threshold.",
-        tone: "slate",
+        label: 'Network trend',
+        value: '420 tx/min',
+        delta: '+14%',
+        caption: 'Burst queue still below the alert threshold.',
+        tone: 'slate',
         points: [220, 238, 244, 258, 286, 315, 344, 368, 389, 402, 420, 420],
       },
     ],
     timeline: [
       {
-        label: "Replica lag",
-        detail: "Hot standby trails primary by 7 seconds.",
+        label: 'Replica lag',
+        detail: 'Hot standby trails primary by 7 seconds.',
       },
       {
-        label: "Recent maintenance",
-        detail: "Autovacuum completed 46 minutes ago.",
+        label: 'Recent maintenance',
+        detail: 'Autovacuum completed 46 minutes ago.',
       },
-      { label: "Backup window", detail: "Snapshot scheduled in 1 hour." },
+      { label: 'Backup window', detail: 'Snapshot scheduled in 1 hour.' },
     ],
     logs: {
       live: [
         {
-          id: "pg-live-1",
-          timestamp: "09:14:12",
-          level: "warning",
-          message: "replication slot apply delay crossed soft threshold",
+          id: 'pg-live-1',
+          timestamp: '09:14:12',
+          level: 'warning',
+          message: 'replication slot apply delay crossed soft threshold',
         },
         {
-          id: "pg-live-2",
-          timestamp: "09:14:14",
-          level: "info",
-          message: "checkpoint completed in 4.2 s",
+          id: 'pg-live-2',
+          timestamp: '09:14:14',
+          level: 'info',
+          message: 'checkpoint completed in 4.2 s',
         },
       ],
       events: [
         {
-          id: "pg-event-1",
-          timestamp: "08:30:05",
-          level: "success",
-          message: "autovacuum on operations table finished successfully",
+          id: 'pg-event-1',
+          timestamp: '08:30:05',
+          level: 'success',
+          message: 'autovacuum on operations table finished successfully',
         },
       ],
       alerts: [
         {
-          id: "pg-alert-1",
-          timestamp: "09:14:12",
-          level: "warning",
-          message: "Replica lag is visible but not service affecting",
+          id: 'pg-alert-1',
+          timestamp: '09:14:12',
+          level: 'warning',
+          message: 'Replica lag is visible but not service affecting',
         },
       ],
     },
   },
   {
-    id: "worker-builds",
-    name: "worker-builds",
-    stack: "jobs",
-    image: "ghcr.io/dedkola/build-worker:latest",
-    node: "edge-c / amd64",
-    status: "running",
-    summary:
-      "Background worker handling image builds, cleanup passes, and deployment jobs.",
-    uptime: "1d 09h",
-    port: "internal only",
-    cpu: "24%",
-    memory: "428 MB",
+    id: 'worker-builds',
+    name: 'worker-builds',
+    stack: 'jobs',
+    image: 'ghcr.io/dedkola/build-worker:latest',
+    node: 'edge-c / amd64',
+    status: 'running',
+    summary: 'Background worker handling image builds, cleanup passes, and deployment jobs.',
+    uptime: '1d 09h',
+    port: 'internal only',
+    cpu: '24%',
+    memory: '428 MB',
     restarts: 0,
-    requestRate: "18 jobs/hr",
-    region: "fra-2",
-    deployedAt: "Today, 06:40",
-    tags: ["Worker", "Build queue", "Docker"],
-    volumes: ["./cache", "./workspace", "/var/run/docker.sock"],
+    requestRate: '18 jobs/hr',
+    region: 'fra-2',
+    deployedAt: 'Today, 06:40',
+    tags: ['Worker', 'Build queue', 'Docker'],
+    volumes: ['./cache', './workspace', '/var/run/docker.sock'],
     environment: [
-      { key: "QUEUE_CONCURRENCY", value: "2" },
-      { key: "GC_MODE", value: "balanced" },
+      { key: 'QUEUE_CONCURRENCY', value: '2' },
+      { key: 'GC_MODE', value: 'balanced' },
     ],
     endpoints: [
-      { name: "Build queue", latency: "4 s", uptime: "99.90%", load: 64 },
+      { name: 'Build queue', latency: '4 s', uptime: '99.90%', load: 64 },
       {
-        name: "Artifact upload",
-        latency: "812 ms",
-        uptime: "99.87%",
+        name: 'Artifact upload',
+        latency: '812 ms',
+        uptime: '99.87%',
         load: 52,
       },
-      { name: "Cleanup", latency: "1.2 s", uptime: "99.95%", load: 26 },
+      { name: 'Cleanup', latency: '1.2 s', uptime: '99.95%', load: 26 },
     ],
     activity: [18, 22, 21, 24, 28, 33, 31, 29, 35, 38, 32, 28],
     signals: [
       {
-        label: "CPU trend",
-        value: "24%",
-        delta: "+4%",
-        caption: "Image build steps are holding steady with warm cache hits.",
-        tone: "emerald",
+        label: 'CPU trend',
+        value: '24%',
+        delta: '+4%',
+        caption: 'Image build steps are holding steady with warm cache hits.',
+        tone: 'emerald',
         points: [14, 15, 18, 17, 19, 23, 26, 27, 28, 26, 24, 24],
       },
       {
-        label: "Memory trend",
-        value: "428 MB",
-        delta: "+36 MB",
-        caption: "Ephemeral layers are being released between jobs.",
-        tone: "amber",
+        label: 'Memory trend',
+        value: '428 MB',
+        delta: '+36 MB',
+        caption: 'Ephemeral layers are being released between jobs.',
+        tone: 'amber',
         points: [260, 274, 290, 308, 330, 348, 362, 381, 396, 410, 422, 428],
       },
       {
-        label: "Network trend",
-        value: "18 jobs/hr",
-        delta: "+2",
-        caption: "Deployment bursts cluster around merge windows.",
-        tone: "slate",
+        label: 'Network trend',
+        value: '18 jobs/hr',
+        delta: '+2',
+        caption: 'Deployment bursts cluster around merge windows.',
+        tone: 'slate',
         points: [6, 8, 7, 10, 12, 13, 11, 14, 17, 19, 18, 18],
       },
     ],
     timeline: [
-      { label: "Queue health", detail: "Two builds in progress, one queued." },
-      { label: "Image cache", detail: "Cache hit ratio stayed at 86%." },
-      { label: "Cleanup cadence", detail: "Workspace prune ran 7 min ago." },
+      { label: 'Queue health', detail: 'Two builds in progress, one queued.' },
+      { label: 'Image cache', detail: 'Cache hit ratio stayed at 86%.' },
+      { label: 'Cleanup cadence', detail: 'Workspace prune ran 7 min ago.' },
     ],
     logs: {
       live: [
         {
-          id: "wb-live-1",
-          timestamp: "09:14:20",
-          level: "info",
-          message: "Queued deploy: preview-control-plane-402",
+          id: 'wb-live-1',
+          timestamp: '09:14:20',
+          level: 'info',
+          message: 'Queued deploy: preview-control-plane-402',
         },
       ],
       events: [
         {
-          id: "wb-event-1",
-          timestamp: "09:02:11",
-          level: "success",
-          message: "Image build finished in 2m 42s with cached layers",
+          id: 'wb-event-1',
+          timestamp: '09:02:11',
+          level: 'success',
+          message: 'Image build finished in 2m 42s with cached layers',
         },
       ],
       alerts: [],
     },
   },
   {
-    id: "redis-cache",
-    name: "redis-cache",
-    stack: "cache",
-    image: "redis:8",
-    node: "edge-a / arm64",
-    status: "idle",
-    summary:
-      "Low-churn shared cache used for queue coordination and short-lived UI reads.",
-    uptime: "5d 21h",
-    port: "6379 -> 6379",
-    cpu: "3%",
-    memory: "148 MB",
+    id: 'redis-cache',
+    name: 'redis-cache',
+    stack: 'cache',
+    image: 'redis:8',
+    node: 'edge-a / arm64',
+    status: 'idle',
+    summary: 'Low-churn shared cache used for queue coordination and short-lived UI reads.',
+    uptime: '5d 21h',
+    port: '6379 -> 6379',
+    cpu: '3%',
+    memory: '148 MB',
     restarts: 0,
-    requestRate: "62 ops/min",
-    region: "fra-1",
-    deployedAt: "Yesterday, 11:05",
-    tags: ["Cache", "Ephemeral", "Low churn"],
-    volumes: ["./redis-data"],
+    requestRate: '62 ops/min',
+    region: 'fra-1',
+    deployedAt: 'Yesterday, 11:05',
+    tags: ['Cache', 'Ephemeral', 'Low churn'],
+    volumes: ['./redis-data'],
     environment: [
-      { key: "MAXMEMORY_POLICY", value: "allkeys-lru" },
-      { key: "SAVE", value: "disabled" },
+      { key: 'MAXMEMORY_POLICY', value: 'allkeys-lru' },
+      { key: 'SAVE', value: 'disabled' },
     ],
     endpoints: [
-      { name: "Reads", latency: "5 ms", uptime: "99.99%", load: 24 },
-      { name: "Writes", latency: "6 ms", uptime: "99.99%", load: 18 },
-      { name: "Evictions", latency: "0 ms", uptime: "100%", load: 4 },
+      { name: 'Reads', latency: '5 ms', uptime: '99.99%', load: 24 },
+      { name: 'Writes', latency: '6 ms', uptime: '99.99%', load: 18 },
+      { name: 'Evictions', latency: '0 ms', uptime: '100%', load: 4 },
     ],
     activity: [6, 5, 6, 5, 4, 5, 6, 5, 4, 5, 4, 4],
     signals: [
       {
-        label: "CPU trend",
-        value: "3%",
-        delta: "0%",
-        caption: "Mostly quiet aside from worker coordination traffic.",
-        tone: "emerald",
+        label: 'CPU trend',
+        value: '3%',
+        delta: '0%',
+        caption: 'Mostly quiet aside from worker coordination traffic.',
+        tone: 'emerald',
         points: [2, 2, 3, 2, 3, 4, 3, 3, 2, 3, 3, 3],
       },
       {
-        label: "Memory trend",
-        value: "148 MB",
-        delta: "+4 MB",
-        caption: "Key churn is flat with steady expiration behavior.",
-        tone: "amber",
+        label: 'Memory trend',
+        value: '148 MB',
+        delta: '+4 MB',
+        caption: 'Key churn is flat with steady expiration behavior.',
+        tone: 'amber',
         points: [132, 134, 138, 140, 141, 142, 144, 145, 146, 147, 148, 148],
       },
       {
-        label: "Network trend",
-        value: "62 ops/min",
-        delta: "-3%",
-        caption: "Background refreshes remain comfortably below limits.",
-        tone: "slate",
+        label: 'Network trend',
+        value: '62 ops/min',
+        delta: '-3%',
+        caption: 'Background refreshes remain comfortably below limits.',
+        tone: 'slate',
         points: [66, 68, 64, 63, 65, 66, 64, 62, 61, 60, 62, 62],
       },
     ],
     timeline: [
-      { label: "Evictions", detail: "No keys evicted in the last 24 hours." },
-      { label: "Persistence", detail: "Snapshotting disabled for this tier." },
-      { label: "Warm cache", detail: "Hit rate stable at 94%." },
+      { label: 'Evictions', detail: 'No keys evicted in the last 24 hours.' },
+      { label: 'Persistence', detail: 'Snapshotting disabled for this tier.' },
+      { label: 'Warm cache', detail: 'Hit rate stable at 94%.' },
     ],
     logs: {
       live: [
         {
-          id: "rc-live-1",
-          timestamp: "09:13:58",
-          level: "info",
-          message: "expired 12 keys from preview namespace",
+          id: 'rc-live-1',
+          timestamp: '09:13:58',
+          level: 'info',
+          message: 'expired 12 keys from preview namespace',
         },
       ],
       events: [],
@@ -702,13 +686,13 @@ const PREVIEW_CONTAINERS: PreviewContainer[] = [
 ];
 
 const LOG_VIEW_OPTIONS: Array<{ value: DashboardLogView; label: string }> = [
-  { value: "live", label: "Live tail" },
-  { value: "events", label: "Events" },
-  { value: "alerts", label: "Alerts" },
+  { value: 'live', label: 'Live tail' },
+  { value: 'events', label: 'Events' },
+  { value: 'alerts', label: 'Alerts' },
 ];
 
 function getStorage() {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return null;
   }
 
@@ -716,9 +700,9 @@ function getStorage() {
 
   if (
     !storage ||
-    typeof storage.getItem !== "function" ||
-    typeof storage.setItem !== "function" ||
-    typeof storage.removeItem !== "function"
+    typeof storage.getItem !== 'function' ||
+    typeof storage.setItem !== 'function' ||
+    typeof storage.removeItem !== 'function'
   ) {
     return null;
   }
@@ -734,24 +718,17 @@ function formatClock(value: string) {
   return CLOCK_FORMATTER.format(new Date(value));
 }
 
-
 function formatPercent(value: number, maximumFractionDigits = 0) {
   return `${value.toFixed(maximumFractionDigits)}%`;
 }
 
-function formatBytes(
-  value: number,
-  maximumFractionDigits = value >= 1024 ** 3 ? 1 : 0,
-) {
+function formatBytes(value: number, maximumFractionDigits = value >= 1024 ** 3 ? 1 : 0) {
   if (!Number.isFinite(value) || value <= 0) {
-    return "0 B";
+    return '0 B';
   }
 
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const exponent = Math.min(
-    Math.floor(Math.log(value) / Math.log(1024)),
-    units.length - 1,
-  );
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const exponent = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
   const normalized = value / 1024 ** exponent;
   const digits = normalized >= 100 ? 0 : maximumFractionDigits;
 
@@ -762,109 +739,98 @@ function formatBytesPerSecond(value: number) {
   return `${formatBytes(value, value >= 1024 ** 2 ? 1 : 0)}/s`;
 }
 
-function formatSignedDelta(
-  value: number,
-  formatter: (delta: number) => string,
-) {
+function formatSignedDelta(value: number, formatter: (delta: number) => string) {
   if (!Number.isFinite(value) || Math.abs(value) < 0.05) {
-    return "Stable";
+    return 'Stable';
   }
 
-  return `${value > 0 ? "+" : "-"}${formatter(Math.abs(value))}`;
+  return `${value > 0 ? '+' : '-'}${formatter(Math.abs(value))}`;
 }
 
 function getLatestDelta(
   points: number[],
   formatter: (delta: number) => string,
-  minimumDelta = 0.05,
+  minimumDelta = 0.05
 ) {
   if (points.length < 2) {
-    return "Snapshot";
+    return 'Snapshot';
   }
 
   const delta = points[points.length - 1]! - points[points.length - 2]!;
 
   if (Math.abs(delta) < minimumDelta) {
-    return "Stable";
+    return 'Stable';
   }
 
   return formatSignedDelta(delta, formatter);
 }
 
-function formatRuntimeHealthLabel(health: ContainerStats["health"]) {
+function formatRuntimeHealthLabel(health: ContainerStats['health']) {
   switch (health) {
-    case "healthy":
-      return "Healthy";
-    case "unhealthy":
-      return "Unhealthy";
-    case "starting":
-      return "Starting";
-    case "none":
-      return "No healthcheck";
+    case 'healthy':
+      return 'Healthy';
+    case 'unhealthy':
+      return 'Unhealthy';
+    case 'starting':
+      return 'Starting';
+    case 'none':
+      return 'No healthcheck';
   }
 }
 
 function formatRuntimeStatusLabel(runtime: ContainerStats) {
-  if (runtime.health === "unhealthy") {
-    return "Unhealthy";
+  if (runtime.health === 'unhealthy') {
+    return 'Unhealthy';
   }
 
-  if (runtime.health === "starting") {
-    return "Starting";
+  if (runtime.health === 'starting') {
+    return 'Starting';
   }
 
   return runtime.status.charAt(0).toUpperCase() + runtime.status.slice(1);
 }
 
-function getRuntimeDotClassName(
-  runtime: Pick<ContainerStats, "health" | "status">,
-) {
+function getRuntimeDotClassName(runtime: Pick<ContainerStats, 'health' | 'status'>) {
   const tone = getContainerTone(runtime);
 
-  if (tone === "running") {
-    return "bg-emerald-500";
+  if (tone === 'running') {
+    return 'bg-emerald-500';
   }
 
-  if (tone === "unhealthy" || runtime.health === "starting") {
-    return "bg-amber-500";
+  if (tone === 'unhealthy' || runtime.health === 'starting') {
+    return 'bg-amber-500';
   }
 
-  return "bg-slate-400";
+  return 'bg-slate-400';
 }
 
 function createFlatSeries(value: number) {
   return Array.from({ length: 12 }, () => value);
 }
 
-function getRuntimePreviewStatus(
-  runtime: ContainerStats,
-): PreviewContainerStatus {
+function getRuntimePreviewStatus(runtime: ContainerStats): PreviewContainerStatus {
   const tone = getContainerTone(runtime);
 
-  if (tone === "running") {
-    return "running";
+  if (tone === 'running') {
+    return 'running';
   }
 
-  if (tone === "unhealthy") {
-    return "degraded";
+  if (tone === 'unhealthy') {
+    return 'degraded';
   }
 
-  return "idle";
+  return 'idle';
 }
 
 function buildRuntimeSummary(runtime: ContainerStats) {
   const parts = [
     runtime.projectName ? `Compose project ${runtime.projectName}` : null,
-    runtime.serviceName
-      ? `service ${runtime.serviceName}`
-      : "standalone runtime",
+    runtime.serviceName ? `service ${runtime.serviceName}` : 'standalone runtime',
   ].filter(Boolean);
 
-  const routeSuffix = runtime.routedHost
-    ? ` Available at https://${runtime.routedHost}.`
-    : "";
+  const routeSuffix = runtime.routedHost ? ` Available at https://${runtime.routedHost}.` : '';
 
-  return `Live runtime view for ${runtime.name}, ${parts.join(" / ")} on the current Docker host.${routeSuffix}`;
+  return `Live runtime view for ${runtime.name}, ${parts.join(' / ')} on the current Docker host.${routeSuffix}`;
 }
 
 function buildRuntimeEndpoints(runtime: ContainerStats): Endpoint[] {
@@ -875,7 +841,7 @@ function buildRuntimeEndpoints(runtime: ContainerStats): Endpoint[] {
   return [
     {
       load: Math.max(8, Math.min(100, Math.round(runtime.cpuPercent))),
-      latency: "HTTPS",
+      latency: 'HTTPS',
       name: `https://${runtime.routedHost}`,
       uptime: formatRuntimeHealthLabel(runtime.health),
       url: `https://${runtime.routedHost}`,
@@ -883,31 +849,21 @@ function buildRuntimeEndpoints(runtime: ContainerStats): Endpoint[] {
   ];
 }
 
-function buildRuntimeContainerMetricsKey(
-  runtime: Pick<ContainerStats, "id" | "name">,
-) {
+function buildRuntimeContainerMetricsKey(runtime: Pick<ContainerStats, 'id' | 'name'>) {
   return `${runtime.id}:${runtime.name}`;
 }
 
-function formatAverageValue(
-  points: number[],
-  formatter: (value: number) => string,
-) {
+function formatAverageValue(points: number[], formatter: (value: number) => string) {
   if (!points.length) {
-    return "--";
+    return '--';
   }
 
-  return formatter(
-    points.reduce((sum, point) => sum + point, 0) / points.length,
-  );
+  return formatter(points.reduce((sum, point) => sum + point, 0) / points.length);
 }
 
-function formatPeakValue(
-  points: number[],
-  formatter: (value: number) => string,
-) {
+function formatPeakValue(points: number[], formatter: (value: number) => string) {
   if (!points.length) {
-    return "--";
+    return '--';
   }
 
   return formatter(Math.max(...points));
@@ -926,30 +882,24 @@ function getLatestSeriesTotal(points: number[]) {
 function formatManagedContainerLabel(label: string) {
   const normalized = label.trim().toLowerCase();
 
-  if (normalized === "vercelab-ui") {
-    return "Vercelab UI";
+  if (normalized === 'vercelab-ui') {
+    return 'Vercelab UI';
+  }
+
+  if (normalized === 'vercelab-influxdb' || normalized.startsWith('vercelab-influxdb-')) {
+    return 'Vercelab InfluxDB';
+  }
+
+  if (normalized === 'vercelab-postgres' || normalized.startsWith('vercelab-postgres-')) {
+    return 'Vercelab PostgreSQL';
   }
 
   if (
-    normalized === "vercelab-influxdb" ||
-    normalized.startsWith("vercelab-influxdb-")
+    normalized === 'traefik' ||
+    normalized === 'vercelab-traefik' ||
+    normalized.startsWith('vercelab-traefik-')
   ) {
-    return "Vercelab InfluxDB";
-  }
-
-  if (
-    normalized === "vercelab-postgres" ||
-    normalized.startsWith("vercelab-postgres-")
-  ) {
-    return "Vercelab PostgreSQL";
-  }
-
-  if (
-    normalized === "traefik" ||
-    normalized === "vercelab-traefik" ||
-    normalized.startsWith("vercelab-traefik-")
-  ) {
-    return "Vercelab Traefik";
+    return 'Vercelab Traefik';
   }
 
   return label;
@@ -957,30 +907,27 @@ function formatManagedContainerLabel(label: string) {
 
 function buildAggregateHistoryContainers(
   snapshot: MetricsSnapshot | null,
-  allContainerHistory: AllContainersMetricsHistorySeries[],
+  allContainerHistory: AllContainersMetricsHistorySeries[]
 ): AggregateHistoryContainer[] {
   const historyById = new Map(
-    allContainerHistory.map((series) => [series.containerId, series.points]),
+    allContainerHistory.map((series) => [series.containerId, series.points])
   );
   const historyByName = new Map(
-    allContainerHistory.map((series) => [series.containerName, series.points]),
+    allContainerHistory.map((series) => [series.containerName, series.points])
   );
 
   if (snapshot?.containers.all.length) {
     return [...snapshot.containers.all]
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((runtime) => ({
-        history:
-          historyById.get(runtime.id) ?? historyByName.get(runtime.name) ?? [],
+        history: historyById.get(runtime.id) ?? historyByName.get(runtime.name) ?? [],
         id: runtime.id,
         label: formatManagedContainerLabel(runtime.name),
       }));
   }
 
   return [...allContainerHistory]
-    .sort((left, right) =>
-      left.containerName.localeCompare(right.containerName),
-    )
+    .sort((left, right) => left.containerName.localeCompare(right.containerName))
     .map((series) => ({
       history: series.points,
       id: series.containerId,
@@ -991,29 +938,23 @@ function buildAggregateHistoryContainers(
 function alignAllContainersMetricSeries(
   containers: AggregateHistoryContainer[],
   selectValue: (point: ContainerMetricsHistoryPoint) => number,
-  formatter: (value: number) => string,
+  formatter: (value: number) => string
 ) {
   const timestamps = Array.from(
-    new Set(
-      containers.flatMap((container) =>
-        container.history.map((point) => point.timestamp),
-      ),
-    ),
+    new Set(containers.flatMap((container) => container.history.map((point) => point.timestamp)))
   ).sort();
 
   const linesWithMaps = containers.map((container) => {
     const valuesByTimestamp = new Map(
-      container.history.map((point) => [point.timestamp, selectValue(point)]),
+      container.history.map((point) => [point.timestamp, selectValue(point)])
     );
     const latestPoint = container.history[container.history.length - 1] ?? null;
 
     return {
       id: container.id,
       label: container.label,
-      latestValue: latestPoint ? formatter(selectValue(latestPoint)) : "--",
-      points: timestamps.map(
-        (timestamp) => valuesByTimestamp.get(timestamp) ?? null,
-      ),
+      latestValue: latestPoint ? formatter(selectValue(latestPoint)) : '--',
+      points: timestamps.map((timestamp) => valuesByTimestamp.get(timestamp) ?? null),
       valuesByTimestamp,
     };
   });
@@ -1027,14 +968,11 @@ function alignAllContainersMetricSeries(
       points: line.points,
     })),
     totalPoints: timestamps.map((timestamp) =>
-      linesWithMaps.reduce(
-        (sum, line) => sum + (line.valuesByTimestamp.get(timestamp) ?? 0),
-        0,
-      ),
+      linesWithMaps.reduce((sum, line) => sum + (line.valuesByTimestamp.get(timestamp) ?? 0), 0)
     ),
   } satisfies {
     latestTimestamp: string | null;
-    lines: AllContainersMetricChart["series"];
+    lines: AllContainersMetricChart['series'];
     totalPoints: number[];
   };
 }
@@ -1042,43 +980,37 @@ function alignAllContainersMetricSeries(
 function buildAllContainersMetricCharts(
   range: DashboardRange,
   snapshot: MetricsSnapshot | null,
-  allContainerHistory: AllContainersMetricsHistorySeries[],
+  allContainerHistory: AllContainersMetricsHistorySeries[]
 ): AllContainersMetricChart[] {
-  const containers = buildAggregateHistoryContainers(
-    snapshot,
-    allContainerHistory,
-  );
+  const containers = buildAggregateHistoryContainers(snapshot, allContainerHistory);
   const liveNetworkTotal = snapshot
     ? snapshot.containers.all.reduce(
         (sum, container) => sum + container.networkTotalBytesPerSecond,
-        0,
+        0
       )
     : 0;
   const liveDiskTotal = snapshot
-    ? snapshot.containers.all.reduce(
-        (sum, container) => sum + container.diskTotalBytesPerSecond,
-        0,
-      )
+    ? snapshot.containers.all.reduce((sum, container) => sum + container.diskTotalBytesPerSecond, 0)
     : 0;
   const cpuMetric = alignAllContainersMetricSeries(
     containers,
     (point) => point.cpuPercent,
-    (value) => formatPercent(value, 1),
+    (value) => formatPercent(value, 1)
   );
   const memoryMetric = alignAllContainersMetricSeries(
     containers,
     (point) => point.memoryUsedBytes,
-    (value) => formatBytes(value),
+    (value) => formatBytes(value)
   );
   const networkMetric = alignAllContainersMetricSeries(
     containers,
     (point) => point.networkTotal,
-    (value) => formatBytesPerSecond(value),
+    (value) => formatBytesPerSecond(value)
   );
   const diskMetric = alignAllContainersMetricSeries(
     containers,
     (point) => point.diskTotal,
-    (value) => formatBytesPerSecond(value),
+    (value) => formatBytesPerSecond(value)
   );
 
   const latestCpuTotal = getLatestSeriesTotal(cpuMetric.totalPoints);
@@ -1089,49 +1021,49 @@ function buildAllContainersMetricCharts(
   return [
     {
       series: cpuMetric.lines,
-      summaryLabel: "Fleet load",
+      summaryLabel: 'Fleet load',
       summaryValue: snapshot
         ? formatPercent(snapshot.containers.cpuPercent, 1)
         : latestCpuTotal !== null
           ? formatPercent(latestCpuTotal, 1)
-          : "--",
-      title: "CPU load",
-      variant: "cpu",
+          : '--',
+      title: 'CPU load',
+      variant: 'cpu',
     },
     {
       series: memoryMetric.lines,
-      summaryLabel: "Resident set",
+      summaryLabel: 'Resident set',
       summaryValue: snapshot
         ? formatBytes(snapshot.containers.memoryUsedBytes)
         : latestMemoryTotal !== null
           ? formatBytes(latestMemoryTotal)
-          : "--",
-      title: "Memory load",
-      variant: "memory",
+          : '--',
+      title: 'Memory load',
+      variant: 'memory',
     },
     {
       series: networkMetric.lines,
-      summaryLabel: "Live throughput",
+      summaryLabel: 'Live throughput',
       summaryValue:
         liveNetworkTotal > 0
           ? formatBytesPerSecond(liveNetworkTotal)
           : latestNetworkTotal !== null
             ? formatBytesPerSecond(latestNetworkTotal)
-            : "--",
-      title: "Network",
-      variant: "network",
+            : '--',
+      title: 'Network',
+      variant: 'network',
     },
     {
       series: diskMetric.lines,
-      summaryLabel: "Live I/O",
+      summaryLabel: 'Live I/O',
       summaryValue:
         liveDiskTotal > 0
           ? formatBytesPerSecond(liveDiskTotal)
           : latestDiskTotal !== null
             ? formatBytesPerSecond(latestDiskTotal)
-            : "--",
-      title: "Disk I/O",
-      variant: "disk",
+            : '--',
+      title: 'Disk I/O',
+      variant: 'disk',
     },
   ];
 }
@@ -1139,75 +1071,75 @@ function buildAllContainersMetricCharts(
 function buildFocusedMetricCharts(
   runtime: ContainerStats | null,
   history: ContainerMetricsHistoryPoint[],
-  preview: PreviewContainer,
+  preview: PreviewContainer
 ): FocusedMetricChart[] {
   if (!runtime) {
     return [
       {
-        delta: "Preview",
+        delta: 'Preview',
         legends: [
           {
-            label: "Latest",
+            label: 'Latest',
             value: preview.cpu,
           },
           {
-            label: "Mode",
-            value: "Scaffold",
+            label: 'Mode',
+            value: 'Scaffold',
           },
         ],
         primaryPoints: preview.signals[0]?.points ?? [],
         trendPoints: preview.signals[0]?.points ?? [],
-        title: "CPU load",
+        title: 'CPU load',
         value: preview.cpu,
-        variant: "cpu",
+        variant: 'cpu',
       },
       {
-        delta: "Preview",
+        delta: 'Preview',
         legends: [
           {
-            label: "Latest",
+            label: 'Latest',
             value: preview.memory,
           },
           {
-            label: "Mode",
-            value: "Scaffold",
+            label: 'Mode',
+            value: 'Scaffold',
           },
         ],
         primaryPoints: preview.signals[1]?.points ?? [],
         trendPoints: preview.signals[1]?.points ?? [],
-        title: "Memory load",
+        title: 'Memory load',
         value: preview.memory,
-        variant: "memory",
+        variant: 'memory',
       },
       {
-        delta: "Preview",
+        delta: 'Preview',
         legends: [
           {
-            label: "Flow",
+            label: 'Flow',
             value: preview.requestRate,
           },
         ],
         primaryPoints: preview.signals[2]?.points ?? [],
         secondaryPoints: [],
         trendPoints: preview.signals[2]?.points ?? [],
-        title: "Network",
+        title: 'Network',
         value: preview.requestRate,
-        variant: "network",
+        variant: 'network',
       },
       {
-        delta: "Live only",
+        delta: 'Live only',
         legends: [
           {
-            label: "Source",
-            value: "InfluxDB",
+            label: 'Source',
+            value: 'InfluxDB',
           },
         ],
         primaryPoints: [],
         secondaryPoints: [],
         trendPoints: [],
-        title: "Disk I/O",
-        value: "--",
-        variant: "disk",
+        title: 'Disk I/O',
+        value: '--',
+        variant: 'disk',
       },
     ];
   }
@@ -1228,120 +1160,101 @@ function buildFocusedMetricCharts(
       delta: getLatestDelta(cpuPoints, (delta) => formatPercent(delta, 1)),
       legends: [
         {
-          label: "Avg",
-          value: formatAverageValue(cpuPoints, (value) =>
-            formatPercent(value, 1),
-          ),
+          label: 'Avg',
+          value: formatAverageValue(cpuPoints, (value) => formatPercent(value, 1)),
         },
         {
-          label: "Peak",
+          label: 'Peak',
           value: formatPeakValue(cpuPoints, (value) => formatPercent(value, 1)),
         },
       ],
       primaryPoints: cpuPoints,
       trendPoints: cpuPoints,
-      title: "CPU load",
-      value: latest ? formatPercent(latest.cpuPercent, 1) : "--",
-      variant: "cpu",
+      title: 'CPU load',
+      value: latest ? formatPercent(latest.cpuPercent, 1) : '--',
+      variant: 'cpu',
     },
     {
-      delta: getLatestDelta(memoryPercentPoints, (delta) =>
-        formatPercent(delta, 1),
-      ),
+      delta: getLatestDelta(memoryPercentPoints, (delta) => formatPercent(delta, 1)),
       legends: [
         {
-          label: "Host share",
-          value: latest ? formatPercent(latest.memoryPercent, 1) : "--",
+          label: 'Host share',
+          value: latest ? formatPercent(latest.memoryPercent, 1) : '--',
         },
         {
-          label: "Peak",
-          value: formatPeakValue(memoryBytesPoints, (value) =>
-            formatBytes(value),
-          ),
+          label: 'Peak',
+          value: formatPeakValue(memoryBytesPoints, (value) => formatBytes(value)),
         },
       ],
       primaryPoints: memoryBytesPoints,
       trendPoints: memoryBytesPoints,
-      title: "Memory load",
-      value: latest ? formatBytes(latest.memoryUsedBytes) : "--",
-      variant: "memory",
+      title: 'Memory load',
+      value: latest ? formatBytes(latest.memoryUsedBytes) : '--',
+      variant: 'memory',
     },
     {
-      delta: getLatestDelta(
-        networkTotalPoints,
-        (delta) => formatBytesPerSecond(delta),
-        1024,
-      ),
+      delta: getLatestDelta(networkTotalPoints, (delta) => formatBytesPerSecond(delta), 1024),
       legends: [
         {
-          label: "Ingress",
-          value: latest ? formatBytesPerSecond(latest.networkIn) : "--",
+          label: 'Ingress',
+          value: latest ? formatBytesPerSecond(latest.networkIn) : '--',
         },
         {
-          label: "Egress",
-          value: latest ? formatBytesPerSecond(latest.networkOut) : "--",
+          label: 'Egress',
+          value: latest ? formatBytesPerSecond(latest.networkOut) : '--',
         },
       ],
       primaryPoints: networkInPoints,
       secondaryPoints: networkOutPoints,
       trendPoints: networkTotalPoints,
-      title: "Network",
-      value: latest ? formatBytesPerSecond(latest.networkTotal) : "--",
-      variant: "network",
+      title: 'Network',
+      value: latest ? formatBytesPerSecond(latest.networkTotal) : '--',
+      variant: 'network',
     },
     {
-      delta: getLatestDelta(
-        diskTotalPoints,
-        (delta) => formatBytesPerSecond(delta),
-        1024,
-      ),
+      delta: getLatestDelta(diskTotalPoints, (delta) => formatBytesPerSecond(delta), 1024),
       legends: [
         {
-          label: "Read",
-          value: latest ? formatBytesPerSecond(latest.diskRead) : "--",
+          label: 'Read',
+          value: latest ? formatBytesPerSecond(latest.diskRead) : '--',
         },
         {
-          label: "Write",
-          value: latest ? formatBytesPerSecond(latest.diskWrite) : "--",
+          label: 'Write',
+          value: latest ? formatBytesPerSecond(latest.diskWrite) : '--',
         },
       ],
       primaryPoints: diskReadPoints,
       secondaryPoints: diskWritePoints,
       trendPoints: diskTotalPoints,
-      title: "Disk I/O",
-      value: latest ? formatBytesPerSecond(latest.diskTotal) : "--",
-      variant: "disk",
+      title: 'Disk I/O',
+      value: latest ? formatBytesPerSecond(latest.diskTotal) : '--',
+      variant: 'disk',
     },
   ];
 }
 
-function buildRuntimeTimeline(
-  runtime: ContainerStats,
-  snapshot: MetricsSnapshot | null,
-) {
+function buildRuntimeTimeline(runtime: ContainerStats, snapshot: MetricsSnapshot | null) {
   return [
     runtime.routedHost
       ? {
-          label: "Access",
+          label: 'Access',
           detail: `HTTPS route active at https://${runtime.routedHost}.`,
         }
       : null,
     {
-      label: "Runtime state",
-      detail: `${formatRuntimeStatusLabel(runtime)} at ${snapshot ? formatClock(snapshot.timestamp) : "the latest sample"}.`,
+      label: 'Runtime state',
+      detail: `${formatRuntimeStatusLabel(runtime)} at ${snapshot ? formatClock(snapshot.timestamp) : 'the latest sample'}.`,
     },
     {
-      label: "Health check",
+      label: 'Health check',
       detail: formatRuntimeHealthLabel(runtime.health),
     },
     {
-      label: "Compose labels",
+      label: 'Compose labels',
       detail:
         runtime.projectName || runtime.serviceName
-          ? [runtime.projectName, runtime.serviceName]
-              .filter(Boolean)
-              .join(" / ")
-          : "No compose metadata was exposed for this container.",
+          ? [runtime.projectName, runtime.serviceName].filter(Boolean).join(' / ')
+          : 'No compose metadata was exposed for this container.',
     },
   ].filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 }
@@ -1349,30 +1262,28 @@ function buildRuntimeTimeline(
 function buildDisplayContainer(
   runtime: ContainerStats,
   preview: PreviewContainer | null,
-  snapshot: MetricsSnapshot | null,
+  snapshot: MetricsSnapshot | null
 ): PreviewContainer {
   const base =
     preview ??
     ({
       id: runtime.id,
       name: runtime.name,
-      stack: runtime.projectName ?? "docker",
+      stack: runtime.projectName ?? 'docker',
       image: runtime.serviceName
         ? `${runtime.serviceName} runtime`
-        : "Container image details unavailable",
-      node: snapshot?.hostIp ?? "Current host",
+        : 'Container image details unavailable',
+      node: snapshot?.hostIp ?? 'Current host',
       status: getRuntimePreviewStatus(runtime),
       summary: buildRuntimeSummary(runtime),
-      uptime: snapshot
-        ? `Updated ${formatClock(snapshot.timestamp)}`
-        : "Live sample",
-      port: runtime.serviceName ?? "Inspect data unavailable",
+      uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : 'Live sample',
+      port: runtime.serviceName ?? 'Inspect data unavailable',
       cpu: formatPercent(runtime.cpuPercent, 1),
       memory: formatBytes(runtime.memoryBytes),
       restarts: 0,
-      requestRate: "Live sample",
-      region: snapshot?.hostIp ?? "Docker host",
-      deployedAt: snapshot ? formatClock(snapshot.timestamp) : "now",
+      requestRate: 'Live sample',
+      region: snapshot?.hostIp ?? 'Docker host',
+      deployedAt: snapshot ? formatClock(snapshot.timestamp) : 'now',
       tags: [],
       volumes: [],
       environment: [],
@@ -1395,9 +1306,7 @@ function buildDisplayContainer(
     node: snapshot?.hostIp ?? base.node,
     status: getRuntimePreviewStatus(runtime),
     summary: preview?.summary ?? base.summary,
-    uptime: snapshot
-      ? `Updated ${formatClock(snapshot.timestamp)}`
-      : base.uptime,
+    uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : base.uptime,
     port: runtime.routedHost ? `https://${runtime.routedHost}` : base.port,
     cpu: formatPercent(runtime.cpuPercent, 1),
     memory: formatBytes(runtime.memoryBytes),
@@ -1409,11 +1318,11 @@ function buildDisplayContainer(
           ...base.tags,
           runtime.projectName,
           runtime.serviceName,
-          runtime.routedHost ? "traefik" : null,
+          runtime.routedHost ? 'traefik' : null,
           runtime.status,
-          runtime.health !== "none" ? runtime.health : null,
-        ].filter((value): value is string => Boolean(value)),
-      ),
+          runtime.health !== 'none' ? runtime.health : null,
+        ].filter((value): value is string => Boolean(value))
+      )
     ),
     activity: createFlatSeries(runtime.cpuPercent),
     signals: base.signals,
@@ -1424,20 +1333,18 @@ function buildDisplayContainer(
 function buildContainerSidebarMetadata(
   runtime: ContainerStats | null,
   display: PreviewContainer,
-  deployments: DeploymentSummary[],
+  deployments: DeploymentSummary[]
 ) {
   if (!runtime?.projectName) {
     return {
       deploymentStatus: null,
       sidebarName: formatManagedContainerLabel(display.name),
-      sidebarSecondaryLabel: runtime
-        ? (runtime.projectName ?? display.stack)
-        : display.stack,
+      sidebarSecondaryLabel: runtime ? (runtime.projectName ?? display.stack) : display.stack,
     };
   }
 
   const matchingDeployment = deployments.find(
-    (deployment) => deployment.projectName === runtime.projectName,
+    (deployment) => deployment.projectName === runtime.projectName
   );
 
   if (!matchingDeployment) {
@@ -1448,8 +1355,7 @@ function buildContainerSidebarMetadata(
     };
   }
 
-  const serviceLabel =
-    runtime.serviceName?.trim() || matchingDeployment.serviceName?.trim() || "";
+  const serviceLabel = runtime.serviceName?.trim() || matchingDeployment.serviceName?.trim() || '';
 
   return {
     deploymentStatus: null,
@@ -1462,38 +1368,34 @@ function buildContainerSidebarMetadata(
 
 function buildContainerListEntries(
   snapshot: MetricsSnapshot | null,
-  deployments: DeploymentSummary[],
+  deployments: DeploymentSummary[]
 ): ContainerListEntry[] {
-  const previewByName = new Map(
-    PREVIEW_CONTAINERS.map((container) => [container.name, container]),
-  );
+  const previewByName = new Map(PREVIEW_CONTAINERS.map((container) => [container.name, container]));
   const previewOrder = new Map(
-    PREVIEW_CONTAINERS.map((container, index) => [container.name, index]),
+    PREVIEW_CONTAINERS.map((container, index) => [container.name, index])
   );
-  const runtimeContainers = [...(snapshot?.containers.all ?? [])].sort(
-    (left, right) => {
-      const leftPreviewIndex = previewOrder.get(left.name);
-      const rightPreviewIndex = previewOrder.get(right.name);
+  const runtimeContainers = [...(snapshot?.containers.all ?? [])].sort((left, right) => {
+    const leftPreviewIndex = previewOrder.get(left.name);
+    const rightPreviewIndex = previewOrder.get(right.name);
 
-      if (
-        leftPreviewIndex !== undefined &&
-        rightPreviewIndex !== undefined &&
-        leftPreviewIndex !== rightPreviewIndex
-      ) {
-        return leftPreviewIndex - rightPreviewIndex;
-      }
+    if (
+      leftPreviewIndex !== undefined &&
+      rightPreviewIndex !== undefined &&
+      leftPreviewIndex !== rightPreviewIndex
+    ) {
+      return leftPreviewIndex - rightPreviewIndex;
+    }
 
-      if (leftPreviewIndex !== undefined && rightPreviewIndex === undefined) {
-        return -1;
-      }
+    if (leftPreviewIndex !== undefined && rightPreviewIndex === undefined) {
+      return -1;
+    }
 
-      if (leftPreviewIndex === undefined && rightPreviewIndex !== undefined) {
-        return 1;
-      }
+    if (leftPreviewIndex === undefined && rightPreviewIndex !== undefined) {
+      return 1;
+    }
 
-      return left.name.localeCompare(right.name);
-    },
-  );
+    return left.name.localeCompare(right.name);
+  });
 
   if (!runtimeContainers.length) {
     return PREVIEW_CONTAINERS.map((preview) => ({
@@ -1505,7 +1407,7 @@ function buildContainerListEntries(
       sidebarName: preview.name,
       sidebarSecondaryLabel: preview.stack,
       searchText: [preview.name, preview.stack, preview.image, preview.summary]
-        .join(" ")
+        .join(' ')
         .toLowerCase(),
     }));
   }
@@ -1513,11 +1415,7 @@ function buildContainerListEntries(
   return runtimeContainers.map((runtime) => {
     const preview = previewByName.get(runtime.name) ?? null;
     const display = buildDisplayContainer(runtime, preview, snapshot);
-    const sidebarMetadata = buildContainerSidebarMetadata(
-      runtime,
-      display,
-      deployments,
-    );
+    const sidebarMetadata = buildContainerSidebarMetadata(runtime, display, deployments);
 
     return {
       deploymentStatus: sidebarMetadata.deploymentStatus,
@@ -1538,7 +1436,7 @@ function buildContainerListEntries(
         preview?.summary,
       ]
         .filter(Boolean)
-        .join(" ")
+        .join(' ')
         .toLowerCase(),
     };
   });
@@ -1548,7 +1446,7 @@ function useStoredPanelWidth(
   key: string,
   initialWidth: number,
   minWidth: number,
-  maxWidth: number,
+  maxWidth: number
 ) {
   const [width, setWidth] = useState(initialWidth);
 
@@ -1577,36 +1475,34 @@ function useStoredPanelWidth(
 
 function formatStatusLabel(status: PreviewContainerStatus) {
   switch (status) {
-    case "running":
-      return "Running";
-    case "degraded":
-      return "Degraded";
-    case "idle":
-      return "Idle";
+    case 'running':
+      return 'Running';
+    case 'degraded':
+      return 'Degraded';
+    case 'idle':
+      return 'Idle';
   }
 }
 
-function getStatusBadgeVariant(
-  status: PreviewContainerStatus,
-): "success" | "warning" | "default" {
+function getStatusBadgeVariant(status: PreviewContainerStatus): 'success' | 'warning' | 'default' {
   switch (status) {
-    case "running":
-      return "success";
-    case "degraded":
-      return "warning";
-    case "idle":
-      return "default";
+    case 'running':
+      return 'success';
+    case 'degraded':
+      return 'warning';
+    case 'idle':
+      return 'default';
   }
 }
 
 function getStatusDotClassName(status: PreviewContainerStatus) {
   switch (status) {
-    case "running":
-      return "bg-emerald-500";
-    case "degraded":
-      return "bg-amber-500";
-    case "idle":
-      return "bg-slate-400";
+    case 'running':
+      return 'bg-emerald-500';
+    case 'degraded':
+      return 'bg-amber-500';
+    case 'idle':
+      return 'bg-slate-400';
   }
 }
 
@@ -1617,23 +1513,23 @@ const WORKSPACE_PAGES: Array<{
   label: string;
 }> = [
   {
-    id: "dashboard",
-    label: "Dashboard",
+    id: 'dashboard',
+    label: 'Dashboard',
     iconComponent: Home,
-    description: "Live containers and host load",
+    description: 'Live containers and host load',
   },
   {
-    id: "git-app-page",
-    label: "Git App Page",
+    id: 'git-app-page',
+    label: 'Git App Page',
     iconComponent: GitBranch,
-    description: "Deployments and repo wiring",
+    description: 'Deployments and repo wiring',
   },
 ];
 
 function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
-  const pathname = view === "dashboard" ? "/" : "/git-app-page";
+  const pathname = view === 'dashboard' ? '/' : '/git-app-page';
 
-  if (range === "15m") {
+  if (range === '15m') {
     return pathname;
   }
 
@@ -1644,13 +1540,11 @@ function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
   return `${pathname}?${searchParams.toString()}`;
 }
 
-function buildMetricsRequestUrl(
-  searchParams: Record<string, string | undefined>,
-) {
+function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>) {
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(searchParams)) {
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       params.set(key, value);
     }
   }
@@ -1659,18 +1553,18 @@ function buildMetricsRequestUrl(
 }
 
 function isDocumentHidden() {
-  if (typeof document === "undefined") {
+  if (typeof document === 'undefined') {
     return false;
   }
 
-  return document.visibilityState === "hidden";
+  return document.visibilityState === 'hidden';
 }
 
 function toSlug(value: string) {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 40);
 }
 
@@ -1688,29 +1582,25 @@ function buildBranchOptions(branches: string[], defaultBranch: string) {
   return branches.map((branch) => ({
     value: branch,
     label: branch,
-    description: branch === defaultBranch ? "Default branch" : undefined,
+    description: branch === defaultBranch ? 'Default branch' : undefined,
   }));
 }
 
 function createEmptyDraftAppState(): DraftAppState {
   return {
-    appName: "",
-    branch: "",
-    exposureMode: "http",
-    hostPort: "",
-    port: "3000",
-    repositoryUrl: "",
-    subdomain: "",
+    appName: '',
+    branch: '',
+    exposureMode: 'http',
+    hostPort: '',
+    port: '3000',
+    repositoryUrl: '',
+    subdomain: '',
   };
 }
 
 function normalizeGitHubBranches(branches: string[], defaultBranch: string) {
   const normalizedBranches = Array.from(
-    new Set(
-      branches
-        .map((branch) => branch.trim())
-        .filter((branch) => branch.length > 0),
-    ),
+    new Set(branches.map((branch) => branch.trim()).filter((branch) => branch.length > 0))
   );
 
   if (!defaultBranch.trim()) {
@@ -1733,7 +1623,7 @@ function normalizeGitHubBranches(branches: string[], defaultBranch: string) {
 function getPreferredBranch(
   currentBranch: string,
   defaultBranch: string,
-  availableBranches: string[],
+  availableBranches: string[]
 ) {
   if (currentBranch && availableBranches.includes(currentBranch)) {
     return currentBranch;
@@ -1750,72 +1640,72 @@ function formatRelativeTime(value: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Unknown";
+    return 'Unknown';
   }
 
   const seconds = Math.round((date.getTime() - Date.now()) / 1000);
   const units = [
-    ["year", 60 * 60 * 24 * 365],
-    ["month", 60 * 60 * 24 * 30],
-    ["week", 60 * 60 * 24 * 7],
-    ["day", 60 * 60 * 24],
-    ["hour", 60 * 60],
-    ["minute", 60],
+    ['year', 60 * 60 * 24 * 365],
+    ['month', 60 * 60 * 24 * 30],
+    ['week', 60 * 60 * 24 * 7],
+    ['day', 60 * 60 * 24],
+    ['hour', 60 * 60],
+    ['minute', 60],
   ] as const;
 
   for (const [unit, divisor] of units) {
-    if (Math.abs(seconds) >= divisor || unit === "minute") {
+    if (Math.abs(seconds) >= divisor || unit === 'minute') {
       return RELATIVE_TIME_FORMATTER.format(Math.round(seconds / divisor), unit);
     }
   }
 
-  return RELATIVE_TIME_FORMATTER.format(seconds, "second");
+  return RELATIVE_TIME_FORMATTER.format(seconds, 'second');
 }
 
 function getDeploymentStatusBadgeVariant(
-  status: DeploymentSummary["status"],
-): "success" | "warning" | "default" {
+  status: DeploymentSummary['status']
+): 'success' | 'warning' | 'default' {
   switch (status) {
-    case "running":
-      return "success";
-    case "failed":
-    case "deploying":
-      return "warning";
+    case 'running':
+      return 'success';
+    case 'failed':
+    case 'deploying':
+      return 'warning';
     default:
-      return "default";
+      return 'default';
   }
 }
 
-function getDeploymentStatusDotClassName(status: DeploymentSummary["status"]) {
+function getDeploymentStatusDotClassName(status: DeploymentSummary['status']) {
   switch (status) {
-    case "running":
-      return "bg-emerald-500";
-    case "failed":
-    case "deploying":
-      return "bg-amber-500";
+    case 'running':
+      return 'bg-emerald-500';
+    case 'failed':
+    case 'deploying':
+      return 'bg-amber-500';
     default:
-      return "bg-slate-400";
+      return 'bg-slate-400';
   }
 }
 
-function formatDeploymentStatus(status: DeploymentSummary["status"]) {
+function formatDeploymentStatus(status: DeploymentSummary['status']) {
   switch (status) {
-    case "deploying":
-      return "Deploying";
-    case "running":
-      return "Running";
-    case "failed":
-      return "Failed";
-    case "stopped":
-      return "Stopped";
-    case "removing":
-      return "Removing";
+    case 'deploying':
+      return 'Deploying';
+    case 'running':
+      return 'Running';
+    case 'failed':
+      return 'Failed';
+    case 'stopped':
+      return 'Stopped';
+    case 'removing':
+      return 'Removing';
   }
 }
 
 function formatDeploymentDomain(
-  deployment: Pick<DeploymentSummary, "subdomain">,
-  baseDomain?: string,
+  deployment: Pick<DeploymentSummary, 'subdomain'>,
+  baseDomain?: string
 ) {
   if (!baseDomain) {
     return deployment.subdomain;
@@ -1825,8 +1715,8 @@ function formatDeploymentDomain(
 }
 
 function formatDeploymentHref(
-  deployment: Pick<DeploymentSummary, "subdomain">,
-  baseDomain?: string,
+  deployment: Pick<DeploymentSummary, 'subdomain'>,
+  baseDomain?: string
 ) {
   return `https://${formatDeploymentDomain(deployment, baseDomain)}`;
 }
@@ -1834,20 +1724,20 @@ function formatDeploymentHref(
 function resolveDeploymentDisplayName(
   deployment: DeploymentSummary,
   snapshot: MetricsSnapshot | null,
-  aliases: Record<string, string>,
+  aliases: Record<string, string>
 ) {
   const matchingRuntimes = (snapshot?.containers.all ?? []).filter(
-    (runtime) => runtime.projectName === deployment.projectName,
+    (runtime) => runtime.projectName === deployment.projectName
   );
 
   if (!matchingRuntimes.length) {
     return deployment.appName;
   }
 
-  const deploymentServiceName = deployment.serviceName?.trim() ?? "";
+  const deploymentServiceName = deployment.serviceName?.trim() ?? '';
   const preferredRuntime = deploymentServiceName
     ? (matchingRuntimes.find(
-        (runtime) => (runtime.serviceName?.trim() ?? "") === deploymentServiceName,
+        (runtime) => (runtime.serviceName?.trim() ?? '') === deploymentServiceName
       ) ?? null)
     : matchingRuntimes.length === 1
       ? matchingRuntimes[0]
@@ -1862,17 +1752,15 @@ function resolveDeploymentDisplayName(
   return alias || deployment.appName;
 }
 
-function createDraftFromRepository(
-  repository: GitHubRepository,
-): DraftAppState {
+function createDraftFromRepository(repository: GitHubRepository): DraftAppState {
   const slug = toSlug(repository.name);
 
   return {
     appName: repository.name,
     branch: repository.defaultBranch,
-    exposureMode: "http",
-    hostPort: "",
-    port: "3000",
+    exposureMode: 'http',
+    hostPort: '',
+    port: '3000',
     repositoryUrl: repository.cloneUrl,
     subdomain: slug || repository.name.toLowerCase(),
   };
@@ -1883,10 +1771,10 @@ export function WorkspaceShell({
   embedded = false,
   influxExplorerUrl,
   initialContainerHistory = [],
-  initialDashboardRange = "15m",
+  initialDashboardRange = '15m',
   initialDeployments,
   initialHistory = [],
-  initialView = "dashboard",
+  initialView = 'dashboard',
   initialSnapshot = null,
 }: WorkspaceShellProps) {
   const router = useRouter();
@@ -1897,43 +1785,34 @@ export function WorkspaceShell({
     METRICS_PANEL_STORAGE_KEY,
     DEFAULT_METRICS_WIDTH_PX,
     MIN_METRICS_WIDTH_PX,
-    MAX_METRICS_WIDTH_PX,
+    MAX_METRICS_WIDTH_PX
   );
   const [listWidth, setListWidth] = useStoredPanelWidth(
     LIST_PANEL_STORAGE_KEY,
     DEFAULT_LIST_WIDTH_PX,
     MIN_LIST_WIDTH_PX,
-    MAX_LIST_WIDTH_PX,
+    MAX_LIST_WIDTH_PX
   );
   const [logsWidth, setLogsWidth] = useStoredPanelWidth(
     LOGS_PANEL_STORAGE_KEY,
     DEFAULT_LOGS_WIDTH_PX,
     MIN_LOGS_WIDTH_PX,
-    MAX_LOGS_WIDTH_PX,
+    MAX_LOGS_WIDTH_PX
   );
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
   const activeView = initialView;
-  const [dashboardRange, setDashboardRange] = useState<DashboardRange>(
-    initialDashboardRange,
-  );
-  const [selectedContainerId, setSelectedContainerId] =
-    useState(ALL_CONTAINERS_ID);
-  const [deployments, setDeployments] =
-    useState<DeploymentSummary[]>(deploymentSeed);
-  const [selectedAppId, setSelectedAppId] = useState(
-    deploymentSeed[0]?.id ?? "",
-  );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [appSearchQuery, setAppSearchQuery] = useState("");
-  const [dashboardLogView, setDashboardLogView] =
-    useState<DashboardLogView>("live");
-  const [appLogTab, setAppLogTab] = useState<LogTab>("build");
+  const [dashboardRange, setDashboardRange] = useState<DashboardRange>(initialDashboardRange);
+  const [selectedContainerId, setSelectedContainerId] = useState(ALL_CONTAINERS_ID);
+  const [deployments, setDeployments] = useState<DeploymentSummary[]>(deploymentSeed);
+  const [selectedAppId, setSelectedAppId] = useState(deploymentSeed[0]?.id ?? '');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [appSearchQuery, setAppSearchQuery] = useState('');
+  const [dashboardLogView, setDashboardLogView] = useState<DashboardLogView>('live');
+  const [appLogTab, setAppLogTab] = useState<LogTab>('build');
   const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(false);
   const [isCreateAppPending, setIsCreateAppPending] = useState(false);
-  const [draftApp, setDraftApp] = useState<DraftAppState>(
-    createEmptyDraftAppState,
-  );
+  const [draftApp, setDraftApp] = useState<DraftAppState>(createEmptyDraftAppState);
   const [repositoryState, setRepositoryState] = useState<RepositoryState>({
     error: null,
     hasLoaded: false,
@@ -1954,12 +1833,12 @@ export function WorkspaceShell({
     return [
       ...internalItems,
       {
-        description: "Open the InfluxDB Explorer UI",
+        description: 'Open the InfluxDB Explorer UI',
         external: true,
         href: influxExplorerUrl,
         iconComponent: Activity,
-        id: "influx-explorer",
-        label: "Influx Explorer",
+        id: 'influx-explorer',
+        label: 'Influx Explorer',
       },
     ];
   }, [influxExplorerUrl]);
@@ -1971,18 +1850,16 @@ export function WorkspaceShell({
   const initialSelectedContainerHistoryKey = initialSnapshot?.containers.all[0]
     ? buildRuntimeContainerMetricsKey(initialSnapshot.containers.all[0])
     : null;
-  const [sidebarSnapshot, setSidebarSnapshot] =
-    useState<MetricsSnapshot | null>(initialSnapshot);
-  const [sidebarHistory, setSidebarHistory] =
-    useState<MetricsHistoryPoint[]>(initialHistory);
-  const [selectedContainerHistory, setSelectedContainerHistory] = useState<
-    ContainerMetricsHistoryPoint[]
-  >(initialContainerHistory);
+  const [sidebarSnapshot, setSidebarSnapshot] = useState<MetricsSnapshot | null>(initialSnapshot);
+  const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>(initialHistory);
+  const [selectedContainerHistory, setSelectedContainerHistory] =
+    useState<ContainerMetricsHistoryPoint[]>(initialContainerHistory);
   const [allContainerHistory, setAllContainerHistory] = useState<
     AllContainersMetricsHistorySeries[]
   >([]);
-  const [selectedContainerHistoryKey, setSelectedContainerHistoryKey] =
-    useState<string | null>(initialSelectedContainerHistoryKey);
+  const [selectedContainerHistoryKey, setSelectedContainerHistoryKey] = useState<string | null>(
+    initialSelectedContainerHistoryKey
+  );
   const [, setMetricsError] = useState<string | null>(null);
   const [aliases, setAliases] = useState<Record<string, string>>({});
   const branchCacheRef = useRef<Record<string, string[]>>({});
@@ -1993,7 +1870,7 @@ export function WorkspaceShell({
   const detailedHistoryInFlightRef = useRef(false);
   const loadedDetailedHistoryKeyRef = useRef<string | null>(null);
   const dragStateRef = useRef<{
-    kind: "metrics" | "list" | "logs" | null;
+    kind: 'metrics' | 'list' | 'logs' | null;
     startWidth: number;
     startX: number;
   }>({
@@ -2003,7 +1880,7 @@ export function WorkspaceShell({
   });
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
-    [sidebarHistory, sidebarSnapshot],
+    [sidebarHistory, sidebarSnapshot]
   );
 
   useEffect(() => {
@@ -2012,37 +1889,32 @@ export function WorkspaceShell({
     return subscribeToStoredContainerAliases(setAliases);
   }, []);
 
-  const workspaceContainers = useMemo(
-    () => {
-      if (activeView !== "dashboard") {
-        return EMPTY_CONTAINER_LIST;
+  const workspaceContainers = useMemo(() => {
+    if (activeView !== 'dashboard') {
+      return EMPTY_CONTAINER_LIST;
+    }
+
+    return buildContainerListEntries(sidebarSnapshot, deployments).map((entry) => {
+      const alias = aliases[entry.display.id]?.trim();
+
+      if (!alias) {
+        return entry;
       }
 
-      return buildContainerListEntries(sidebarSnapshot, deployments).map(
-        (entry) => {
-          const alias = aliases[entry.display.id]?.trim();
-
-          if (!alias) {
-            return entry;
-          }
-
-          return {
-            ...entry,
-            display: {
-              ...entry.display,
-              name: alias,
-            },
-            searchText: `${alias} ${entry.searchText}`.toLowerCase(),
-            sidebarName: alias,
-          } satisfies ContainerListEntry;
+      return {
+        ...entry,
+        display: {
+          ...entry.display,
+          name: alias,
         },
-      );
-    },
-    [activeView, aliases, deployments, sidebarSnapshot],
-  );
+        searchText: `${alias} ${entry.searchText}`.toLowerCase(),
+        sidebarName: alias,
+      } satisfies ContainerListEntry;
+    });
+  }, [activeView, aliases, deployments, sidebarSnapshot]);
 
   const filteredContainers = useMemo(() => {
-    if (activeView !== "dashboard") {
+    if (activeView !== 'dashboard') {
       return EMPTY_CONTAINER_LIST;
     }
 
@@ -2053,33 +1925,30 @@ export function WorkspaceShell({
     }
 
     return workspaceContainers.filter((container) =>
-      container.searchText.includes(normalizedQuery),
+      container.searchText.includes(normalizedQuery)
     );
   }, [activeView, searchQuery, workspaceContainers]);
-  const effectiveRepositoryState = isEmbedded
-    ? sharedChrome.repositoryState
-    : repositoryState;
+  const effectiveRepositoryState = isEmbedded ? sharedChrome.repositoryState : repositoryState;
   const repositoryOptions = useMemo(
     () => buildRepositoryOptions(effectiveRepositoryState.repositories),
-    [effectiveRepositoryState.repositories],
+    [effectiveRepositoryState.repositories]
   );
   const selectedRepository = useMemo(
     () =>
       effectiveRepositoryState.repositories.find(
-        (repository) => repository.cloneUrl === draftApp.repositoryUrl,
+        (repository) => repository.cloneUrl === draftApp.repositoryUrl
       ) ?? null,
-    [draftApp.repositoryUrl, effectiveRepositoryState.repositories],
+    [draftApp.repositoryUrl, effectiveRepositoryState.repositories]
   );
   const branchOptions = useMemo(
     () =>
       selectedRepository
         ? buildBranchOptions(
-            branchState.branchesByRepositoryId[String(selectedRepository.id)] ??
-              [],
-            selectedRepository.defaultBranch,
+            branchState.branchesByRepositoryId[String(selectedRepository.id)] ?? [],
+            selectedRepository.defaultBranch
           )
         : [],
-    [branchState.branchesByRepositoryId, selectedRepository],
+    [branchState.branchesByRepositoryId, selectedRepository]
   );
   const deploymentDisplayNames = useMemo(
     () =>
@@ -2087,9 +1956,9 @@ export function WorkspaceShell({
         deployments.map((deployment) => [
           deployment.id,
           resolveDeploymentDisplayName(deployment, sidebarSnapshot, aliases),
-        ]),
+        ])
       ),
-    [aliases, deployments, sidebarSnapshot],
+    [aliases, deployments, sidebarSnapshot]
   );
   const filteredDeployments = useMemo(() => {
     const normalizedQuery = appSearchQuery.trim().toLowerCase();
@@ -2105,11 +1974,11 @@ export function WorkspaceShell({
         deployment.repositoryName,
         deployment.repositoryUrl,
         deployment.subdomain,
-        deployment.serviceName ?? "",
+        deployment.serviceName ?? '',
       ]
-        .join(" ")
+        .join(' ')
         .toLowerCase()
-        .includes(normalizedQuery),
+        .includes(normalizedQuery)
     );
   }, [appSearchQuery, deploymentDisplayNames, deployments]);
   const selectedDeployment =
@@ -2120,28 +1989,24 @@ export function WorkspaceShell({
   const selectedDeploymentHref = selectedDeployment
     ? formatDeploymentHref(selectedDeployment, baseDomain)
     : null;
-  const selectedRepositoryValue = selectedRepository
-    ? String(selectedRepository.id)
-    : "";
+  const selectedRepositoryValue = selectedRepository ? String(selectedRepository.id) : '';
   const selectedRepositorySummary = selectedRepository
     ? `${selectedRepository.visibility} repo • default ${selectedRepository.defaultBranch} • updated ${formatRelativeTime(selectedRepository.updatedAt)}`
     : null;
   const branchHelperText = selectedRepository
     ? branchState.isLoading
-      ? "Loading branches from GitHub."
+      ? 'Loading branches from GitHub.'
       : branchOptions.length
         ? `${branchOptions.length} branches available for selection.`
         : branchState.error
           ? null
-          : "No branches returned for this repository."
+          : 'No branches returned for this repository.'
     : null;
   const isAllContainersSelected = selectedContainerId === ALL_CONTAINERS_ID;
 
   const activeContainerId = isAllContainersSelected
     ? ALL_CONTAINERS_ID
-    : filteredContainers.some(
-          (container) => container.display.id === selectedContainerId,
-        )
+    : filteredContainers.some((container) => container.display.id === selectedContainerId)
       ? selectedContainerId
       : (filteredContainers[0]?.display.id ??
         workspaceContainers[0]?.display.id ??
@@ -2150,67 +2015,55 @@ export function WorkspaceShell({
 
   const selectedEntry = isAllContainersSelected
     ? null
-    : (filteredContainers.find(
-        (container) => container.display.id === activeContainerId,
-      ) ??
-      workspaceContainers.find(
-        (container) => container.display.id === activeContainerId,
-      ) ??
+    : (filteredContainers.find((container) => container.display.id === activeContainerId) ??
+      workspaceContainers.find((container) => container.display.id === activeContainerId) ??
       workspaceContainers[0]);
   const selectedContainer = selectedEntry?.display ?? PREVIEW_CONTAINERS[0];
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedPreviewContainer = selectedEntry?.preview ?? null;
-  const selectedRuntimeContainerId = selectedRuntimeContainer?.id ?? "";
-  const selectedRuntimeContainerName = selectedRuntimeContainer?.name ?? "";
+  const selectedRuntimeContainerId = selectedRuntimeContainer?.id ?? '';
+  const selectedRuntimeContainerName = selectedRuntimeContainer?.name ?? '';
   const selectedRuntimeContainerKey = selectedRuntimeContainer
     ? buildRuntimeContainerMetricsKey(selectedRuntimeContainer)
     : null;
   const activeSelectedContainerHistory =
-    selectedRuntimeContainerKey &&
-    selectedContainerHistoryKey === selectedRuntimeContainerKey
+    selectedRuntimeContainerKey && selectedContainerHistoryKey === selectedRuntimeContainerKey
       ? selectedContainerHistory
       : EMPTY_CONTAINER_HISTORY;
   const focusedMetricCharts = useMemo(() => {
-    if (activeView !== "dashboard") {
+    if (activeView !== 'dashboard') {
       return EMPTY_FOCUSED_METRIC_CHARTS;
     }
 
     return buildFocusedMetricCharts(
       selectedRuntimeContainer,
       activeSelectedContainerHistory,
-      selectedContainer,
+      selectedContainer
     );
-  }, [
-    activeSelectedContainerHistory,
-    activeView,
-    selectedContainer,
-    selectedRuntimeContainer,
-  ]);
+  }, [activeSelectedContainerHistory, activeView, selectedContainer, selectedRuntimeContainer]);
   const allContainersMetricCharts = useMemo(() => {
-    if (activeView !== "dashboard") {
+    if (activeView !== 'dashboard') {
       return EMPTY_ALL_CONTAINERS_METRIC_CHARTS;
     }
 
-    return buildAllContainersMetricCharts(
-      dashboardRange,
-      sidebarSnapshot,
-      allContainerHistory,
-    ).map((chart) => ({
-      ...chart,
-      series: chart.series.map((series) => {
-        const alias = aliases[series.id]?.trim();
+    return buildAllContainersMetricCharts(dashboardRange, sidebarSnapshot, allContainerHistory).map(
+      (chart) => ({
+        ...chart,
+        series: chart.series.map((series) => {
+          const alias = aliases[series.id]?.trim();
 
-        return alias
-          ? {
-              ...series,
-              label: alias,
-            }
-          : series;
-      }),
-    }));
+          return alias
+            ? {
+                ...series,
+                label: alias,
+              }
+            : series;
+        }),
+      })
+    );
   }, [activeView, aliases, allContainerHistory, dashboardRange, sidebarSnapshot]);
   const detailedHistoryRequest = useMemo(() => {
-    if (activeView !== "dashboard") {
+    if (activeView !== 'dashboard') {
       return null;
     }
 
@@ -2218,12 +2071,12 @@ export function WorkspaceShell({
       return {
         key: `all:${dashboardRange}`,
         searchParams: {
-          allContainers: "true",
-          includeAllContainerHistory: "true",
-          includeHistory: "false",
+          allContainers: 'true',
+          includeAllContainerHistory: 'true',
+          includeHistory: 'false',
           range: dashboardRange,
         } satisfies Record<string, string>,
-        target: "all-containers" as const,
+        target: 'all-containers' as const,
       };
     }
 
@@ -2236,11 +2089,11 @@ export function WorkspaceShell({
       searchParams: {
         containerId: selectedRuntimeContainerId,
         containerName: selectedRuntimeContainerName,
-        includeContainerHistory: "true",
-        includeHistory: "false",
+        includeContainerHistory: 'true',
+        includeHistory: 'false',
         range: dashboardRange,
       } satisfies Record<string, string>,
-      target: "container" as const,
+      target: 'container' as const,
     };
   }, [
     activeView,
@@ -2268,34 +2121,34 @@ export function WorkspaceShell({
       return;
     }
 
-    if (typeof window === "undefined") {
+    if (typeof window === 'undefined') {
       return;
     }
 
     const nextUrl = new URL(window.location.href);
 
-    if (dashboardRange === "15m") {
-      nextUrl.searchParams.delete("range");
+    if (dashboardRange === '15m') {
+      nextUrl.searchParams.delete('range');
     } else {
-      nextUrl.searchParams.set("range", dashboardRange);
+      nextUrl.searchParams.set('range', dashboardRange);
     }
 
     const nextHref = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
     const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
     if (nextHref !== currentHref) {
-      window.history.replaceState(window.history.state, "", nextHref);
+      window.history.replaceState(window.history.state, '', nextHref);
     }
   }, [dashboardRange, isEmbedded]);
 
   useEffect(() => {
     if (!deployments.length) {
-      setSelectedAppId("");
+      setSelectedAppId('');
       return;
     }
 
     if (!deployments.some((deployment) => deployment.id === selectedAppId)) {
-      setSelectedAppId(deployments[0]?.id ?? "");
+      setSelectedAppId(deployments[0]?.id ?? '');
     }
   }, [deployments, selectedAppId]);
 
@@ -2344,13 +2197,13 @@ export function WorkspaceShell({
       try {
         const response = await fetch(
           buildMetricsRequestUrl({
-            includeHistory: "true",
-            mode: "current",
+            includeHistory: 'true',
+            mode: 'current',
           }),
           {
-            cache: "no-store",
+            cache: 'no-store',
             signal: abortController.signal,
-          },
+          }
         );
 
         if (!response.ok) {
@@ -2377,24 +2230,15 @@ export function WorkspaceShell({
         setMetricsError(null);
         errorBackoffMs = LIVE_POLL_INTERVAL_MS;
       } catch (error) {
-        if (
-          !active ||
-          (error instanceof DOMException && error.name === "AbortError")
-        ) {
+        if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
           return;
         }
 
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Unable to load live metrics.";
+        const message = error instanceof Error ? error.message : 'Unable to load live metrics.';
 
         console.error(message);
         setMetricsError(message);
-        errorBackoffMs = Math.min(
-          errorBackoffMs * 2,
-          LIVE_POLL_ERROR_BACKOFF_MAX_MS,
-        );
+        errorBackoffMs = Math.min(errorBackoffMs * 2, LIVE_POLL_ERROR_BACKOFF_MAX_MS);
       } finally {
         livePollInFlightRef.current = false;
         abortController = null;
@@ -2404,20 +2248,20 @@ export function WorkspaceShell({
 
     const shouldPollImmediately = hasMountedLivePollingRef.current
       ? true
-      : activeView !== "dashboard" || !(initialSnapshot && initialHistory.length > 0);
+      : activeView !== 'dashboard' || !(initialSnapshot && initialHistory.length > 0);
 
     hasMountedLivePollingRef.current = true;
     scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") {
+      if (document.visibilityState !== 'visible') {
         return;
       }
 
       scheduleNextPoll(VISIBILITY_REFRESH_DELAY_MS);
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       active = false;
@@ -2428,7 +2272,7 @@ export function WorkspaceShell({
         window.clearTimeout(timeoutId);
       }
 
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [activeView, initialHistory.length, initialSnapshot, isEmbedded]);
 
@@ -2449,7 +2293,7 @@ export function WorkspaceShell({
     const abortController = new AbortController();
     const shouldFetchImmediately = hasMountedDetailedHistoryRef.current
       ? true
-      : detailedHistoryRequest.target === "all-containers"
+      : detailedHistoryRequest.target === 'all-containers'
         ? allContainerHistory.length === 0
         : selectedContainerHistory.length === 0;
 
@@ -2467,13 +2311,10 @@ export function WorkspaceShell({
       detailedHistoryInFlightRef.current = true;
 
       try {
-        const response = await fetch(
-          buildMetricsRequestUrl(detailedHistoryRequest.searchParams),
-          {
-            cache: "no-store",
-            signal: abortController.signal,
-          },
-        );
+        const response = await fetch(buildMetricsRequestUrl(detailedHistoryRequest.searchParams), {
+          cache: 'no-store',
+          signal: abortController.signal,
+        });
 
         if (!response.ok) {
           throw new Error(`Metrics request failed with ${response.status}.`);
@@ -2488,7 +2329,7 @@ export function WorkspaceShell({
           return;
         }
 
-        if (detailedHistoryRequest.target === "all-containers") {
+        if (detailedHistoryRequest.target === 'all-containers') {
           setAllContainerHistory(payload.allContainerHistory ?? []);
           setSelectedContainerHistory([]);
           setSelectedContainerHistoryKey(null);
@@ -2499,10 +2340,7 @@ export function WorkspaceShell({
 
         loadedDetailedHistoryKeyRef.current = detailedHistoryRequest.key;
       } catch (error) {
-        if (
-          !active ||
-          (error instanceof DOMException && error.name === "AbortError")
-        ) {
+        if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
           return;
         }
       } finally {
@@ -2527,34 +2365,31 @@ export function WorkspaceShell({
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
       switch (dragStateRef.current.kind) {
-        case "metrics":
+        case 'metrics':
           setMetricsWidth(
             clamp(
-              dragStateRef.current.startWidth +
-                (event.clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
               MIN_METRICS_WIDTH_PX,
-              MAX_METRICS_WIDTH_PX,
-            ),
+              MAX_METRICS_WIDTH_PX
+            )
           );
           break;
-        case "list":
+        case 'list':
           setListWidth(
             clamp(
-              dragStateRef.current.startWidth +
-                (event.clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
               MIN_LIST_WIDTH_PX,
-              MAX_LIST_WIDTH_PX,
-            ),
+              MAX_LIST_WIDTH_PX
+            )
           );
           break;
-        case "logs":
+        case 'logs':
           setLogsWidth(
             clamp(
-              dragStateRef.current.startWidth +
-                (dragStateRef.current.startX - event.clientX),
+              dragStateRef.current.startWidth + (dragStateRef.current.startX - event.clientX),
               MIN_LOGS_WIDTH_PX,
-              MAX_LOGS_WIDTH_PX,
-            ),
+              MAX_LOGS_WIDTH_PX
+            )
           );
           break;
         default:
@@ -2568,18 +2403,18 @@ export function WorkspaceShell({
       }
 
       dragStateRef.current.kind = null;
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
     }
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
     };
   }, [setListWidth, setLogsWidth, setMetricsWidth]);
 
@@ -2595,23 +2430,18 @@ export function WorkspaceShell({
     }
 
     syncResponsivePanels();
-    window.addEventListener("resize", syncResponsivePanels);
+    window.addEventListener('resize', syncResponsivePanels);
 
     return () => {
-      window.removeEventListener("resize", syncResponsivePanels);
+      window.removeEventListener('resize', syncResponsivePanels);
     };
   }, [isEmbedded]);
 
   function handleResizeStart(
-    kind: "metrics" | "list" | "logs",
-    event: ReactMouseEvent<HTMLDivElement>,
+    kind: 'metrics' | 'list' | 'logs',
+    event: ReactMouseEvent<HTMLDivElement>
   ) {
-    const startWidth =
-      kind === "metrics"
-        ? metricsWidth
-        : kind === "list"
-          ? listWidth
-          : logsWidth;
+    const startWidth = kind === 'metrics' ? metricsWidth : kind === 'list' ? listWidth : logsWidth;
 
     dragStateRef.current = {
       kind,
@@ -2619,8 +2449,8 @@ export function WorkspaceShell({
       startX: event.clientX,
     };
 
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
   }
 
   const handleLocalResetLayout = useCallback(() => {
@@ -2658,7 +2488,7 @@ export function WorkspaceShell({
 
       router.push(getWorkspaceViewHref(view, dashboardRange));
     },
-    [activeView, dashboardRange, router],
+    [activeView, dashboardRange, router]
   );
 
   const loadRepositories = useCallback(async () => {
@@ -2669,8 +2499,8 @@ export function WorkspaceShell({
     }));
 
     try {
-      const response = await fetch("/api/github/repos", {
-        cache: "no-store",
+      const response = await fetch('/api/github/repos', {
+        cache: 'no-store',
       });
       const payload = (await response.json()) as {
         error?: string;
@@ -2679,9 +2509,7 @@ export function WorkspaceShell({
       };
 
       if (!response.ok) {
-        throw new Error(
-          payload.error ?? "Unable to load repositories from GitHub.",
-        );
+        throw new Error(payload.error ?? 'Unable to load repositories from GitHub.');
       }
 
       setRepositoryState({
@@ -2694,19 +2522,14 @@ export function WorkspaceShell({
     } catch (error) {
       setRepositoryState((current) => ({
         ...current,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unable to load repositories from GitHub.",
+        error: error instanceof Error ? error.message : 'Unable to load repositories from GitHub.',
         hasLoaded: true,
         isLoading: false,
       }));
     }
   }, []);
 
-  const loadRepositoriesAction = isEmbedded
-    ? sharedChrome.loadRepositories
-    : loadRepositories;
+  const loadRepositoriesAction = isEmbedded ? sharedChrome.loadRepositories : loadRepositories;
 
   const handleGithubTokenSaved = useCallback(
     (payload: { repositories: GitHubRepository[]; tokenConfigured: boolean }) => {
@@ -2718,7 +2541,7 @@ export function WorkspaceShell({
         tokenConfigured: payload.tokenConfigured,
       });
     },
-    [],
+    []
   );
 
   // Repositories are fetched lazily — only when the create-app panel is opened
@@ -2740,7 +2563,7 @@ export function WorkspaceShell({
               ...current,
               error: null,
               isLoading: false,
-            },
+            }
       );
       setDraftApp((current) => {
         if (current.repositoryUrl !== repository.cloneUrl) {
@@ -2750,7 +2573,7 @@ export function WorkspaceShell({
         const nextBranch = getPreferredBranch(
           current.branch,
           repository.defaultBranch,
-          cachedBranches,
+          cachedBranches
         );
 
         return current.branch === nextBranch
@@ -2770,15 +2593,15 @@ export function WorkspaceShell({
             ...current,
             error: null,
             isLoading: true,
-          },
+          }
     );
 
     try {
       const response = await fetch(
         `/api/github/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}/branches`,
         {
-          cache: "no-store",
-        },
+          cache: 'no-store',
+        }
       );
       const payload = (await response.json()) as {
         branches?: string[];
@@ -2786,19 +2609,14 @@ export function WorkspaceShell({
       };
 
       if (!response.ok) {
-        throw new Error(
-          payload.error ?? "Unable to load branches from GitHub.",
-        );
+        throw new Error(payload.error ?? 'Unable to load branches from GitHub.');
       }
 
       if (branchRequestIdRef.current !== requestId) {
         return;
       }
 
-      const branches = normalizeGitHubBranches(
-        payload.branches ?? [],
-        repository.defaultBranch,
-      );
+      const branches = normalizeGitHubBranches(payload.branches ?? [], repository.defaultBranch);
 
       setBranchState((current) => {
         const branchesByRepositoryId = {
@@ -2819,11 +2637,7 @@ export function WorkspaceShell({
           return current;
         }
 
-        const nextBranch = getPreferredBranch(
-          current.branch,
-          repository.defaultBranch,
-          branches,
-        );
+        const nextBranch = getPreferredBranch(current.branch, repository.defaultBranch, branches);
 
         return current.branch === nextBranch
           ? current
@@ -2839,10 +2653,7 @@ export function WorkspaceShell({
 
       setBranchState((current) => ({
         ...current,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unable to load branches from GitHub.",
+        error: error instanceof Error ? error.message : 'Unable to load branches from GitHub.',
         isLoading: false,
       }));
     }
@@ -2864,7 +2675,7 @@ export function WorkspaceShell({
               ...current,
               error: null,
               isLoading: false,
-            },
+            }
       );
       return;
     }
@@ -2873,7 +2684,7 @@ export function WorkspaceShell({
   }, [loadBranches, selectedRepository]);
 
   function handleDeploymentActionResult(result: DeploymentActionResult) {
-    if (result.status === "success") {
+    if (result.status === 'success') {
       toast.success(result.message);
       router.refresh();
       return;
@@ -2889,21 +2700,20 @@ export function WorkspaceShell({
     const appName = draftApp.appName.trim();
     const subdomain = draftApp.subdomain.trim();
     const port = draftApp.port.trim();
-    const needsHostPort =
-      draftApp.exposureMode === "tcp" || draftApp.exposureMode === "host";
+    const needsHostPort = draftApp.exposureMode === 'tcp' || draftApp.exposureMode === 'host';
 
     if (!repositoryUrl || !appName || !port) {
-      toast.error("Select a repository and complete the app name and port.");
+      toast.error('Select a repository and complete the app name and port.');
       return;
     }
 
-    if (draftApp.exposureMode === "http" && !subdomain) {
-      toast.error("Enter a subdomain for HTTP deployments.");
+    if (draftApp.exposureMode === 'http' && !subdomain) {
+      toast.error('Enter a subdomain for HTTP deployments.');
       return;
     }
 
     if (needsHostPort && !draftApp.hostPort.trim()) {
-      toast.error("Enter a host port for TCP and Host exposure modes.");
+      toast.error('Enter a host port for TCP and Host exposure modes.');
       return;
     }
 
@@ -2911,22 +2721,22 @@ export function WorkspaceShell({
 
     try {
       const formData = new FormData();
-      formData.set("repositoryUrl", repositoryUrl);
-      formData.set("appName", appName);
-      formData.set("subdomain", subdomain);
-      formData.set("port", port);
-      formData.set("exposureMode", draftApp.exposureMode);
+      formData.set('repositoryUrl', repositoryUrl);
+      formData.set('appName', appName);
+      formData.set('subdomain', subdomain);
+      formData.set('port', port);
+      formData.set('exposureMode', draftApp.exposureMode);
 
       if (draftApp.hostPort.trim()) {
-        formData.set("hostPort", draftApp.hostPort.trim());
+        formData.set('hostPort', draftApp.hostPort.trim());
       }
 
       if (draftApp.branch.trim()) {
-        formData.set("branch", draftApp.branch.trim());
+        formData.set('branch', draftApp.branch.trim());
       }
 
-      const response = await fetch("/api/deployments", {
-        method: "POST",
+      const response = await fetch('/api/deployments', {
+        method: 'POST',
         body: formData,
       });
       const payload = (await response.json()) as {
@@ -2938,15 +2748,15 @@ export function WorkspaceShell({
       };
 
       if (!response.ok || !payload.deploymentId) {
-        throw new Error(payload.error ?? "Unable to create deployment.");
+        throw new Error(payload.error ?? 'Unable to create deployment.');
       }
 
-      let toastMessage = "Deployment created.";
-      if (payload.exposureMode === "http" && payload.domain) {
+      let toastMessage = 'Deployment created.';
+      if (payload.exposureMode === 'http' && payload.domain) {
         toastMessage = `Deployment queued for https://${payload.domain}`;
-      } else if (payload.exposureMode === "tcp" && payload.hostPort) {
+      } else if (payload.exposureMode === 'tcp' && payload.hostPort) {
         toastMessage = `TCP service queued on port ${payload.hostPort}`;
-      } else if (payload.exposureMode === "host" && payload.hostPort) {
+      } else if (payload.exposureMode === 'host' && payload.hostPort) {
         toastMessage = `Deployment queued with host port ${payload.hostPort}`;
       }
       toast.success(toastMessage);
@@ -2955,9 +2765,7 @@ export function WorkspaceShell({
       setIsCreateAppExpanded(false);
       router.refresh();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to create deployment.",
-      );
+      toast.error(error instanceof Error ? error.message : 'Unable to create deployment.');
     } finally {
       setIsCreateAppPending(false);
     }
@@ -2973,14 +2781,14 @@ export function WorkspaceShell({
   }
 
   async function runDeploymentAction(
-    action: (formData: FormData) => Promise<DeploymentActionResult>,
+    action: (formData: FormData) => Promise<DeploymentActionResult>
   ) {
     if (!selectedDeployment) {
       return;
     }
 
     const formData = new FormData();
-    formData.set("deploymentId", selectedDeployment.id);
+    formData.set('deploymentId', selectedDeployment.id);
 
     const result = await action(formData);
     handleDeploymentActionResult(result);
@@ -3010,11 +2818,7 @@ export function WorkspaceShell({
     setIsCreateAppExpanded((current) => {
       const next = !current;
 
-      if (
-        next &&
-        !effectiveRepositoryState.hasLoaded &&
-        !effectiveRepositoryState.isLoading
-      ) {
+      if (next && !effectiveRepositoryState.hasLoaded && !effectiveRepositoryState.isLoading) {
         void loadRepositoriesAction();
       }
 
@@ -3024,7 +2828,7 @@ export function WorkspaceShell({
 
   function handleRepositorySelect(value: string) {
     const repository = effectiveRepositoryState.repositories.find(
-      (item) => String(item.id) === value,
+      (item) => String(item.id) === value
     );
 
     if (!repository) {
@@ -3042,68 +2846,55 @@ export function WorkspaceShell({
   }
 
   const activeViewMeta =
-    WORKSPACE_PAGES.find((page) => page.id === activeView) ??
-    WORKSPACE_PAGES[0]!;
-  const activeViewTitle =
-    activeView === "dashboard" ? "Dashboard" : "Git App Page";
+    WORKSPACE_PAGES.find((page) => page.id === activeView) ?? WORKSPACE_PAGES[0]!;
+  const activeViewTitle = activeView === 'dashboard' ? 'Dashboard' : 'Git App Page';
   const activeViewDescription =
-    activeView === "dashboard"
-      ? "Live Influx-backed host metrics and Docker runtime state in the shared workspace shell."
-      : "Create, review, and edit live deployments in the same shared workspace shell.";
-  const activeViewStatusLabel =
-    activeView === "dashboard" ? "Live runtime" : "Live deployments";
+    activeView === 'dashboard'
+      ? 'Live Influx-backed host metrics and Docker runtime state in the shared workspace shell.'
+      : 'Create, review, and edit live deployments in the same shared workspace shell.';
+  const activeViewStatusLabel = activeView === 'dashboard' ? 'Live runtime' : 'Live deployments';
   const updatedAtLabel = sidebarSnapshot
     ? formatClock(sidebarSnapshot.timestamp)
-    : "Waiting for metrics";
+    : 'Waiting for metrics';
   const hostMetricsProps = {
     isCollapsed: isMetricsCollapsed,
     metricCards: [],
     onCollapseAction: () => setIsMetricsCollapsed(true),
     onExpandAction: () => setIsMetricsCollapsed(false),
     onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) =>
-      handleResizeStart("metrics", event),
+      handleResizeStart('metrics', event),
     systemPanels,
     width: metricsWidth,
   } satisfies HostMetricsSidebarProps;
-  const previewLogs = isAllContainersSelected
-    ? []
-    : selectedContainer.logs[dashboardLogView];
-  const selectedContainerStatusLabel = formatStatusLabel(
-    selectedContainer.status,
-  );
-  const selectedContainerStatusVariant = getStatusBadgeVariant(
-    selectedContainer.status,
-  );
+  const previewLogs = isAllContainersSelected ? [] : selectedContainer.logs[dashboardLogView];
+  const selectedContainerStatusLabel = formatStatusLabel(selectedContainer.status);
+  const selectedContainerStatusVariant = getStatusBadgeVariant(selectedContainer.status);
   const runtimePillLabel = selectedRuntimeContainer
     ? formatRuntimeStatusLabel(selectedRuntimeContainer)
     : selectedContainer.uptime;
   const healthOrNodeLabel = selectedRuntimeContainer
     ? formatRuntimeHealthLabel(selectedRuntimeContainer.health)
     : selectedContainer.node;
-  const projectOrRegionLabel =
-    selectedRuntimeContainer?.projectName ?? selectedContainer.region;
-  const serviceOrPortLabel =
-    selectedRuntimeContainer?.serviceName ?? selectedContainer.port;
+  const projectOrRegionLabel = selectedRuntimeContainer?.projectName ?? selectedContainer.region;
+  const serviceOrPortLabel = selectedRuntimeContainer?.serviceName ?? selectedContainer.port;
   const sampleContextLabel = selectedRuntimeContainer
     ? buildRuntimeSummary(selectedRuntimeContainer)
     : selectedContainer.summary;
   const aggregateLogsTargetName = isAllContainersSelected
-    ? "All containers"
+    ? 'All containers'
     : selectedContainer.name;
   const aggregateLogsStatusLabel = isAllContainersSelected
     ? `${sidebarSnapshot?.containers.running ?? 0} running`
     : selectedContainerStatusLabel;
   const aggregateLogsStatusVariant = isAllContainersSelected
-    ? "default"
+    ? 'default'
     : selectedContainerStatusVariant;
-  const liveAppsCount = deployments.filter(
-    (deployment) => deployment.status === "running",
-  ).length;
+  const liveAppsCount = deployments.filter((deployment) => deployment.status === 'running').length;
   const gitSidebarAppItems = filteredDeployments.map((deployment) => ({
     appName: deploymentDisplayNames.get(deployment.id) ?? deployment.appName,
     domain: formatDeploymentDomain(deployment, baseDomain),
     dotClassName: getDeploymentStatusDotClassName(deployment.status),
-    exposureMode: deployment.exposureMode ?? "http",
+    exposureMode: deployment.exposureMode ?? 'http',
     hostPort: deployment.hostPort ?? null,
     id: deployment.id,
     isActive: deployment.id === selectedAppId,
@@ -3113,37 +2904,35 @@ export function WorkspaceShell({
   }));
   const selectedDeploymentStatusLabel = selectedDeployment
     ? formatDeploymentStatus(selectedDeployment.status)
-    : "Stopped";
+    : 'Stopped';
   const selectedDeploymentStatusVariant = selectedDeployment
     ? getDeploymentStatusBadgeVariant(selectedDeployment.status)
-    : "default";
+    : 'default';
   const selectedDeploymentDomain = selectedDeployment
     ? formatDeploymentDomain(selectedDeployment, baseDomain)
-    : "";
+    : '';
   const selectedDeploymentSettingsKey = selectedDeployment
     ? JSON.stringify([
         selectedDeployment.id,
         selectedDeployment.appName,
-        selectedDeployment.branch ?? "",
-        selectedDeployment.commitSha ?? "",
-        selectedDeployment.envVariables ?? "",
+        selectedDeployment.branch ?? '',
+        selectedDeployment.commitSha ?? '',
+        selectedDeployment.envVariables ?? '',
         selectedDeployment.port,
         selectedDeployment.subdomain,
       ])
-    : "";
+    : '';
   const workspacePanels = (
     <>
-      {activeView === "dashboard" ? (
+      {activeView === 'dashboard' ? (
         <DashboardLeftSidebar
           activeContainerId={activeContainerId}
           containers={filteredContainers}
           isAllContainersSelected={isAllContainersSelected}
           listWidth={listWidth}
-          onAllContainersSelectAction={() =>
-            setSelectedContainerId(ALL_CONTAINERS_ID)
-          }
+          onAllContainersSelectAction={() => setSelectedContainerId(ALL_CONTAINERS_ID)}
           onContainerSelectAction={setSelectedContainerId}
-          onListResizeStartAction={(event) => handleResizeStart("list", event)}
+          onListResizeStartAction={(event) => handleResizeStart('list', event)}
           onSearchQueryChangeAction={setSearchQuery}
           runningContainersCount={sidebarSnapshot?.containers.running ?? null}
           searchQuery={searchQuery}
@@ -3166,7 +2955,7 @@ export function WorkspaceShell({
           onAppSearchQueryChangeAction={setAppSearchQuery}
           onCreateAppAction={handleCreateApp}
           onDraftChangeAction={handleDraftAppChange}
-          onListResizeStartAction={(event) => handleResizeStart("list", event)}
+          onListResizeStartAction={(event) => handleResizeStart('list', event)}
           onRepositorySelectAction={handleRepositorySelect}
           onSelectAppAction={setSelectedAppId}
           onToggleCreateAppAction={handleToggleCreateAppPanel}
@@ -3179,7 +2968,7 @@ export function WorkspaceShell({
       )}
 
       <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
-        {activeView === "dashboard" ? (
+        {activeView === 'dashboard' ? (
           isAllContainersSelected ? (
             <DashboardAllContainersContent
               charts={allContainersMetricCharts}
@@ -3230,15 +3019,15 @@ export function WorkspaceShell({
                 Add your first app
               </h1>
               <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                Open the compact create panel in the sidebar to pick a
-                repository and start a live deployment.
+                Open the compact create panel in the sidebar to pick a repository and start a live
+                deployment.
               </p>
             </div>
           </div>
         )}
       </main>
 
-      {activeView === "dashboard" ? (
+      {activeView === 'dashboard' ? (
         <DashboardRightSidebar
           activeLogView={dashboardLogView}
           isCollapsed={isLogsCollapsed}
@@ -3248,13 +3037,11 @@ export function WorkspaceShell({
           onCollapseAction={() => setIsLogsCollapsed(true)}
           onExpandAction={() => setIsLogsCollapsed(false)}
           onLogViewChangeAction={setDashboardLogView}
-          onResizeStartAction={(event) => handleResizeStart("logs", event)}
+          onResizeStartAction={(event) => handleResizeStart('logs', event)}
           selectedContainerName={aggregateLogsTargetName}
           selectedContainerStatusLabel={aggregateLogsStatusLabel}
           selectedContainerStatusVariant={aggregateLogsStatusVariant}
-          selectedPreviewAvailable={
-            !isAllContainersSelected && Boolean(selectedPreviewContainer)
-          }
+          selectedPreviewAvailable={!isAllContainersSelected && Boolean(selectedPreviewContainer)}
           width={logsWidth}
         />
       ) : (
@@ -3266,7 +3053,7 @@ export function WorkspaceShell({
           onCollapseAction={() => setIsLogsCollapsed(true)}
           onExpandAction={() => setIsLogsCollapsed(false)}
           onLogTabChangeAction={setAppLogTab}
-          onResizeStartAction={(event) => handleResizeStart("logs", event)}
+          onResizeStartAction={(event) => handleResizeStart('logs', event)}
           width={logsWidth}
         />
       )}
@@ -3278,10 +3065,7 @@ export function WorkspaceShell({
   }
 
   return (
-    <section
-      className="flex h-screen flex-col bg-background"
-      aria-label="Workspace shell"
-    >
+    <section className="flex h-screen flex-col bg-background" aria-label="Workspace shell">
       <WorkspaceHeader
         activeViewDescription={activeViewDescription}
         activeViewLabel={activeViewMeta.label}
@@ -3302,10 +3086,7 @@ export function WorkspaceShell({
         {workspacePanels}
       </div>
 
-      <WorkspaceFooter
-        activeViewLabel={activeViewMeta.label}
-        updatedAtLabel={updatedAtLabel}
-      />
+      <WorkspaceFooter activeViewLabel={activeViewMeta.label} updatedAtLabel={updatedAtLabel} />
     </section>
   );
 }
