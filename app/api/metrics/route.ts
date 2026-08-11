@@ -1,4 +1,4 @@
-import { getMetricsSnapshot } from '@/lib/system-metrics';
+import { getMetricsSnapshot, resolveHostLanIp } from '@/lib/system-metrics';
 import {
   type AllContainersMetricsHistorySeries,
   type ContainerMetricsHistoryPoint,
@@ -12,7 +12,7 @@ import { getDashboardHistorySettings, normalizeDashboardRange } from '@/lib/metr
 export const dynamic = 'force-dynamic';
 
 type MetricsApiResponse = {
-  snapshot: Awaited<ReturnType<typeof getMetricsSnapshot>>;
+  snapshot?: Awaited<ReturnType<typeof getMetricsSnapshot>> | null;
   history?: MetricsHistoryPoint[];
   containerHistory?: ContainerMetricsHistoryPoint[];
   allContainerHistory?: AllContainersMetricsHistorySeries[];
@@ -28,6 +28,7 @@ export async function GET(request: Request) {
   const containerId = url.searchParams.get('containerId')?.trim() ?? '';
   const containerName = url.searchParams.get('containerName')?.trim() ?? '';
   const isCurrentMode = mode === 'current';
+  const needsSnapshot = url.searchParams.get('includeSnapshot') !== 'false';
 
   const maxPoints = 240;
   const currentModeLimit = 48;
@@ -42,12 +43,13 @@ export async function GET(request: Request) {
   const historyLimit = isCurrentMode ? currentModeLimit : rangeLimit;
   const historyBucketSeconds = isCurrentMode ? currentModeBucketSeconds : rangeBucketSeconds;
 
-  const snapshot = await getMetricsSnapshot();
-  const networkInterfaceName = snapshot.network.interfaces[0]?.name;
+  const snapshot = needsSnapshot ? await getMetricsSnapshot() : null;
+  const hostIp = snapshot?.hostIp ?? resolveHostLanIp();
+  const networkInterfaceName = snapshot?.network.interfaces[0]?.name;
   const [history, containerHistory, allContainerHistory] = await Promise.all([
     includeHistory
       ? getMetricsHistoryFromInflux({
-          hostIp: snapshot.hostIp,
+          hostIp,
           limit: historyLimit,
           bucketSeconds: historyBucketSeconds,
           ...(networkInterfaceName ? { networkInterfaceName } : {}),
@@ -63,7 +65,7 @@ export async function GET(request: Request) {
       : Promise.resolve(undefined),
     includeContainerHistory || containerId || containerName
       ? getContainerMetricsHistoryFromInflux({
-          hostIp: snapshot.hostIp,
+          hostIp,
           containerId: containerId || undefined,
           containerName: containerName || undefined,
           limit: historyLimit,
@@ -80,7 +82,7 @@ export async function GET(request: Request) {
       : Promise.resolve(undefined),
     includeAllContainerHistory || allContainers
       ? getAllContainersMetricsHistoryFromInflux({
-          hostIp: snapshot.hostIp,
+          hostIp,
           limit: historyLimit,
           bucketSeconds: historyBucketSeconds,
         }).catch((error) => {
@@ -95,9 +97,11 @@ export async function GET(request: Request) {
       : Promise.resolve(undefined),
   ]);
 
-  const payload: MetricsApiResponse = {
-    snapshot,
-  };
+  const payload: MetricsApiResponse = {};
+
+  if (snapshot) {
+    payload.snapshot = snapshot;
+  }
 
   if (history) {
     payload.history = history;

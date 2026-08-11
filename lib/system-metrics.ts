@@ -225,7 +225,7 @@ function parseHostIpv4FromBaseDomain(baseDomain: string) {
   return null;
 }
 
-function resolveHostLanIp() {
+export function resolveHostLanIp() {
   const config = getAppConfig();
 
   if (config.runtime.hostLanIp && isValidIpv4(config.runtime.hostLanIp)) {

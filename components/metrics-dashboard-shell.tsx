@@ -541,6 +541,7 @@ export function MetricsDashboardShell({
             allContainers: 'true',
             includeAllContainerHistory: 'true',
             includeHistory: 'false',
+            includeSnapshot: 'false',
             range: requestedRange,
           }),
           {
