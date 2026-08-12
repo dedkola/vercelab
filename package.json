@@ -10,7 +10,7 @@
   "scripts": {
     "setup-env": "bash scripts/setup-env.sh",
     "dev": "sh -c 'node server/terminal-ws.mjs & terminal_pid=$!; trap \"kill $terminal_pid 2>/dev/null || true\" EXIT INT TERM; next dev'",
-    "dev:infra": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:infra": "docker compose -f docker-compose.dev.yml up -d --wait && VERCELAB_INFLUXDB_EXPLORER_URL=http://influx.localhost VERCELAB_INFLUX_BOOTSTRAP_REQUIRED=true bash scripts/bootstrap-influx-dev.sh",
     "dev:infra:down": "docker compose -f docker-compose.dev.yml down",
     "build": "next build && node scripts/verify-standalone-build.mjs",
     "start": "sh -c 'node server/terminal-ws.mjs & terminal_pid=$!; trap \"kill $terminal_pid 2>/dev/null || true\" EXIT INT TERM; next start'",

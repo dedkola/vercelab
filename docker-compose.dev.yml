@@ -86,6 +86,12 @@ services:
     depends_on:
       influxdb:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     volumes:
       - ./data/influxdb-explorer:/db
       - ./data/influxdb-explorer-config:/app-root/config:ro
@@ -102,7 +108,7 @@ services:
 
   # ── Traefik (HTTP only – no TLS needed locally) ─────────────────────────────
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.7.1
     container_name: vercelab-dev-traefik
     restart: unless-stopped
     command:
