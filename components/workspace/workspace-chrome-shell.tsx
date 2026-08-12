@@ -37,6 +37,7 @@ const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
 const VISIBILITY_REFRESH_DELAY_MS = 750;
+const PANEL_WIDTH_STORAGE_DEBOUNCE_MS = 125;
 
 type ResetHandler = () => void;
 
@@ -199,7 +200,13 @@ function useStoredPanelWidth(
   }, [key, maxWidth, minWidth]);
 
   useEffect(() => {
-    getStorage()?.setItem(key, String(Math.round(width)));
+    const timeoutId = window.setTimeout(() => {
+      getStorage()?.setItem(key, String(Math.round(width)));
+    }, PANEL_WIDTH_STORAGE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [key, width]);
 
   return [width, setWidth] as const;
@@ -546,25 +553,56 @@ export function WorkspaceChromeShell({
   }, [initialHistory.length, initialSnapshot]);
 
   useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
+    let animationFrameId: number | null = null;
+    let pendingClientX: number | null = null;
+
+    function updateDraggedWidth(clientX: number) {
       if (!dragStateRef.current) {
         return;
       }
 
       setMetricsWidth(
         clamp(
-          dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
+          dragStateRef.current.startWidth + (clientX - dragStateRef.current.startX),
           MIN_METRICS_WIDTH_PX,
           MAX_METRICS_WIDTH_PX
         )
       );
     }
 
-    function handleMouseUp() {
+    function handleMouseMove(event: MouseEvent) {
       if (!dragStateRef.current) {
         return;
       }
 
+      pendingClientX = event.clientX;
+
+      if (animationFrameId !== null) {
+        return;
+      }
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null;
+
+        if (pendingClientX !== null) {
+          updateDraggedWidth(pendingClientX);
+          pendingClientX = null;
+        }
+      });
+    }
+
+    function handleMouseUp(event: MouseEvent) {
+      if (!dragStateRef.current) {
+        return;
+      }
+
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+
+      pendingClientX = null;
+      updateDraggedWidth(event.clientX);
       dragStateRef.current = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -576,6 +614,11 @@ export function WorkspaceChromeShell({
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };

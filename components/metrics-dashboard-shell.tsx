@@ -60,6 +60,7 @@ const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
 const VISIBILITY_REFRESH_DELAY_MS = 750;
+const PANEL_WIDTH_STORAGE_DEBOUNCE_MS = 125;
 
 const WORKSPACE_RAIL_ITEMS: Array<{
   description: string;
@@ -166,7 +167,13 @@ function useStoredPanelWidth(
   }, [key, maxWidth, minWidth]);
 
   useEffect(() => {
-    getStorage()?.setItem(key, String(Math.round(width)));
+    const timeoutId = window.setTimeout(() => {
+      getStorage()?.setItem(key, String(Math.round(width)));
+    }, PANEL_WIDTH_STORAGE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [key, width]);
 
   return [width, setWidth] as const;
@@ -610,12 +617,15 @@ export function MetricsDashboardShell({
   ]);
 
   useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
+    let animationFrameId: number | null = null;
+    let pendingClientX: number | null = null;
+
+    function updateDraggedWidth(clientX: number) {
       switch (dragStateRef.current.kind) {
         case 'metrics':
           setMetricsWidth(
             clamp(
-              dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth + (clientX - dragStateRef.current.startX),
               MIN_METRICS_WIDTH_PX,
               MAX_METRICS_WIDTH_PX
             )
@@ -624,7 +634,7 @@ export function MetricsDashboardShell({
         case 'list':
           setListWidth(
             clamp(
-              dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth + (clientX - dragStateRef.current.startX),
               MIN_LIST_WIDTH_PX,
               MAX_LIST_WIDTH_PX
             )
@@ -633,7 +643,7 @@ export function MetricsDashboardShell({
         case 'logs':
           setLogsWidth(
             clamp(
-              dragStateRef.current.startWidth - (event.clientX - dragStateRef.current.startX),
+              dragStateRef.current.startWidth - (clientX - dragStateRef.current.startX),
               MIN_LOGS_WIDTH_PX,
               MAX_LOGS_WIDTH_PX
             )
@@ -642,11 +652,39 @@ export function MetricsDashboardShell({
       }
     }
 
-    function handleMouseUp() {
+    function handleMouseMove(event: MouseEvent) {
       if (!dragStateRef.current.kind) {
         return;
       }
 
+      pendingClientX = event.clientX;
+
+      if (animationFrameId !== null) {
+        return;
+      }
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null;
+
+        if (pendingClientX !== null) {
+          updateDraggedWidth(pendingClientX);
+          pendingClientX = null;
+        }
+      });
+    }
+
+    function handleMouseUp(event: MouseEvent) {
+      if (!dragStateRef.current.kind) {
+        return;
+      }
+
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+
+      pendingClientX = null;
+      updateDraggedWidth(event.clientX);
       dragStateRef.current.kind = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -658,6 +696,11 @@ export function MetricsDashboardShell({
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
