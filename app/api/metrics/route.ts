@@ -111,5 +111,9 @@ export async function GET(request: Request) {
     payload.allContainerHistory = allContainerHistory;
   }
 
-  return Response.json(payload);
+  return Response.json(payload, {
+    headers: {
+      'Cache-Control': 'private, max-age=2, must-revalidate',
+    },
+  });
 }
