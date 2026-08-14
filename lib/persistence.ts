@@ -515,7 +515,6 @@ export async function listWorkspaceData(): Promise<WorkspaceData> {
   ]);
 
   const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
-  const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
 
   const stats = deployments.reduce(
     (accumulator, deployment) => {
