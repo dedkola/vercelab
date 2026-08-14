@@ -322,10 +322,10 @@ export async function searchContainerCatalog(query: string) {
   const response = await fetch(
     `https://hub.docker.com/v2/search/repositories/?query=${encodeURIComponent(normalized)}&page_size=12&page=1`,
     {
-      cache: 'no-store',
       headers: {
         Accept: 'application/json',
       },
+      next: { revalidate: 300 },
     }
   );
 
