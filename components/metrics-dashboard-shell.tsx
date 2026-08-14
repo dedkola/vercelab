@@ -42,6 +42,7 @@ import {
 } from '@/lib/metrics-dashboard-metrics';
 import type { AllContainersMetricsHistorySeries, MetricsHistoryPoint } from '@/lib/influx-metrics';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
+import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
 
 const METRICS_PANEL_STORAGE_KEY = 'vercelab:dashboard-metrics-panel-width';
 const LIST_PANEL_STORAGE_KEY = 'vercelab:dashboard-list-panel-width';
@@ -56,11 +57,6 @@ const MIN_LIST_WIDTH_PX = 240;
 const MAX_LIST_WIDTH_PX = 400;
 const MIN_LOGS_WIDTH_PX = 280;
 const MAX_LOGS_WIDTH_PX = 480;
-const LIVE_POLL_INTERVAL_MS = 10000;
-const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
-const LIVE_POLL_ERROR_BACKOFF_MAX_MS = 60000;
-const VISIBILITY_REFRESH_DELAY_MS = 750;
-
 const WORKSPACE_RAIL_ITEMS: Array<{
   description: string;
   iconComponent: LucideIcon;
@@ -131,14 +127,6 @@ function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>
   }
 
   return '/api/metrics?' + params.toString();
-}
-
-function isDocumentHidden() {
-  if (typeof document === 'undefined') {
-    return false;
-  }
-
-  return document.visibilityState === 'hidden';
 }
 
 function useStoredPanelWidth(
@@ -232,9 +220,7 @@ export function MetricsDashboardShell({
     startWidth: 0,
     startX: 0,
   });
-  const hasMountedLivePollingRef = useRef(false);
   const hasMountedContainerHistoryRef = useRef(false);
-  const livePollInFlightRef = useRef(false);
   const containerHistoryInFlightRef = useRef(false);
   const loadedContainerHistoryRangeRef = useRef<string | null>(
     initialAllContainerHistory.length ? initialDashboardRange : null
@@ -245,6 +231,12 @@ export function MetricsDashboardShell({
     : setDashboardRange;
   const effectiveSidebarSnapshot = isEmbedded ? sharedChrome.sidebarSnapshot : sidebarSnapshot;
   const effectiveSidebarHistory = isEmbedded ? sharedChrome.sidebarHistory : sidebarHistory;
+  const updateLiveSnapshot = useCallback(
+    (snapshot: MetricsSnapshot) => {
+      setSidebarSnapshot(snapshot);
+    },
+    [dashboardRange]
+  );
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory),
     [effectiveSidebarHistory, effectiveSidebarSnapshot]
@@ -378,126 +370,14 @@ export function MetricsDashboardShell({
     }
   }, [dashboardRange, isEmbedded]);
 
-  useEffect(() => {
-    if (isEmbedded) {
-      return;
-    }
-
-    let active = true;
-    let timeoutId: number | null = null;
-    let abortController: AbortController | null = null;
-    let errorBackoffMs = LIVE_POLL_INTERVAL_MS;
-
-    const scheduleNextPoll = (delayMs: number) => {
-      if (!active) {
-        return;
-      }
-
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-
-      timeoutId = window.setTimeout(() => {
-        void pollLiveMetrics();
-      }, delayMs);
-    };
-
-    const pollLiveMetrics = async () => {
-      if (!active) {
-        return;
-      }
-
-      if (livePollInFlightRef.current) {
-        scheduleNextPoll(errorBackoffMs);
-        return;
-      }
-
-      if (isDocumentHidden()) {
-        scheduleNextPoll(HIDDEN_LIVE_POLL_INTERVAL_MS);
-        return;
-      }
-
-      livePollInFlightRef.current = true;
-      abortController = new AbortController();
-
-      try {
-        const response = await fetch(
-          buildMetricsRequestUrl({
-            includeHistory: 'true',
-            mode: 'current',
-          }),
-          {
-            cache: 'no-store',
-            signal: abortController.signal,
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Metrics request failed with ' + response.status + '.');
-        }
-
-        const payload = (await response.json()) as {
-          history?: MetricsHistoryPoint[];
-          snapshot?: MetricsSnapshot | null;
-        };
-
-        if (!active) {
-          return;
-        }
-
-        if (payload.snapshot) {
-          setSidebarSnapshot(payload.snapshot);
-        }
-
-        if (Array.isArray(payload.history)) {
-          setSidebarHistory(payload.history);
-        }
-
-        setMetricsError(null);
-        errorBackoffMs = LIVE_POLL_INTERVAL_MS;
-      } catch (error) {
-        if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
-          return;
-        }
-
-        setMetricsError(error instanceof Error ? error.message : 'Unable to load live metrics.');
-        errorBackoffMs = Math.min(errorBackoffMs * 2, LIVE_POLL_ERROR_BACKOFF_MAX_MS);
-      } finally {
-        livePollInFlightRef.current = false;
-        abortController = null;
-        scheduleNextPoll(errorBackoffMs);
-      }
-    };
-
-    const shouldPollImmediately = hasMountedLivePollingRef.current
-      ? true
-      : !(initialSnapshot && initialHistory.length > 0);
-
-    hasMountedLivePollingRef.current = true;
-    scheduleNextPoll(shouldPollImmediately ? 0 : LIVE_POLL_INTERVAL_MS);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') {
-        return;
-      }
-
-      scheduleNextPoll(VISIBILITY_REFRESH_DELAY_MS);
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      active = false;
-      livePollInFlightRef.current = false;
-      abortController?.abort();
-
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [dashboardRange, initialHistory.length, initialSnapshot, isEmbedded]);
+  useLiveMetricsPolling({
+    enabled: !isEmbedded,
+    initialSnapshot,
+    initialHistory,
+    onSnapshot: updateLiveSnapshot,
+    onHistory: setSidebarHistory,
+    onError: setMetricsError,
+  });
 
   useEffect(() => {
     const requestedRange = effectiveDashboardRange;
