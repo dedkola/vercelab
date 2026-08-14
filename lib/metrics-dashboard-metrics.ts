@@ -118,7 +118,7 @@ export type ContainerMetricPanel = {
   title: string;
 };
 
-type ContainerDescriptor = {
+export type ContainerDescriptor = {
   deploymentStatus: DeploymentSummary['status'] | null;
   history: ContainerMetricsHistoryPoint[];
   id: string;
@@ -558,7 +558,7 @@ function buildDisplayContainer(
   };
 }
 
-function buildContainerDescriptors(
+export function buildContainerDescriptors(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
   deployments: DeploymentSummary[]
@@ -863,11 +863,13 @@ export function buildLiveServerMetrics(
 export function buildContainerListEntries(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
-  deployments: DeploymentSummary[] = []
+  deployments: DeploymentSummary[] = [],
+  descriptors?: ContainerDescriptor[]
 ): ContainerListEntry[] {
-  const descriptors = buildContainerDescriptors(snapshot, allContainerHistory, deployments);
+  const containerDescriptors =
+    descriptors ?? buildContainerDescriptors(snapshot, allContainerHistory, deployments);
 
-  return descriptors.map((descriptor) => {
+  return containerDescriptors.map((descriptor) => {
     if (descriptor.runtime) {
       return {
         deploymentStatus: descriptor.deploymentStatus,
@@ -958,13 +960,15 @@ export function buildAggregateLogs(
   snapshot: MetricsSnapshot | null,
   history: MetricsHistoryPoint[],
   allContainerHistory: AllContainersMetricsHistorySeries[],
-  deployments: DeploymentSummary[] = []
+  deployments: DeploymentSummary[] = [],
+  descriptors?: ContainerDescriptor[]
 ) {
   const timestamp =
     snapshot?.timestamp ?? history[history.length - 1]?.timestamp ?? new Date().toISOString();
-  const descriptors = buildContainerDescriptors(snapshot, allContainerHistory, deployments);
+  const containerDescriptors =
+    descriptors ?? buildContainerDescriptors(snapshot, allContainerHistory, deployments);
   const hottestCpuRuntime =
-    descriptors
+    containerDescriptors
       .map((descriptor) => {
         const latest = descriptor.history[descriptor.history.length - 1] ?? null;
 
@@ -999,7 +1003,7 @@ export function buildAggregateLogs(
       'fleet-event-1',
       timestamp,
       'info',
-      `${snapshot?.containers.running ?? descriptors.length} running containers are being compared in the explorer.`
+      `${snapshot?.containers.running ?? containerDescriptors.length} running containers are being compared in the explorer.`
     ),
     createLogLine(
       'fleet-event-2',

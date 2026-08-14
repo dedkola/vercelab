@@ -32,6 +32,7 @@ import type { DashboardRange } from '@/lib/metrics-range';
 import {
   ALL_CONTAINERS_ID,
   buildAggregateLogs,
+  buildContainerDescriptors,
   buildContainerListEntries,
   buildSystemMetricPanels,
   formatClock,
@@ -39,6 +40,7 @@ import {
   getStatusBadgeVariant,
   LOG_VIEW_OPTIONS,
   METRICS_DASHBOARD_RANGE_OPTIONS,
+  type ContainerDescriptor,
 } from '@/lib/metrics-dashboard-metrics';
 import type { AllContainersMetricsHistorySeries, MetricsHistoryPoint } from '@/lib/influx-metrics';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
@@ -279,12 +281,18 @@ export function MetricsDashboardShell({
     return subscribeToStoredContainerAliases(setAliases);
   }, []);
 
+  const containerDescriptors = useMemo<ContainerDescriptor[]>(
+    () =>
+      buildContainerDescriptors(effectiveSidebarSnapshot, allContainerHistory, initialDeployments),
+    [allContainerHistory, effectiveSidebarSnapshot, initialDeployments]
+  );
   const workspaceContainers = useMemo(
     () =>
       buildContainerListEntries(
         effectiveSidebarSnapshot,
         allContainerHistory,
-        initialDeployments
+        initialDeployments,
+        containerDescriptors
       ).map((entry) => {
         const alias = aliases[entry.display.id]?.trim();
 
@@ -302,7 +310,7 @@ export function MetricsDashboardShell({
           sidebarName: alias,
         };
       }),
-    [aliases, allContainerHistory, effectiveSidebarSnapshot, initialDeployments]
+    [aliases, containerDescriptors, effectiveSidebarSnapshot]
   );
   const aggregateLogs = useMemo(
     () =>
@@ -310,9 +318,10 @@ export function MetricsDashboardShell({
         effectiveSidebarSnapshot,
         effectiveSidebarHistory,
         allContainerHistory,
-        initialDeployments
+        initialDeployments,
+        containerDescriptors
       ),
-    [allContainerHistory, effectiveSidebarHistory, effectiveSidebarSnapshot, initialDeployments]
+    [allContainerHistory, containerDescriptors, effectiveSidebarHistory, effectiveSidebarSnapshot]
   );
 
   const filteredContainers = useMemo(() => {
