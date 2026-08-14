@@ -480,41 +480,41 @@ export async function listDeploymentSummaries(): Promise<DeploymentSummary[]> {
 export async function listWorkspaceData(): Promise<WorkspaceData> {
   const deployments = (await queryDeploymentSummaryRows()).map(mapDeploymentSummary);
 
-  const activityRows = await queryRows<DashboardActivityRow>(
-    `
-      SELECT
-        o.id,
-        d.app_name,
-        o.operation_type,
-        o.status,
-        o.summary,
-        o.created_at
-      FROM operations o
-      INNER JOIN deployments d ON d.id = o.deployment_id
-      ORDER BY o.created_at DESC
-      LIMIT 7
-    `
-  );
-
   const sinceDate = new Date();
   sinceDate.setHours(0, 0, 0, 0);
   sinceDate.setDate(sinceDate.getDate() - 7);
 
-  const trendRows = await queryRows<DashboardTrendRow>(
-    `
-      SELECT
-        status,
-        created_at
-      FROM operations
-      WHERE created_at >= $1
-      ORDER BY created_at ASC
-    `,
-    [sinceDate.toISOString()]
-  );
+  const [activityRows, trendRows, repositoryCountRows] = await Promise.all([
+    queryRows<DashboardActivityRow>(
+      `
+        SELECT
+          o.id,
+          d.app_name,
+          o.operation_type,
+          o.status,
+          o.summary,
+          o.created_at
+        FROM operations o
+        INNER JOIN deployments d ON d.id = o.deployment_id
+        ORDER BY o.created_at DESC
+        LIMIT 7
+      `
+    ),
+    queryRows<DashboardTrendRow>(
+      `
+        SELECT
+          status,
+          created_at
+        FROM operations
+        WHERE created_at >= $1
+        ORDER BY created_at ASC
+      `,
+      [sinceDate.toISOString()]
+    ),
+    queryRows<{ count: string }>('SELECT COUNT(*) AS count FROM repositories'),
+  ]);
 
-  const repositoryCountRows = await queryRows<{ count: string }>(
-    'SELECT COUNT(*) AS count FROM repositories'
-  );
+  const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
   const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
 
   const stats = deployments.reduce(
