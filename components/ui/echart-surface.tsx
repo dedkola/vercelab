@@ -69,6 +69,18 @@ export const EChartSurface = memo(function EChartSurface({
     let active = true;
     let resizeObserver: ResizeObserver | null = null;
     let intersectionObserver: IntersectionObserver | null = null;
+    let resizeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleResize = (instance: EChartsType) => {
+      if (resizeTimeoutId !== null) {
+        clearTimeout(resizeTimeoutId);
+      }
+
+      resizeTimeoutId = setTimeout(() => {
+        resizeTimeoutId = null;
+        instance.resize();
+      }, 150);
+    };
 
     const initializeChart = async () => {
       if (!active || chartRef.current) {
@@ -86,7 +98,7 @@ export const EChartSurface = memo(function EChartSurface({
       chartRef.current = instance;
       instance.setOption(optionRef.current, setOptionOptionsRef.current);
       resizeObserver = new ResizeObserver(() => {
-        instance.resize();
+        scheduleResize(instance);
       });
       resizeObserver.observe(element);
     };
@@ -112,6 +124,12 @@ export const EChartSurface = memo(function EChartSurface({
 
     return () => {
       active = false;
+
+      if (resizeTimeoutId !== null) {
+        clearTimeout(resizeTimeoutId);
+        resizeTimeoutId = null;
+      }
+
       intersectionObserver?.disconnect();
       resizeObserver?.disconnect();
       chartRef.current?.dispose();
