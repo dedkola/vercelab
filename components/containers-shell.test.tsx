@@ -4,6 +4,7 @@ import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContainersShell } from '@/components/containers-shell';
+import type { MetricsSnapshot } from '@/lib/system-metrics';
 
 const refreshMock = vi.fn();
 
@@ -29,7 +30,7 @@ function getRequestUrl(input: Parameters<typeof fetch>[0]) {
   return input.url;
 }
 
-const runtimeSnapshot = {
+const runtimeSnapshot: MetricsSnapshot = {
   containers: {
     all: [
       {
@@ -80,7 +81,7 @@ const runtimeSnapshot = {
   },
   timestamp: '2026-04-22T11:10:00.000Z',
   warnings: [],
-} as const;
+};
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -264,7 +265,7 @@ describe('ContainersShell', () => {
 
   it('removes a deleted container from the list without a page refresh', async () => {
     const user = userEvent.setup();
-    const removableSnapshot = {
+    const removableSnapshot: MetricsSnapshot = {
       ...runtimeSnapshot,
       containers: {
         ...runtimeSnapshot.containers,
@@ -279,7 +280,7 @@ describe('ContainersShell', () => {
           },
         ],
       },
-    } as const;
+    };
     let currentSnapshot = removableSnapshot;
 
     fetchSpy.mockImplementation(async (input, init) => {

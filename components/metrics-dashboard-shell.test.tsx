@@ -390,6 +390,7 @@ describe('MetricsDashboardShell', () => {
   it('renders the permanent metrics dashboard with host and container sections', async () => {
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
         initialDeployments={[]}
@@ -421,6 +422,7 @@ describe('MetricsDashboardShell', () => {
 
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
         initialDeployments={[]}
@@ -454,6 +456,7 @@ describe('MetricsDashboardShell', () => {
 
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
         initialDeployments={[]}
@@ -502,6 +505,7 @@ describe('MetricsDashboardShell', () => {
   it('loads heavy container history on mount when SSR did not provide it', async () => {
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={[]}
         initialDashboardRange="15m"
         initialDeployments={[]}
@@ -535,6 +539,7 @@ describe('MetricsDashboardShell', () => {
 
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
         initialDeployments={[]}
@@ -567,6 +572,7 @@ describe('MetricsDashboardShell', () => {
 
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
         initialDeployments={[]}
@@ -585,6 +591,7 @@ describe('MetricsDashboardShell', () => {
   it('updates dashboard sidebar aliases live when alias storage changes after mount', async () => {
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
         initialDeployments={[]}
@@ -754,6 +761,7 @@ describe('MetricsDashboardShell', () => {
 
     render(
       <MetricsDashboardShell
+        influxExplorerUrl={null}
         initialAllContainerHistory={labelPayload.allContainerHistory}
         initialDashboardRange="15m"
         initialDeployments={[
@@ -766,6 +774,8 @@ describe('MetricsDashboardShell', () => {
             appName: 'Omnichat',
             subdomain: 'dash',
             port: 3000,
+            exposureMode: 'http',
+            hostPort: null,
             envVariables: null,
             serviceName: 'server',
             status: 'running',
