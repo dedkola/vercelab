@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { ContainersShell } from '@/components/containers-shell';
+import { ContainersShell } from './containers-shell';
 import { loadContainersData } from '@/lib/containers-data';
 
 export const metadata: Metadata = {

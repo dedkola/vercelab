@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { WorkspaceShell } from '@/components/workspace-shell';
+import { WorkspaceShell } from './workspace-shell';
 import { loadWorkspaceShellData } from '@/lib/workspace-shell-data';
 
 export const metadata: Metadata = {
