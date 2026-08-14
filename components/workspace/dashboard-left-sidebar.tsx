@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import { memo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Box, Plus, Search, X } from 'lucide-react';
 
 import type { ContainerListEntry } from '@/components/workspace-shell';
@@ -124,6 +124,78 @@ function getContainerLoadLabel(container: ContainerListEntry) {
 
   return cpu || memory || 'No samples';
 }
+
+type ContainerListItemProps = {
+  ariaLabel: string;
+  containerId: string;
+  isActive: boolean;
+  isRouted: boolean;
+  loadLabel: string;
+  metaLabel: string;
+  name: string;
+  onSelectAction: (containerName: string) => void;
+  statusLabel: string;
+  statusVariant: 'success' | 'warning' | 'default';
+};
+
+const ContainerListItem = memo(function ContainerListItem({
+  ariaLabel,
+  containerId,
+  isActive,
+  isRouted,
+  loadLabel,
+  metaLabel,
+  name,
+  onSelectAction,
+  statusLabel,
+  statusVariant,
+}: ContainerListItemProps) {
+  const statusDotClassName = getStatusDotClassName(statusVariant);
+
+  return (
+    <button
+      aria-label={ariaLabel}
+      className={cn(
+        'group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors',
+        isActive
+          ? 'border-emerald-200 bg-emerald-50/60'
+          : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
+      )}
+      onClick={() => onSelectAction(containerId)}
+      type="button"
+    >
+      <div className="flex items-start gap-2.5">
+        <span className={cn('mt-1.5 size-1.5 shrink-0 rounded-full', statusDotClassName)} />
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
+              {name}
+            </span>
+            <span
+              className={cn(
+                'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
+                getStatusTextClassName(statusVariant)
+              )}
+            >
+              {statusLabel}
+            </span>
+          </span>
+          <span className="block truncate text-[11px] text-muted-foreground">{metaLabel}</span>
+          <span className="mt-1 flex min-w-0 items-center gap-1">
+            <span className="truncate rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {loadLabel}
+            </span>
+            {isRouted ? (
+              <span className="truncate rounded-md border border-sky-200/70 bg-sky-50/80 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
+                routed
+              </span>
+            ) : null}
+          </span>
+        </span>
+      </div>
+    </button>
+  );
+});
 
 type DashboardLeftSidebarProps = {
   activeContainerId: string;
@@ -262,63 +334,21 @@ export function DashboardLeftSidebar({
               </button>
 
               {containers.length ? (
-                containers.map((container) => {
-                  const statusVariant = getContainerStatusVariant(container);
-                  const statusDotClassName = getStatusDotClassName(statusVariant);
-                  const isActive = activeContainerId === container.display.id;
-
-                  return (
-                    <button
-                      aria-label={getContainerAriaLabel(container)}
-                      className={cn(
-                        'group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors',
-                        isActive
-                          ? 'border-emerald-200 bg-emerald-50/60'
-                          : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
-                      )}
-                      key={container.display.id}
-                      onClick={() => onContainerSelectAction(container.display.id)}
-                      type="button"
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <span
-                          className={cn(
-                            'mt-1.5 size-1.5 shrink-0 rounded-full',
-                            statusDotClassName
-                          )}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex min-w-0 items-center justify-between gap-2">
-                            <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
-                              {container.sidebarName}
-                            </span>
-                            <span
-                              className={cn(
-                                'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
-                                getStatusTextClassName(statusVariant)
-                              )}
-                            >
-                              {formatContainerStatusLabel(container)}
-                            </span>
-                          </span>
-                          <span className="block truncate text-[11px] text-muted-foreground">
-                            {getContainerMetaLabel(container)}
-                          </span>
-                          <span className="mt-1 flex min-w-0 items-center gap-1">
-                            <span className="truncate rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                              {getContainerLoadLabel(container)}
-                            </span>
-                            {container.runtime?.routedHost ? (
-                              <span className="truncate rounded-md border border-sky-200/70 bg-sky-50/80 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
-                                routed
-                              </span>
-                            ) : null}
-                          </span>
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })
+                containers.map((container) => (
+                  <ContainerListItem
+                    ariaLabel={getContainerAriaLabel(container)}
+                    containerId={container.display.id}
+                    isActive={activeContainerId === container.display.id}
+                    isRouted={Boolean(container.runtime?.routedHost)}
+                    key={container.display.id}
+                    loadLabel={getContainerLoadLabel(container)}
+                    metaLabel={getContainerMetaLabel(container)}
+                    name={container.sidebarName}
+                    onSelectAction={onContainerSelectAction}
+                    statusLabel={formatContainerStatusLabel(container)}
+                    statusVariant={getContainerStatusVariant(container)}
+                  />
+                ))
               ) : (
                 <div className="rounded-lg border border-dashed border-border/70 bg-background px-3 py-5 text-xs text-muted-foreground">
                   No matching containers
