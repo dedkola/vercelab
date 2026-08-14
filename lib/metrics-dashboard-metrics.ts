@@ -1045,6 +1045,8 @@ export function buildSystemMetricPanels(
   const networkOutPoints = history.map((point) => point.networkOut);
   const diskReadPoints = history.map((point) => point.diskRead);
   const diskWritePoints = history.map((point) => point.diskWrite);
+  const networkTotalPoints = history.map((point) => point.networkTotal);
+  const diskTotalPoints = history.map((point) => point.diskRead + point.diskWrite);
   const defaultNetworkInterfaceName = snapshot?.network.interfaces[0]?.name;
 
   return [
@@ -1137,9 +1139,9 @@ export function buildSystemMetricPanels(
         {
           label: 'Peak',
           value:
-            getPeak(history.map((point) => point.networkTotal)) === null
+            getPeak(networkTotalPoints) === null
               ? '--'
-              : formatBytesPerSecond(getPeak(history.map((point) => point.networkTotal))!),
+              : formatBytesPerSecond(getPeak(networkTotalPoints)!),
         },
       ],
       timestamps,
@@ -1173,11 +1175,9 @@ export function buildSystemMetricPanels(
         {
           label: 'Peak',
           value:
-            getPeak(history.map((point) => point.diskRead + point.diskWrite)) === null
+            getPeak(diskTotalPoints) === null
               ? '--'
-              : formatBytesPerSecond(
-                  getPeak(history.map((point) => point.diskRead + point.diskWrite))!
-                ),
+              : formatBytesPerSecond(getPeak(diskTotalPoints)!),
         },
       ],
       timestamps,
