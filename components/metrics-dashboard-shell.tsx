@@ -42,6 +42,13 @@ import {
 } from '@/lib/metrics-dashboard-metrics';
 import type { AllContainersMetricsHistorySeries, MetricsHistoryPoint } from '@/lib/influx-metrics';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
+import {
+  DEFAULT_TIME_DISPLAY_MODE,
+  getTimeZoneForDisplayMode,
+  readStoredTimeDisplayMode,
+  type TimeDisplayMode,
+  writeStoredTimeDisplayMode,
+} from '@/lib/time-display';
 import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
 
 const METRICS_PANEL_STORAGE_KEY = 'vercelab:dashboard-metrics-panel-width';
@@ -200,6 +207,8 @@ export function MetricsDashboardShell({
   const [selectedContainerId, setSelectedContainerId] = useState(ALL_CONTAINERS_ID);
   const [searchQuery, setSearchQuery] = useState('');
   const [dashboardLogView, setDashboardLogView] = useState<DashboardLogView>('live');
+  const [standaloneTimeDisplayMode, setStandaloneTimeDisplayMode] =
+    useState<TimeDisplayMode>(DEFAULT_TIME_DISPLAY_MODE);
   const [sidebarSnapshot, setSidebarSnapshot] = useState<MetricsSnapshot | null>(initialSnapshot);
   const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>(initialHistory);
   const [allContainerHistory, setAllContainerHistory] = useState<
@@ -231,6 +240,10 @@ export function MetricsDashboardShell({
     : setDashboardRange;
   const effectiveSidebarSnapshot = isEmbedded ? sharedChrome.sidebarSnapshot : sidebarSnapshot;
   const effectiveSidebarHistory = isEmbedded ? sharedChrome.sidebarHistory : sidebarHistory;
+  const effectiveTimeDisplayMode = isEmbedded
+    ? sharedChrome.timeDisplayMode
+    : standaloneTimeDisplayMode;
+  const graphTimeZone = getTimeZoneForDisplayMode(effectiveTimeDisplayMode);
   const updateLiveSnapshot = useCallback(
     (snapshot: MetricsSnapshot) => {
       setSidebarSnapshot(snapshot);
@@ -238,8 +251,8 @@ export function MetricsDashboardShell({
     [dashboardRange]
   );
   const systemPanels = useMemo(
-    () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory),
-    [effectiveSidebarHistory, effectiveSidebarSnapshot]
+    () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory, graphTimeZone),
+    [effectiveSidebarHistory, effectiveSidebarSnapshot, graphTimeZone]
   );
   const headerStatusPills = useMemo(
     () =>
@@ -274,6 +287,12 @@ export function MetricsDashboardShell({
   }, [influxExplorerUrl]);
 
   useEffect(() => {
+    if (!isEmbedded) {
+      setStandaloneTimeDisplayMode(readStoredTimeDisplayMode());
+    }
+  }, [isEmbedded]);
+
+  useEffect(() => {
     setAliases(readStoredContainerAliases());
 
     return subscribeToStoredContainerAliases(setAliases);
@@ -284,7 +303,8 @@ export function MetricsDashboardShell({
       buildContainerListEntries(
         effectiveSidebarSnapshot,
         allContainerHistory,
-        initialDeployments
+        initialDeployments,
+        graphTimeZone
       ).map((entry) => {
         const alias = aliases[entry.display.id]?.trim();
 
@@ -302,7 +322,7 @@ export function MetricsDashboardShell({
           sidebarName: alias,
         };
       }),
-    [aliases, allContainerHistory, effectiveSidebarSnapshot, initialDeployments]
+    [aliases, allContainerHistory, effectiveSidebarSnapshot, graphTimeZone, initialDeployments]
   );
   const aggregateLogs = useMemo(
     () =>
@@ -310,9 +330,16 @@ export function MetricsDashboardShell({
         effectiveSidebarSnapshot,
         effectiveSidebarHistory,
         allContainerHistory,
-        initialDeployments
+        initialDeployments,
+        graphTimeZone
       ),
-    [allContainerHistory, effectiveSidebarHistory, effectiveSidebarSnapshot, initialDeployments]
+    [
+      allContainerHistory,
+      effectiveSidebarHistory,
+      effectiveSidebarSnapshot,
+      graphTimeZone,
+      initialDeployments,
+    ]
   );
 
   const filteredContainers = useMemo(() => {
@@ -660,6 +687,7 @@ export function MetricsDashboardShell({
           selectedContainerId={isAllContainersSelected ? null : selectedRuntimeContainerId}
           selectedContainerName={isAllContainersSelected ? null : selectedContainerName}
           snapshot={effectiveSidebarSnapshot}
+          timeZone={graphTimeZone}
         />
       </main>
 
@@ -701,7 +729,12 @@ export function MetricsDashboardShell({
         activeViewLabel="Dashboard"
         activeViewStatusLabel="Live metrics"
         onResetLayoutAction={handleResetLayout}
+        onTimeDisplayModeChangeAction={(mode) => {
+          setStandaloneTimeDisplayMode(mode);
+          writeStoredTimeDisplayMode(mode);
+        }}
         statusPills={headerStatusPills}
+        timeDisplayMode={effectiveTimeDisplayMode}
         title="Metrics dashboard"
       />
 
@@ -720,7 +753,7 @@ export function MetricsDashboardShell({
         activeViewLabel="Dashboard"
         updatedAtLabel={
           effectiveSidebarSnapshot
-            ? formatClock(effectiveSidebarSnapshot.timestamp)
+            ? formatClock(effectiveSidebarSnapshot.timestamp, graphTimeZone)
             : 'Waiting for metrics'
         }
       />

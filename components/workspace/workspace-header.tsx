@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, ShieldCheck, Terminal } from 'lucide-react';
+import { Clock3, Settings, ShieldCheck, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import type { GitHubRepository } from '@/lib/github';
+import { getLocalTimeZoneLabel, type TimeDisplayMode } from '@/lib/time-display';
 
 type WorkspaceHeaderStatusPill = {
   label: string;
@@ -25,7 +26,9 @@ type WorkspaceHeaderProps = {
     tokenConfigured: boolean;
   }) => void;
   onResetLayoutAction: () => void;
+  onTimeDisplayModeChangeAction?: (mode: TimeDisplayMode) => void;
   statusPills?: WorkspaceHeaderStatusPill[];
+  timeDisplayMode?: TimeDisplayMode;
   title: string;
 };
 
@@ -34,13 +37,16 @@ export function WorkspaceHeader({
   activeViewStatusLabel,
   onGithubTokenSavedAction,
   onResetLayoutAction,
+  onTimeDisplayModeChangeAction,
   statusPills,
+  timeDisplayMode = 'local',
   title,
 }: WorkspaceHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [githubToken, setGithubToken] = useState('');
   const [githubTokenError, setGithubTokenError] = useState<string | null>(null);
   const [isSavingGithubToken, setIsSavingGithubToken] = useState(false);
+  const localTimeZoneLabel = getLocalTimeZoneLabel();
 
   const headerItems = statusPills?.length
     ? statusPills
@@ -202,6 +208,66 @@ export function WorkspaceHeader({
                 </Button>
               </div>
             </form>
+
+            {onTimeDisplayModeChangeAction ? (
+              <>
+                <Separator className="my-4" />
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200/70 bg-sky-50 text-sky-700">
+                      <Clock3 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 space-y-1">
+                      <div className="text-sm font-semibold tracking-tight text-foreground">
+                        Graph time
+                      </div>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Choose how graph axes, tooltips, and activity times are shown. Metrics stay
+                        stored in UTC.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div aria-label="Graph time" className="grid grid-cols-2 gap-2" role="radiogroup">
+                    <button
+                      aria-checked={timeDisplayMode === 'local'}
+                      className={`rounded-xl border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                        timeDisplayMode === 'local'
+                          ? 'border-sky-300 bg-sky-50 text-sky-950'
+                          : 'border-border/70 bg-background text-foreground hover:bg-muted/40'
+                      }`}
+                      onClick={() => onTimeDisplayModeChangeAction('local')}
+                      role="radio"
+                      type="button"
+                    >
+                      <span className="block text-xs font-semibold">Local device</span>
+                      <span
+                        className="mt-0.5 block truncate text-[10px] text-muted-foreground"
+                        suppressHydrationWarning
+                      >
+                        {localTimeZoneLabel}
+                      </span>
+                    </button>
+                    <button
+                      aria-checked={timeDisplayMode === 'utc'}
+                      className={`rounded-xl border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                        timeDisplayMode === 'utc'
+                          ? 'border-sky-300 bg-sky-50 text-sky-950'
+                          : 'border-border/70 bg-background text-foreground hover:bg-muted/40'
+                      }`}
+                      onClick={() => onTimeDisplayModeChangeAction('utc')}
+                      role="radio"
+                      type="button"
+                    >
+                      <span className="block text-xs font-semibold">UTC</span>
+                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                        Universal time
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </PopoverContent>
         </Popover>
         <Button

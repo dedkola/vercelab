@@ -28,6 +28,13 @@ import type { MetricsHistoryPoint } from '@/lib/influx-metrics';
 import { buildSystemMetricPanels, formatClock } from '@/lib/metrics-dashboard-metrics';
 import { normalizeDashboardRange, type DashboardRange } from '@/lib/metrics-range';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
+import {
+  DEFAULT_TIME_DISPLAY_MODE,
+  getTimeZoneForDisplayMode,
+  readStoredTimeDisplayMode,
+  type TimeDisplayMode,
+  writeStoredTimeDisplayMode,
+} from '@/lib/time-display';
 import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
 
 const METRICS_PANEL_STORAGE_KEY = 'vercelab:workspace-metrics-panel-width';
@@ -53,6 +60,7 @@ type WorkspaceChromeContextValue = {
   setDashboardRange: (range: DashboardRange) => void;
   sidebarHistory: MetricsHistoryPoint[];
   sidebarSnapshot: MetricsSnapshot | null;
+  timeDisplayMode: TimeDisplayMode;
 };
 
 const WORKSPACE_PAGES: Array<{
@@ -209,6 +217,8 @@ export function WorkspaceChromeShell({
   const [sidebarSnapshot, setSidebarSnapshot] = useState<MetricsSnapshot | null>(initialSnapshot);
   const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>(initialHistory);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [timeDisplayMode, setTimeDisplayMode] =
+    useState<TimeDisplayMode>(DEFAULT_TIME_DISPLAY_MODE);
   const [repositoryState, setRepositoryState] = useState<SharedRepositoryState>({
     error: null,
     hasLoaded: false,
@@ -231,9 +241,10 @@ export function WorkspaceChromeShell({
         : pathname === '/terminal'
           ? 'terminal'
           : 'dashboard';
+  const graphTimeZone = getTimeZoneForDisplayMode(timeDisplayMode);
   const systemPanels = useMemo(
-    () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory),
-    [sidebarHistory, sidebarSnapshot]
+    () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory, graphTimeZone),
+    [graphTimeZone, sidebarHistory, sidebarSnapshot]
   );
   const headerStatusPills = useMemo(
     () =>
@@ -312,6 +323,11 @@ export function WorkspaceChromeShell({
     []
   );
 
+  const handleTimeDisplayModeChange = useCallback((mode: TimeDisplayMode) => {
+    setTimeDisplayMode(mode);
+    writeStoredTimeDisplayMode(mode);
+  }, []);
+
   const registerResetHandler = useCallback((handler: ResetHandler) => {
     resetHandlersRef.current.add(handler);
 
@@ -374,6 +390,10 @@ export function WorkspaceChromeShell({
       handler();
     }
   }, [setMetricsWidth]);
+
+  useEffect(() => {
+    setTimeDisplayMode(readStoredTimeDisplayMode());
+  }, []);
 
   useEffect(() => {
     const nextRange = normalizeDashboardRange(searchParams.get('range'));
@@ -524,6 +544,7 @@ export function WorkspaceChromeShell({
       setDashboardRange,
       sidebarHistory,
       sidebarSnapshot,
+      timeDisplayMode,
     }),
     [
       dashboardRange,
@@ -534,6 +555,7 @@ export function WorkspaceChromeShell({
       setDashboardRange,
       sidebarHistory,
       sidebarSnapshot,
+      timeDisplayMode,
     ]
   );
 
@@ -546,7 +568,9 @@ export function WorkspaceChromeShell({
           activeViewStatusLabel={activeViewStatusLabel}
           onGithubTokenSavedAction={handleGithubTokenSaved}
           onResetLayoutAction={handleResetLayout}
+          onTimeDisplayModeChangeAction={handleTimeDisplayModeChange}
           statusPills={headerStatusPills}
+          timeDisplayMode={timeDisplayMode}
           title={activeViewTitle}
         />
 
@@ -566,7 +590,9 @@ export function WorkspaceChromeShell({
         <WorkspaceFooter
           activeViewLabel={activeViewMeta.label}
           updatedAtLabel={
-            sidebarSnapshot ? formatClock(sidebarSnapshot.timestamp) : 'Waiting for metrics'
+            sidebarSnapshot
+              ? formatClock(sidebarSnapshot.timestamp, graphTimeZone)
+              : 'Waiting for metrics'
           }
         />
       </section>

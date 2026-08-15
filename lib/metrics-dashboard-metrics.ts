@@ -16,37 +16,33 @@ import type {
 import type { DeploymentSummary } from '@/lib/persistence';
 import type { ContainerStats, MetricsSnapshot } from '@/lib/system-metrics';
 
-const STABLE_TIME_ZONE = 'UTC';
-
 // Reuse formatter instances — `new Intl.DateTimeFormat` is expensive to construct
 // and these are called on every poll cycle (every 10 s) across many data points.
-const CLOCK_FORMATTER = new Intl.DateTimeFormat('en', {
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: STABLE_TIME_ZONE,
-});
+const FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
 
-const DETAILED_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('en', {
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  month: 'short',
-  timeZone: STABLE_TIME_ZONE,
-});
+function getDateTimeFormatter(
+  kind: 'clock' | 'detailed' | 'time-label' | 'date-time-label',
+  timeZone: string | null
+) {
+  const key = `${kind}:${timeZone ?? 'local'}`;
+  const cached = FORMATTER_CACHE.get(key);
 
-const TIME_LABEL_FORMATTER = new Intl.DateTimeFormat('en', {
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: STABLE_TIME_ZONE,
-});
+  if (cached) {
+    return cached;
+  }
 
-const DATE_TIME_LABEL_FORMATTER = new Intl.DateTimeFormat('en', {
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  month: 'short',
-  timeZone: STABLE_TIME_ZONE,
-});
+  const formatter = new Intl.DateTimeFormat('en', {
+    ...(kind === 'detailed' || kind === 'date-time-label'
+      ? { day: 'numeric' as const, month: 'short' as const }
+      : {}),
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(timeZone ? { timeZone } : {}),
+  });
+
+  FORMATTER_CACHE.set(key, formatter);
+  return formatter;
+}
 
 const SERIES_COLORS = [
   '#0f766e',
@@ -93,6 +89,7 @@ export type SystemMetricPanel = {
   secondaryValues?: number[];
   stats: ChartStat[];
   timestamps: string[];
+  timeZone: string | null;
   title: string;
   tone: 'emerald' | 'amber' | 'sky' | 'rose';
   variant: 'area' | 'bars' | 'dual-line' | 'banded';
@@ -115,6 +112,7 @@ export type ContainerMetricPanel = {
   series: ContainerMetricSeries[];
   stats: ChartStat[];
   timestamps: string[];
+  timeZone: string | null;
   title: string;
 };
 
@@ -130,13 +128,14 @@ function createLogLine(
   id: string,
   timestamp: string,
   level: LogLine['level'],
-  message: string
+  message: string,
+  timeZone: string | null
 ): LogLine {
   return {
     id,
     level,
     message,
-    timestamp: formatClock(timestamp),
+    timestamp: formatClock(timestamp, timeZone),
   };
 }
 
@@ -174,7 +173,7 @@ function createFlatSeries(value: number) {
   return Array.from({ length: 12 }, () => value);
 }
 
-function buildTimeLabels(timestamps: string[]) {
+function buildTimeLabels(timestamps: string[], timeZone: string | null) {
   if (!timestamps.length) {
     return [] as string[];
   }
@@ -184,7 +183,7 @@ function buildTimeLabels(timestamps: string[]) {
   const showDate =
     !Number.isFinite(first) || !Number.isFinite(last) || last - first >= 24 * 60 * 60 * 1000;
 
-  const formatter = showDate ? DATE_TIME_LABEL_FORMATTER : TIME_LABEL_FORMATTER;
+  const formatter = getDateTimeFormatter(showDate ? 'date-time-label' : 'time-label', timeZone);
 
   return timestamps.map((timestamp) => formatter.format(new Date(timestamp)));
 }
@@ -378,7 +377,8 @@ function getStatusDotClassName(status: PreviewContainerStatus) {
 function buildRuntimeLogs(
   runtime: ContainerStats,
   history: ContainerMetricsHistoryPoint[],
-  snapshot: MetricsSnapshot | null
+  snapshot: MetricsSnapshot | null,
+  timeZone: string | null
 ) {
   const latest = history[history.length - 1] ?? null;
   const timestamp = latest?.timestamp ?? snapshot?.timestamp ?? new Date().toISOString();
@@ -390,13 +390,15 @@ function buildRuntimeLogs(
       `${runtime.id}-live-cpu`,
       timestamp,
       runtime.health === 'unhealthy' ? 'warning' : 'info',
-      `CPU ${formatPercent(latest?.cpuPercent ?? runtime.cpuPercent, 1)} • memory ${formatBytes(latest?.memoryUsedBytes ?? runtime.memoryBytes)} • net ${formatBytesPerSecond(latest?.networkTotal ?? runtime.networkTotalBytesPerSecond)}.`
+      `CPU ${formatPercent(latest?.cpuPercent ?? runtime.cpuPercent, 1)} • memory ${formatBytes(latest?.memoryUsedBytes ?? runtime.memoryBytes)} • net ${formatBytesPerSecond(latest?.networkTotal ?? runtime.networkTotalBytesPerSecond)}.`,
+      timeZone
     ),
     createLogLine(
       `${runtime.id}-live-disk`,
       timestamp,
       'info',
-      `Disk ${formatBytesPerSecond(latest?.diskTotal ?? runtime.diskTotalBytesPerSecond)} • health ${formatRuntimeHealthLabel(runtime.health).toLowerCase()}.`
+      `Disk ${formatBytesPerSecond(latest?.diskTotal ?? runtime.diskTotalBytesPerSecond)} • health ${formatRuntimeHealthLabel(runtime.health).toLowerCase()}.`,
+      timeZone
     ),
   ];
   const events: LogLine[] = [
@@ -404,13 +406,15 @@ function buildRuntimeLogs(
       `${runtime.id}-event-summary`,
       timestamp,
       'success',
-      buildRuntimeSummary(runtime)
+      buildRuntimeSummary(runtime),
+      timeZone
     ),
     createLogLine(
       `${runtime.id}-event-service`,
       timestamp,
       'info',
-      `${runtime.projectName ?? 'Standalone'} • ${runtime.serviceName ?? runtime.name} • ${runtime.status}.`
+      `${runtime.projectName ?? 'Standalone'} • ${runtime.serviceName ?? runtime.name} • ${runtime.status}.`,
+      timeZone
     ),
   ];
   const alerts: LogLine[] = [];
@@ -421,7 +425,8 @@ function buildRuntimeLogs(
         `${runtime.id}-alert-health`,
         timestamp,
         'warning',
-        `${formatManagedContainerLabel(runtime.name)} health is ${formatRuntimeHealthLabel(runtime.health).toLowerCase()}.`
+        `${formatManagedContainerLabel(runtime.name)} health is ${formatRuntimeHealthLabel(runtime.health).toLowerCase()}.`,
+        timeZone
       )
     );
   }
@@ -432,7 +437,8 @@ function buildRuntimeLogs(
         `${runtime.id}-alert-cpu`,
         timestamp,
         'warning',
-        `CPU peaked at ${formatPercent(getPeak(cpuPoints) ?? runtime.cpuPercent, 1)} during the selected history window.`
+        `CPU peaked at ${formatPercent(getPeak(cpuPoints) ?? runtime.cpuPercent, 1)} during the selected history window.`,
+        timeZone
       )
     );
   }
@@ -443,7 +449,8 @@ function buildRuntimeLogs(
         `${runtime.id}-alert-memory`,
         timestamp,
         'warning',
-        `Memory peaked at ${formatBytes(getPeak(memoryPoints) ?? runtime.memoryBytes)} in the selected history window.`
+        `Memory peaked at ${formatBytes(getPeak(memoryPoints) ?? runtime.memoryBytes)} in the selected history window.`,
+        timeZone
       )
     );
   }
@@ -454,7 +461,8 @@ function buildRuntimeLogs(
         `${runtime.id}-alert-network`,
         timestamp,
         'warning',
-        `Network throughput peaked at ${formatBytesPerSecond(getPeak(networkPoints) ?? runtime.networkTotalBytesPerSecond)}.`
+        `Network throughput peaked at ${formatBytesPerSecond(getPeak(networkPoints) ?? runtime.networkTotalBytesPerSecond)}.`,
+        timeZone
       )
     );
   }
@@ -469,7 +477,8 @@ function buildRuntimeLogs(
 function buildDisplayContainer(
   runtime: ContainerStats,
   history: ContainerMetricsHistoryPoint[],
-  snapshot: MetricsSnapshot | null
+  snapshot: MetricsSnapshot | null,
+  timeZone: string | null
 ): PreviewContainer {
   const status = getPreviewStatus(runtime);
   const cpuPoints = history.map((point) => point.cpuPercent);
@@ -478,14 +487,14 @@ function buildDisplayContainer(
 
   return {
     activity: cpuPoints.length ? cpuPoints : createFlatSeries(runtime.cpuPercent),
-    deployedAt: snapshot ? formatDetailedTimestamp(snapshot.timestamp) : 'Unknown',
+    deployedAt: snapshot ? formatDetailedTimestamp(snapshot.timestamp, timeZone) : 'Unknown',
     endpoints: buildRuntimeEndpoints(runtime),
     environment: [],
     id: runtime.id,
     image: runtime.serviceName
       ? `${runtime.projectName ?? 'runtime'}/${runtime.serviceName}`
       : runtime.name,
-    logs: buildRuntimeLogs(runtime, history, snapshot),
+    logs: buildRuntimeLogs(runtime, history, snapshot, timeZone),
     memory: formatBytes(runtime.memoryBytes),
     name: runtime.name,
     node: snapshot?.hostIp ?? 'Current host',
@@ -552,7 +561,7 @@ function buildDisplayContainer(
         label: 'I/O profile',
       },
     ].filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
-    uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : 'Live sample',
+    uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp, timeZone)}` : 'Live sample',
     volumes: [],
     cpu: formatPercent(runtime.cpuPercent, 1),
   };
@@ -611,12 +620,13 @@ function alignContainerSeries(
   descriptors: ContainerDescriptor[],
   selectedContainerId: string | null,
   selectValue: (point: ContainerMetricsHistoryPoint) => number,
-  formatter: (value: number) => string
+  formatter: (value: number) => string,
+  timeZone: string | null
 ) {
   const timestamps = Array.from(
     new Set(descriptors.flatMap((descriptor) => descriptor.history.map((point) => point.timestamp)))
   ).sort();
-  const labels = buildTimeLabels(timestamps);
+  const labels = buildTimeLabels(timestamps, timeZone);
 
   const series = descriptors.map((descriptor, index) => {
     const valuesByTimestamp = new Map(
@@ -667,12 +677,12 @@ function getGlobalPeak(series: ContainerMetricSeries[]) {
   return getPeak(points);
 }
 
-export function formatClock(value: string) {
-  return CLOCK_FORMATTER.format(new Date(value));
+export function formatClock(value: string, timeZone: string | null = 'UTC') {
+  return getDateTimeFormatter('clock', timeZone).format(new Date(value));
 }
 
-export function formatDetailedTimestamp(value: string) {
-  return DETAILED_TIMESTAMP_FORMATTER.format(new Date(value));
+export function formatDetailedTimestamp(value: string, timeZone: string | null = 'UTC') {
+  return getDateTimeFormatter('detailed', timeZone).format(new Date(value));
 }
 
 export function formatLoadAverage(loadAverage: MetricsSnapshot['system']['loadAverage']) {
@@ -863,7 +873,8 @@ export function buildLiveServerMetrics(
 export function buildContainerListEntries(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
-  deployments: DeploymentSummary[] = []
+  deployments: DeploymentSummary[] = [],
+  timeZone: string | null = 'UTC'
 ): ContainerListEntry[] {
   const descriptors = buildContainerDescriptors(snapshot, allContainerHistory, deployments);
 
@@ -871,7 +882,7 @@ export function buildContainerListEntries(
     if (descriptor.runtime) {
       return {
         deploymentStatus: descriptor.deploymentStatus,
-        display: buildDisplayContainer(descriptor.runtime, descriptor.history, snapshot),
+        display: buildDisplayContainer(descriptor.runtime, descriptor.history, snapshot, timeZone),
         dotClassName: getStatusDotClassName(getPreviewStatus(descriptor.runtime)),
         preview: null,
         runtime: descriptor.runtime,
@@ -895,7 +906,7 @@ export function buildContainerListEntries(
     const latest = descriptor.history[descriptor.history.length - 1] ?? null;
     const display = {
       activity: descriptor.history.map((point) => point.cpuPercent),
-      deployedAt: latest ? formatDetailedTimestamp(latest.timestamp) : 'Unknown',
+      deployedAt: latest ? formatDetailedTimestamp(latest.timestamp, timeZone) : 'Unknown',
       endpoints: [],
       environment: [],
       id: descriptor.id,
@@ -908,7 +919,8 @@ export function buildContainerListEntries(
                 `${descriptor.id}-event`,
                 latest.timestamp,
                 'info',
-                `${descriptor.label} history is available but no live runtime snapshot is attached.`
+                `${descriptor.label} history is available but no live runtime snapshot is attached.`,
+                timeZone
               ),
             ]
           : [],
@@ -918,7 +930,8 @@ export function buildContainerListEntries(
                 `${descriptor.id}-live`,
                 latest.timestamp,
                 'info',
-                `CPU ${formatPercent(latest.cpuPercent, 1)} • memory ${formatBytes(latest.memoryUsedBytes)} • net ${formatBytesPerSecond(latest.networkTotal)}.`
+                `CPU ${formatPercent(latest.cpuPercent, 1)} • memory ${formatBytes(latest.memoryUsedBytes)} • net ${formatBytesPerSecond(latest.networkTotal)}.`,
+                timeZone
               ),
             ]
           : [],
@@ -936,7 +949,7 @@ export function buildContainerListEntries(
       summary: `${descriptor.label} has historical samples but no live runtime metadata.`,
       tags: [],
       timeline: [],
-      uptime: latest ? `Updated ${formatClock(latest.timestamp)}` : 'History only',
+      uptime: latest ? `Updated ${formatClock(latest.timestamp, timeZone)}` : 'History only',
       volumes: [],
       cpu: latest ? formatPercent(latest.cpuPercent, 1) : '--',
     } satisfies PreviewContainer;
@@ -958,7 +971,8 @@ export function buildAggregateLogs(
   snapshot: MetricsSnapshot | null,
   history: MetricsHistoryPoint[],
   allContainerHistory: AllContainersMetricsHistorySeries[],
-  deployments: DeploymentSummary[] = []
+  deployments: DeploymentSummary[] = [],
+  timeZone: string | null = 'UTC'
 ) {
   const timestamp =
     snapshot?.timestamp ?? history[history.length - 1]?.timestamp ?? new Date().toISOString();
@@ -982,7 +996,8 @@ export function buildAggregateLogs(
       'info',
       snapshot
         ? `Host CPU ${formatPercent(snapshot.system.cpuPercent, 1)} • memory ${formatBytes(snapshot.system.memoryUsedBytes)} • net ${formatBytesPerSecond(snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond)}.`
-        : 'Waiting for the current host snapshot.'
+        : 'Waiting for the current host snapshot.',
+      timeZone
     ),
     createLogLine(
       'fleet-live-2',
@@ -990,7 +1005,8 @@ export function buildAggregateLogs(
       hottestCpuRuntime && hottestCpuRuntime.value >= 80 ? 'warning' : 'success',
       hottestCpuRuntime
         ? `${hottestCpuRuntime.label} is the current CPU hotspot at ${formatPercent(hottestCpuRuntime.value, 1)}.`
-        : 'Container hotspot data is not available yet.'
+        : 'Container hotspot data is not available yet.',
+      timeZone
     ),
   ];
 
@@ -999,13 +1015,15 @@ export function buildAggregateLogs(
       'fleet-event-1',
       timestamp,
       'info',
-      `${snapshot?.containers.running ?? descriptors.length} running containers are being compared in the explorer.`
+      `${snapshot?.containers.running ?? descriptors.length} running containers are being compared in the explorer.`,
+      timeZone
     ),
     createLogLine(
       'fleet-event-2',
       timestamp,
       'success',
-      `History window includes ${history.length} host buckets and ${allContainerHistory.length} container series.`
+      `History window includes ${history.length} host buckets and ${allContainerHistory.length} container series.`,
+      timeZone
     ),
   ];
 
@@ -1017,13 +1035,16 @@ export function buildAggregateLogs(
         'fleet-alert-health',
         timestamp,
         'warning',
-        `${snapshot?.containers.statusBreakdown.unhealthy ?? 0} container health warnings are active.`
+        `${snapshot?.containers.statusBreakdown.unhealthy ?? 0} container health warnings are active.`,
+        timeZone
       )
     );
   }
 
   for (const [index, warning] of (snapshot?.warnings ?? []).entries()) {
-    alerts.push(createLogLine(`fleet-alert-warning-${index}`, timestamp, 'warning', warning));
+    alerts.push(
+      createLogLine(`fleet-alert-warning-${index}`, timestamp, 'warning', warning, timeZone)
+    );
   }
 
   return {
@@ -1035,10 +1056,11 @@ export function buildAggregateLogs(
 
 export function buildSystemMetricPanels(
   snapshot: MetricsSnapshot | null,
-  history: MetricsHistoryPoint[]
+  history: MetricsHistoryPoint[],
+  timeZone: string | null = 'UTC'
 ): SystemMetricPanel[] {
   const timestamps = history.map((point) => point.timestamp);
-  const labels = buildTimeLabels(timestamps);
+  const labels = buildTimeLabels(timestamps, timeZone);
   const cpuPoints = history.map((point) => point.cpu);
   const memoryPoints = history.map((point) => point.memory);
   const networkInPoints = history.map((point) => point.networkIn);
@@ -1072,6 +1094,7 @@ export function buildSystemMetricPanels(
         },
       ],
       timestamps,
+      timeZone,
       title: 'Host CPU',
       tone: 'emerald',
       variant: 'area',
@@ -1105,6 +1128,7 @@ export function buildSystemMetricPanels(
         },
       ],
       timestamps,
+      timeZone,
       title: 'Host memory',
       tone: 'amber',
       variant: 'bars',
@@ -1145,6 +1169,7 @@ export function buildSystemMetricPanels(
         },
       ],
       timestamps,
+      timeZone,
       title: 'Host Network',
       tone: 'sky',
       variant: 'dual-line',
@@ -1181,6 +1206,7 @@ export function buildSystemMetricPanels(
         },
       ],
       timestamps,
+      timeZone,
       title: 'Host disk',
       tone: 'rose',
       variant: 'banded',
@@ -1192,32 +1218,37 @@ export function buildContainerMetricPanels(
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[],
   selectedContainerId: string | null,
-  deployments: DeploymentSummary[] = []
+  deployments: DeploymentSummary[] = [],
+  timeZone: string | null = 'UTC'
 ): ContainerMetricPanel[] {
   const descriptors = buildContainerDescriptors(snapshot, allContainerHistory, deployments);
   const cpuSeries = alignContainerSeries(
     descriptors,
     selectedContainerId,
     (point) => point.cpuPercent,
-    (value) => formatPercent(value, 1)
+    (value) => formatPercent(value, 1),
+    timeZone
   );
   const memorySeries = alignContainerSeries(
     descriptors,
     selectedContainerId,
     (point) => point.memoryUsedBytes,
-    (value) => formatBytes(value)
+    (value) => formatBytes(value),
+    timeZone
   );
   const networkSeries = alignContainerSeries(
     descriptors,
     selectedContainerId,
     (point) => point.networkTotal,
-    (value) => formatBytesPerSecond(value)
+    (value) => formatBytesPerSecond(value),
+    timeZone
   );
   const diskSeries = alignContainerSeries(
     descriptors,
     selectedContainerId,
     (point) => point.diskTotal,
-    (value) => formatBytesPerSecond(value)
+    (value) => formatBytesPerSecond(value),
+    timeZone
   );
   const selectedCpuSeries = getSelectedSeries(cpuSeries.series, selectedContainerId);
   const selectedMemorySeries = getSelectedSeries(memorySeries.series, selectedContainerId);
@@ -1253,6 +1284,7 @@ export function buildContainerMetricPanels(
         },
       ],
       timestamps: cpuSeries.timestamps,
+      timeZone,
       title: 'CPU by container',
     },
     {
@@ -1279,6 +1311,7 @@ export function buildContainerMetricPanels(
         },
       ],
       timestamps: memorySeries.timestamps,
+      timeZone,
       title: 'Memory by container',
     },
     {
@@ -1307,6 +1340,7 @@ export function buildContainerMetricPanels(
         },
       ],
       timestamps: networkSeries.timestamps,
+      timeZone,
       title: 'Network by container',
     },
     {
@@ -1333,6 +1367,7 @@ export function buildContainerMetricPanels(
         },
       ],
       timestamps: diskSeries.timestamps,
+      timeZone,
       title: 'Disk I/O by container',
     },
   ];

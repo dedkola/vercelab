@@ -108,7 +108,8 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
         const params = Array.isArray(value) ? (value as TooltipPoint[]) : [value as TooltipPoint];
         const index = params[0]?.dataIndex ?? 0;
         const title = formatDetailedTimestamp(
-          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString()
+          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString(),
+          panel.timeZone
         );
         const rows = [
           createTooltipRow(
@@ -302,7 +303,13 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
 }
 
 function arePanelDataEqual(prev: SystemMetricPanel, next: SystemMetricPanel) {
-  if (prev.id !== next.id || prev.currentValue !== next.currentValue) {
+  if (
+    prev.id !== next.id ||
+    prev.currentValue !== next.currentValue ||
+    prev.timeZone !== next.timeZone ||
+    prev.labels.length !== next.labels.length ||
+    prev.labels.some((label, index) => label !== next.labels[index])
+  ) {
     return false;
   }
 

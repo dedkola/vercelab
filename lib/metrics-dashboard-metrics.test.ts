@@ -4,6 +4,30 @@ import { buildSystemMetricPanels } from '@/lib/metrics-dashboard-metrics';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
 
 describe('buildSystemMetricPanels', () => {
+  it('formats graph labels in the selected time zone without changing timestamps', () => {
+    const history = [
+      {
+        containersCpu: 0,
+        containersMemory: 0,
+        cpu: 10,
+        diskRead: 0,
+        diskWrite: 0,
+        memory: 20,
+        networkIn: 0,
+        networkOut: 0,
+        networkTotal: 0,
+        timestamp: '2026-01-15T10:00:00.000Z',
+      },
+    ];
+
+    const utcPanel = buildSystemMetricPanels(null, history, 'UTC')[0]!;
+    const athensPanel = buildSystemMetricPanels(null, history, 'Europe/Athens')[0]!;
+
+    expect(utcPanel.labels[0]).toContain('10:00');
+    expect(athensPanel.labels[0]).toContain('12:00');
+    expect(athensPanel.timestamps).toEqual(utcPanel.timestamps);
+  });
+
   it('labels the host default network panel as download and upload', () => {
     const snapshot = {
       containers: {

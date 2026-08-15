@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DashboardLeftSidebar } from '@/components/workspace/dashboard-left-sidebar';
 import { DashboardRightSidebar } from '@/components/workspace/dashboard-right-sidebar';
+import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
 import type { ContainerListEntry, DashboardLogView, LogLine } from '@/components/workspace-shell';
 import {
   readStoredContainerAliases,
@@ -33,6 +34,7 @@ import {
   LOG_VIEW_OPTIONS,
 } from '@/lib/metrics-dashboard-metrics';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
+import { DEFAULT_TIME_DISPLAY_MODE, getTimeZoneForDisplayMode } from '@/lib/time-display';
 
 import type { ExposureMode } from '@/lib/validation';
 
@@ -49,19 +51,11 @@ const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LOG_TAIL_LINES = 150;
 const POST_ACTION_REFRESH_DELAYS_MS = [0, 700, 1800] as const;
 
-// Reuse formatter instances — `new Intl.DateTimeFormat` / `Intl.NumberFormat`
-// are expensive to construct and log rendering can call these many times.
-const LOG_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('en', {
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  timeZone: 'UTC',
-});
-
 const COMPACT_COUNT_FORMATTER = new Intl.NumberFormat('en', {
   notation: 'compact',
   maximumFractionDigits: 1,
 });
+const LOG_TIMESTAMP_FORMATTERS = new Map<string, Intl.DateTimeFormat>();
 
 type CatalogSearchResult = {
   description: string | null;
@@ -135,11 +129,30 @@ function isDocumentHidden() {
   return document.visibilityState === 'hidden';
 }
 
-function createLogTimestamp(value: string) {
-  return LOG_TIMESTAMP_FORMATTER.format(new Date(value));
+function createLogTimestamp(value: string, timeZone: string | null) {
+  const key = timeZone ?? 'local';
+  const cached = LOG_TIMESTAMP_FORMATTERS.get(key);
+  const formatter =
+    cached ??
+    new Intl.DateTimeFormat('en', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      ...(timeZone ? { timeZone } : {}),
+    });
+
+  if (!cached) {
+    LOG_TIMESTAMP_FORMATTERS.set(key, formatter);
+  }
+
+  return formatter.format(new Date(value));
 }
 
-function formatContainerLogLines(output: string, containerId: string): LogLine[] {
+function formatContainerLogLines(
+  output: string,
+  containerId: string,
+  timeZone: string | null
+): LogLine[] {
   return output
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
@@ -158,7 +171,7 @@ function formatContainerLogLines(output: string, containerId: string): LogLine[]
             ? 'success'
             : 'info',
         message,
-        timestamp: createLogTimestamp(timestamp),
+        timestamp: createLogTimestamp(timestamp, timeZone),
       } satisfies LogLine;
     });
 }
@@ -174,6 +187,9 @@ export function ContainersShell({
   initialDeployments = [],
   initialSnapshot = null,
 }: ContainersShellProps) {
+  const sharedChrome = useOptionalWorkspaceChrome();
+  const timeDisplayMode = sharedChrome?.timeDisplayMode ?? DEFAULT_TIME_DISPLAY_MODE;
+  const graphTimeZone = getTimeZoneForDisplayMode(timeDisplayMode);
   const [listWidth, setListWidth] = useStoredPanelWidth(
     LIST_PANEL_STORAGE_KEY,
     DEFAULT_LIST_WIDTH_PX,
@@ -283,7 +299,8 @@ export function ContainersShell({
     const baseEntries = buildContainerListEntries(
       snapshot,
       initialAllContainerHistory,
-      initialDeployments
+      initialDeployments,
+      graphTimeZone
     );
 
     return baseEntries.map((entry) => {
@@ -303,7 +320,7 @@ export function ContainersShell({
         searchText: `${alias} ${entry.searchText}`.toLowerCase(),
       } satisfies ContainerListEntry;
     });
-  }, [aliases, initialAllContainerHistory, initialDeployments, snapshot]);
+  }, [aliases, graphTimeZone, initialAllContainerHistory, initialDeployments, snapshot]);
 
   useEffect(() => {
     if (!containers.length) {
@@ -342,8 +359,15 @@ export function ContainersShell({
   const selectedRuntimeId = selectedEntry?.runtime?.id ?? null;
   const inventoryMeta = getContainerInventoryMeta(selectedEntry);
   const aggregateLogs = useMemo(
-    () => buildAggregateLogs(snapshot, [], initialAllContainerHistory, initialDeployments),
-    [initialAllContainerHistory, initialDeployments, snapshot]
+    () =>
+      buildAggregateLogs(
+        snapshot,
+        [],
+        initialAllContainerHistory,
+        initialDeployments,
+        graphTimeZone
+      ),
+    [graphTimeZone, initialAllContainerHistory, initialDeployments, snapshot]
   );
   const previewLogs = isAllContainersSelected
     ? aggregateLogs[dashboardLogView]
@@ -539,7 +563,11 @@ export function ContainersShell({
 
         setRuntimeLogs((current) => ({
           ...current,
-          [selectedRuntimeId]: formatContainerLogLines(payload.output ?? '', selectedRuntimeId),
+          [selectedRuntimeId]: formatContainerLogLines(
+            payload.output ?? '',
+            selectedRuntimeId,
+            graphTimeZone
+          ),
         }));
         setLogsError(null);
       } catch (error) {
@@ -567,7 +595,7 @@ export function ContainersShell({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [isAllContainersSelected, selectedRuntimeId]);
+  }, [graphTimeZone, isAllContainersSelected, selectedRuntimeId]);
 
   useEffect(() => {
     function handleMouseMove(event: MouseEvent) {
@@ -936,7 +964,7 @@ export function ContainersShell({
             id: 'containers-live-log-error',
             level: 'warning',
             message: logsError,
-            timestamp: createLogTimestamp(new Date().toISOString()),
+            timestamp: createLogTimestamp(new Date().toISOString(), graphTimeZone),
           } satisfies LogLine,
         ]
       : previewLogs;

@@ -38,6 +38,7 @@ type MetricsDashboardMainContentProps = {
   selectedContainerId: string | null;
   selectedContainerName: string | null;
   snapshot: MetricsSnapshot | null;
+  timeZone: string | null;
 };
 
 type TooltipPoint = {
@@ -116,7 +117,8 @@ function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOpti
           .sort((left, right) => Number(right.data ?? 0) - Number(left.data ?? 0));
         const index = safeParams[0]?.dataIndex ?? params[0]?.dataIndex ?? 0;
         const title = formatDetailedTimestamp(
-          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString()
+          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString(),
+          panel.timeZone
         );
 
         const rows = safeParams.length
@@ -298,11 +300,18 @@ export function MetricsDashboardMainContent({
   selectedContainerId,
   selectedContainerName,
   snapshot,
+  timeZone,
 }: MetricsDashboardMainContentProps) {
   const containerPanels = useMemo(
     () =>
-      buildContainerMetricPanels(snapshot, allContainerHistory, selectedContainerId, deployments),
-    [allContainerHistory, deployments, selectedContainerId, snapshot]
+      buildContainerMetricPanels(
+        snapshot,
+        allContainerHistory,
+        selectedContainerId,
+        deployments,
+        timeZone
+      ),
+    [allContainerHistory, deployments, selectedContainerId, snapshot, timeZone]
   );
   const rangeLabel = formatDashboardRangeLabel(range);
   const containerEmptyStateMessage = containerHistoryStatusText
