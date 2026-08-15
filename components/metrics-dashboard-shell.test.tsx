@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -400,6 +400,9 @@ describe('MetricsDashboardShell', () => {
     );
 
     expect(await screen.findByRole('heading', { name: /metrics dashboard/i })).toBeVisible();
+    const header = screen.getByRole('banner');
+    expect(within(header).queryByText(/load 0\.48 \/ 0\.52 \/ 0\.56/i)).not.toBeInTheDocument();
+    expect(within(header).queryByText(/download .* upload/i)).not.toBeInTheDocument();
     expect(
       screen.queryByText(/a denser operational view for host and container observability/i)
     ).not.toBeInTheDocument();

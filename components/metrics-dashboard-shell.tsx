@@ -107,23 +107,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function formatHeaderPillLabel(panel: {
-  currentCaption: string;
-  id: 'cpu' | 'memory' | 'network' | 'disk';
-  stats: Array<{ label: string; value: string }>;
-}) {
-  if (panel.id === 'network' || panel.id === 'disk') {
-    const primaryStat = panel.stats[0];
-    const secondaryStat = panel.stats[1];
-
-    if (primaryStat && secondaryStat) {
-      return `${primaryStat.label} ${primaryStat.value} / ${secondaryStat.label} ${secondaryStat.value}`;
-    }
-  }
-
-  return panel.currentCaption;
-}
-
 function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>) {
   const params = new URLSearchParams();
 
@@ -253,15 +236,6 @@ export function MetricsDashboardShell({
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory, graphTimeZone),
     [effectiveSidebarHistory, effectiveSidebarSnapshot, graphTimeZone]
-  );
-  const headerStatusPills = useMemo(
-    () =>
-      systemPanels
-        .map((panel) => ({
-          label: formatHeaderPillLabel(panel),
-        }))
-        .filter((pill) => pill.label.length > 0),
-    [systemPanels]
   );
   const workspaceRailItems = useMemo(() => {
     const internalItems = WORKSPACE_RAIL_ITEMS.map((item) => ({
@@ -725,15 +699,11 @@ export function MetricsDashboardShell({
   return (
     <section aria-label="Workspace shell" className="flex h-screen flex-col bg-background">
       <WorkspaceHeader
-        activeViewDescription="Live host and container observability inside the shared workspace shell."
-        activeViewLabel="Dashboard"
-        activeViewStatusLabel="Live metrics"
         onResetLayoutAction={handleResetLayout}
         onTimeDisplayModeChangeAction={(mode) => {
           setStandaloneTimeDisplayMode(mode);
           writeStoredTimeDisplayMode(mode);
         }}
-        statusPills={headerStatusPills}
         timeDisplayMode={effectiveTimeDisplayMode}
         title="Metrics dashboard"
       />

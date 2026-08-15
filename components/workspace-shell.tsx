@@ -2848,11 +2848,6 @@ export function WorkspaceShell({
   const activeViewMeta =
     WORKSPACE_PAGES.find((page) => page.id === activeView) ?? WORKSPACE_PAGES[0]!;
   const activeViewTitle = activeView === 'dashboard' ? 'Dashboard' : 'Git App Page';
-  const activeViewDescription =
-    activeView === 'dashboard'
-      ? 'Live Influx-backed host metrics and Docker runtime state in the shared workspace shell.'
-      : 'Create, review, and edit live deployments in the same shared workspace shell.';
-  const activeViewStatusLabel = activeView === 'dashboard' ? 'Live runtime' : 'Live deployments';
   const updatedAtLabel = sidebarSnapshot
     ? formatClock(sidebarSnapshot.timestamp)
     : 'Waiting for metrics';
@@ -3067,9 +3062,6 @@ export function WorkspaceShell({
   return (
     <section className="flex h-screen flex-col bg-background" aria-label="Workspace shell">
       <WorkspaceHeader
-        activeViewDescription={activeViewDescription}
-        activeViewLabel={activeViewMeta.label}
-        activeViewStatusLabel={activeViewStatusLabel}
         onGithubTokenSavedAction={handleGithubTokenSaved}
         onResetLayoutAction={handleResetLayout}
         title={activeViewTitle}

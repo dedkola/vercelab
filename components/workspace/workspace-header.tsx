@@ -13,32 +13,21 @@ import { Separator } from '@/components/ui/separator';
 import type { GitHubRepository } from '@/lib/github';
 import { getLocalTimeZoneLabel, type TimeDisplayMode } from '@/lib/time-display';
 
-type WorkspaceHeaderStatusPill = {
-  label: string;
-};
-
 type WorkspaceHeaderProps = {
-  activeViewDescription: string;
-  activeViewLabel: string;
-  activeViewStatusLabel: string;
   onGithubTokenSavedAction?: (payload: {
     repositories: GitHubRepository[];
     tokenConfigured: boolean;
   }) => void;
   onResetLayoutAction: () => void;
   onTimeDisplayModeChangeAction?: (mode: TimeDisplayMode) => void;
-  statusPills?: WorkspaceHeaderStatusPill[];
   timeDisplayMode?: TimeDisplayMode;
   title: string;
 };
 
 export function WorkspaceHeader({
-  activeViewLabel,
-  activeViewStatusLabel,
   onGithubTokenSavedAction,
   onResetLayoutAction,
   onTimeDisplayModeChangeAction,
-  statusPills,
   timeDisplayMode = 'local',
   title,
 }: WorkspaceHeaderProps) {
@@ -47,10 +36,6 @@ export function WorkspaceHeader({
   const [githubTokenError, setGithubTokenError] = useState<string | null>(null);
   const [isSavingGithubToken, setIsSavingGithubToken] = useState(false);
   const localTimeZoneLabel = getLocalTimeZoneLabel();
-
-  const headerItems = statusPills?.length
-    ? statusPills
-    : [{ label: activeViewStatusLabel }, { label: activeViewLabel }, { label: 'Shared shell' }];
 
   async function handleSaveGithubToken(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -109,19 +94,6 @@ export function WorkspaceHeader({
         <Separator orientation="vertical" className="hidden h-4 md:block" />
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</h1>
-        </div>
-      </div>
-
-      <div className="hidden min-w-0 flex-1 items-center justify-center overflow-hidden xl:flex">
-        <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-medium tracking-tight text-muted-foreground/85">
-          {headerItems.map((item, index) => (
-            <div className="flex min-w-0 items-center gap-3" key={item.label}>
-              {index > 0 ? (
-                <span aria-hidden="true" className="h-1 w-1 shrink-0 rounded-full bg-border/90" />
-              ) : null}
-              <span className="truncate whitespace-nowrap">{item.label}</span>
-            </div>
-          ))}
         </div>
       </div>
 

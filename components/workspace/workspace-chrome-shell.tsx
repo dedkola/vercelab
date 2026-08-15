@@ -120,23 +120,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function formatHeaderPillLabel(panel: {
-  currentCaption: string;
-  id: 'cpu' | 'memory' | 'network' | 'disk';
-  stats: Array<{ label: string; value: string }>;
-}) {
-  if (panel.id === 'network' || panel.id === 'disk') {
-    const primaryStat = panel.stats[0];
-    const secondaryStat = panel.stats[1];
-
-    if (primaryStat && secondaryStat) {
-      return `${primaryStat.label} ${primaryStat.value} / ${secondaryStat.label} ${secondaryStat.value}`;
-    }
-  }
-
-  return panel.currentCaption;
-}
-
 function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
   const pathname =
     view === 'git-app-page'
@@ -246,16 +229,6 @@ export function WorkspaceChromeShell({
     () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory, graphTimeZone),
     [graphTimeZone, sidebarHistory, sidebarSnapshot]
   );
-  const headerStatusPills = useMemo(
-    () =>
-      systemPanels
-        .map((panel) => ({
-          label: formatHeaderPillLabel(panel),
-        }))
-        .filter((pill) => pill.label.length > 0),
-    [systemPanels]
-  );
-
   const loadRepositories = useCallback(async () => {
     if (repositoryState.hasLoaded || repositoryState.isLoading) {
       return;
@@ -508,22 +481,6 @@ export function WorkspaceChromeShell({
         : activeView === 'terminal'
           ? 'Host terminal'
           : 'Containers';
-  const activeViewDescription =
-    activeView === 'dashboard'
-      ? 'Live host and container observability inside the shared workspace shell.'
-      : activeView === 'git-app-page'
-        ? 'Create, review, and edit live deployments in the same shared workspace shell.'
-        : activeView === 'terminal'
-          ? 'Host shell for the Ubuntu server running this control plane.'
-          : 'Runtime inventory, protected system services, and per-container log inspection.';
-  const activeViewStatusLabel =
-    activeView === 'dashboard'
-      ? 'Live runtime'
-      : activeView === 'git-app-page'
-        ? 'Live deployments'
-        : activeView === 'terminal'
-          ? 'Host shell'
-          : 'Live containers';
   const hostMetricsProps = {
     isCollapsed: isMetricsCollapsed,
     metricCards: [],
@@ -563,13 +520,9 @@ export function WorkspaceChromeShell({
     <WorkspaceChromeContext.Provider value={contextValue}>
       <section aria-label="Workspace shell" className="flex h-screen flex-col bg-background">
         <WorkspaceHeader
-          activeViewDescription={activeViewDescription}
-          activeViewLabel={activeViewMeta.label}
-          activeViewStatusLabel={activeViewStatusLabel}
           onGithubTokenSavedAction={handleGithubTokenSaved}
           onResetLayoutAction={handleResetLayout}
           onTimeDisplayModeChangeAction={handleTimeDisplayModeChange}
-          statusPills={headerStatusPills}
           timeDisplayMode={timeDisplayMode}
           title={activeViewTitle}
         />
