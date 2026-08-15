@@ -12,14 +12,20 @@ import {
   formatDetailedTimestamp,
   formatMetricValue,
 } from '@/lib/metrics-dashboard-metrics';
+import {
+  buildTimedMetricSeries,
+  formatChartAxisTimestamp,
+  getTimedPointTimestamp,
+  getTimedPointValue,
+} from '@/lib/metrics-chart-time';
 import { cn } from '@/lib/utils';
 
 type TooltipPoint = {
   color?: string;
-  data?: number | null;
-  dataIndex?: number;
+  data?: unknown;
   marker?: string;
   seriesName?: string;
+  value?: unknown;
 };
 
 const SYSTEM_STYLES = {
@@ -59,18 +65,6 @@ const SYSTEM_STYLES = {
 
 const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
 
-function stripMeridiem(label: string) {
-  return label.replace(/\s?(AM|PM)$/i, '');
-}
-
-function getLabelInterval(length: number) {
-  if (length <= 6) {
-    return 0;
-  }
-
-  return Math.max(1, Math.ceil(length / 6) - 1);
-}
-
 function createTooltipShell(title: string, rows: string) {
   return `<div style="min-width: 180px; padding: 12px 14px; border-radius: 16px; background: rgba(15,23,42,0.96); color: #e2e8f0; box-shadow: 0 18px 48px -28px rgba(15,23,42,0.6);"><div style="margin-bottom: 10px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8;">${title}</div>${rows}</div>`;
 }
@@ -89,7 +83,14 @@ function EmptyChartState({ message }: { message: string }) {
 
 function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
   const style = SYSTEM_STYLES[panel.id];
-  const axisInterval = getLabelInterval(panel.labels.length);
+  const now = Date.now();
+  const windowMs = 48 * 5_000;
+  const primaryData = buildTimedMetricSeries(panel.timestamps, panel.primaryValues, 5_000);
+  const secondaryData = buildTimedMetricSeries(
+    panel.timestamps,
+    panel.secondaryValues ?? [],
+    5_000
+  );
 
   const common = {
     animation: false,
@@ -106,24 +107,23 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       extraCssText: 'box-shadow:none;',
       formatter: (value: unknown) => {
         const params = Array.isArray(value) ? (value as TooltipPoint[]) : [value as TooltipPoint];
-        const index = params[0]?.dataIndex ?? 0;
-        const title = formatDetailedTimestamp(
-          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString(),
-          panel.timeZone
-        );
+        const timestamp = getTimedPointTimestamp(params[0]?.data ?? params[0]?.value) ?? Date.now();
+        const primaryValue = getTimedPointValue(params[0]?.data ?? params[0]?.value);
+        const title = formatDetailedTimestamp(new Date(timestamp).toISOString(), panel.timeZone);
         const rows = [
           createTooltipRow(
             panel.primaryLabel ?? panel.title,
-            formatMetricValue(panel.primaryValues[index] ?? 0, panel.format),
+            primaryValue === null ? '--' : formatMetricValue(primaryValue, panel.format),
             style.tooltipAccent
           ),
         ];
 
         if (panel.secondaryValues?.length) {
+          const secondaryValue = getTimedPointValue(params[1]?.data ?? params[1]?.value);
           rows.push(
             createTooltipRow(
               panel.secondaryLabel ?? (panel.id === 'network' ? 'Upload' : 'Write'),
-              formatMetricValue(panel.secondaryValues[index] ?? 0, panel.format),
+              secondaryValue === null ? '--' : formatMetricValue(secondaryValue, panel.format),
               panel.id === 'network' ? '#475569' : '#fb7185'
             )
           );
@@ -144,9 +144,9 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
     xAxis: {
       axisLabel: {
         color: 'rgba(71,85,105,0.88)',
-        formatter: (value: string) => stripMeridiem(value),
+        formatter: (value: number) =>
+          formatChartAxisTimestamp(value, '1h', panel.timeZone).replace(/\s?(AM|PM)$/i, ''),
         fontSize: 10,
-        interval: axisInterval,
         margin: 12,
       },
       axisLine: {
@@ -157,9 +157,11 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       axisTick: {
         show: false,
       },
-      boundaryGap: panel.variant === 'bars' || panel.variant === 'banded',
-      data: panel.labels,
-      type: 'category',
+      boundaryGap: false,
+      max: now,
+      min: now - windowMs,
+      splitNumber: 4,
+      type: 'time',
     },
     yAxis: {
       axisLabel: {
@@ -207,7 +209,8 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
               y2: 1,
             },
           },
-          data: panel.primaryValues,
+          connectNulls: false,
+          data: primaryData,
           itemStyle: {
             color: '#0f766e',
           },
@@ -229,7 +232,7 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       series: [
         {
           barWidth: '56%',
-          data: panel.primaryValues,
+          data: primaryData,
           itemStyle: {
             borderRadius: [8, 8, 0, 0],
             color: 'rgba(245, 158, 11, 0.78)',
@@ -245,7 +248,8 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       ...common,
       series: [
         {
-          data: panel.primaryValues,
+          connectNulls: false,
+          data: primaryData,
           itemStyle: {
             color: '#0284c7',
           },
@@ -258,7 +262,8 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
           type: 'line',
         },
         {
-          data: panel.secondaryValues ?? [],
+          connectNulls: false,
+          data: secondaryData,
           itemStyle: {
             color: '#475569',
           },
@@ -281,7 +286,7 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       {
         barGap: '30%',
         barWidth: '34%',
-        data: panel.primaryValues,
+        data: primaryData,
         itemStyle: {
           borderRadius: [8, 8, 0, 0],
           color: 'rgba(244, 63, 94, 0.72)',
@@ -291,7 +296,7 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
       {
         barGap: '30%',
         barWidth: '34%',
-        data: panel.secondaryValues ?? [],
+        data: secondaryData,
         itemStyle: {
           borderRadius: [8, 8, 0, 0],
           color: 'rgba(251, 146, 60, 0.58)',

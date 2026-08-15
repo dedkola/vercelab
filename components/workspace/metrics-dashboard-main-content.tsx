@@ -7,7 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import type { DashboardRange } from '@/lib/metrics-range';
+import { getDashboardHistorySettings, type DashboardRange } from '@/lib/metrics-range';
+import {
+  buildTimedMetricSeries,
+  formatChartAxisTimestamp,
+  getChartTimeWindow,
+  getTimedPointTimestamp,
+  getTimedPointValue,
+} from '@/lib/metrics-chart-time';
 import type { AllContainersMetricsHistorySeries } from '@/lib/influx-metrics';
 import type { DeploymentSummary } from '@/lib/persistence';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
@@ -43,19 +50,11 @@ type MetricsDashboardMainContentProps = {
 
 type TooltipPoint = {
   color?: string;
-  data?: number | null;
-  dataIndex?: number;
+  data?: unknown;
   marker?: string;
   seriesName?: string;
+  value?: unknown;
 };
-
-function getLabelInterval(length: number) {
-  if (length <= 6) {
-    return 0;
-  }
-
-  return Math.max(1, Math.ceil(length / 6) - 1);
-}
 
 function createTooltipShell(title: string, rows: string) {
   return `<div style="min-width: 180px; padding: 12px 14px; border-radius: 16px; background: rgba(15,23,42,0.96); color: #e2e8f0; box-shadow: 0 18px 48px -28px rgba(15,23,42,0.6);"><div style="margin-bottom: 10px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8;">${title}</div>${rows}</div>`;
@@ -75,9 +74,13 @@ function EmptyChartState({ message }: { message: string }) {
   );
 }
 
-function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOption {
-  const axisInterval = getLabelInterval(panel.labels.length);
+function buildContainerChartOption(
+  panel: ContainerMetricPanel,
+  range: DashboardRange
+): EChartsCoreOption {
   const hasSelectedSeries = panel.series.some((series) => series.isSelected);
+  const { bucketSeconds } = getDashboardHistorySettings(range);
+  const timeWindow = getChartTimeWindow(range);
 
   return {
     animation: false,
@@ -113,20 +116,24 @@ function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOpti
       formatter: (value: unknown) => {
         const params = (Array.isArray(value) ? value : [value]) as TooltipPoint[];
         const safeParams = params
-          .filter((item) => typeof item.data === 'number')
-          .sort((left, right) => Number(right.data ?? 0) - Number(left.data ?? 0));
-        const index = safeParams[0]?.dataIndex ?? params[0]?.dataIndex ?? 0;
-        const title = formatDetailedTimestamp(
-          panel.timestamps[index] ?? panel.labels[index] ?? new Date().toISOString(),
-          panel.timeZone
-        );
+          .map((item) => ({ item, metricValue: getTimedPointValue(item.data ?? item.value) }))
+          .filter(
+            (entry): entry is { item: TooltipPoint; metricValue: number } =>
+              entry.metricValue !== null
+          )
+          .sort((left, right) => right.metricValue - left.metricValue);
+        const timestamp =
+          getTimedPointTimestamp(safeParams[0]?.item.data ?? safeParams[0]?.item.value) ??
+          getTimedPointTimestamp(params[0]?.data ?? params[0]?.value) ??
+          Date.now();
+        const title = formatDetailedTimestamp(new Date(timestamp).toISOString(), panel.timeZone);
 
         const rows = safeParams.length
           ? safeParams
-              .map((item) =>
+              .map(({ item, metricValue }) =>
                 createTooltipRow(
                   item.seriesName ?? 'Series',
-                  formatMetricValue(Number(item.data ?? 0), panel.format),
+                  formatMetricValue(metricValue, panel.format),
                   item.color
                 )
               )
@@ -153,7 +160,7 @@ function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOpti
       axisLabel: {
         color: 'rgba(71,85,105,0.88)',
         fontSize: 11,
-        interval: axisInterval,
+        formatter: (value: number) => formatChartAxisTimestamp(value, range, panel.timeZone),
         margin: 14,
       },
       axisLine: {
@@ -165,8 +172,10 @@ function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOpti
         show: false,
       },
       boundaryGap: false,
-      data: panel.labels,
-      type: 'category',
+      max: timeWindow.max,
+      min: timeWindow.min,
+      splitNumber: 6,
+      type: 'time',
     },
     yAxis: {
       axisLabel: {
@@ -211,7 +220,7 @@ function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOpti
           }
         : undefined,
       connectNulls: false,
-      data: series.values,
+      data: buildTimedMetricSeries(panel.timestamps, series.values, bucketSeconds * 1000),
       emphasis: {
         focus: 'series',
       },
@@ -238,11 +247,13 @@ function buildContainerChartOption(panel: ContainerMetricPanel): EChartsCoreOpti
 const ContainerMetricCard = memo(function ContainerMetricCard({
   panel,
   loadingMessage,
+  range,
 }: {
   loadingMessage: string;
   panel: ContainerMetricPanel;
+  range: DashboardRange;
 }) {
-  const option = useMemo(() => buildContainerChartOption(panel), [panel]);
+  const option = useMemo(() => buildContainerChartOption(panel, range), [panel, range]);
 
   return (
     <Card className="overflow-hidden rounded-xl border-border/70 shadow-sm">
@@ -412,6 +423,7 @@ export function MetricsDashboardMainContent({
               key={panel.id}
               loadingMessage={containerEmptyStateMessage}
               panel={panel}
+              range={range}
             />
           ))}
         </div>
