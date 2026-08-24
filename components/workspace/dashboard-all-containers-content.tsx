@@ -1,5 +1,7 @@
 'use client';
 
+import { memo, useMemo } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -114,15 +116,48 @@ function buildLinePath(
   return path.trim();
 }
 
-function LargeMultiLineChart({ chart }: { chart: AllContainersMetricChart }) {
+const LargeMultiLineChart = memo(function LargeMultiLineChart({
+  chart,
+}: {
+  chart: AllContainersMetricChart;
+}) {
   const chartClasses = getChartClasses(chart.variant);
   const width = 760;
   const height = 280;
   const paddingX = 18;
   const paddingY = 18;
-  const allValues = chart.series.flatMap((line) =>
-    line.points.filter((value): value is number => value !== null)
-  );
+
+  const { allValues, gridLines, paths } = useMemo(() => {
+    const values = chart.series.flatMap((line) =>
+      line.points.filter((value): value is number => value !== null)
+    );
+
+    if (!values.length) {
+      return { allValues: values, gridLines: [], paths: [] };
+    }
+
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const lines = Array.from({ length: 5 }, (_, index) => {
+      const progress = index / 4;
+      return height - paddingY - progress * (height - paddingY * 2);
+    });
+    const seriesPaths = chart.series.map((line, index) => ({
+      color: getLineColor(index),
+      d: buildLinePath(
+        line.points,
+        width,
+        height,
+        paddingX,
+        paddingY,
+        minValue,
+        maxValue
+      ),
+      id: line.id,
+    }));
+
+    return { allValues: values, gridLines: lines, paths: seriesPaths };
+  }, [chart.series, height, paddingX, paddingY, width]);
 
   if (!allValues.length) {
     return (
@@ -131,13 +166,6 @@ function LargeMultiLineChart({ chart }: { chart: AllContainersMetricChart }) {
       </div>
     );
   }
-
-  const minValue = Math.min(...allValues);
-  const maxValue = Math.max(...allValues);
-  const gridLines = Array.from({ length: 5 }, (_, index) => {
-    const progress = index / 4;
-    return height - paddingY - progress * (height - paddingY * 2);
-  });
 
   return (
     <div
@@ -162,39 +190,30 @@ function LargeMultiLineChart({ chart }: { chart: AllContainersMetricChart }) {
             strokeWidth="1"
           />
         ))}
-        {chart.series.map((line, index) => {
-          const path = buildLinePath(
-            line.points,
-            width,
-            height,
-            paddingX,
-            paddingY,
-            minValue,
-            maxValue
-          );
-
-          if (!path) {
-            return null;
-          }
-
-          return (
-            <path
-              d={path}
-              fill="none"
-              key={line.id}
-              stroke={getLineColor(index)}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.8"
-            />
-          );
-        })}
+        {paths.map(
+          (line) =>
+            line.d && (
+              <path
+                d={line.d}
+                fill="none"
+                key={line.id}
+                stroke={line.color}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+              />
+            )
+        )}
       </svg>
     </div>
   );
-}
+});
 
-function AggregateChartCard({ chart }: { chart: AllContainersMetricChart }) {
+const AggregateChartCard = memo(function AggregateChartCard({
+  chart,
+}: {
+  chart: AllContainersMetricChart;
+}) {
   const chartClasses = getChartClasses(chart.variant);
 
   return (
@@ -230,7 +249,7 @@ function AggregateChartCard({ chart }: { chart: AllContainersMetricChart }) {
       </CardContent>
     </Card>
   );
-}
+});
 
 export function DashboardAllContainersContent({
   charts,

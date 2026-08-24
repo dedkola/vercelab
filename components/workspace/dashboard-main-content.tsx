@@ -1,5 +1,7 @@
 'use client';
 
+import { memo, useMemo } from 'react';
+
 import type { PreviewContainer } from '@/components/workspace-shell';
 import type { ContainerStats } from '@/lib/system-metrics';
 import type { DashboardRange } from '@/lib/metrics-range';
@@ -100,12 +102,12 @@ function MetricChartEmptyState() {
   );
 }
 
-function CpuLoadChart({ points }: { points: number[] }) {
+const CpuLoadChart = memo(function CpuLoadChart({ points }: { points: number[] }) {
   if (!points.length) {
     return <MetricChartEmptyState />;
   }
 
-  const series = getChartSeries(points);
+  const series = useMemo(() => getChartSeries(points), [points]);
   const lastPoint = series.pointsData[series.pointsData.length - 1];
 
   return (
@@ -144,18 +146,37 @@ function CpuLoadChart({ points }: { points: number[] }) {
       </svg>
     </div>
   );
-}
+});
 
-function MemoryLoadChart({ points }: { points: number[] }) {
+const MemoryLoadChart = memo(function MemoryLoadChart({ points }: { points: number[] }) {
   if (!points.length) {
     return <MetricChartEmptyState />;
   }
 
-  const safePoints = points.length ? points : Array.from({ length: 12 }, () => 0);
-  const max = Math.max(...safePoints, 1);
-  const barWidth = Math.max(8, Math.floor(188 / safePoints.length));
-  const gap = 5;
-  const chartHeight = 92;
+  const bars = useMemo(() => {
+    const safePoints = points.length ? points : Array.from({ length: 12 }, () => 0);
+    const max = Math.max(...safePoints, 1);
+    const barWidth = Math.max(8, Math.floor(188 / safePoints.length));
+    const gap = 5;
+    const chartHeight = 92;
+
+    return safePoints.map((point, index) => {
+      const normalized = point / max;
+      const height = Math.max(6, normalized * chartHeight);
+      const x = 12 + index * (barWidth + gap);
+      const y = 96 - height;
+      const isLast = index === safePoints.length - 1;
+
+      return {
+        fill: isLast ? 'rgba(217, 119, 6, 0.88)' : 'rgba(245, 158, 11, 0.34)',
+        height,
+        key: `${point}-${index}`,
+        width: barWidth,
+        x,
+        y,
+      };
+    });
+  }, [points]);
 
   return (
     <div className="rounded-[1.2rem] border border-amber-200/70 bg-linear-to-br from-amber-100/60 via-background to-background px-3 py-3 shadow-[0_20px_48px_-40px_rgba(217,119,6,0.28)]">
@@ -166,31 +187,23 @@ function MemoryLoadChart({ points }: { points: number[] }) {
           strokeDasharray="4 5"
           strokeWidth="1"
         />
-        {safePoints.map((point, index) => {
-          const normalized = point / max;
-          const height = Math.max(6, normalized * chartHeight);
-          const x = 12 + index * (barWidth + gap);
-          const y = 96 - height;
-          const isLast = index === safePoints.length - 1;
-
-          return (
-            <rect
-              fill={isLast ? 'rgba(217, 119, 6, 0.88)' : 'rgba(245, 158, 11, 0.34)'}
-              height={height}
-              key={`${point}-${index}`}
-              rx="6"
-              width={barWidth}
-              x={x}
-              y={y}
-            />
-          );
-        })}
+        {bars.map((bar) => (
+          <rect
+            fill={bar.fill}
+            height={bar.height}
+            key={bar.key}
+            rx="6"
+            width={bar.width}
+            x={bar.x}
+            y={bar.y}
+          />
+        ))}
       </svg>
     </div>
   );
-}
+});
 
-function DualLineChart({
+const DualLineChart = memo(function DualLineChart({
   primaryPoints,
   secondaryPoints,
 }: {
@@ -201,8 +214,8 @@ function DualLineChart({
     return <MetricChartEmptyState />;
   }
 
-  const primarySeries = getChartSeries(primaryPoints);
-  const secondarySeries = getChartSeries(secondaryPoints);
+  const primarySeries = useMemo(() => getChartSeries(primaryPoints), [primaryPoints]);
+  const secondarySeries = useMemo(() => getChartSeries(secondaryPoints), [secondaryPoints]);
 
   return (
     <div className="rounded-[1.2rem] border border-sky-200/70 bg-linear-to-br from-sky-100/55 via-background to-background px-3 py-3 shadow-[0_20px_48px_-40px_rgba(14,165,233,0.28)]">
@@ -239,9 +252,9 @@ function DualLineChart({
       </svg>
     </div>
   );
-}
+});
 
-function DiskIoChart({
+const DiskIoChart = memo(function DiskIoChart({
   primaryPoints,
   secondaryPoints,
 }: {
@@ -252,17 +265,33 @@ function DiskIoChart({
     return <MetricChartEmptyState />;
   }
 
-  const safePrimary = primaryPoints.length
-    ? primaryPoints
-    : Array.from({ length: secondaryPoints.length || 12 }, () => 0);
-  const safeSecondary = secondaryPoints.length
-    ? secondaryPoints
-    : Array.from({ length: safePrimary.length }, () => 0);
-  const laneWidth = Math.max(8, Math.floor(188 / safePrimary.length));
-  const gap = 5;
-  const laneHeight = 34;
-  const maxPrimary = Math.max(...safePrimary, 1);
-  const maxSecondary = Math.max(...safeSecondary, 1);
+  const lanes = useMemo(() => {
+    const safePrimary = primaryPoints.length
+      ? primaryPoints
+      : Array.from({ length: secondaryPoints.length || 12 }, () => 0);
+    const safeSecondary = secondaryPoints.length
+      ? secondaryPoints
+      : Array.from({ length: safePrimary.length }, () => 0);
+    const laneWidth = Math.max(8, Math.floor(188 / safePrimary.length));
+    const gap = 5;
+    const laneHeight = 34;
+    const maxPrimary = Math.max(...safePrimary, 1);
+    const maxSecondary = Math.max(...safeSecondary, 1);
+
+    return safePrimary.map((point, index) => {
+      const x = 12 + index * (laneWidth + gap);
+      const topHeight = Math.max(4, (point / maxPrimary) * laneHeight);
+      const bottomHeight = Math.max(4, (safeSecondary[index] / maxSecondary) * laneHeight);
+
+      return {
+        bottomHeight,
+        key: `${point}-${safeSecondary[index]}-${index}`,
+        laneWidth,
+        topHeight,
+        x,
+      };
+    });
+  }, [primaryPoints, secondaryPoints]);
 
   return (
     <div className="rounded-[1.2rem] border border-rose-200/70 bg-linear-to-br from-rose-100/55 via-background to-background px-3 py-3 shadow-[0_20px_48px_-40px_rgba(244,63,94,0.22)]">
@@ -279,38 +308,36 @@ function DiskIoChart({
           strokeDasharray="4 5"
           strokeWidth="1"
         />
-        {safePrimary.map((point, index) => {
-          const x = 12 + index * (laneWidth + gap);
-          const topHeight = Math.max(4, (point / maxPrimary) * laneHeight);
-          const bottomHeight = Math.max(4, (safeSecondary[index] / maxSecondary) * laneHeight);
-
-          return (
-            <g key={`${point}-${safeSecondary[index]}-${index}`}>
-              <rect
-                fill="rgba(244, 63, 94, 0.42)"
-                height={topHeight}
-                rx="5"
-                width={laneWidth}
-                x={x}
-                y={44 - topHeight}
-              />
-              <rect
-                fill="rgba(251, 146, 60, 0.42)"
-                height={bottomHeight}
-                rx="5"
-                width={laneWidth}
-                x={x}
-                y={96 - bottomHeight}
-              />
-            </g>
-          );
-        })}
+        {lanes.map((lane) => (
+          <g key={lane.key}>
+            <rect
+              fill="rgba(244, 63, 94, 0.42)"
+              height={lane.topHeight}
+              rx="5"
+              width={lane.laneWidth}
+              x={lane.x}
+              y={44 - lane.topHeight}
+            />
+            <rect
+              fill="rgba(251, 146, 60, 0.42)"
+              height={lane.bottomHeight}
+              rx="5"
+              width={lane.laneWidth}
+              x={lane.x}
+              y={96 - lane.bottomHeight}
+            />
+          </g>
+        ))}
       </svg>
     </div>
   );
-}
+});
 
-function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
+const FocusedMetricChartCard = memo(function FocusedMetricChartCard({
+  chart,
+}: {
+  chart: FocusedMetricChart;
+}) {
   const cardClassName =
     chart.variant === 'cpu'
       ? 'from-emerald-50/80 via-background to-background'
@@ -373,7 +400,7 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
       </CardContent>
     </Card>
   );
-}
+});
 
 function getFocusedMetricTone(variant: FocusedMetricChart['variant']) {
   switch (variant) {
