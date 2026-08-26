@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   getMetricsSnapshotMock,
+  resolveHostLanIpMock,
   getMetricsHistoryFromInfluxMock,
   getContainerMetricsHistoryFromInfluxMock,
   getAllContainersMetricsHistoryFromInfluxMock,
 } = vi.hoisted(() => ({
   getMetricsSnapshotMock: vi.fn(),
+  resolveHostLanIpMock: vi.fn(),
   getMetricsHistoryFromInfluxMock: vi.fn(),
   getContainerMetricsHistoryFromInfluxMock: vi.fn(),
   getAllContainersMetricsHistoryFromInfluxMock: vi.fn(),
@@ -14,6 +16,7 @@ const {
 
 vi.mock('@/lib/system-metrics', () => ({
   getMetricsSnapshot: getMetricsSnapshotMock,
+  resolveHostLanIp: resolveHostLanIpMock,
 }));
 
 vi.mock('@/lib/influx-metrics', () => ({
@@ -27,6 +30,7 @@ import { GET } from '@/app/api/metrics/route';
 describe('GET /api/metrics', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resolveHostLanIpMock.mockReturnValue('10.0.0.7');
     getMetricsSnapshotMock.mockResolvedValue({
       hostIp: '10.0.0.7',
       timestamp: '2026-04-17T08:00:00.000Z',
@@ -156,6 +160,43 @@ describe('GET /api/metrics', () => {
         },
       ],
     });
+  });
+
+  it('skips the expensive snapshot when includeSnapshot=false', async () => {
+    getAllContainersMetricsHistoryFromInfluxMock.mockResolvedValue([
+      {
+        containerId: 'runtime-control-plane',
+        containerName: 'control-plane',
+        points: [{ timestamp: '2026-04-17T08:00:00.000Z', cpuPercent: 8 }],
+      },
+    ]);
+
+    const response = await GET(
+      new Request(
+        'http://localhost/api/metrics?range=15m&allContainers=true&includeAllContainerHistory=true&includeHistory=false&includeSnapshot=false'
+      )
+    );
+    const payload = await response.json();
+
+    expect(getMetricsSnapshotMock).not.toHaveBeenCalled();
+    expect(resolveHostLanIpMock).toHaveBeenCalled();
+    expect(getAllContainersMetricsHistoryFromInfluxMock).toHaveBeenCalledWith({
+      hostIp: '10.0.0.7',
+      limit: 180,
+      bucketSeconds: 5,
+    });
+    expect(payload).toEqual({
+      allContainerHistory: [
+        {
+          containerId: 'runtime-control-plane',
+          containerName: 'control-plane',
+          points: [{ timestamp: '2026-04-17T08:00:00.000Z', cpuPercent: 8 }],
+        },
+      ],
+    });
+    expect('snapshot' in payload).toBe(false);
+    expect('history' in payload).toBe(false);
+    expect('containerHistory' in payload).toBe(false);
   });
 
   it('loads range history only when detailed history is explicitly requested', async () => {
