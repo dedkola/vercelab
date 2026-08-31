@@ -40,13 +40,7 @@ type ContainerIoCounters = {
 };
 
 export type ContainerRuntimeState =
-  | 'running'
-  | 'stopped'
-  | 'paused'
-  | 'restarting'
-  | 'dead'
-  | 'created'
-  | 'unknown';
+  'running' | 'stopped' | 'paused' | 'restarting' | 'dead' | 'created' | 'unknown';
 
 export type ContainerHealthState = 'healthy' | 'unhealthy' | 'starting' | 'none';
 
@@ -579,7 +573,11 @@ async function readNetworkCounters() {
     );
   } catch {
     if (process.platform === 'darwin') {
-      return parseDarwinNetworkCounters(await runCommand('netstat', ['-ibn']));
+      try {
+        return parseDarwinNetworkCounters(await runCommand('netstat', ['-ibn']));
+      } catch {
+        return [];
+      }
     }
 
     return [];

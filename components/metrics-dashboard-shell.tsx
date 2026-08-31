@@ -1,28 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-} from 'react';
-import { Activity, GitBranch, Home, type LucideIcon } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { DashboardLeftSidebar } from '@/components/workspace/dashboard-left-sidebar';
-import { DashboardRightSidebar } from '@/components/workspace/dashboard-right-sidebar';
 import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
-import {
-  HostMetricsSidebar,
-  type HostMetricsSidebarProps,
-} from '@/components/workspace/host-metrics-sidebar';
 import { MetricsDashboardMainContent } from '@/components/workspace/metrics-dashboard-main-content';
 import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
 import { WorkspaceHeader } from '@/components/workspace/workspace-header';
-import { WorkspaceRail } from '@/components/workspace/workspace-rail';
-import { type DashboardLogView, type WorkspaceView } from '@/components/workspace-shell';
+import type { WorkspaceView } from '@/components/workspace-shell';
 import {
   readStoredContainerAliases,
   subscribeToStoredContainerAliases,
@@ -31,13 +16,9 @@ import type { MetricsDashboardData } from '@/lib/metrics-dashboard-data';
 import type { DashboardRange } from '@/lib/metrics-range';
 import {
   ALL_CONTAINERS_ID,
-  buildAggregateLogs,
   buildContainerListEntries,
   buildSystemMetricPanels,
   formatClock,
-  formatStatusLabel,
-  getStatusBadgeVariant,
-  LOG_VIEW_OPTIONS,
   METRICS_DASHBOARD_RANGE_OPTIONS,
 } from '@/lib/metrics-dashboard-metrics';
 import type { AllContainersMetricsHistorySeries, MetricsHistoryPoint } from '@/lib/influx-metrics';
@@ -51,62 +32,6 @@ import {
 } from '@/lib/time-display';
 import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
 
-const METRICS_PANEL_STORAGE_KEY = 'vercelab:dashboard-metrics-panel-width';
-const LIST_PANEL_STORAGE_KEY = 'vercelab:dashboard-list-panel-width';
-const LOGS_PANEL_STORAGE_KEY = 'vercelab:dashboard-logs-panel-width';
-
-const DEFAULT_METRICS_WIDTH_PX = 232;
-const DEFAULT_LIST_WIDTH_PX = 280;
-const DEFAULT_LOGS_WIDTH_PX = 320;
-const MIN_METRICS_WIDTH_PX = 200;
-const MAX_METRICS_WIDTH_PX = 360;
-const MIN_LIST_WIDTH_PX = 240;
-const MAX_LIST_WIDTH_PX = 400;
-const MIN_LOGS_WIDTH_PX = 280;
-const MAX_LOGS_WIDTH_PX = 480;
-const WORKSPACE_RAIL_ITEMS: Array<{
-  description: string;
-  iconComponent: LucideIcon;
-  id: WorkspaceView;
-  label: string;
-}> = [
-  {
-    description: 'Live containers and host load',
-    iconComponent: Home,
-    id: 'dashboard',
-    label: 'Dashboard',
-  },
-  {
-    description: 'Deployments and repo wiring',
-    iconComponent: GitBranch,
-    id: 'git-app-page',
-    label: 'Git App Page',
-  },
-];
-
-function getStorage() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const storage = window.localStorage;
-
-  if (
-    !storage ||
-    typeof storage.getItem !== 'function' ||
-    typeof storage.setItem !== 'function' ||
-    typeof storage.removeItem !== 'function'
-  ) {
-    return null;
-  }
-
-  return storage;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>) {
   const params = new URLSearchParams();
 
@@ -117,37 +42,6 @@ function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>
   }
 
   return '/api/metrics?' + params.toString();
-}
-
-function useStoredPanelWidth(
-  key: string,
-  initialWidth: number,
-  minWidth: number,
-  maxWidth: number
-) {
-  const [width, setWidth] = useState(initialWidth);
-
-  useEffect(() => {
-    const storedWidth = getStorage()?.getItem(key);
-
-    if (!storedWidth) {
-      return;
-    }
-
-    const parsedWidth = Number.parseInt(storedWidth, 10);
-
-    if (!Number.isFinite(parsedWidth)) {
-      return;
-    }
-
-    setWidth(clamp(parsedWidth, minWidth, maxWidth));
-  }, [key, maxWidth, minWidth]);
-
-  useEffect(() => {
-    getStorage()?.setItem(key, String(Math.round(width)));
-  }, [key, width]);
-
-  return [width, setWidth] as const;
 }
 
 type MetricsDashboardShellProps = MetricsDashboardData & {
@@ -166,30 +60,9 @@ export function MetricsDashboardShell({
   const router = useRouter();
   const sharedChrome = useOptionalWorkspaceChrome();
   const isEmbedded = embedded && sharedChrome !== null;
-  const [metricsWidth, setMetricsWidth] = useStoredPanelWidth(
-    METRICS_PANEL_STORAGE_KEY,
-    DEFAULT_METRICS_WIDTH_PX,
-    MIN_METRICS_WIDTH_PX,
-    MAX_METRICS_WIDTH_PX
-  );
-  const [listWidth, setListWidth] = useStoredPanelWidth(
-    LIST_PANEL_STORAGE_KEY,
-    DEFAULT_LIST_WIDTH_PX,
-    MIN_LIST_WIDTH_PX,
-    MAX_LIST_WIDTH_PX
-  );
-  const [logsWidth, setLogsWidth] = useStoredPanelWidth(
-    LOGS_PANEL_STORAGE_KEY,
-    DEFAULT_LOGS_WIDTH_PX,
-    MIN_LOGS_WIDTH_PX,
-    MAX_LOGS_WIDTH_PX
-  );
-  const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
-  const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
   const [dashboardRange, setDashboardRange] = useState<DashboardRange>(initialDashboardRange);
   const [selectedContainerId, setSelectedContainerId] = useState(ALL_CONTAINERS_ID);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dashboardLogView, setDashboardLogView] = useState<DashboardLogView>('live');
   const [standaloneTimeDisplayMode, setStandaloneTimeDisplayMode] =
     useState<TimeDisplayMode>(DEFAULT_TIME_DISPLAY_MODE);
   const [sidebarSnapshot, setSidebarSnapshot] = useState<MetricsSnapshot | null>(initialSnapshot);
@@ -203,15 +76,6 @@ export function MetricsDashboardShell({
   const [isContainerHistoryLoading, setIsContainerHistoryLoading] = useState(
     initialSnapshot !== null && initialAllContainerHistory.length === 0
   );
-  const dragStateRef = useRef<{
-    kind: 'metrics' | 'list' | 'logs' | null;
-    startWidth: number;
-    startX: number;
-  }>({
-    kind: null,
-    startWidth: 0,
-    startX: 0,
-  });
   const hasMountedContainerHistoryRef = useRef(false);
   const containerHistoryInFlightRef = useRef(false);
   const loadedContainerHistoryRangeRef = useRef<string | null>(
@@ -237,28 +101,6 @@ export function MetricsDashboardShell({
     () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory, graphTimeZone),
     [effectiveSidebarHistory, effectiveSidebarSnapshot, graphTimeZone]
   );
-  const workspaceRailItems = useMemo(() => {
-    const internalItems = WORKSPACE_RAIL_ITEMS.map((item) => ({
-      ...item,
-      view: item.id,
-    }));
-
-    if (!influxExplorerUrl) {
-      return internalItems;
-    }
-
-    return [
-      ...internalItems,
-      {
-        description: 'Open the InfluxDB Explorer UI',
-        external: true,
-        href: influxExplorerUrl,
-        iconComponent: Activity,
-        id: 'influx-explorer',
-        label: 'Influx Explorer',
-      },
-    ];
-  }, [influxExplorerUrl]);
 
   useEffect(() => {
     if (!isEmbedded) {
@@ -298,24 +140,6 @@ export function MetricsDashboardShell({
       }),
     [aliases, allContainerHistory, effectiveSidebarSnapshot, graphTimeZone, initialDeployments]
   );
-  const aggregateLogs = useMemo(
-    () =>
-      buildAggregateLogs(
-        effectiveSidebarSnapshot,
-        effectiveSidebarHistory,
-        allContainerHistory,
-        initialDeployments,
-        graphTimeZone
-      ),
-    [
-      allContainerHistory,
-      effectiveSidebarHistory,
-      effectiveSidebarSnapshot,
-      graphTimeZone,
-      initialDeployments,
-    ]
-  );
-
   const filteredContainers = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -342,7 +166,6 @@ export function MetricsDashboardShell({
       workspaceContainers.find((container) => container.display.id === activeContainerId) ??
       workspaceContainers[0] ??
       null);
-  const selectedContainerName = selectedEntry?.sidebarName ?? null;
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedRuntimeContainerId = selectedRuntimeContainer?.id ?? null;
 
@@ -491,102 +314,10 @@ export function MetricsDashboardShell({
     sidebarSnapshot,
   ]);
 
-  useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
-      switch (dragStateRef.current.kind) {
-        case 'metrics':
-          setMetricsWidth(
-            clamp(
-              dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
-              MIN_METRICS_WIDTH_PX,
-              MAX_METRICS_WIDTH_PX
-            )
-          );
-          break;
-        case 'list':
-          setListWidth(
-            clamp(
-              dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
-              MIN_LIST_WIDTH_PX,
-              MAX_LIST_WIDTH_PX
-            )
-          );
-          break;
-        case 'logs':
-          setLogsWidth(
-            clamp(
-              dragStateRef.current.startWidth - (event.clientX - dragStateRef.current.startX),
-              MIN_LOGS_WIDTH_PX,
-              MAX_LOGS_WIDTH_PX
-            )
-          );
-          break;
-      }
-    }
-
-    function handleMouseUp() {
-      if (!dragStateRef.current.kind) {
-        return;
-      }
-
-      dragStateRef.current.kind = null;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    }
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [setListWidth, setLogsWidth, setMetricsWidth]);
-
-  useEffect(() => {
-    function syncResponsivePanels() {
-      if (window.innerWidth < 1280) {
-        setIsLogsCollapsed(true);
-      }
-
-      if (!isEmbedded && window.innerWidth < 960) {
-        setIsMetricsCollapsed(true);
-      }
-    }
-
-    syncResponsivePanels();
-    window.addEventListener('resize', syncResponsivePanels);
-
-    return () => {
-      window.removeEventListener('resize', syncResponsivePanels);
-    };
-  }, [isEmbedded]);
-
-  const handleResizeStart = useCallback(
-    (kind: 'metrics' | 'list' | 'logs', event: ReactMouseEvent<HTMLDivElement>) => {
-      dragStateRef.current = {
-        kind,
-        startWidth: kind === 'metrics' ? metricsWidth : kind === 'list' ? listWidth : logsWidth,
-        startX: event.clientX,
-      };
-
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    },
-    [listWidth, logsWidth, metricsWidth]
-  );
-
   const handleLocalResetLayout = useCallback(() => {
-    const storage = getStorage();
-
-    storage?.removeItem(LIST_PANEL_STORAGE_KEY);
-    storage?.removeItem(LOGS_PANEL_STORAGE_KEY);
-    setListWidth(DEFAULT_LIST_WIDTH_PX);
-    setLogsWidth(DEFAULT_LOGS_WIDTH_PX);
-    setIsLogsCollapsed(false);
-  }, [setListWidth, setLogsWidth]);
+    setSearchQuery('');
+    setSelectedContainerId(ALL_CONTAINERS_ID);
+  }, []);
 
   useEffect(() => {
     if (!isEmbedded) {
@@ -597,17 +328,13 @@ export function MetricsDashboardShell({
   }, [handleLocalResetLayout, isEmbedded, sharedChrome]);
 
   const handleResetLayout = useCallback(() => {
-    const storage = getStorage();
-
-    storage?.removeItem(METRICS_PANEL_STORAGE_KEY);
-    setMetricsWidth(DEFAULT_METRICS_WIDTH_PX);
-    setIsMetricsCollapsed(false);
     handleLocalResetLayout();
-  }, [handleLocalResetLayout, setMetricsWidth]);
+  }, [handleLocalResetLayout]);
 
   const handleViewChange = useCallback(
     (view: WorkspaceView) => {
-      const pathname = view === 'git-app-page' ? '/git-app-page' : '/';
+      const pathname =
+        view === 'dashboard' ? '/' : view === 'git-app-page' ? '/git-app-page' : `/${view}`;
       const search = effectiveDashboardRange === '15m' ? '' : `?range=${effectiveDashboardRange}`;
 
       router.push(`${pathname}${search}`);
@@ -615,82 +342,30 @@ export function MetricsDashboardShell({
     [effectiveDashboardRange, router]
   );
 
-  const hostMetricsProps = {
-    isCollapsed: isMetricsCollapsed,
-    metricCards: [],
-    onCollapseAction: () => setIsMetricsCollapsed(true),
-    onExpandAction: () => setIsMetricsCollapsed(false),
-    onResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) =>
-      handleResizeStart('metrics', event),
-    systemPanels,
-    width: metricsWidth,
-  } satisfies HostMetricsSidebarProps;
-  const selectedContainerStatusLabel = selectedEntry
-    ? formatStatusLabel(selectedEntry.display.status)
-    : 'Fleet compare';
-  const selectedContainerStatusVariant = selectedEntry
-    ? getStatusBadgeVariant(selectedEntry.display.status)
-    : 'default';
-  const previewLogs = isAllContainersSelected
-    ? aggregateLogs[dashboardLogView]
-    : (selectedEntry?.display.logs[dashboardLogView] ?? []);
   const dashboardPanels = (
-    <>
-      <DashboardLeftSidebar
+    <main className="min-w-0 flex-1 overflow-auto bg-[var(--canvas)]">
+      <MetricsDashboardMainContent
         activeContainerId={activeContainerId}
+        allContainerHistory={allContainerHistory}
+        containerHistoryStatusText={containerHistoryError}
         containers={filteredContainers}
+        deployments={initialDeployments}
+        isAllContainerHistoryLoading={isContainerHistoryLoading}
         isAllContainersSelected={isAllContainersSelected}
-        listWidth={listWidth}
         onAllContainersSelectAction={() => setSelectedContainerId(ALL_CONTAINERS_ID)}
         onContainerSelectAction={setSelectedContainerId}
-        onListResizeStartAction={(event) => handleResizeStart('list', event)}
+        onRangeChangeAction={setEffectiveDashboardRange}
         onSearchQueryChangeAction={setSearchQuery}
+        range={effectiveDashboardRange}
+        rangeOptions={METRICS_DASHBOARD_RANGE_OPTIONS}
         runningContainersCount={effectiveSidebarSnapshot?.containers.running ?? null}
         searchQuery={searchQuery}
-        visibleCount={filteredContainers.length}
+        selectedContainerId={isAllContainersSelected ? null : selectedRuntimeContainerId}
+        snapshot={effectiveSidebarSnapshot}
+        systemPanels={systemPanels}
+        timeZone={graphTimeZone}
       />
-
-      <main className="min-w-0 flex-1 overflow-auto bg-muted/30 p-4 md:p-5">
-        <MetricsDashboardMainContent
-          allContainerHistory={allContainerHistory}
-          containerHistoryStatusText={containerHistoryError}
-          deployments={initialDeployments}
-          isAllContainerHistoryLoading={isContainerHistoryLoading}
-          onRangeChangeAction={setEffectiveDashboardRange}
-          range={effectiveDashboardRange}
-          rangeOptions={METRICS_DASHBOARD_RANGE_OPTIONS}
-          selectedContainerId={isAllContainersSelected ? null : selectedRuntimeContainerId}
-          selectedContainerName={isAllContainersSelected ? null : selectedContainerName}
-          snapshot={effectiveSidebarSnapshot}
-          timeZone={graphTimeZone}
-        />
-      </main>
-
-      <DashboardRightSidebar
-        activeLogView={dashboardLogView}
-        isCollapsed={isLogsCollapsed}
-        isAggregateSelection={isAllContainersSelected}
-        logOptions={LOG_VIEW_OPTIONS}
-        logs={previewLogs}
-        onCollapseAction={() => setIsLogsCollapsed(true)}
-        onExpandAction={() => setIsLogsCollapsed(false)}
-        onLogViewChangeAction={setDashboardLogView}
-        onResizeStartAction={(event) => handleResizeStart('logs', event)}
-        selectedContainerName={
-          isAllContainersSelected ? 'All containers' : (selectedContainerName ?? 'Container')
-        }
-        selectedContainerStatusLabel={
-          isAllContainersSelected
-            ? `${effectiveSidebarSnapshot?.containers.running ?? 0} running`
-            : selectedContainerStatusLabel
-        }
-        selectedContainerStatusVariant={
-          isAllContainersSelected ? 'default' : selectedContainerStatusVariant
-        }
-        selectedPreviewAvailable={!isAllContainersSelected && Boolean(selectedEntry)}
-        width={logsWidth}
-      />
-    </>
+    </main>
   );
 
   if (isEmbedded) {
@@ -700,25 +375,29 @@ export function MetricsDashboardShell({
   return (
     <section aria-label="Workspace shell" className="flex h-screen flex-col bg-background">
       <WorkspaceHeader
+        activeView="dashboard"
+        influxExplorerUrl={influxExplorerUrl}
+        onInfluxExplorerOpenAction={() => {
+          if (influxExplorerUrl) {
+            window.open(influxExplorerUrl, '_blank', 'noopener,noreferrer');
+          }
+        }}
         onResetLayoutAction={handleResetLayout}
         onTimeDisplayModeChangeAction={(mode) => {
           setStandaloneTimeDisplayMode(mode);
           writeStoredTimeDisplayMode(mode);
         }}
+        onViewChangeAction={handleViewChange}
+        statusLabel={effectiveSidebarSnapshot ? 'Host online' : 'Connecting'}
         timeDisplayMode={effectiveTimeDisplayMode}
-        title="Metrics dashboard"
+        updatedAtLabel={
+          effectiveSidebarSnapshot
+            ? formatClock(effectiveSidebarSnapshot.timestamp, graphTimeZone)
+            : 'Waiting for metrics'
+        }
       />
 
-      <div className="flex min-w-0 flex-1 overflow-hidden">
-        <WorkspaceRail
-          activeView="dashboard"
-          items={workspaceRailItems}
-          onViewChangeAction={handleViewChange}
-        />
-
-        <HostMetricsSidebar {...hostMetricsProps} />
-        {dashboardPanels}
-      </div>
+      <div className="flex min-w-0 flex-1 overflow-hidden">{dashboardPanels}</div>
 
       <WorkspaceFooter
         activeViewLabel="Dashboard"

@@ -505,7 +505,7 @@ describe('WorkspaceShell', () => {
     }
 
     expect(await screen.findByRole('heading', { name: /all containers/i })).toBeVisible();
-    expect(screen.getAllByText(/^dashboard$/i)[0]).toBeVisible();
+    expect(screen.getByRole('tab', { name: /^overview$/i })).toBeVisible();
     expect(screen.getByText(/tail preview/i)).toBeVisible();
     expect(screen.getAllByText(/3\s+running/i)[0]).toBeVisible();
   });

@@ -1,35 +1,48 @@
 'use client';
 
-import { Clock3, Settings, ShieldCheck, Terminal } from 'lucide-react';
-import Link from 'next/link';
+import { Button, Input, Popover, Tabs } from '@cloudflare/kumo';
+import { ChartLineUp, GearSix } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Separator } from '@/components/ui/separator';
+import type { WorkspaceView } from '@/components/workspace-shell';
 import type { GitHubRepository } from '@/lib/github';
 import { getLocalTimeZoneLabel, type TimeDisplayMode } from '@/lib/time-display';
 
 type WorkspaceHeaderProps = {
+  activeView: WorkspaceView;
+  influxExplorerUrl?: string | null;
   onGithubTokenSavedAction?: (payload: {
     repositories: GitHubRepository[];
     tokenConfigured: boolean;
   }) => void;
+  onInfluxExplorerOpenAction?: () => void;
   onResetLayoutAction: () => void;
   onTimeDisplayModeChangeAction?: (mode: TimeDisplayMode) => void;
+  onViewChangeAction: (view: WorkspaceView) => void;
+  statusLabel: string;
   timeDisplayMode?: TimeDisplayMode;
-  title: string;
+  updatedAtLabel: string;
 };
 
+const NAVIGATION_TABS = [
+  { label: 'Overview', value: 'dashboard' },
+  { label: 'Apps', value: 'git-app-page' },
+  { label: 'Containers', value: 'containers' },
+  { label: 'Terminal', value: 'terminal' },
+] satisfies Array<{ label: string; value: WorkspaceView }>;
+
 export function WorkspaceHeader({
+  activeView,
+  influxExplorerUrl,
   onGithubTokenSavedAction,
+  onInfluxExplorerOpenAction,
   onResetLayoutAction,
   onTimeDisplayModeChangeAction,
+  onViewChangeAction,
+  statusLabel,
   timeDisplayMode = 'local',
-  title,
+  updatedAtLabel,
 }: WorkspaceHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [githubToken, setGithubToken] = useState('');
@@ -85,172 +98,140 @@ export function WorkspaceHeader({
   }
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border/70 bg-background/95 px-4 backdrop-blur">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span className="text-sm font-semibold tracking-tight text-foreground">Vercelab</span>
+    <header className="vercelab-topbar shrink-0 border-b border-[var(--hairline)] bg-[rgb(255_255_255_/_0.94)] backdrop-blur-xl">
+      <div className="mx-auto grid min-h-11 w-full max-w-[1680px] grid-cols-[minmax(12rem,1fr)_auto_minmax(12rem,1fr)] items-center gap-4 px-6 max-[960px]:grid-cols-[1fr_auto] max-[760px]:px-3">
+        <div className="flex min-w-0 items-center gap-2.5 whitespace-nowrap" aria-label="Vercelab">
+          <span className="vercelab-brand-mark" aria-hidden="true" />
+          <span className="text-[11px] font-semibold tracking-[0.08em]">VERCELAB / LOCAL</span>
         </div>
-        <Separator orientation="vertical" className="hidden h-4 md:block" />
-        <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">{title}</h1>
-        </div>
-      </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <Button
-          aria-label="Open terminal"
-          asChild
-          className="h-8 w-8 rounded-full px-0"
-          size="icon"
-          variant="ghost"
+        <nav
+          aria-label="Workspace"
+          className="max-[960px]:order-3 max-[960px]:col-span-2 max-[960px]:w-full max-[960px]:overflow-x-auto max-[960px]:pb-1.5"
         >
-          <Link href="/terminal">
-            <Terminal className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </Button>
-        <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-          <PopoverTrigger asChild>
+          <Tabs
+            activateOnFocus
+            className="w-max"
+            onValueChange={(value) => onViewChangeAction(value as WorkspaceView)}
+            size="sm"
+            tabs={NAVIGATION_TABS}
+            value={activeView}
+            variant="segmented"
+          />
+        </nav>
+
+        <div className="flex min-w-0 items-center justify-end gap-2">
+          <span className="flex items-center gap-1.5 text-[9px] font-semibold tracking-[0.04em] text-[var(--green)] uppercase max-[760px]:[&>span:last-child]:hidden">
+            <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+            <span>{statusLabel}</span>
+          </span>
+          <time className="max-w-28 truncate font-mono text-[9px] text-[var(--quiet)] max-[760px]:hidden">
+            {updatedAtLabel}
+          </time>
+
+          {influxExplorerUrl ? (
             <Button
-              aria-label="Open settings"
-              className="h-8 w-8 rounded-full px-0"
-              size="icon"
-              type="button"
+              aria-label="Influx Explorer"
+              icon={ChartLineUp}
+              onClick={onInfluxExplorerOpenAction}
+              shape="square"
+              size="sm"
+              title="Influx Explorer"
               variant="ghost"
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            className="w-[min(calc(100vw-2rem),24rem)] rounded-2xl border-border/70 bg-background/95 p-4 shadow-[0_24px_70px_-38px_rgba(15,23,42,0.5)] backdrop-blur-xl"
-          >
-            <form className="space-y-4" onSubmit={handleSaveGithubToken}>
-              <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-emerald-200/70 bg-emerald-50 text-emerald-700">
-                  <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <div className="min-w-0 space-y-1">
-                  <div className="text-sm font-semibold tracking-tight text-foreground">
-                    GitHub access
-                  </div>
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    Update the personal access token used for repository browsing. It is validated,
-                    then saved to{' '}
-                    <span className="font-mono text-[11px] text-foreground">.env</span>.
-                  </p>
-                </div>
-              </div>
+            />
+          ) : null}
 
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground" htmlFor="workspace-github-token">
-                  GitHub token
-                </Label>
-                <Input
-                  autoComplete="off"
-                  className="h-9 font-mono text-xs"
-                  id="workspace-github-token"
-                  onChange={(event) => {
-                    setGithubToken(event.target.value);
-                    setGithubTokenError(null);
-                  }}
-                  placeholder="github_pat_..."
-                  type="password"
-                  value={githubToken}
+          <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <Popover.Trigger
+              render={
+                <Button
+                  aria-label="Open settings"
+                  icon={GearSix}
+                  shape="square"
+                  size="sm"
+                  title="Settings"
+                  variant="ghost"
                 />
-              </div>
+              }
+            />
+            <Popover.Content
+              align="end"
+              className="w-[min(calc(100vw-2rem),23rem)] rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] p-1 shadow-[0_20px_50px_rgb(16_24_40_/_0.13)]"
+              positionMethod="fixed"
+              side="bottom"
+              sideOffset={8}
+            >
+              <Popover.Title className="sr-only">Workspace settings</Popover.Title>
+              <form className="p-3" onSubmit={handleSaveGithubToken}>
+                <div>
+                  <div className="text-sm font-semibold">GitHub access</div>
+                  <div className="mt-1 font-mono text-[9px] text-[var(--quiet)]">
+                    Stored server-side in .env
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Input
+                    aria-label="GitHub token"
+                    autoComplete="off"
+                    className="min-w-0 flex-1 font-mono text-xs"
+                    onChange={(event) => {
+                      setGithubToken(event.target.value);
+                      setGithubTokenError(null);
+                    }}
+                    placeholder="github_pat_..."
+                    type="password"
+                    value={githubToken}
+                  />
+                  <Button loading={isSavingGithubToken} size="sm" type="submit" variant="primary">
+                    Save
+                  </Button>
+                </div>
+                {githubTokenError ? (
+                  <p className="mt-2 font-mono text-[9px] text-[var(--red)]">{githubTokenError}</p>
+                ) : null}
+              </form>
 
-              {githubTokenError ? (
-                <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] leading-4 text-amber-800">
-                  {githubTokenError}
+              {onTimeDisplayModeChangeAction ? (
+                <div className="border-t border-[var(--hairline)] p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm font-semibold">Graph time</div>
+                      <div className="mt-1 max-w-40 truncate font-mono text-[9px] text-[var(--quiet)]">
+                        {timeDisplayMode === 'local' ? localTimeZoneLabel : 'Universal time'}
+                      </div>
+                    </div>
+                    <Tabs
+                      onValueChange={(value) =>
+                        onTimeDisplayModeChangeAction(value as TimeDisplayMode)
+                      }
+                      size="sm"
+                      tabs={[
+                        { label: 'Local', value: 'local' },
+                        { label: 'UTC', value: 'utc' },
+                      ]}
+                      value={timeDisplayMode}
+                      variant="segmented"
+                    />
+                  </div>
                 </div>
               ) : null}
 
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[11px] text-muted-foreground">
-                  Requires repo access for private repositories.
-                </span>
-                <Button
-                  className="h-8 px-3 text-[11px]"
-                  disabled={isSavingGithubToken}
-                  size="sm"
-                  type="submit"
-                >
-                  {isSavingGithubToken ? 'Saving...' : 'Save token'}
-                </Button>
-              </div>
-            </form>
-
-            {onTimeDisplayModeChangeAction ? (
-              <>
-                <Separator className="my-4" />
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-sky-200/70 bg-sky-50 text-sky-700">
-                      <Clock3 className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0 space-y-1">
-                      <div className="text-sm font-semibold tracking-tight text-foreground">
-                        Graph time
-                      </div>
-                      <p className="text-xs leading-5 text-muted-foreground">
-                        Choose how graph axes, tooltips, and activity times are shown. Metrics stay
-                        stored in UTC.
-                      </p>
+              <div className="border-t border-[var(--hairline)] p-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-semibold">Layout</div>
+                    <div className="mt-1 font-mono text-[9px] text-[var(--quiet)]">
+                      Reset page-specific panels
                     </div>
                   </div>
-
-                  <div aria-label="Graph time" className="grid grid-cols-2 gap-2" role="radiogroup">
-                    <button
-                      aria-checked={timeDisplayMode === 'local'}
-                      className={`rounded-xl border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                        timeDisplayMode === 'local'
-                          ? 'border-sky-300 bg-sky-50 text-sky-950'
-                          : 'border-border/70 bg-background text-foreground hover:bg-muted/40'
-                      }`}
-                      onClick={() => onTimeDisplayModeChangeAction('local')}
-                      role="radio"
-                      type="button"
-                    >
-                      <span className="block text-xs font-semibold">Local device</span>
-                      <span
-                        className="mt-0.5 block truncate text-[10px] text-muted-foreground"
-                        suppressHydrationWarning
-                      >
-                        {localTimeZoneLabel}
-                      </span>
-                    </button>
-                    <button
-                      aria-checked={timeDisplayMode === 'utc'}
-                      className={`rounded-xl border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                        timeDisplayMode === 'utc'
-                          ? 'border-sky-300 bg-sky-50 text-sky-950'
-                          : 'border-border/70 bg-background text-foreground hover:bg-muted/40'
-                      }`}
-                      onClick={() => onTimeDisplayModeChangeAction('utc')}
-                      role="radio"
-                      type="button"
-                    >
-                      <span className="block text-xs font-semibold">UTC</span>
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                        Universal time
-                      </span>
-                    </button>
-                  </div>
+                  <Button onClick={onResetLayoutAction} size="sm" type="button" variant="secondary">
+                    Reset
+                  </Button>
                 </div>
-              </>
-            ) : null}
-          </PopoverContent>
-        </Popover>
-        <Button
-          className="h-8 px-3 text-[11px]"
-          onClick={onResetLayoutAction}
-          size="sm"
-          type="button"
-          variant="secondary"
-        >
-          Reset layout
-        </Button>
+              </div>
+            </Popover.Content>
+          </Popover>
+        </div>
       </div>
     </header>
   );

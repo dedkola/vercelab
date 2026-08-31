@@ -116,7 +116,10 @@ export function ResizeHandle({
   return (
     <div
       aria-hidden="true"
-      className={cn('group relative z-10 w-2 shrink-0 cursor-col-resize', className)}
+      className={cn(
+        'vercelab-resize-handle group relative z-10 w-2 shrink-0 cursor-col-resize',
+        className
+      )}
       onMouseDown={onMouseDown}
     >
       <div className="absolute inset-y-2 left-1/2 w-px -translate-x-1/2 rounded-full bg-border transition-colors group-hover:bg-emerald-300" />

@@ -62,7 +62,7 @@ export function DashboardRightSidebar({
 }: DashboardRightSidebarProps) {
   if (isCollapsed) {
     return (
-      <aside className="flex w-11 shrink-0 items-start border-l border-border/70 bg-background px-1.5 py-2">
+      <aside className="vercelab-context-rail flex w-11 shrink-0 items-start border-l border-border/70 bg-background px-1.5 py-2">
         <Button
           aria-label="Show logs sidebar"
           className="h-7 w-7"
@@ -82,7 +82,7 @@ export function DashboardRightSidebar({
       <ResizeHandle onMouseDown={onResizeStartAction} />
 
       <aside
-        className="flex shrink-0 flex-col border-l border-border/70 bg-background transition-[width] duration-300"
+        className="vercelab-context-rail flex shrink-0 flex-col border-l border-border/70 bg-background transition-[width] duration-300"
         style={{ width: `${width}px` }}
       >
         <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2">

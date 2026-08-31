@@ -258,8 +258,8 @@ export function ContainersMainContent({
     runtimeEntry?.display.endpoints[0]?.url ?? runtimeEntry?.display.endpoints[0]?.name ?? null;
 
   return (
-    <main className="min-w-0 flex-1 overflow-auto bg-muted/30 p-3 md:p-4">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3">
+    <main className="vercelab-detail-pane min-w-0 flex-1 overflow-auto bg-[var(--canvas)] p-3 md:p-4">
+      <div className="mx-auto flex max-w-[1680px] flex-col gap-3">
         {/* Header */}
         <section className="rounded-xl border border-border/70 bg-background px-3 py-2.5 shadow-sm">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">

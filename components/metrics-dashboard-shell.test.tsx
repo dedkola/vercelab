@@ -387,7 +387,7 @@ describe('MetricsDashboardShell', () => {
     fetchSpy.mockRestore();
   });
 
-  it('renders the permanent metrics dashboard with host and container sections', async () => {
+  it('renders the lightweight overview with host telemetry and a workload table', async () => {
     render(
       <MetricsDashboardShell
         influxExplorerUrl={null}
@@ -399,25 +399,15 @@ describe('MetricsDashboardShell', () => {
       />
     );
 
-    expect(await screen.findByRole('heading', { name: /metrics dashboard/i })).toBeVisible();
-    const header = screen.getByRole('banner');
-    expect(within(header).queryByText(/load 0\.48 \/ 0\.52 \/ 0\.56/i)).not.toBeInTheDocument();
-    expect(within(header).queryByText(/download .* upload/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /^overview$/i })).toBeVisible();
     expect(
       screen.queryByText(/a denser operational view for host and container observability/i)
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/container load explorer/i)).toBeVisible();
-    expect(screen.getAllByText(/^host cpu$/i)[0]).toBeVisible();
-    expect(screen.getAllByText(/^host memory$/i)[0]).toBeVisible();
-    expect(screen.getAllByText(/^host network$/i)[0]).toBeVisible();
-    expect(screen.getAllByText(/^host disk$/i)[0]).toBeVisible();
-    expect(screen.getAllByText(/^cpu by container$/i)[0]).toBeVisible();
-    expect(screen.getAllByText(/^memory by container$/i)[0]).toBeVisible();
-    expect(screen.getAllByText(/^network by container$/i)[0]).toBeVisible();
-    expect(screen.queryByText(/^fleet cpu$/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^fleet memory$/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^fleet network$/i)).not.toBeInTheDocument();
-    expect(screen.getAllByTestId('echart-surface').length).toBe(8);
+    expect(screen.getByRole('heading', { name: /compute load/i })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /i\/o throughput/i })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /workloads/i })).toBeVisible();
+    expect(screen.getByRole('row', { name: /control-plane.*running/i })).toBeVisible();
+    expect(screen.getAllByTestId('echart-surface').length).toBe(2);
   });
 
   it('avoids an immediate duplicate fetch after hydration and polls the light payload', async () => {
@@ -470,7 +460,7 @@ describe('MetricsDashboardShell', () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: /^24 h$/i }));
+    await user.click(screen.getByRole('tab', { name: /^24 h$/i }));
 
     expect(window.location.search).toBe('?range=24h');
 
@@ -537,7 +527,7 @@ describe('MetricsDashboardShell', () => {
     ).toBe(false);
   });
 
-  it('keeps fleet charts visible when focusing a container and routes rail clicks back to linked pages', async () => {
+  it('opens workload telemetry on demand and routes top navigation clicks', async () => {
     const user = userEvent.setup();
 
     render(
@@ -552,20 +542,23 @@ describe('MetricsDashboardShell', () => {
     );
 
     await user.click(
-      await screen.findByRole('button', {
-        name: /postgres-primary.*unhealthy/i,
+      await screen.findByRole('row', {
+        name: /postgres-primary.*attention/i,
       })
     );
 
-    expect(screen.getByText(/^focus postgres-primary$/i)).toBeVisible();
-    expect(screen.getAllByText(/^cpu by container$/i)[0]).toBeVisible();
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('heading', { name: /postgres-primary/i })).toBeVisible();
+    expect(within(dialog).getByRole('heading', { name: /^cpu$/i })).toBeVisible();
+    expect(screen.getAllByTestId('echart-surface').length).toBe(6);
 
-    await user.click(screen.getByRole('button', { name: /git app page/i }));
+    await user.click(within(dialog).getByRole('button', { name: /close workload details/i }));
+    await user.click(screen.getByRole('tab', { name: /^apps$/i }));
 
     expect(pushMock).toHaveBeenCalledWith('/git-app-page');
   });
 
-  it('applies stored container aliases in the dashboard sidebar list', async () => {
+  it('applies stored container aliases in the workload table', async () => {
     window.localStorage.setItem(
       'vercelab:containers-friendly-labels',
       JSON.stringify({
@@ -585,13 +578,13 @@ describe('MetricsDashboardShell', () => {
     );
 
     expect(
-      await screen.findByRole('button', {
-        name: /platform ui.*healthy/i,
+      await screen.findByRole('row', {
+        name: /platform ui.*running/i,
       })
     ).toBeVisible();
   });
 
-  it('updates dashboard sidebar aliases live when alias storage changes after mount', async () => {
+  it('updates workload aliases live when alias storage changes after mount', async () => {
     render(
       <MetricsDashboardShell
         influxExplorerUrl={null}
@@ -604,8 +597,8 @@ describe('MetricsDashboardShell', () => {
     );
 
     expect(
-      await screen.findByRole('button', {
-        name: /control-plane.*healthy/i,
+      await screen.findByRole('row', {
+        name: /control-plane.*running/i,
       })
     ).toBeVisible();
 
@@ -624,13 +617,13 @@ describe('MetricsDashboardShell', () => {
     });
 
     expect(
-      await screen.findByRole('button', {
-        name: /platform ui.*healthy/i,
+      await screen.findByRole('row', {
+        name: /platform ui.*running/i,
       })
     ).toBeVisible();
   });
 
-  it('shows deployment app names and friendly system names in sidebar and charts', async () => {
+  it('shows deployment app names and friendly system names in the workload table', async () => {
     const labelPayload = {
       allContainerHistory: [
         {
@@ -797,15 +790,14 @@ describe('MetricsDashboardShell', () => {
     );
 
     expect(
-      await screen.findByRole('button', {
-        name: /omnichat \/ server.*healthy/i,
+      await screen.findByRole('row', {
+        name: /omnichat \/ server.*running/i,
       })
     ).toBeVisible();
     expect(
-      screen.getByRole('button', {
-        name: /vercelab traefik.*healthy/i,
+      screen.getByRole('row', {
+        name: /vercelab traefik.*running/i,
       })
     ).toBeVisible();
-    expect(screen.getByText(/hot now\s+omnichat \/ server\s+14\.0%/i)).toBeVisible();
   });
 });
