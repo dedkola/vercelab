@@ -809,11 +809,15 @@ describe('MetricsDashboardShell', () => {
       />
     );
 
-    expect(
-      await screen.findByRole('row', {
-        name: /omnichat \/ server.*running/i,
-      })
-    ).toBeVisible();
+    const deploymentRow = await screen.findByRole('row', {
+      name: /omnichat \/ server.*running/i,
+    });
+
+    expect(deploymentRow).toBeVisible();
+    expect(deploymentRow.querySelector('img')).toHaveAttribute(
+      'src',
+      'http://localhost/api/deployments/dep-omnichat/icon?v=2026-04-19T10%3A00%3A00.000Z'
+    );
     expect(
       screen.getByRole('row', {
         name: /vercelab traefik.*running/i,

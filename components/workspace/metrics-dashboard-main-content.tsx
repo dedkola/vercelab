@@ -3,6 +3,7 @@
 import { Badge, Button, Dialog, Input, Table, Tabs } from '@cloudflare/kumo';
 import { ArrowSquareOut, MagnifyingGlass, X } from '@phosphor-icons/react';
 import type { EChartsCoreOption } from 'echarts';
+import Image from 'next/image';
 import { memo, useMemo, useState } from 'react';
 
 import { EChartSurface } from '@/components/ui/echart-surface';
@@ -223,6 +224,37 @@ function getWorkloadGlyph(container: ContainerListEntry) {
   }
 
   return 'ctr';
+}
+
+function WorkloadIcon({
+  container,
+  deployment,
+}: {
+  container: ContainerListEntry;
+  deployment: DeploymentSummary | null;
+}) {
+  const iconUrl = deployment
+    ? `/api/deployments/${encodeURIComponent(deployment.id)}/icon?v=${encodeURIComponent(deployment.updatedAt)}`
+    : null;
+  const [failedIconUrl, setFailedIconUrl] = useState<string | null>(null);
+  const showRepositoryIcon = iconUrl !== null && failedIconUrl !== iconUrl;
+
+  return (
+    <span className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-[6px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-[8px] font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
+      {getWorkloadGlyph(container)}
+      {showRepositoryIcon ? (
+        <Image
+          alt=""
+          className="absolute inset-0 size-full bg-white object-contain p-1"
+          height={28}
+          onError={() => setFailedIconUrl(iconUrl)}
+          src={iconUrl}
+          unoptimized
+          width={28}
+        />
+      ) : null}
+    </span>
+  );
 }
 
 function getWorkloadStateClassName(variant: ReturnType<typeof getStatusBadge>['variant']) {
@@ -447,6 +479,10 @@ export function MetricsDashboardMainContent({
   const diskPanel = panelsById.get('disk');
   const detailContainer =
     containers.find((container) => container.display.id === detailContainerId) ?? null;
+  const deploymentsByProjectName = useMemo(
+    () => new Map(deployments.map((deployment) => [deployment.projectName, deployment])),
+    [deployments]
+  );
   const containerPanels = useMemo(
     () =>
       buildContainerMetricPanels(
@@ -700,6 +736,9 @@ export function MetricsDashboardMainContent({
             <Table.Body>
               {containers.map((container) => {
                 const status = getStatusBadge(container.display.status, container.deploymentStatus);
+                const deployment = container.runtime?.projectName
+                  ? (deploymentsByProjectName.get(container.runtime.projectName) ?? null)
+                  : null;
 
                 return (
                   <Table.Row
@@ -717,9 +756,7 @@ export function MetricsDashboardMainContent({
                   >
                     <Table.Cell className="px-3 py-1.5">
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="grid size-7 shrink-0 place-items-center rounded-[6px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-[8px] font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
-                          {getWorkloadGlyph(container)}
-                        </span>
+                        <WorkloadIcon container={container} deployment={deployment} />
                         <span className="min-w-0">
                           <span className="block truncate text-[11px] font-semibold tracking-[-0.01em]">
                             {container.sidebarName}
