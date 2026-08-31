@@ -1,3 +1,5 @@
+@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@import '@cloudflare/kumo/styles/tailwind';
 @import 'tailwindcss' source(none);
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
@@ -51,39 +53,72 @@
 }
 
 :root {
+  color-scheme: light;
+  --canvas: #f4f5f6;
+  --surface: #ffffff;
+  --surface-subtle: #fafafa;
+  --ink: #1a1a1d;
+  --muted-ink: #686a70;
+  --quiet: #92959b;
+  --hairline: #dfe1e5;
+  --hairline-strong: #c9ccd1;
+  --orange: #f48120;
+  --orange-soft: #fff2e6;
+  --blue: #0f61d8;
+  --blue-soft: #eaf2ff;
+  --green: #16864b;
+  --green-soft: #e7f6ed;
+  --purple: #7259c9;
+  --red: #c73737;
+  --shadow: 0 1px 1px rgb(16 24 40 / 0.02), 0 10px 30px rgb(16 24 40 / 0.035);
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-subtle);
+  --secondary-foreground: var(--ink);
+  --muted: #eef0f2;
+  --muted-foreground: var(--muted-ink);
+  --accent: var(--blue-soft);
+  --accent-foreground: var(--blue);
+  --destructive: var(--red);
+  --destructive-foreground: #ffffff;
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--blue);
+  --chart-1: var(--green);
+  --chart-2: var(--orange);
+  --chart-3: var(--blue);
+  --chart-4: var(--purple);
+  --chart-5: var(--quiet);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--blue-soft);
+  --sidebar-accent-foreground: var(--blue);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--blue);
+  --color-kumo-canvas: var(--canvas);
+  --color-kumo-base: var(--surface);
+  --color-kumo-elevated: var(--surface-subtle);
+  --color-kumo-control: #f1f2f4;
+  --color-kumo-tint: #f7f8f9;
+  --color-kumo-hairline: var(--hairline);
+  --color-kumo-line: var(--hairline-strong);
+  --color-kumo-brand: var(--blue);
+  --color-kumo-success: var(--green);
+  --color-kumo-danger: var(--red);
+  --text-color-kumo-default: var(--ink);
+  --text-color-kumo-strong: var(--ink);
+  --text-color-kumo-subtle: var(--muted-ink);
+  --text-color-kumo-success: var(--green);
+  --text-color-kumo-danger: var(--red);
 }
 
 @layer base {
@@ -92,24 +127,32 @@
   }
 
   html {
+    min-width: 320px;
+    min-height: 100%;
+    background: var(--canvas);
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-background text-foreground;
-    background-image:
-      radial-gradient(circle at top left, rgba(148, 163, 184, 0.16), transparent 26%),
-      radial-gradient(circle at top right, rgba(226, 232, 240, 0.85), transparent 30%),
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.98) 0%,
-        rgba(248, 250, 252, 0.96) 54%,
-        rgba(255, 255, 255, 1) 100%
-      );
+    min-width: 320px;
+    min-height: 100dvh;
+    margin: 0;
+    overflow: hidden;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family:
+      var(--font-geist-sans),
+      ui-sans-serif,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif;
+    font-size: 14px;
     font-feature-settings:
       'ss01' 1,
       'cv05' 1,
       'tnum' 1;
+    -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
@@ -118,12 +161,83 @@
     color: inherit;
   }
 
+  .vercelab-brand-mark {
+    position: relative;
+    width: 22px;
+    height: 18px;
+    flex: 0 0 auto;
+  }
+
+  .vercelab-brand-mark::before,
+  .vercelab-brand-mark::after {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--ink);
+    border-radius: 2px;
+    content: '';
+  }
+
+  .vercelab-brand-mark::before {
+    top: 0;
+    left: 0;
+  }
+
+  .vercelab-brand-mark::after {
+    right: 0;
+    bottom: 0;
+    border-color: var(--orange);
+    background: var(--orange);
+  }
+
   pre,
   code,
   kbd,
   samp {
     font-family:
-      var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+      var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      'Liberation Mono', 'Courier New', monospace;
+  }
+}
+
+@media (max-width: 760px) {
+  .vercelab-split-layout {
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .vercelab-list-rail {
+    width: 100% !important;
+    min-height: 260px;
+    max-height: 42dvh;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .vercelab-detail-pane {
+    width: 100%;
+    min-height: min(560px, 68dvh);
+    flex: none;
+    overflow: visible;
+  }
+
+  .vercelab-resize-handle {
+    display: none;
+  }
+
+  .vercelab-context-rail {
+    width: 100% !important;
+    min-height: 42px;
+    max-height: 58dvh;
+    border-top: 1px solid var(--hairline);
+    border-left: 0;
+  }
+
+  .vercelab-context-rail:has(> button[aria-label='Show logs sidebar']) {
+    height: 42px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 6px 12px;
   }
 }

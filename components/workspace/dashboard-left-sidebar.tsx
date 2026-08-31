@@ -233,7 +233,7 @@ export function DashboardLeftSidebar({
   return (
     <>
       <aside
-        className="flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-300"
+        className="vercelab-list-rail flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-300"
         style={{ width: `${listWidth}px` }}
       >
         <div className="flex flex-col gap-2 border-b border-border/70 px-3 py-2">

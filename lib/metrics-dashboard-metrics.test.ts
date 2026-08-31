@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSystemMetricPanels } from '@/lib/metrics-dashboard-metrics';
+import {
+  buildSystemMetricPanels,
+  bytesPerSecondToMegabitsPerSecond,
+  formatMegabitsPerSecond,
+} from '@/lib/metrics-dashboard-metrics';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
 
 describe('buildSystemMetricPanels', () => {
+  it('formats network throughput in decimal megabits per second', () => {
+    expect(bytesPerSecondToMegabitsPerSecond(1_250_000)).toBe(10);
+    expect(formatMegabitsPerSecond(bytesPerSecondToMegabitsPerSecond(276_000))).toBe('2.21 Mb/s');
+  });
+
   it('formats graph labels in the selected time zone without changing timestamps', () => {
     const history = [
       {

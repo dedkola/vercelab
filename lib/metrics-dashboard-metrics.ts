@@ -70,7 +70,7 @@ export const METRICS_DASHBOARD_RANGE_OPTIONS = DASHBOARD_RANGE_OPTIONS.filter(
   (option) => option.value !== '90d'
 );
 
-export type ChartMetricFormat = 'percent' | 'bytes' | 'bytesPerSecond';
+export type ChartMetricFormat = 'percent' | 'bytes' | 'bytesPerSecond' | 'megabitsPerSecond';
 
 export type ChartStat = {
   label: string;
@@ -710,6 +710,17 @@ export function formatBytesPerSecond(value: number) {
   return `${formatBytes(value, value >= 1024 ** 2 ? 1 : 0)}/s`;
 }
 
+export function bytesPerSecondToMegabitsPerSecond(value: number) {
+  return Number.isFinite(value) ? (Math.max(0, value) * 8) / 1_000_000 : 0;
+}
+
+export function formatMegabitsPerSecond(value: number) {
+  const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const maximumFractionDigits = safeValue >= 100 ? 0 : safeValue >= 10 ? 1 : 2;
+
+  return `${Number(safeValue.toFixed(maximumFractionDigits))} Mb/s`;
+}
+
 export function formatMetricValue(value: number, format: ChartMetricFormat) {
   switch (format) {
     case 'percent':
@@ -718,6 +729,8 @@ export function formatMetricValue(value: number, format: ChartMetricFormat) {
       return formatBytes(value);
     case 'bytesPerSecond':
       return formatBytesPerSecond(value);
+    case 'megabitsPerSecond':
+      return formatMegabitsPerSecond(value);
   }
 }
 
@@ -728,6 +741,8 @@ export function formatAxisValue(value: number, format: ChartMetricFormat) {
     case 'bytes':
     case 'bytesPerSecond':
       return formatBytes(value);
+    case 'megabitsPerSecond':
+      return formatMegabitsPerSecond(value);
   }
 }
 

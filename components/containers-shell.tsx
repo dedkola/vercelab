@@ -202,7 +202,7 @@ export function ContainersShell({
     MIN_LOGS_WIDTH_PX,
     MAX_LOGS_WIDTH_PX
   );
-  const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
+  const [isLogsCollapsed, setIsLogsCollapsed] = useState(true);
   const [selectedContainerId, setSelectedContainerId] = useState(
     initialSnapshot?.containers.all[0]?.id ?? ALL_CONTAINERS_ID
   );
@@ -970,7 +970,7 @@ export function ContainersShell({
       : previewLogs;
 
   return (
-    <div className="flex min-w-0 flex-1 overflow-hidden">
+    <div className="vercelab-split-layout flex min-w-0 flex-1 overflow-hidden">
       <DashboardLeftSidebar
         activeContainerId={selectedContainerId}
         addPanel={createPanel}

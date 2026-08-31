@@ -47,7 +47,20 @@ vi.mock('@/components/workspace/workspace-footer', () => ({
 }));
 
 vi.mock('@/components/workspace/workspace-header', () => ({
-  WorkspaceHeader: () => <div data-testid="workspace-header" />,
+  WorkspaceHeader: ({
+    onInfluxExplorerOpenAction,
+    onViewChangeAction,
+  }: {
+    onInfluxExplorerOpenAction: () => void;
+    onViewChangeAction: (view: string) => void;
+  }) => (
+    <div data-testid="workspace-header">
+      <button onClick={() => onViewChangeAction('git-app-page')}>Git App Page</button>
+      <button onClick={() => onViewChangeAction('containers')}>Containers</button>
+      <button onClick={() => onViewChangeAction('terminal')}>Terminal</button>
+      <button onClick={onInfluxExplorerOpenAction}>Influx Explorer</button>
+    </div>
+  ),
 }));
 
 describe('WorkspaceChromeShell', () => {

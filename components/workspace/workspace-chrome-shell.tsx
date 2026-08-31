@@ -1,6 +1,5 @@
 'use client';
 
-import { Activity, Box, GitBranch, Home, Terminal, type LucideIcon } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   createContext,
@@ -10,22 +9,15 @@ import {
   useMemo,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
 
 import type { WorkspaceView } from '@/components/workspace-shell';
 import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
 import { WorkspaceHeader } from '@/components/workspace/workspace-header';
-import {
-  HostMetricsSidebar,
-  type HostMetricsSidebarProps,
-} from '@/components/workspace/host-metrics-sidebar';
-import { WorkspaceRail } from '@/components/workspace/workspace-rail';
-import type { WorkspaceChromeData } from '@/lib/workspace-chrome-data';
 import type { GitHubRepository } from '@/lib/github';
 import type { MetricsHistoryPoint } from '@/lib/influx-metrics';
-import { buildSystemMetricPanels, formatClock } from '@/lib/metrics-dashboard-metrics';
+import { formatClock } from '@/lib/metrics-dashboard-metrics';
 import { normalizeDashboardRange, type DashboardRange } from '@/lib/metrics-range';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
 import {
@@ -36,11 +28,8 @@ import {
   writeStoredTimeDisplayMode,
 } from '@/lib/time-display';
 import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
+import type { WorkspaceChromeData } from '@/lib/workspace-chrome-data';
 
-const METRICS_PANEL_STORAGE_KEY = 'vercelab:workspace-metrics-panel-width';
-const DEFAULT_METRICS_WIDTH_PX = 232;
-const MIN_METRICS_WIDTH_PX = 200;
-const MAX_METRICS_WIDTH_PX = 360;
 type ResetHandler = () => void;
 
 type SharedRepositoryState = {
@@ -64,61 +53,16 @@ type WorkspaceChromeContextValue = {
 };
 
 const WORKSPACE_PAGES: Array<{
-  description: string;
-  iconComponent: LucideIcon;
   id: WorkspaceView;
   label: string;
 }> = [
-  {
-    description: 'Live containers and host load',
-    iconComponent: Home,
-    id: 'dashboard',
-    label: 'Dashboard',
-  },
-  {
-    description: 'Deployments and repo wiring',
-    iconComponent: GitBranch,
-    id: 'git-app-page',
-    label: 'Git App Page',
-  },
-  {
-    description: 'Container inventory, runtime logs, and lifecycle controls',
-    iconComponent: Box,
-    id: 'containers',
-    label: 'Containers',
-  },
-  {
-    description: 'Host terminal for this server',
-    iconComponent: Terminal,
-    id: 'terminal',
-    label: 'Terminal',
-  },
+  { id: 'dashboard', label: 'Overview' },
+  { id: 'git-app-page', label: 'Apps' },
+  { id: 'containers', label: 'Containers' },
+  { id: 'terminal', label: 'Terminal' },
 ];
 
 const WorkspaceChromeContext = createContext<WorkspaceChromeContextValue | null>(null);
-
-function getStorage() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const storage = window.localStorage;
-
-  if (
-    !storage ||
-    typeof storage.getItem !== 'function' ||
-    typeof storage.setItem !== 'function' ||
-    typeof storage.removeItem !== 'function'
-  ) {
-    return null;
-  }
-
-  return storage;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
 
 function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
   const pathname =
@@ -134,42 +78,7 @@ function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
     return pathname;
   }
 
-  const searchParams = new URLSearchParams({
-    range,
-  });
-
-  return `${pathname}?${searchParams.toString()}`;
-}
-
-function useStoredPanelWidth(
-  key: string,
-  initialWidth: number,
-  minWidth: number,
-  maxWidth: number
-) {
-  const [width, setWidth] = useState(initialWidth);
-
-  useEffect(() => {
-    const storedWidth = getStorage()?.getItem(key);
-
-    if (!storedWidth) {
-      return;
-    }
-
-    const parsedWidth = Number.parseInt(storedWidth, 10);
-
-    if (!Number.isFinite(parsedWidth)) {
-      return;
-    }
-
-    setWidth(clamp(parsedWidth, minWidth, maxWidth));
-  }, [key, maxWidth, minWidth]);
-
-  useEffect(() => {
-    getStorage()?.setItem(key, String(Math.round(width)));
-  }, [key, width]);
-
-  return [width, setWidth] as const;
+  return `${pathname}?${new URLSearchParams({ range }).toString()}`;
 }
 
 export function useOptionalWorkspaceChrome() {
@@ -187,13 +96,6 @@ export function WorkspaceChromeShell({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [metricsWidth, setMetricsWidth] = useStoredPanelWidth(
-    METRICS_PANEL_STORAGE_KEY,
-    DEFAULT_METRICS_WIDTH_PX,
-    MIN_METRICS_WIDTH_PX,
-    MAX_METRICS_WIDTH_PX
-  );
-  const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
   const [dashboardRange, setDashboardRangeState] = useState<DashboardRange>(() =>
     normalizeDashboardRange(searchParams.get('range'))
   );
@@ -209,14 +111,10 @@ export function WorkspaceChromeShell({
     repositories: [],
     tokenConfigured: false,
   });
-  const dragStateRef = useRef<{
-    startWidth: number;
-    startX: number;
-  } | null>(null);
   const repositoryRequestRef = useRef<Promise<void> | null>(null);
   const resetHandlersRef = useRef(new Set<ResetHandler>());
 
-  const activeView =
+  const activeView: WorkspaceView =
     pathname === '/git-app-page'
       ? 'git-app-page'
       : pathname === '/containers'
@@ -225,10 +123,7 @@ export function WorkspaceChromeShell({
           ? 'terminal'
           : 'dashboard';
   const graphTimeZone = getTimeZoneForDisplayMode(timeDisplayMode);
-  const systemPanels = useMemo(
-    () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory, graphTimeZone),
-    [graphTimeZone, sidebarHistory, sidebarSnapshot]
-  );
+
   const loadRepositories = useCallback(async () => {
     if (repositoryState.hasLoaded || repositoryState.isLoading) {
       return;
@@ -313,56 +208,26 @@ export function WorkspaceChromeShell({
     setDashboardRangeState(range);
   }, []);
 
-  const handleViewPrefetch = useCallback((_view: WorkspaceView) => {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
-    // Repos are loaded lazily on Add button press — no prefetch needed.
-  }, []);
-
   const handleViewChange = useCallback(
     (view: WorkspaceView) => {
-      if (view === activeView) {
-        return;
+      if (view !== activeView) {
+        router.push(getWorkspaceViewHref(view, dashboardRange));
       }
-
-      router.push(getWorkspaceViewHref(view, dashboardRange));
     },
     [activeView, dashboardRange, router]
   );
 
-  const workspaceRailItems = useMemo(() => {
-    const internalItems = WORKSPACE_PAGES.map((item) => ({
-      ...item,
-      view: item.id,
-    }));
-
-    if (!influxExplorerUrl) {
-      return internalItems;
-    }
-
-    return [
-      ...internalItems,
-      {
-        description: 'Open the InfluxDB Explorer UI',
-        external: true,
-        href: influxExplorerUrl,
-        iconComponent: Activity,
-        id: 'influx-explorer',
-        label: 'Influx Explorer',
-      },
-    ];
-  }, [influxExplorerUrl]);
-
   const handleResetLayout = useCallback(() => {
-    const storage = getStorage();
-
-    storage?.removeItem(METRICS_PANEL_STORAGE_KEY);
-    setMetricsWidth(DEFAULT_METRICS_WIDTH_PX);
-    setIsMetricsCollapsed(false);
-
     for (const handler of resetHandlersRef.current) {
       handler();
     }
-  }, [setMetricsWidth]);
+  }, []);
+
+  const handleInfluxExplorerOpen = useCallback(() => {
+    if (influxExplorerUrl) {
+      window.open(influxExplorerUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, [influxExplorerUrl]);
 
   useEffect(() => {
     setTimeDisplayMode(readStoredTimeDisplayMode());
@@ -370,15 +235,10 @@ export function WorkspaceChromeShell({
 
   useEffect(() => {
     const nextRange = normalizeDashboardRange(searchParams.get('range'));
-
     setDashboardRangeState((current) => (current === nextRange ? current : nextRange));
   }, [searchParams]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
     const nextUrl = new URL(window.location.href);
 
     if (dashboardRange === '15m') {
@@ -395,6 +255,14 @@ export function WorkspaceChromeShell({
     }
   }, [dashboardRange]);
 
+  useEffect(() => {
+    for (const page of WORKSPACE_PAGES) {
+      if (page.id !== activeView) {
+        void router.prefetch(getWorkspaceViewHref(page.id, dashboardRange));
+      }
+    }
+  }, [activeView, dashboardRange, router]);
+
   useLiveMetricsPolling({
     enabled: true,
     initialSnapshot,
@@ -404,92 +272,16 @@ export function WorkspaceChromeShell({
     onError: setMetricsError,
   });
 
-  useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
-      if (!dragStateRef.current) {
-        return;
-      }
-
-      setMetricsWidth(
-        clamp(
-          dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
-          MIN_METRICS_WIDTH_PX,
-          MAX_METRICS_WIDTH_PX
-        )
-      );
-    }
-
-    function handleMouseUp() {
-      if (!dragStateRef.current) {
-        return;
-      }
-
-      dragStateRef.current = null;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    }
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [setMetricsWidth]);
-
-  // Repositories are loaded lazily — only when the Add button is pressed.
-  // No auto-fetch on view activation.
-
-  useEffect(() => {
-    function syncResponsivePanels() {
-      if (window.innerWidth < 960) {
-        setIsMetricsCollapsed(true);
-      }
-    }
-
-    syncResponsivePanels();
-    window.addEventListener('resize', syncResponsivePanels);
-
-    return () => {
-      window.removeEventListener('resize', syncResponsivePanels);
-    };
-  }, []);
-
-  const handleResizeStart = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      dragStateRef.current = {
-        startWidth: metricsWidth,
-        startX: event.clientX,
-      };
-
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    },
-    [metricsWidth]
-  );
-
   const activeViewMeta =
     WORKSPACE_PAGES.find((page) => page.id === activeView) ?? WORKSPACE_PAGES[0]!;
-  const activeViewTitle =
-    activeView === 'dashboard'
-      ? 'Metrics dashboard'
-      : activeView === 'git-app-page'
-        ? 'Git App Page'
-        : activeView === 'terminal'
-          ? 'Host terminal'
-          : 'Containers';
-  const hostMetricsProps = {
-    isCollapsed: isMetricsCollapsed,
-    metricCards: [],
-    onCollapseAction: () => setIsMetricsCollapsed(true),
-    onExpandAction: () => setIsMetricsCollapsed(false),
-    onResizeStartAction: handleResizeStart,
-    systemPanels,
-    width: metricsWidth,
-  } satisfies HostMetricsSidebarProps;
+  const updatedAtLabel = sidebarSnapshot
+    ? formatClock(sidebarSnapshot.timestamp, graphTimeZone)
+    : 'Waiting for metrics';
+  const statusLabel = metricsError
+    ? 'Metrics degraded'
+    : sidebarSnapshot
+      ? 'Host online'
+      : 'Connecting';
 
   const contextValue = useMemo(
     () => ({
@@ -518,36 +310,23 @@ export function WorkspaceChromeShell({
 
   return (
     <WorkspaceChromeContext.Provider value={contextValue}>
-      <section aria-label="Workspace shell" className="flex h-screen flex-col bg-background">
+      <section aria-label="Workspace shell" className="flex h-screen flex-col bg-[var(--canvas)]">
         <WorkspaceHeader
+          activeView={activeView}
+          influxExplorerUrl={influxExplorerUrl}
           onGithubTokenSavedAction={handleGithubTokenSaved}
+          onInfluxExplorerOpenAction={handleInfluxExplorerOpen}
           onResetLayoutAction={handleResetLayout}
           onTimeDisplayModeChangeAction={handleTimeDisplayModeChange}
+          onViewChangeAction={handleViewChange}
+          statusLabel={statusLabel}
           timeDisplayMode={timeDisplayMode}
-          title={activeViewTitle}
+          updatedAtLabel={updatedAtLabel}
         />
 
-        <div className="flex min-w-0 flex-1 overflow-hidden">
-          <WorkspaceRail
-            activeView={activeView}
-            items={workspaceRailItems}
-            onViewChangeAction={handleViewChange}
-            onViewPrefetchAction={handleViewPrefetch}
-          />
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
 
-          <HostMetricsSidebar {...hostMetricsProps} />
-
-          {children}
-        </div>
-
-        <WorkspaceFooter
-          activeViewLabel={activeViewMeta.label}
-          updatedAtLabel={
-            sidebarSnapshot
-              ? formatClock(sidebarSnapshot.timestamp, graphTimeZone)
-              : 'Waiting for metrics'
-          }
-        />
+        <WorkspaceFooter activeViewLabel={activeViewMeta.label} updatedAtLabel={updatedAtLabel} />
       </section>
     </WorkspaceChromeContext.Provider>
   );

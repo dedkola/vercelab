@@ -143,6 +143,8 @@ describe('ContainersShell', () => {
   });
 
   it('renders the new containers control surface and loads real runtime logs', async () => {
+    const user = userEvent.setup();
+
     render(
       <ContainersShell
         initialAllContainerHistory={[]}
@@ -160,6 +162,7 @@ describe('ContainersShell', () => {
       );
     });
 
+    await user.click(screen.getByRole('button', { name: /show logs sidebar/i }));
     expect(await screen.findByText(/server booted/i)).toBeVisible();
     expect(screen.getByText(/protected system service/i)).toBeVisible();
     expect(

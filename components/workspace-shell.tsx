@@ -1800,7 +1800,7 @@ export function WorkspaceShell({
     MAX_LOGS_WIDTH_PX
   );
   const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
-  const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
+  const [isLogsCollapsed, setIsLogsCollapsed] = useState(true);
   const activeView = initialView;
   const [dashboardRange, setDashboardRange] = useState<DashboardRange>(initialDashboardRange);
   const [selectedContainerId, setSelectedContainerId] = useState(ALL_CONTAINERS_ID);
@@ -2462,7 +2462,7 @@ export function WorkspaceShell({
     storage?.removeItem(LOGS_PANEL_STORAGE_KEY);
     setListWidth(DEFAULT_LIST_WIDTH_PX);
     setLogsWidth(DEFAULT_LOGS_WIDTH_PX);
-    setIsLogsCollapsed(false);
+    setIsLogsCollapsed(true);
   }, [setListWidth, setLogsWidth]);
 
   useEffect(() => {
@@ -2849,7 +2849,6 @@ export function WorkspaceShell({
 
   const activeViewMeta =
     WORKSPACE_PAGES.find((page) => page.id === activeView) ?? WORKSPACE_PAGES[0]!;
-  const activeViewTitle = activeView === 'dashboard' ? 'Dashboard' : 'Git App Page';
   const updatedAtLabel = sidebarSnapshot
     ? formatClock(sidebarSnapshot.timestamp)
     : 'Waiting for metrics';
@@ -2920,7 +2919,7 @@ export function WorkspaceShell({
       ])
     : '';
   const workspacePanels = (
-    <>
+    <div className="vercelab-split-layout flex min-w-0 flex-1 overflow-hidden">
       {activeView === 'dashboard' ? (
         <DashboardLeftSidebar
           activeContainerId={activeContainerId}
@@ -2964,7 +2963,7 @@ export function WorkspaceShell({
         />
       )}
 
-      <main className="min-w-0 flex-1 overflow-auto bg-linear-to-b from-background/72 via-muted/14 to-background p-4 md:p-5">
+      <main className="vercelab-detail-pane min-w-0 flex-1 overflow-auto bg-[var(--canvas)] p-4 md:p-5">
         {activeView === 'dashboard' ? (
           isAllContainersSelected ? (
             <DashboardAllContainersContent
@@ -3054,7 +3053,7 @@ export function WorkspaceShell({
           width={logsWidth}
         />
       )}
-    </>
+    </div>
   );
 
   if (isEmbedded) {
@@ -3064,9 +3063,18 @@ export function WorkspaceShell({
   return (
     <section className="flex h-screen flex-col bg-background" aria-label="Workspace shell">
       <WorkspaceHeader
+        activeView={activeView}
+        influxExplorerUrl={influxExplorerUrl}
         onGithubTokenSavedAction={handleGithubTokenSaved}
+        onInfluxExplorerOpenAction={() => {
+          if (influxExplorerUrl) {
+            window.open(influxExplorerUrl, '_blank', 'noopener,noreferrer');
+          }
+        }}
         onResetLayoutAction={handleResetLayout}
-        title={activeViewTitle}
+        onViewChangeAction={handleViewChange}
+        statusLabel={sidebarSnapshot ? 'Host online' : 'Connecting'}
+        updatedAtLabel={updatedAtLabel}
       />
 
       <div className="flex min-w-0 flex-1 overflow-hidden">
