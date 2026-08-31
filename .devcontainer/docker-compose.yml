@@ -105,6 +105,34 @@ services:
     networks:
       - devnet
 
+  influxdb-explorer-init:
+    image: alpine:3.22
+    user: '0:0'
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        set -eu
+
+        migrate_directory() {
+          source_dir="$$1"
+          target_dir="$$2"
+
+          if [ -d "$$source_dir" ] &&
+            [ -n "$$(find "$$source_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ] &&
+            [ -z "$$(find "$$target_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+            cp -a "$$source_dir"/. "$$target_dir"/
+          fi
+        }
+
+        migrate_directory /legacy-config /app-root/config
+        chown -R 1500:1500 /db /app-root/config
+    network_mode: none
+    restart: 'no'
+    volumes:
+      - influxdb-explorer-data:/db
+      - influxdb-explorer-config:/app-root/config
+      - ./influxdb-explorer-config:/legacy-config:ro
+
   influxdb-explorer:
     image: influxdata/influxdb3-ui:1.7.0
     container_name: vercelab-influxdb-explorer
@@ -116,6 +144,8 @@ services:
     depends_on:
       influxdb:
         condition: service_healthy
+      influxdb-explorer-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ || exit 1']
       interval: 10s
@@ -126,7 +156,7 @@ services:
       - '127.0.0.1:8888:8080'
     volumes:
       - influxdb-explorer-data:/db
-      - ./influxdb-explorer-config:/app-root/config:ro
+      - influxdb-explorer-config:/app-root/config
     networks:
       - devnet
 
@@ -141,3 +171,4 @@ volumes:
   postgres-data:
   influxdb-data:
   influxdb-explorer-data:
+  influxdb-explorer-config:

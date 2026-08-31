@@ -61,6 +61,14 @@ EOF
   chmod 0600 "${EXPLORER_CONFIG_FILE}"
 }
 
+sync_explorer_config() {
+  if ! docker exec --user 1500:1500 -i "${EXPLORER_CONTAINER}" \
+    sh -c 'umask 077; cat > /app-root/config/config.json' <"${EXPLORER_CONFIG_FILE}"; then
+    log "Unable to synchronize the generated config into InfluxDB Explorer."
+    return 1
+  fi
+}
+
 run_influx_command() {
   local command="$1"
 
@@ -215,6 +223,7 @@ main() {
   write_env_local_value "VERCELAB_INFLUXDB_TOKEN" "${token}"
   write_env_local_value "VERCELAB_INFLUXDB_EXPLORER_URL" "${explorer_url}"
   write_explorer_config "${token}" "${db_name}"
+  sync_explorer_config
 
   docker restart "${EXPLORER_CONTAINER}" >/dev/null
   wait_for_container "${EXPLORER_CONTAINER}" "InfluxDB Explorer"

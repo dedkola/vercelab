@@ -1,0 +1,2474 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A lightweight, Homelab Index-inspired interface prototype for Vercelab."
+    />
+    <title>Vercelab lighter UI prototype</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --canvas: #f4f5f6;
+        --surface: #ffffff;
+        --surface-subtle: #fafafa;
+        --ink: #1a1a1d;
+        --muted: #686a70;
+        --quiet: #92959b;
+        --hairline: #dfe1e5;
+        --hairline-strong: #c9ccd1;
+        --orange: #f48120;
+        --orange-soft: #fff2e6;
+        --blue: #0f61d8;
+        --blue-soft: #eaf2ff;
+        --green: #16864b;
+        --green-soft: #e7f6ed;
+        --purple: #7259c9;
+        --red: #c73737;
+        --radius: 10px;
+        --shadow: 0 1px 1px rgb(16 24 40 / 0.02), 0 10px 30px rgb(16 24 40 / 0.035);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-width: 320px;
+        min-height: 100%;
+        background: var(--canvas);
+        overflow-x: hidden;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family:
+          Geist,
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        font-size: 13px;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+        text-rendering: optimizeLegibility;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+      }
+
+      button,
+      [role='button'] {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 2px;
+      }
+
+      .skip-link {
+        position: fixed;
+        z-index: 100;
+        top: 8px;
+        left: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: var(--ink);
+        color: white;
+        transform: translateY(-160%);
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .app-shell {
+        display: flex;
+        min-height: 100vh;
+        flex-direction: column;
+      }
+
+      .topbar {
+        position: sticky;
+        z-index: 20;
+        top: 0;
+        border-bottom: 1px solid var(--hairline);
+        background: rgb(255 255 255 / 0.94);
+        backdrop-filter: blur(12px);
+      }
+
+      .topbar-inner,
+      .dashboard-main,
+      .footer-inner {
+        width: min(100%, 1680px);
+        margin: 0 auto;
+      }
+
+      .topbar-inner {
+        display: grid;
+        min-height: 44px;
+        grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
+        align-items: center;
+        gap: 18px;
+        padding: 0 24px;
+      }
+
+      .brand,
+      .top-actions,
+      .status,
+      .nav-list,
+      .section-heading,
+      .range-control,
+      .metric-name,
+      .legend-list,
+      .legend-item,
+      .workload-name,
+      .table-actions,
+      .drawer-header,
+      .drawer-meta,
+      .search-result-main,
+      .settings-row,
+      .terminal-heading,
+      .footer-inner {
+        display: flex;
+        align-items: center;
+      }
+
+      .brand {
+        min-width: 0;
+        gap: 10px;
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+      }
+
+      .brand-mark {
+        position: relative;
+        width: 22px;
+        height: 18px;
+        flex: 0 0 auto;
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border: 1.5px solid var(--ink);
+        border-radius: 2px;
+        content: '';
+      }
+
+      .brand-mark::before {
+        top: 0;
+        left: 0;
+      }
+
+      .brand-mark::after {
+        right: 0;
+        bottom: 0;
+        border-color: var(--orange);
+        background: var(--orange);
+      }
+
+      .prototype-label {
+        overflow: hidden;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+      }
+
+      .nav-list {
+        justify-content: center;
+        gap: 2px;
+      }
+
+      .nav-button,
+      .icon-button,
+      .range-button,
+      .quiet-button,
+      .action-button,
+      .search-trigger {
+        border: 0;
+        cursor: pointer;
+        transition:
+          background-color 150ms ease,
+          color 150ms ease,
+          border-color 150ms ease,
+          transform 120ms ease;
+      }
+
+      .nav-button:active,
+      .icon-button:active,
+      .range-button:active,
+      .quiet-button:active,
+      .action-button:active,
+      .search-trigger:active {
+        transform: translateY(1px);
+      }
+
+      .nav-button {
+        padding: 6px 10px;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 550;
+      }
+
+      .nav-button:hover {
+        background: var(--surface-subtle);
+        color: var(--ink);
+      }
+
+      .nav-button[aria-current='page'] {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .top-actions {
+        min-width: 0;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .status {
+        gap: 6px;
+        color: var(--green);
+        font-size: 9px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .status-dot,
+      .state-dot {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .header-time {
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .icon-button {
+        display: inline-grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .icon-button:hover {
+        background: var(--surface-subtle);
+        color: var(--ink);
+      }
+
+      .icon-button svg,
+      .search-trigger svg,
+      .action-button svg,
+      .quiet-button svg {
+        width: 15px;
+        height: 15px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.6;
+      }
+
+      .dashboard-main {
+        flex: 1;
+        padding: 12px 24px 24px;
+      }
+
+      .dashboard-section + .dashboard-section {
+        margin-top: 10px;
+      }
+
+      .section-heading {
+        min-height: 31px;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 0 2px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .section-meta {
+        margin-left: 8px;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      .section-tools {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .search-trigger {
+        display: flex;
+        min-width: 176px;
+        height: 28px;
+        align-items: center;
+        gap: 7px;
+        padding: 0 9px;
+        border: 1px solid var(--hairline);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--quiet);
+        text-align: left;
+      }
+
+      .search-trigger:hover {
+        border-color: var(--hairline-strong);
+        color: var(--muted);
+      }
+
+      .search-trigger kbd {
+        margin-left: auto;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+      }
+
+      .range-control {
+        gap: 2px;
+        padding: 2px;
+        border: 1px solid var(--hairline);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .range-button {
+        min-width: 38px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+      }
+
+      .range-button:hover {
+        color: var(--ink);
+      }
+
+      .range-button[aria-pressed='true'] {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .overview-strip {
+        display: grid;
+        overflow: hidden;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .overview-cell {
+        position: relative;
+        min-width: 0;
+        padding: 13px 15px 12px;
+      }
+
+      .overview-cell + .overview-cell {
+        border-left: 1px solid var(--hairline);
+      }
+
+      .overview-cell::before {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 2px;
+        background: var(--cell-accent, var(--hairline-strong));
+        content: '';
+      }
+
+      .overview-cell.blue {
+        --cell-accent: var(--blue);
+      }
+
+      .overview-cell.orange {
+        --cell-accent: var(--orange);
+      }
+
+      .overview-cell.green {
+        --cell-accent: var(--green);
+      }
+
+      .overview-cell.purple {
+        --cell-accent: var(--purple);
+      }
+
+      .eyebrow {
+        display: block;
+        overflow: hidden;
+        color: var(--quiet);
+        font-size: 9px;
+        font-weight: 650;
+        letter-spacing: 0.06em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .overview-value {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        gap: 5px;
+        margin-top: 7px;
+        font-size: 21px;
+        font-weight: 620;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .overview-unit {
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0;
+      }
+
+      .overview-detail {
+        overflow: hidden;
+        margin-top: 7px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .panel,
+      .workload-panel {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .panel-header {
+        display: grid;
+        min-height: 60px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 18px;
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid var(--hairline);
+      }
+
+      .metric-name {
+        gap: 7px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .metric-value {
+        margin-top: 5px;
+        font-size: 24px;
+        font-weight: 620;
+        letter-spacing: -0.045em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .metric-value small {
+        margin-left: 4px;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+        font-weight: 500;
+        letter-spacing: 0;
+      }
+
+      .legend-list {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 7px 12px;
+        padding-top: 1px;
+      }
+
+      .legend-item {
+        gap: 5px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+        white-space: nowrap;
+      }
+
+      .legend-swatch {
+        width: 7px;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--swatch);
+      }
+
+      .chart-frame {
+        position: relative;
+        height: 226px;
+        padding: 14px 14px 8px;
+        background:
+          linear-gradient(var(--hairline) 1px, transparent 1px) 0 14px / 100% 49px,
+          var(--surface);
+      }
+
+      .chart-frame svg {
+        display: block;
+        width: 100%;
+        height: 176px;
+        overflow: visible;
+      }
+
+      .chart-path {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.6;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .chart-area {
+        opacity: 0.08;
+      }
+
+      .chart-axis {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 5px;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .crosshair {
+        position: absolute;
+        z-index: 2;
+        top: 14px;
+        bottom: 36px;
+        left: 50%;
+        width: 1px;
+        background: var(--hairline-strong);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .chart-tooltip {
+        position: absolute;
+        z-index: 3;
+        top: 20px;
+        left: 50%;
+        min-width: 126px;
+        padding: 7px 8px;
+        border: 1px solid var(--hairline);
+        border-radius: 7px;
+        background: rgb(255 255 255 / 0.96);
+        box-shadow: var(--shadow);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(8px);
+      }
+
+      .chart-tooltip-time {
+        display: block;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+      }
+
+      .chart-tooltip-values {
+        display: grid;
+        gap: 4px;
+        margin-top: 6px;
+      }
+
+      .tooltip-value {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+
+      .tooltip-value strong {
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-weight: 550;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .chart-frame:hover .crosshair,
+      .chart-frame:hover .chart-tooltip {
+        opacity: 1;
+      }
+
+      .panel-footer {
+        display: flex;
+        min-height: 28px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 5px 14px;
+        border-top: 1px solid var(--hairline);
+        background: var(--surface-subtle);
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+      }
+
+      .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--green);
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .workload-toolbar {
+        display: flex;
+        min-height: 44px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 7px 10px 7px 14px;
+        border-bottom: 1px solid var(--hairline);
+      }
+
+      .workload-count {
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+      }
+
+      .quiet-button,
+      .action-button {
+        display: inline-flex;
+        height: 28px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0 9px;
+        border: 1px solid var(--hairline);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 550;
+      }
+
+      .quiet-button:hover,
+      .action-button:hover {
+        border-color: var(--hairline-strong);
+        background: var(--surface-subtle);
+        color: var(--ink);
+      }
+
+      .action-button.primary {
+        border-color: color-mix(in srgb, var(--blue) 24%, var(--hairline));
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      th,
+      td {
+        height: 42px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--hairline);
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      th {
+        height: 31px;
+        background: var(--surface-subtle);
+        color: var(--quiet);
+        font-size: 8px;
+        font-weight: 650;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      tbody tr {
+        cursor: pointer;
+        transition: background-color 120ms ease;
+      }
+
+      tbody tr:hover,
+      tbody tr:focus-within {
+        background: #f8fafc;
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .workload-name {
+        min-width: 0;
+        gap: 9px;
+      }
+
+      .workload-glyph {
+        display: grid;
+        width: 26px;
+        height: 26px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--hairline);
+        border-radius: 6px;
+        background: var(--surface-subtle);
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .workload-copy {
+        min-width: 0;
+      }
+
+      .workload-title,
+      .workload-subtitle {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .workload-title {
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .workload-subtitle {
+        margin-top: 2px;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+      }
+
+      .state-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--green);
+        font-size: 9px;
+        font-weight: 620;
+        text-transform: uppercase;
+      }
+
+      .state-badge.warning {
+        color: #b86516;
+      }
+
+      .state-badge.quiet {
+        color: var(--quiet);
+      }
+
+      .mono {
+        overflow: hidden;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+        font-variant-numeric: tabular-nums;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .endpoint {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      .endpoint:hover {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      .table-actions {
+        justify-content: flex-end;
+        gap: 3px;
+      }
+
+      .table-action {
+        display: grid;
+        width: 26px;
+        height: 26px;
+        place-items: center;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--quiet);
+        cursor: pointer;
+      }
+
+      .table-action:hover {
+        background: var(--surface-subtle);
+        color: var(--ink);
+      }
+
+      .table-action svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.6;
+      }
+
+      .footer {
+        border-top: 1px solid var(--hairline);
+        background: rgb(255 255 255 / 0.82);
+      }
+
+      .footer-inner {
+        min-height: 28px;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 24px;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+      }
+
+      .backdrop {
+        position: fixed;
+        z-index: 40;
+        inset: 0;
+        border: 0;
+        background: rgb(26 26 29 / 0.18);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+      }
+
+      .backdrop[data-open='true'] {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .drawer {
+        position: fixed;
+        z-index: 50;
+        top: 0;
+        right: 0;
+        display: none;
+        width: min(420px, calc(100vw - 24px));
+        height: 100dvh;
+        flex-direction: column;
+        border-left: 1px solid var(--hairline);
+        background: var(--surface);
+        box-shadow: -20px 0 60px rgb(16 24 40 / 0.1);
+      }
+
+      .drawer[data-open='true'] {
+        display: flex;
+      }
+
+      .drawer-header {
+        min-height: 48px;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 12px 0 16px;
+        border-bottom: 1px solid var(--hairline);
+      }
+
+      .drawer-title {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .drawer-body {
+        min-height: 0;
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+      }
+
+      .drawer-summary {
+        padding: 13px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--surface-subtle);
+      }
+
+      .drawer-meta {
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 9px;
+      }
+
+      .drawer-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .drawer-stat {
+        padding: 10px;
+        border: 1px solid var(--hairline);
+        border-radius: 8px;
+      }
+
+      .drawer-stat strong {
+        display: block;
+        margin-top: 7px;
+        font-size: 16px;
+        font-weight: 620;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .drawer-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 12px;
+      }
+
+      .activity-list {
+        display: grid;
+        gap: 0;
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .activity-item {
+        display: grid;
+        grid-template-columns: 56px 8px minmax(0, 1fr);
+        gap: 8px;
+        padding: 12px 0;
+        border-top: 1px solid var(--hairline);
+      }
+
+      .activity-time {
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+      }
+
+      .activity-mark {
+        width: 6px;
+        height: 6px;
+        margin-top: 2px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      .activity-mark.orange {
+        background: var(--orange);
+      }
+
+      .activity-title {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .activity-copy {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+        line-height: 1.5;
+      }
+
+      .terminal-panel {
+        min-height: 330px;
+        overflow: hidden;
+        border-radius: var(--radius);
+        background: #111820;
+        color: #d9e1e8;
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+      }
+
+      .terminal-heading {
+        height: 34px;
+        justify-content: space-between;
+        padding: 0 11px;
+        border-bottom: 1px solid rgb(255 255 255 / 0.08);
+        color: #8ea0b1;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+      }
+
+      .terminal-lines {
+        padding: 14px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        line-height: 1.75;
+      }
+
+      .terminal-prompt {
+        color: #66d9a6;
+      }
+
+      .terminal-muted {
+        color: #8292a2;
+      }
+
+      .settings-popover {
+        position: fixed;
+        z-index: 60;
+        top: 50px;
+        right: max(18px, calc((100vw - 1680px) / 2 + 18px));
+        display: none;
+        width: min(310px, calc(100vw - 32px));
+        padding: 6px;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: 0 20px 50px rgb(16 24 40 / 0.13);
+      }
+
+      .settings-popover[data-open='true'] {
+        display: block;
+      }
+
+      .settings-row {
+        min-height: 48px;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 10px;
+      }
+
+      .settings-row + .settings-row {
+        border-top: 1px solid var(--hairline);
+      }
+
+      .settings-copy strong,
+      .settings-copy span {
+        display: block;
+      }
+
+      .settings-copy strong {
+        font-size: 10px;
+        font-weight: 620;
+      }
+
+      .settings-copy span {
+        margin-top: 3px;
+        color: var(--quiet);
+        font-size: 8px;
+      }
+
+      .segmented {
+        display: flex;
+        padding: 2px;
+        border: 1px solid var(--hairline);
+        border-radius: 7px;
+        background: var(--surface-subtle);
+      }
+
+      .segment-button {
+        min-width: 47px;
+        height: 24px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--quiet);
+        font-size: 9px;
+        cursor: pointer;
+      }
+
+      .segment-button[aria-pressed='true'] {
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: 0 1px 2px rgb(16 24 40 / 0.08);
+      }
+
+      .switch {
+        position: relative;
+        width: 32px;
+        height: 18px;
+        padding: 0;
+        border: 0;
+        border-radius: 9px;
+        background: var(--green);
+        cursor: pointer;
+      }
+
+      .switch::after {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: white;
+        box-shadow: 0 1px 3px rgb(16 24 40 / 0.22);
+        content: '';
+        transition: transform 150ms ease;
+      }
+
+      .switch[aria-checked='false'] {
+        background: var(--hairline-strong);
+      }
+
+      .switch[aria-checked='false']::after {
+        transform: translateX(-14px);
+      }
+
+      .dialog-backdrop {
+        position: fixed;
+        z-index: 70;
+        inset: 0;
+        display: none;
+        place-items: start center;
+        padding: 12vh 16px 16px;
+        background: rgb(26 26 29 / 0.2);
+      }
+
+      .dialog-backdrop[data-open='true'] {
+        display: grid;
+      }
+
+      .command-dialog {
+        width: min(560px, 100%);
+        overflow: hidden;
+        border: 1px solid var(--hairline);
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: 0 28px 80px rgb(16 24 40 / 0.18);
+      }
+
+      .search-input-wrap {
+        display: flex;
+        height: 48px;
+        align-items: center;
+        gap: 9px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--hairline);
+      }
+
+      .search-input-wrap svg {
+        width: 17px;
+        height: 17px;
+        fill: none;
+        stroke: var(--quiet);
+        stroke-linecap: round;
+        stroke-width: 1.6;
+      }
+
+      .search-input {
+        min-width: 0;
+        flex: 1;
+        border: 0;
+        outline: none;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .search-results {
+        max-height: 310px;
+        overflow-y: auto;
+        padding: 6px;
+      }
+
+      .search-result {
+        display: flex;
+        width: 100%;
+        min-height: 44px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 7px 9px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .search-result:hover,
+      .search-result:focus-visible {
+        background: var(--blue-soft);
+      }
+
+      .search-result-main {
+        min-width: 0;
+        gap: 9px;
+      }
+
+      .search-result-kind {
+        color: var(--quiet);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 8px;
+        text-transform: uppercase;
+      }
+
+      .search-empty {
+        padding: 28px 16px;
+        color: var(--quiet);
+        text-align: center;
+      }
+
+      .toast {
+        position: fixed;
+        z-index: 90;
+        right: 18px;
+        bottom: 18px;
+        padding: 9px 11px;
+        border: 1px solid var(--hairline);
+        border-radius: 8px;
+        background: var(--ink);
+        color: white;
+        box-shadow: 0 18px 50px rgb(16 24 40 / 0.2);
+        font-size: 9px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(8px);
+        transition:
+          opacity 160ms ease,
+          transform 160ms ease;
+      }
+
+      .toast[data-open='true'] {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        border: 0;
+        margin: -1px;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      body[data-density='comfortable'] .overview-cell {
+        padding-block: 18px;
+      }
+
+      body[data-density='comfortable'] th,
+      body[data-density='comfortable'] td {
+        height: 50px;
+      }
+
+      @media (max-width: 960px) {
+        .topbar-inner {
+          grid-template-columns: minmax(140px, 1fr) auto;
+        }
+
+        .nav-list {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          justify-content: flex-start;
+          overflow-x: auto;
+          padding-bottom: 6px;
+        }
+
+        .prototype-label,
+        .header-time {
+          display: none;
+        }
+
+        .overview-strip {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .overview-cell:nth-child(4) {
+          border-left: 0;
+        }
+
+        .overview-cell:nth-child(n + 4) {
+          border-top: 1px solid var(--hairline);
+        }
+      }
+
+      @media (max-width: 760px) {
+        .topbar-inner,
+        .dashboard-main,
+        .footer-inner {
+          padding-right: 12px;
+          padding-left: 12px;
+        }
+
+        .status span:last-child {
+          display: none;
+        }
+
+        .dashboard-main {
+          padding-top: 8px;
+        }
+
+        .section-heading {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 7px 2px;
+        }
+
+        .section-tools {
+          width: 100%;
+        }
+
+        .search-trigger {
+          min-width: 0;
+          flex: 1;
+        }
+
+        .overview-strip {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .overview-cell:nth-child(3),
+        .overview-cell:nth-child(5) {
+          border-left: 0;
+        }
+
+        .overview-cell:nth-child(n + 3) {
+          border-top: 1px solid var(--hairline);
+        }
+
+        .charts-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .chart-frame {
+          height: 206px;
+        }
+
+        .chart-frame svg {
+          height: 156px;
+        }
+
+        .panel-header {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .legend-list {
+          justify-content: flex-start;
+        }
+
+        .workload-toolbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .table-wrap {
+          overflow-x: hidden;
+        }
+
+        table {
+          min-width: 0;
+          table-layout: auto;
+        }
+
+        colgroup,
+        th:nth-child(n + 4),
+        td:nth-child(n + 4) {
+          display: none;
+        }
+
+        .footer-inner span:first-child {
+          display: none;
+        }
+
+        .footer-inner {
+          justify-content: flex-end;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body data-density="compact">
+    <a class="skip-link" href="#main-content">Skip to dashboard</a>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <div class="brand" aria-label="Vercelab">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span>VERCELAB / LOCAL</span>
+            <span class="prototype-label">Prototype · sample data</span>
+          </div>
+
+          <nav class="nav-list" aria-label="Workspace">
+            <button class="nav-button" data-filter="all" aria-current="page">Overview</button>
+            <button class="nav-button" data-filter="app">Apps</button>
+            <button class="nav-button" data-filter="container">Containers</button>
+            <button class="nav-button" data-action="terminal">Terminal</button>
+          </nav>
+
+          <div class="top-actions">
+            <span class="status"><span class="status-dot"></span><span>Host online</span></span>
+            <time class="header-time" id="header-clock">20:56:41 EEST</time>
+            <button class="icon-button" data-action="activity" aria-label="Open activity">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 18v-5m5 5V7m5 11v-8m5 8V4" />
+              </svg>
+            </button>
+            <button
+              class="icon-button"
+              data-action="settings"
+              aria-label="Open settings"
+              aria-expanded="false"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path
+                  d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.2h-4v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-main" id="main-content">
+        <section class="dashboard-section" aria-labelledby="overview-title">
+          <div class="section-heading">
+            <h1 class="section-title" id="overview-title">
+              System pulse <span class="section-meta" id="view-label">All workloads</span>
+            </h1>
+            <div class="section-tools">
+              <button class="search-trigger" data-action="search" aria-haspopup="dialog">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m16 16 4 4" />
+                </svg>
+                <span>Find workload</span>
+                <kbd>⌘K</kbd>
+              </button>
+              <div class="range-control" aria-label="Metrics range">
+                <button class="range-button" data-range="15m" aria-pressed="true">15m</button>
+                <button class="range-button" data-range="1h" aria-pressed="false">1h</button>
+                <button class="range-button" data-range="24h" aria-pressed="false">24h</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="overview-strip">
+            <article class="overview-cell green">
+              <span class="eyebrow">Host state</span>
+              <div class="overview-value">Online <span class="overview-unit">12d uptime</span></div>
+              <div class="overview-detail">sample 3s ago · host-proc</div>
+            </article>
+            <article class="overview-cell orange">
+              <span class="eyebrow">Load average</span>
+              <div class="overview-value">
+                <span id="load-value">0.14</span><span class="overview-unit">1 min</span>
+              </div>
+              <div class="overview-detail">0.14 / 0.14 / 0.05</div>
+            </article>
+            <article class="overview-cell blue">
+              <span class="eyebrow">Memory</span>
+              <div class="overview-value">
+                <span id="memory-value">1.9</span><span class="overview-unit">of 11.4 GB</span>
+              </div>
+              <div class="overview-detail">16.7% · 9.5 GB available</div>
+            </article>
+            <article class="overview-cell purple">
+              <span class="eyebrow">Workloads</span>
+              <div class="overview-value">
+                <span id="workload-value">10</span><span class="overview-unit">of 11 running</span>
+              </div>
+              <div class="overview-detail">3 apps · 8 containers</div>
+            </article>
+            <article class="overview-cell blue">
+              <span class="eyebrow">Traffic</span>
+              <div class="overview-value">
+                <span id="traffic-value">9.1</span><span class="overview-unit">KB/s inbound</span>
+              </div>
+              <div class="overview-detail">2.2 KB/s outbound · live</div>
+            </article>
+          </div>
+        </section>
+
+        <section class="dashboard-section" aria-labelledby="telemetry-title">
+          <div class="section-heading">
+            <h2 class="section-title" id="telemetry-title">
+              Host telemetry <span class="section-meta" id="range-label">Last 15 minutes</span>
+            </h2>
+          </div>
+
+          <div class="charts-grid">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="metric-name">
+                    <span class="state-dot" style="color: var(--green)"></span>Compute
+                  </div>
+                  <div class="metric-value">
+                    <span id="cpu-value">4.8</span><small>% CPU now</small>
+                  </div>
+                </div>
+                <div class="legend-list" aria-label="Compute chart legend">
+                  <span class="legend-item"
+                    ><span class="legend-swatch" style="--swatch: var(--green)"></span>CPU</span
+                  >
+                  <span class="legend-item"
+                    ><span class="legend-swatch" style="--swatch: var(--orange)"></span>Memory</span
+                  >
+                </div>
+              </div>
+              <div class="chart-frame" data-chart="compute">
+                <svg
+                  viewBox="0 0 720 176"
+                  preserveAspectRatio="none"
+                  aria-label="CPU and memory history"
+                >
+                  <path class="chart-area" data-area="memory" fill="var(--orange)"></path>
+                  <path class="chart-path" data-line="memory" stroke="var(--orange)"></path>
+                  <path class="chart-path" data-line="cpu" stroke="var(--green)"></path>
+                </svg>
+                <div class="crosshair"></div>
+                <div class="chart-tooltip" role="status">
+                  <span class="chart-tooltip-time">20:56:20</span>
+                  <div class="chart-tooltip-values"></div>
+                </div>
+                <div class="chart-axis"><span>20:41</span><span>20:48</span><span>20:56</span></div>
+              </div>
+              <div class="panel-footer">
+                <span class="live-indicator"><span class="status-dot"></span>Live</span>
+                <span>30 points · 2 missing samples</span>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="metric-name">
+                    <span class="state-dot" style="color: var(--blue)"></span>Throughput
+                  </div>
+                  <div class="metric-value">
+                    <span id="network-value">9.1</span><small>KB/s inbound</small>
+                  </div>
+                </div>
+                <div class="legend-list" aria-label="Throughput chart legend">
+                  <span class="legend-item"
+                    ><span class="legend-swatch" style="--swatch: var(--blue)"></span>In</span
+                  >
+                  <span class="legend-item"
+                    ><span class="legend-swatch" style="--swatch: var(--purple)"></span>Out</span
+                  >
+                  <span class="legend-item"
+                    ><span class="legend-swatch" style="--swatch: var(--quiet)"></span>Disk</span
+                  >
+                </div>
+              </div>
+              <div class="chart-frame" data-chart="throughput">
+                <svg
+                  viewBox="0 0 720 176"
+                  preserveAspectRatio="none"
+                  aria-label="Network and disk history"
+                >
+                  <path class="chart-area" data-area="networkIn" fill="var(--blue)"></path>
+                  <path class="chart-path" data-line="networkIn" stroke="var(--blue)"></path>
+                  <path class="chart-path" data-line="networkOut" stroke="var(--purple)"></path>
+                  <path
+                    class="chart-path"
+                    data-line="disk"
+                    stroke="var(--quiet)"
+                    stroke-dasharray="3 4"
+                  ></path>
+                </svg>
+                <div class="crosshair"></div>
+                <div class="chart-tooltip" role="status">
+                  <span class="chart-tooltip-time">20:56:20</span>
+                  <div class="chart-tooltip-values"></div>
+                </div>
+                <div class="chart-axis"><span>20:41</span><span>20:48</span><span>20:56</span></div>
+              </div>
+              <div class="panel-footer">
+                <span class="live-indicator"><span class="status-dot"></span>Live</span>
+                <span>30 points · 10s cadence</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="dashboard-section" aria-labelledby="workloads-title">
+          <div class="section-heading">
+            <h2 class="section-title" id="workloads-title">Workloads</h2>
+          </div>
+          <div class="workload-panel">
+            <div class="workload-toolbar">
+              <span class="workload-count" id="workload-count"
+                >6 visible · 5 running · sample data</span
+              >
+              <button class="quiet-button" data-action="activity">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 18v-5m5 5V7m5 11v-8m5 8V4" />
+                </svg>
+                Recent activity
+              </button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <caption class="visually-hidden">
+                  Vercelab workload status and resource usage
+                </caption>
+                <colgroup>
+                  <col style="width: 28%" />
+                  <col style="width: 11%" />
+                  <col style="width: 10%" />
+                  <col style="width: 12%" />
+                  <col style="width: 12%" />
+                  <col style="width: 20%" />
+                  <col style="width: 7%" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Workload</th>
+                    <th scope="col">State</th>
+                    <th scope="col">CPU</th>
+                    <th scope="col">Memory</th>
+                    <th scope="col">Network</th>
+                    <th scope="col">Endpoint</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="workload-rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-inner">
+          <span>Vercelab lighter UI · visual prototype only</span>
+          <span id="footer-updated">Last sample 20:56:38 · local time</span>
+        </div>
+      </footer>
+    </div>
+
+    <button class="backdrop" aria-label="Close detail panel" data-action="close-drawer"></button>
+    <aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawer-title" inert>
+      <div class="drawer-header">
+        <h2 class="drawer-title" id="drawer-title">Workload detail</h2>
+        <button class="icon-button" data-action="close-drawer" aria-label="Close detail panel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+    </aside>
+
+    <div class="settings-popover" id="settings-popover" data-open="false">
+      <div class="settings-row">
+        <div class="settings-copy">
+          <strong>Graph time</strong><span>Axes and event timestamps</span>
+        </div>
+        <div class="segmented" aria-label="Graph time">
+          <button class="segment-button" data-time="local" aria-pressed="true">Local</button>
+          <button class="segment-button" data-time="utc" aria-pressed="false">UTC</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-copy">
+          <strong>Density</strong><span>Table and summary spacing</span>
+        </div>
+        <div class="segmented" aria-label="Interface density">
+          <button class="segment-button" data-density="compact" aria-pressed="true">Compact</button>
+          <button class="segment-button" data-density="comfortable" aria-pressed="false">
+            Roomy
+          </button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-copy">
+          <strong>Live refresh</strong><span>Update values without relayout</span>
+        </div>
+        <button class="switch" role="switch" aria-checked="true" aria-label="Live refresh"></button>
+      </div>
+    </div>
+
+    <div class="dialog-backdrop" id="search-dialog" data-open="false" role="presentation">
+      <section class="command-dialog" role="dialog" aria-modal="true" aria-label="Find workload">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m16 16 4 4" />
+          </svg>
+          <input
+            class="search-input"
+            id="search-input"
+            type="search"
+            placeholder="Find app, container, endpoint…"
+            autocomplete="off"
+          />
+          <kbd class="header-time">Esc</kbd>
+        </div>
+        <div class="search-results" id="search-results"></div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      const workloads = [
+        {
+          id: 'tk-doc',
+          name: 'tk-doc',
+          subtitle: 'dedkola/tk-doc · main',
+          type: 'app',
+          glyph: 'app',
+          state: 'running',
+          cpu: '0.7%',
+          memory: '242 MB',
+          network: '1.8 KB/s',
+          endpoint: 'tk-doc.home.com',
+          detail: 'Compose deployment · port 3000',
+        },
+        {
+          id: 'vercelab-ui',
+          name: 'Vercelab UI',
+          subtitle: 'dedkola/vercelab · dev/ui',
+          type: 'app',
+          glyph: 'app',
+          state: 'running',
+          cpu: '0.4%',
+          memory: '318 MB',
+          network: '2.2 KB/s',
+          endpoint: 'vercelab.home.com',
+          detail: 'Next.js standalone · port 3000',
+        },
+        {
+          id: 'dockhand',
+          name: 'dockhand',
+          subtitle: 'unmanaged runtime',
+          type: 'container',
+          glyph: 'ctr',
+          state: 'running',
+          cpu: '0.0%',
+          memory: '83 MB',
+          network: '0 B/s',
+          endpoint: 'dockhand.home.com',
+          detail: 'Container · external runtime',
+        },
+        {
+          id: 'vercelab-postgres',
+          name: 'Vercelab PostgreSQL',
+          subtitle: 'vercelab · database',
+          type: 'container',
+          glyph: 'db',
+          state: 'running',
+          cpu: '0.2%',
+          memory: '176 MB',
+          network: '3.4 KB/s',
+          endpoint: 'internal:5432',
+          detail: 'PostgreSQL 18 · private network',
+        },
+        {
+          id: 'vercelab-influxdb',
+          name: 'Vercelab InfluxDB',
+          subtitle: 'vercelab · metrics',
+          type: 'container',
+          glyph: 'db',
+          state: 'running',
+          cpu: '0.3%',
+          memory: '291 MB',
+          network: '1.7 KB/s',
+          endpoint: 'influx.home.com',
+          detail: 'InfluxDB 3 · metrics storage',
+        },
+        {
+          id: 'nginx2-app-1',
+          name: 'nginx2-app-1',
+          subtitle: 'nginx2 · web',
+          type: 'container',
+          glyph: 'ctr',
+          state: 'stopped',
+          cpu: '—',
+          memory: '—',
+          network: '—',
+          endpoint: 'not routed',
+          detail: 'Container stopped · last exit 0',
+        },
+      ];
+
+      const chartState = {
+        cpu: [
+          4, 5, 4, 6, 5, 8, 19, 7, 5, 4, 3, 4, 6, 5, 4, 5, 7, 4, 4, 5, 4, 6, 5, 4, 5, 5, 4, 6, 5, 4,
+        ],
+        memory: [
+          16.2, 16.3, 16.4, 16.4, 16.5, 16.4, 16.5, 16.6, 16.5, 16.6, 16.6, 16.7, 16.6, 16.7, 16.7,
+          16.6, 16.7, 16.8, 16.7, 16.7, 16.8, 16.7, 16.7, 16.8, 16.7, 16.7, 16.8, 16.7, 16.7, 16.7,
+        ],
+        networkIn: [
+          3,
+          5,
+          8,
+          12,
+          18,
+          25,
+          21,
+          9,
+          14,
+          6,
+          4,
+          5,
+          4,
+          4,
+          3,
+          4,
+          null,
+          null,
+          4,
+          4,
+          5,
+          4,
+          5,
+          5,
+          7,
+          6,
+          5,
+          8,
+          6,
+          9,
+        ],
+        networkOut: [
+          2,
+          3,
+          4,
+          7,
+          11,
+          14,
+          13,
+          7,
+          9,
+          5,
+          3,
+          3,
+          3,
+          2,
+          2,
+          3,
+          null,
+          null,
+          3,
+          2,
+          3,
+          3,
+          2,
+          3,
+          4,
+          3,
+          3,
+          4,
+          3,
+          4,
+        ],
+        disk: [
+          1,
+          1,
+          2,
+          2,
+          3,
+          4,
+          3,
+          3,
+          4,
+          3,
+          2,
+          2,
+          2,
+          2,
+          1,
+          2,
+          null,
+          null,
+          1,
+          1,
+          2,
+          1,
+          2,
+          2,
+          2,
+          2,
+          1,
+          2,
+          2,
+          2,
+        ],
+      };
+
+      const chartConfig = {
+        compute: [
+          { key: 'cpu', label: 'CPU', suffix: '%', max: 30 },
+          { key: 'memory', label: 'Memory', suffix: '%', max: 30 },
+        ],
+        throughput: [
+          { key: 'networkIn', label: 'Inbound', suffix: ' KB/s', max: 30 },
+          { key: 'networkOut', label: 'Outbound', suffix: ' KB/s', max: 30 },
+          { key: 'disk', label: 'Disk', suffix: ' KB/s', max: 30 },
+        ],
+      };
+
+      let activeFilter = 'all';
+      let liveRefresh = true;
+      let refreshTimer;
+      let toastTimer;
+      let lastFocusedElement;
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function stateClass(state) {
+        return state === 'running' ? '' : state === 'stopped' ? 'quiet' : 'warning';
+      }
+
+      function icon(name) {
+        if (name === 'logs') {
+          return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4" /></svg>';
+        }
+
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="m10 8 4 4-4 4" /></svg>';
+      }
+
+      function visibleWorkloads() {
+        return workloads.filter((item) => activeFilter === 'all' || item.type === activeFilter);
+      }
+
+      function renderRows() {
+        const rows = visibleWorkloads();
+        const running = rows.filter((item) => item.state === 'running').length;
+        document.querySelector('#workload-count').textContent =
+          `${rows.length} visible · ${running} running · sample data`;
+        document.querySelector('#workload-rows').innerHTML = rows
+          .map(
+            (item) => `
+              <tr data-workload="${escapeHtml(item.id)}" tabindex="0" aria-label="Open ${escapeHtml(item.name)} details">
+                <td>
+                  <div class="workload-name">
+                    <span class="workload-glyph">${escapeHtml(item.glyph)}</span>
+                    <span class="workload-copy">
+                      <span class="workload-title">${escapeHtml(item.name)}</span>
+                      <span class="workload-subtitle">${escapeHtml(item.subtitle)}</span>
+                    </span>
+                  </div>
+                </td>
+                <td><span class="state-badge ${stateClass(item.state)}"><span class="state-dot"></span>${escapeHtml(item.state)}</span></td>
+                <td class="mono">${escapeHtml(item.cpu)}</td>
+                <td class="mono">${escapeHtml(item.memory)}</td>
+                <td class="mono">${escapeHtml(item.network)}</td>
+                <td class="mono"><a class="endpoint" href="#" data-endpoint="${escapeHtml(item.endpoint)}">${escapeHtml(item.endpoint)}</a></td>
+                <td>
+                  <div class="table-actions">
+                    <button class="table-action" data-row-action="logs" data-id="${escapeHtml(item.id)}" aria-label="Open ${escapeHtml(item.name)} logs">${icon('logs')}</button>
+                    <button class="table-action" data-row-action="detail" data-id="${escapeHtml(item.id)}" aria-label="Open ${escapeHtml(item.name)} detail">${icon('detail')}</button>
+                  </div>
+                </td>
+              </tr>
+            `
+          )
+          .join('');
+      }
+
+      function pathSegments(values, max) {
+        const width = 720;
+        const height = 168;
+        const step = width / Math.max(values.length - 1, 1);
+        const segments = [];
+        let current = [];
+
+        values.forEach((value, index) => {
+          if (value === null) {
+            if (current.length) segments.push(current);
+            current = [];
+            return;
+          }
+
+          const x = index * step;
+          const y = height - (Math.max(0, Math.min(value, max)) / max) * (height - 10) - 5;
+          current.push([x, y]);
+        });
+
+        if (current.length) segments.push(current);
+        return segments;
+      }
+
+      function linePath(values, max) {
+        return pathSegments(values, max)
+          .map((segment) =>
+            segment
+              .map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`)
+              .join(' ')
+          )
+          .join(' ');
+      }
+
+      function areaPath(values, max) {
+        return pathSegments(values, max)
+          .map((segment) => {
+            const line = segment
+              .map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`)
+              .join(' ');
+            const first = segment[0];
+            const last = segment.at(-1);
+            return `${line} L${last[0].toFixed(2)},176 L${first[0].toFixed(2)},176 Z`;
+          })
+          .join(' ');
+      }
+
+      function renderCharts() {
+        Object.values(chartConfig)
+          .flat()
+          .forEach(({ key, max }) => {
+            document.querySelectorAll(`[data-line="${key}"]`).forEach((path) => {
+              path.setAttribute('d', linePath(chartState[key], max));
+            });
+            document.querySelectorAll(`[data-area="${key}"]`).forEach((path) => {
+              path.setAttribute('d', areaPath(chartState[key], max));
+            });
+          });
+      }
+
+      function updateChartTooltip(frame, event) {
+        const name = frame.dataset.chart;
+        const config = chartConfig[name];
+        const rect = frame.getBoundingClientRect();
+        const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+        const ratio = x / rect.width;
+        const index = Math.round(ratio * (chartState[config[0].key].length - 1));
+        const crosshair = frame.querySelector('.crosshair');
+        const tooltip = frame.querySelector('.chart-tooltip');
+        const clampedX = Math.max(14, Math.min(rect.width - 14, x));
+        crosshair.style.left = `${clampedX}px`;
+        tooltip.style.left = `${clampedX}px`;
+        tooltip.style.transform =
+          clampedX > rect.width * 0.7 ? 'translateX(calc(-100% - 8px))' : 'translateX(8px)';
+
+        const ageSeconds = (chartState[config[0].key].length - 1 - index) * 30;
+        const date = new Date(Date.now() - ageSeconds * 1000);
+        tooltip.querySelector('.chart-tooltip-time').textContent = formatTime(date);
+        tooltip.querySelector('.chart-tooltip-values').innerHTML = config
+          .map(({ key, label, suffix }) => {
+            const value = chartState[key][index];
+            return `<span class="tooltip-value"><span>${label}</span><strong>${value === null ? 'No sample' : `${value.toFixed(1)}${suffix}`}</strong></span>`;
+          })
+          .join('');
+      }
+
+      function formatTime(date) {
+        const isUtc =
+          document.querySelector('[data-time="utc"]').getAttribute('aria-pressed') === 'true';
+        return new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZone: isUtc ? 'UTC' : undefined,
+        }).format(date);
+      }
+
+      function updateClock() {
+        const now = new Date();
+        const isUtc =
+          document.querySelector('[data-time="utc"]').getAttribute('aria-pressed') === 'true';
+        document.querySelector('#header-clock').textContent =
+          `${formatTime(now)} ${isUtc ? 'UTC' : 'EEST'}`;
+        document.querySelector('#footer-updated').textContent =
+          `Last sample ${formatTime(now)} · ${isUtc ? 'UTC' : 'local time'}`;
+      }
+
+      function appendSample() {
+        if (!liveRefresh) return;
+        const next = {
+          cpu: Math.max(2, Math.min(24, chartState.cpu.at(-1) + (Math.random() - 0.46) * 5)),
+          memory: Math.max(
+            15.8,
+            Math.min(18.5, chartState.memory.at(-1) + (Math.random() - 0.5) * 0.16)
+          ),
+          networkIn: Math.max(
+            2,
+            Math.min(28, chartState.networkIn.at(-1) + (Math.random() - 0.46) * 5)
+          ),
+          networkOut: Math.max(
+            1,
+            Math.min(18, chartState.networkOut.at(-1) + (Math.random() - 0.48) * 3)
+          ),
+          disk: Math.max(0.5, Math.min(12, chartState.disk.at(-1) + (Math.random() - 0.5) * 2)),
+        };
+
+        Object.entries(next).forEach(([key, value]) => {
+          chartState[key].push(Number(value.toFixed(1)));
+          chartState[key].shift();
+        });
+
+        document.querySelector('#cpu-value').textContent = next.cpu.toFixed(1);
+        document.querySelector('#memory-value').textContent = (next.memory / 8.8).toFixed(1);
+        document.querySelector('#network-value').textContent = next.networkIn.toFixed(1);
+        document.querySelector('#traffic-value').textContent = next.networkIn.toFixed(1);
+        document.querySelector('#load-value').textContent = (next.cpu / 34).toFixed(2);
+        renderCharts();
+        updateClock();
+      }
+
+      function showToast(message) {
+        const toast = document.querySelector('#toast');
+        toast.textContent = message;
+        toast.dataset.open = 'true';
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => {
+          toast.dataset.open = 'false';
+        }, 1800);
+      }
+
+      function openDrawer(title, content, sourceElement) {
+        lastFocusedElement = sourceElement || document.activeElement;
+        document.querySelector('#drawer-title').textContent = title;
+        document.querySelector('#drawer-body').innerHTML = content;
+        const drawer = document.querySelector('#drawer');
+        drawer.inert = false;
+        drawer.dataset.open = 'true';
+        drawer.setAttribute('aria-hidden', 'false');
+        document.querySelector('.backdrop').dataset.open = 'true';
+        document.querySelector('[data-action="close-drawer"]').focus();
+      }
+
+      function closeDrawer() {
+        const drawer = document.querySelector('#drawer');
+        drawer.dataset.open = 'false';
+        drawer.setAttribute('aria-hidden', 'true');
+        drawer.inert = true;
+        document.querySelector('.backdrop').dataset.open = 'false';
+        lastFocusedElement?.focus?.();
+      }
+
+      function workloadDrawer(item, showLogs = false) {
+        const content = `
+          <div class="drawer-summary">
+            <span class="eyebrow">${escapeHtml(item.type)}</span>
+            <h3 style="margin:7px 0 0;font-size:18px;letter-spacing:-0.03em">${escapeHtml(item.name)}</h3>
+            <div class="drawer-meta"><span>${escapeHtml(item.detail)}</span><span class="state-badge ${stateClass(item.state)}"><span class="state-dot"></span>${escapeHtml(item.state)}</span></div>
+          </div>
+          <div class="drawer-grid">
+            <div class="drawer-stat"><span class="eyebrow">CPU</span><strong>${escapeHtml(item.cpu)}</strong></div>
+            <div class="drawer-stat"><span class="eyebrow">Memory</span><strong>${escapeHtml(item.memory)}</strong></div>
+            <div class="drawer-stat"><span class="eyebrow">Network</span><strong>${escapeHtml(item.network)}</strong></div>
+            <div class="drawer-stat"><span class="eyebrow">Last sample</span><strong style="font-size:12px">3s ago</strong></div>
+          </div>
+          <div class="drawer-actions">
+            <button class="action-button primary" data-prototype-action="open">Open endpoint</button>
+            <button class="action-button" data-prototype-action="restart">Restart</button>
+            <button class="action-button" data-prototype-action="inspect">Inspect</button>
+          </div>
+          <ul class="activity-list" aria-label="${escapeHtml(item.name)} logs">
+            <li class="activity-item"><time class="activity-time">20:56:20</time><span class="activity-mark"></span><span><strong class="activity-title">${showLogs ? 'Live log tail' : 'Healthy sample'}</strong><span class="activity-copy">${escapeHtml(item.name)} · CPU ${escapeHtml(item.cpu)} · memory ${escapeHtml(item.memory)}</span></span></li>
+            <li class="activity-item"><time class="activity-time">20:55:40</time><span class="activity-mark"></span><span><strong class="activity-title">Health check passed</strong><span class="activity-copy">HTTP 200 · 31 ms · ${escapeHtml(item.endpoint)}</span></span></li>
+            <li class="activity-item"><time class="activity-time">20:52:10</time><span class="activity-mark orange"></span><span><strong class="activity-title">Container image checked</strong><span class="activity-copy">No restart required · runtime unchanged</span></span></li>
+          </ul>
+        `;
+        openDrawer(item.name, content);
+      }
+
+      function activityDrawer(sourceElement) {
+        openDrawer(
+          'Recent activity',
+          `
+            <div class="drawer-summary"><span class="eyebrow">Activity</span><h3 style="margin:7px 0 0;font-size:18px;letter-spacing:-0.03em">4 events</h3><div class="drawer-meta"><span>Latest host and deployment events</span><span>live</span></div></div>
+            <ul class="activity-list">
+              <li class="activity-item"><time class="activity-time">20:56:20</time><span class="activity-mark"></span><span><strong class="activity-title">Host sample stored</strong><span class="activity-copy">CPU 4.8% · memory 1.9 GB · InfluxDB</span></span></li>
+              <li class="activity-item"><time class="activity-time">20:54:02</time><span class="activity-mark"></span><span><strong class="activity-title">tk-doc deployment healthy</strong><span class="activity-copy">compose · main · port 3000</span></span></li>
+              <li class="activity-item"><time class="activity-time">20:51:46</time><span class="activity-mark orange"></span><span><strong class="activity-title">nginx2-app-1 stopped</strong><span class="activity-copy">Exit 0 · no restart policy</span></span></li>
+              <li class="activity-item"><time class="activity-time">20:47:13</time><span class="activity-mark"></span><span><strong class="activity-title">Repository sync complete</strong><span class="activity-copy">dedkola/vercelab · dev/ui</span></span></li>
+            </ul>
+          `,
+          sourceElement
+        );
+      }
+
+      function terminalDrawer(sourceElement) {
+        openDrawer(
+          'Host terminal',
+          `
+            <div class="terminal-panel">
+              <div class="terminal-heading"><span>vercelab@local</span><span>connected</span></div>
+              <div class="terminal-lines">
+                <div><span class="terminal-prompt">vercelab@local</span>:<span class="terminal-muted">~/vercelab</span>$ docker ps --format "table {{.Names}}\\t{{.Status}}"</div>
+                <div>Vercelab UI&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Up 12 days (healthy)</div>
+                <div>Vercelab PostgreSQL&nbsp;Up 12 days (healthy)</div>
+                <div>Vercelab InfluxDB&nbsp;&nbsp;&nbsp;Up 12 days (healthy)</div>
+                <div style="margin-top:10px"><span class="terminal-prompt">vercelab@local</span>:<span class="terminal-muted">~/vercelab</span>$ <span style="display:inline-block;width:6px;height:12px;background:#d9e1e8;vertical-align:-2px"></span></div>
+              </div>
+            </div>
+            <p class="mono" style="margin:12px 2px 0;white-space:normal;line-height:1.6">The production view keeps terminal resources out of the dashboard layout until requested.</p>
+          `,
+          sourceElement
+        );
+      }
+
+      function setFilter(filter) {
+        activeFilter = filter;
+        document.querySelectorAll('.nav-button[data-filter]').forEach((button) => {
+          if (button.dataset.filter === filter) button.setAttribute('aria-current', 'page');
+          else button.removeAttribute('aria-current');
+        });
+        document.querySelector('#view-label').textContent =
+          filter === 'all' ? 'All workloads' : filter === 'app' ? 'Applications' : 'Containers';
+        renderRows();
+      }
+
+      function openSearch() {
+        lastFocusedElement = document.activeElement;
+        const dialog = document.querySelector('#search-dialog');
+        dialog.dataset.open = 'true';
+        renderSearchResults('');
+        window.setTimeout(() => document.querySelector('#search-input').focus(), 0);
+      }
+
+      function closeSearch() {
+        document.querySelector('#search-dialog').dataset.open = 'false';
+        document.querySelector('#search-input').value = '';
+        lastFocusedElement?.focus?.();
+      }
+
+      function renderSearchResults(query) {
+        const normalized = query.trim().toLowerCase();
+        const results = workloads.filter((item) =>
+          [item.name, item.subtitle, item.endpoint, item.type].some((value) =>
+            value.toLowerCase().includes(normalized)
+          )
+        );
+        document.querySelector('#search-results').innerHTML = results.length
+          ? results
+              .map(
+                (item) => `
+                  <button class="search-result" data-search-result="${escapeHtml(item.id)}">
+                    <span class="search-result-main"><span class="workload-glyph">${escapeHtml(item.glyph)}</span><span class="workload-copy"><span class="workload-title">${escapeHtml(item.name)}</span><span class="workload-subtitle">${escapeHtml(item.endpoint)}</span></span></span>
+                    <span class="search-result-kind">${escapeHtml(item.type)}</span>
+                  </button>
+                `
+              )
+              .join('')
+          : '<div class="search-empty">No matching workload</div>';
+      }
+
+      function setRange(range) {
+        const labels = { '15m': 'Last 15 minutes', '1h': 'Last hour', '24h': 'Last 24 hours' };
+        document.querySelectorAll('.range-button').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.range === range));
+        });
+        document.querySelector('#range-label').textContent = labels[range];
+        document.querySelectorAll('.chart-axis').forEach((axis) => {
+          const now = Date.now();
+          const span = range === '15m' ? 15 * 60e3 : range === '1h' ? 60 * 60e3 : 24 * 60 * 60e3;
+          const times = [new Date(now - span), new Date(now - span / 2), new Date(now)];
+          axis.innerHTML = times
+            .map((date) => `<span>${formatTime(date).slice(0, 5)}</span>`)
+            .join('');
+        });
+      }
+
+      document.addEventListener('click', (event) => {
+        const nav = event.target.closest('.nav-button[data-filter]');
+        if (nav) setFilter(nav.dataset.filter);
+
+        const action = event.target.closest('[data-action]');
+        if (action) {
+          if (action.dataset.action === 'activity') activityDrawer(action);
+          if (action.dataset.action === 'terminal') terminalDrawer(action);
+          if (action.dataset.action === 'search') openSearch();
+          if (action.dataset.action === 'close-drawer') closeDrawer();
+          if (action.dataset.action === 'settings') {
+            const popover = document.querySelector('#settings-popover');
+            const next = popover.dataset.open !== 'true';
+            popover.dataset.open = String(next);
+            action.setAttribute('aria-expanded', String(next));
+          }
+        }
+
+        const range = event.target.closest('.range-button');
+        if (range) setRange(range.dataset.range);
+
+        const rowAction = event.target.closest('[data-row-action]');
+        if (rowAction) {
+          event.stopPropagation();
+          const item = workloads.find((candidate) => candidate.id === rowAction.dataset.id);
+          if (item) workloadDrawer(item, rowAction.dataset.rowAction === 'logs');
+        }
+
+        const row = event.target.closest('tr[data-workload]');
+        if (row && !event.target.closest('a, button')) {
+          const item = workloads.find((candidate) => candidate.id === row.dataset.workload);
+          if (item) workloadDrawer(item);
+        }
+
+        const endpoint = event.target.closest('[data-endpoint]');
+        if (endpoint) {
+          event.preventDefault();
+          showToast(`Prototype link · ${endpoint.dataset.endpoint}`);
+        }
+
+        const timeButton = event.target.closest('[data-time]');
+        if (timeButton) {
+          document
+            .querySelectorAll('[data-time]')
+            .forEach((button) =>
+              button.setAttribute('aria-pressed', String(button === timeButton))
+            );
+          updateClock();
+          const activeRange = document.querySelector('.range-button[aria-pressed="true"]').dataset
+            .range;
+          setRange(activeRange);
+        }
+
+        const densityButton = event.target.closest('[data-density]');
+        if (densityButton) {
+          document.body.dataset.density = densityButton.dataset.density;
+          document
+            .querySelectorAll('[data-density]')
+            .forEach((button) =>
+              button.setAttribute('aria-pressed', String(button === densityButton))
+            );
+        }
+
+        const switchButton = event.target.closest('.switch');
+        if (switchButton) {
+          liveRefresh = switchButton.getAttribute('aria-checked') !== 'true';
+          switchButton.setAttribute('aria-checked', String(liveRefresh));
+          showToast(liveRefresh ? 'Live refresh resumed' : 'Live refresh paused');
+        }
+
+        const prototypeAction = event.target.closest('[data-prototype-action]');
+        if (prototypeAction) showToast(`${prototypeAction.textContent.trim()} · prototype only`);
+
+        const result = event.target.closest('[data-search-result]');
+        if (result) {
+          const item = workloads.find((candidate) => candidate.id === result.dataset.searchResult);
+          closeSearch();
+          if (item) workloadDrawer(item);
+        }
+
+        if (event.target === document.querySelector('#search-dialog')) closeSearch();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          openSearch();
+        }
+
+        if (event.key === 'Escape') {
+          closeDrawer();
+          closeSearch();
+          document.querySelector('#settings-popover').dataset.open = 'false';
+          document.querySelector('[data-action="settings"]').setAttribute('aria-expanded', 'false');
+        }
+
+        const row = event.target.closest?.('tr[data-workload]');
+        if (row && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          const item = workloads.find((candidate) => candidate.id === row.dataset.workload);
+          if (item) workloadDrawer(item);
+        }
+      });
+
+      document
+        .querySelector('#search-input')
+        .addEventListener('input', (event) => renderSearchResults(event.target.value));
+      document.querySelectorAll('.chart-frame').forEach((frame) => {
+        frame.addEventListener('pointermove', (event) => updateChartTooltip(frame, event));
+      });
+
+      renderRows();
+      renderCharts();
+      setRange('15m');
+      updateClock();
+      window.setInterval(updateClock, 1000);
+      refreshTimer = window.setInterval(appendSample, 3000);
+    </script>
+  </body>
+</html>

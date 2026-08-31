@@ -279,18 +279,17 @@ Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `
 | `/home/<username>/vercelab/traefik/certs/wildcard.crt`    | Self-signed wildcard certificate.                           |
 | `/home/<username>/vercelab/traefik/certs/wildcard.key`    | Wildcard certificate private key.                           |
 
-Local macOS development stores runtime state under `./data/`:
+Local macOS development stores application and database state under `./data/`:
 
 - `./data/postgres`
 - `./data/influxdb`
-- `./data/influxdb-explorer`
 - `./data/traefik/dynamic`
 - `./data/traefik/certs`
 - `./data/apps`
 - `./data/logs`
 - `./data/locks`
 
-The devcontainer uses named Docker volumes instead of host-bind mounts.
+InfluxDB Explorer 1.7 runs as a non-root user. Local development and the devcontainer therefore keep its SQLite database and active config in Docker named volumes; `./data/influxdb-explorer` and `./data/influxdb-explorer-config` are retained as migration/config sources. The first start copies existing Explorer state before assigning the volume to the container user.
 
 ## Configuration
 
