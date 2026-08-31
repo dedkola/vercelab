@@ -21,12 +21,10 @@ import {
 } from '@/lib/metrics-chart-time';
 import {
   buildContainerMetricPanels,
-  bytesPerSecondToMegabitsPerSecond,
   formatAxisValue,
+  formatBytes,
   formatDashboardRangeLabel,
   formatDetailedTimestamp,
-  formatLoadAverage,
-  formatMegabitsPerSecond,
   formatMetricValue,
   type ChartMetricFormat,
   type ContainerMetricPanel,
@@ -213,6 +211,33 @@ function getStatusBadge(status: PreviewContainerStatus, deploymentStatus: string
   return { label: 'Idle', variant: 'neutral' as const };
 }
 
+function getWorkloadGlyph(container: ContainerListEntry) {
+  if (container.deploymentStatus) {
+    return 'app';
+  }
+
+  const identity = `${container.display.image} ${container.sidebarName}`.toLowerCase();
+
+  if (identity.includes('postgres') || identity.includes('influx')) {
+    return 'db';
+  }
+
+  return 'ctr';
+}
+
+function getWorkloadStateClassName(variant: ReturnType<typeof getStatusBadge>['variant']) {
+  switch (variant) {
+    case 'success':
+      return 'text-[var(--green)]';
+    case 'warning':
+      return 'text-[var(--orange)]';
+    case 'error':
+      return 'text-[var(--red)]';
+    default:
+      return 'text-[var(--quiet)]';
+  }
+}
+
 function EmptyChartState({ compact, message }: { compact?: boolean; message: string }) {
   return (
     <div
@@ -254,7 +279,7 @@ const TelemetryChart = memo(function TelemetryChart({
   const hasValues = series.some((item) => item.values.some((value) => value !== null));
 
   return (
-    <article className="min-w-0 overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] shadow-[var(--shadow)]">
+    <article className="min-w-0 overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] shadow-[var(--shadow)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-[var(--hairline-strong)] hover:shadow-[0_16px_38px_rgb(16_24_40_/_0.07)]">
       <header className="flex min-h-14 items-start justify-between gap-4 border-b border-[var(--hairline)] px-4 py-3">
         <div className="min-w-0">
           <h3 className="truncate whitespace-nowrap text-[11px] font-semibold tracking-[0.02em]">
@@ -329,14 +354,35 @@ const ContainerMetricCard = memo(function ContainerMetricCard({
   );
 });
 
-function PulseMetric({ caption, label, value }: { caption: string; label: string; value: string }) {
+function PulseMetric({
+  accentClassName,
+  caption,
+  className,
+  label,
+  value,
+}: {
+  accentClassName: string;
+  caption: string;
+  className?: string;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="min-w-0 border-r border-[var(--hairline)] px-4 py-3 last:border-r-0 max-[720px]:border-b max-[720px]:odd:border-r max-[720px]:even:border-r-0 max-[720px]:nth-last-[-n+2]:border-b-0">
+    <div
+      className={cn(
+        'group relative min-w-0 bg-[var(--surface)] px-4 py-3 transition-colors duration-200 hover:bg-[var(--surface-subtle)]',
+        className
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn('absolute inset-x-0 top-0 h-px opacity-85', accentClassName)}
+      />
       <div className="font-mono text-[8px] font-medium tracking-[0.08em] text-[var(--quiet)] uppercase">
         {label}
       </div>
       <div className="mt-1 flex items-baseline justify-between gap-2">
-        <strong className="truncate font-mono text-[15px] font-semibold tabular-nums">
+        <strong className="truncate font-mono text-[15px] font-semibold tracking-[-0.025em] tabular-nums">
           {value}
         </strong>
         <span className="truncate text-[9px] text-[var(--quiet)]">{caption}</span>
@@ -428,9 +474,12 @@ export function MetricsDashboardMainContent({
       : 'Waiting for InfluxDB container buckets.');
   const trackedContainers = snapshot?.containers.all.length ?? containers.length;
   const runningContainers = runningContainersCount ?? snapshot?.containers.running ?? 0;
-  const loadAverageLabel = snapshot
-    ? formatLoadAverage(snapshot.system.loadAverage)
-    : 'Waiting for samples';
+  const hostStateLabel = snapshot ? 'Online' : 'Waiting';
+  const hostStateCaption = snapshot ? 'live sample' : 'for metrics';
+  const memoryUsedLabel = snapshot ? formatBytes(snapshot.system.memoryUsedBytes) : '--';
+  const memoryTotalLabel = snapshot
+    ? `of ${formatBytes(snapshot.system.memoryTotalBytes)}`
+    : 'Host memory';
   const computeSeries = useMemo<ChartSeries[]>(() => {
     const series: ChartSeries[] = [];
 
@@ -459,18 +508,22 @@ export function MetricsDashboardMainContent({
 
     if (networkPanel) {
       series.push({
-        color: '#16864b',
+        color: '#0f61d8',
         format: networkPanel.format,
-        label: 'Network',
-        values: networkPanel.primaryValues.map(
-          (value, index) => value + (networkPanel.secondaryValues?.[index] ?? 0)
-        ),
+        label: 'In',
+        values: networkPanel.primaryValues,
+      });
+      series.push({
+        color: '#7259c9',
+        format: networkPanel.format,
+        label: 'Out',
+        values: networkPanel.secondaryValues ?? [],
       });
     }
 
     if (diskPanel) {
       series.push({
-        color: '#7259c9',
+        color: '#92959b',
         format: diskPanel.format,
         label: 'Disk',
         values: diskPanel.primaryValues.map(
@@ -481,33 +534,6 @@ export function MetricsDashboardMainContent({
 
     return series;
   }, [diskPanel, networkPanel]);
-  const networkTrafficSeries = useMemo<ChartSeries[]>(() => {
-    if (!networkPanel) {
-      return [];
-    }
-
-    return [
-      {
-        color: '#0284c7',
-        format: 'megabitsPerSecond',
-        label: 'In',
-        values: networkPanel.primaryValues.map(bytesPerSecondToMegabitsPerSecond),
-      },
-      {
-        color: '#7259c9',
-        format: 'megabitsPerSecond',
-        label: 'Out',
-        values: (networkPanel.secondaryValues ?? []).map(bytesPerSecondToMegabitsPerSecond),
-      },
-    ];
-  }, [networkPanel]);
-  const currentNetworkTraffic = snapshot
-    ? formatMegabitsPerSecond(
-        bytesPerSecondToMegabitsPerSecond(
-          snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond
-        )
-      )
-    : '--';
 
   function openContainerDetail(container: ContainerListEntry) {
     setDetailContainerId(container.display.id);
@@ -518,58 +544,81 @@ export function MetricsDashboardMainContent({
 
   return (
     <div className="mx-auto w-full max-w-[1680px] space-y-4 px-6 py-5 max-[760px]:px-3 max-[760px]:py-3">
-      <section
-        className="flex flex-wrap items-end justify-between gap-4"
-        aria-labelledby="overview-title"
-      >
-        <div>
-          <div className="font-mono text-[8px] font-semibold tracking-[0.12em] text-[var(--orange)] uppercase">
-            Live infrastructure
-          </div>
-          <h1 className="mt-1 text-xl font-semibold tracking-[-0.025em]" id="overview-title">
-            Overview
+      <section className="space-y-2" aria-labelledby="system-pulse-title">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">
+          <h1
+            className="text-[11px] font-semibold tracking-[0.08em] uppercase"
+            id="system-pulse-title"
+          >
+            System pulse{' '}
+            <span className="ml-1 font-mono text-[8px] font-normal tracking-[0.04em] text-[var(--quiet)] normal-case">
+              All workloads
+            </span>
           </h1>
-          <p className="mt-1 font-mono text-[9px] text-[var(--quiet)]">
-            {rangeLabel} window · load {loadAverageLabel}
-          </p>
+
+          <div className="flex min-w-0 items-center gap-2 max-[760px]:w-full max-[760px]:items-stretch">
+            <div className="relative w-56 max-w-[38vw] max-[760px]:max-w-none max-[760px]:flex-1">
+              <MagnifyingGlass
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--quiet)]"
+              />
+              <Input
+                aria-label="Search workloads"
+                className="h-8 rounded-[7px] pl-8 text-[10px]"
+                onChange={(event) => onSearchQueryChangeAction(event.target.value)}
+                placeholder="Find workload"
+                value={searchQuery}
+              />
+            </div>
+            <div className="max-w-[min(60vw,36rem)] overflow-x-auto">
+              <Tabs
+                onValueChange={(value) => onRangeChangeAction(value as DashboardRange)}
+                size="sm"
+                tabs={[...rangeOptions]}
+                value={range}
+                variant="segmented"
+              />
+            </div>
+          </div>
         </div>
-        <Tabs
-          onValueChange={(value) => onRangeChangeAction(value as DashboardRange)}
-          size="sm"
-          tabs={[...rangeOptions]}
-          value={range}
-          variant="segmented"
-        />
+
+        <div className="grid grid-cols-5 gap-px overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--hairline)] shadow-[var(--shadow)] max-[960px]:grid-cols-3 max-[720px]:grid-cols-2">
+          <PulseMetric
+            accentClassName="bg-[var(--green)]"
+            caption={hostStateCaption}
+            label="Host state"
+            value={hostStateLabel}
+          />
+          <PulseMetric
+            accentClassName="bg-[var(--orange)]"
+            caption="1 min"
+            label="Load average"
+            value={snapshot ? snapshot.system.loadAverage[0].toFixed(2) : '--'}
+          />
+          <PulseMetric
+            accentClassName="bg-[var(--blue)]"
+            caption={memoryTotalLabel}
+            label="Memory"
+            value={memoryUsedLabel}
+          />
+          <PulseMetric
+            accentClassName="bg-[var(--purple)]"
+            caption={`${trackedContainers} tracked`}
+            label="Workloads"
+            value={`${runningContainers} up`}
+          />
+          <PulseMetric
+            accentClassName="bg-[var(--blue)]"
+            caption={networkPanel?.currentCaption ?? 'Network total'}
+            className="max-[960px]:col-span-2 max-[720px]:col-span-2"
+            label="Traffic"
+            value={networkPanel?.currentValue ?? '--'}
+          />
+        </div>
       </section>
 
       <section
-        aria-label="System pulse"
-        className="grid grid-cols-4 overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] shadow-[var(--shadow)] max-[720px]:grid-cols-2"
-      >
-        <PulseMetric
-          caption={cpuPanel?.currentCaption ?? 'Host CPU'}
-          label="CPU"
-          value={cpuPanel?.currentValue ?? '--'}
-        />
-        <PulseMetric
-          caption={memoryPanel?.currentCaption ?? 'Host memory'}
-          label="Memory"
-          value={memoryPanel?.currentValue ?? '--'}
-        />
-        <PulseMetric
-          caption={networkPanel?.currentCaption ?? 'Network total'}
-          label="Network"
-          value={networkPanel?.currentValue ?? '--'}
-        />
-        <PulseMetric
-          caption={`${trackedContainers} tracked`}
-          label="Containers"
-          value={`${runningContainers} up`}
-        />
-      </section>
-
-      <section
-        className="grid grid-cols-3 gap-4 max-[760px]:grid-cols-1"
+        className="grid grid-cols-2 gap-4 max-[760px]:grid-cols-1"
         aria-label="Host telemetry"
       >
         <TelemetryChart
@@ -583,24 +632,14 @@ export function MetricsDashboardMainContent({
           title="Compute load"
         />
         <TelemetryChart
-          caption={`Network and disk throughput · ${rangeLabel}`}
+          caption={`Network in/out and disk · ${rangeLabel}`}
           currentValue={networkPanel?.currentValue ?? '--'}
           emptyMessage={chartEmptyMessage}
           range={range}
           series={throughputSeries}
           timeZone={timeZone}
           timestamps={networkPanel?.timestamps ?? diskPanel?.timestamps ?? []}
-          title="I/O throughput"
-        />
-        <TelemetryChart
-          caption={`In and out · ${rangeLabel}`}
-          currentValue={currentNetworkTraffic}
-          emptyMessage={chartEmptyMessage}
-          range={range}
-          series={networkTrafficSeries}
-          timeZone={timeZone}
-          timestamps={networkPanel?.timestamps ?? []}
-          title="Network traffic"
+          title="Throughput"
         />
       </section>
 
@@ -608,9 +647,9 @@ export function MetricsDashboardMainContent({
         aria-labelledby="workloads-title"
         className="overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] shadow-[var(--shadow)]"
       >
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-4 py-3">
+        <header className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-4 py-2.5">
           <div>
-            <h2 className="text-[11px] font-semibold" id="workloads-title">
+            <h2 className="text-[11px] font-semibold tracking-[0.02em]" id="workloads-title">
               Workloads
             </h2>
             <p className="mt-1 font-mono text-[9px] text-[var(--quiet)]">
@@ -623,38 +662,39 @@ export function MetricsDashboardMainContent({
                 Fleet view
               </Button>
             ) : null}
-            <div className="relative w-52 max-w-[42vw]">
-              <MagnifyingGlass
-                aria-hidden="true"
-                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--quiet)]"
-              />
-              <Input
-                aria-label="Search workloads"
-                className="pl-8 text-xs"
-                onChange={(event) => onSearchQueryChangeAction(event.target.value)}
-                placeholder="Search workloads"
-                value={searchQuery}
-              />
-            </div>
           </div>
         </header>
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[720px]" layout="fixed">
+          <Table className="min-w-[860px]" layout="fixed">
             <colgroup>
-              <col className="w-[34%]" />
-              <col className="w-[14%]" />
+              <col className="w-[30%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+              <col className="w-[12%]" />
               <col className="w-[13%]" />
-              <col className="w-[15%]" />
-              <col className="w-[24%]" />
+              <col className="w-[23%]" />
             </colgroup>
-            <Table.Header variant="compact">
+            <Table.Header className="bg-[var(--surface-subtle)]" variant="compact">
               <Table.Row>
-                <Table.Head>Service</Table.Head>
-                <Table.Head>Status</Table.Head>
-                <Table.Head>CPU</Table.Head>
-                <Table.Head>Memory</Table.Head>
-                <Table.Head>Runtime</Table.Head>
+                <Table.Head className="h-8 px-3 font-mono text-[8px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  Workload
+                </Table.Head>
+                <Table.Head className="h-8 px-3 font-mono text-[8px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  State
+                </Table.Head>
+                <Table.Head className="h-8 px-3 font-mono text-[8px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  CPU
+                </Table.Head>
+                <Table.Head className="h-8 px-3 font-mono text-[8px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  Memory
+                </Table.Head>
+                <Table.Head className="h-8 px-3 font-mono text-[8px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  Network
+                </Table.Head>
+                <Table.Head className="h-8 px-3 font-mono text-[8px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  Endpoint
+                </Table.Head>
               </Table.Row>
             </Table.Header>
             <Table.Body>
@@ -663,7 +703,7 @@ export function MetricsDashboardMainContent({
 
                 return (
                   <Table.Row
-                    className="cursor-pointer outline-none transition-colors hover:bg-[var(--surface-subtle)] focus-visible:ring-2 focus-visible:ring-[var(--blue)] focus-visible:ring-inset"
+                    className="group h-[46px] cursor-pointer outline-none transition-colors duration-150 hover:bg-[#f8fafc] focus-visible:ring-2 focus-visible:ring-[var(--blue)] focus-visible:ring-inset"
                     key={container.display.id}
                     onClick={() => openContainerDetail(container)}
                     onKeyDown={(event) => {
@@ -675,33 +715,56 @@ export function MetricsDashboardMainContent({
                     tabIndex={0}
                     variant={activeContainerId === container.display.id ? 'selected' : 'default'}
                   >
-                    <Table.Cell>
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-semibold">
-                          {container.sidebarName}
-                        </div>
-                        <div className="mt-0.5 truncate font-mono text-[9px] text-[var(--quiet)]">
-                          {container.sidebarSecondaryLabel || container.display.image}
-                        </div>
+                    <Table.Cell className="px-3 py-1.5">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="grid size-7 shrink-0 place-items-center rounded-[6px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-[8px] font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
+                          {getWorkloadGlyph(container)}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[11px] font-semibold tracking-[-0.01em]">
+                            {container.sidebarName}
+                          </span>
+                          <span className="mt-0.5 block truncate font-mono text-[8px] text-[var(--quiet)]">
+                            {container.sidebarSecondaryLabel || container.display.image}
+                          </span>
+                        </span>
                       </div>
                     </Table.Cell>
-                    <Table.Cell>
-                      <Badge appearance="dot" variant={status.variant}>
+                    <Table.Cell className="px-3 py-1.5">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 text-[9px] font-semibold tracking-[0.04em] uppercase',
+                          getWorkloadStateClassName(status.variant)
+                        )}
+                      >
+                        <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
                         {status.label}
-                      </Badge>
+                      </span>
                     </Table.Cell>
-                    <Table.Cell className="font-mono text-[10px] tabular-nums">
+                    <Table.Cell className="px-3 py-1.5 font-mono text-[9px] text-[var(--muted-ink)] tabular-nums">
                       {container.display.cpu || '--'}
                     </Table.Cell>
-                    <Table.Cell className="font-mono text-[10px] tabular-nums">
+                    <Table.Cell className="px-3 py-1.5 font-mono text-[9px] text-[var(--muted-ink)] tabular-nums">
                       {container.display.memory || '--'}
                     </Table.Cell>
-                    <Table.Cell>
-                      <div className="truncate text-[10px] text-[var(--muted)]">
-                        {container.display.uptime ||
-                          container.runtime?.status ||
-                          'No runtime sample'}
-                      </div>
+                    <Table.Cell className="px-3 py-1.5 font-mono text-[9px] text-[var(--muted-ink)] tabular-nums">
+                      {container.display.requestRate || '--'}
+                    </Table.Cell>
+                    <Table.Cell className="px-3 py-1.5">
+                      {container.runtime?.routedHost ? (
+                        <a
+                          className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[9px] text-[var(--blue)] underline-offset-2 hover:underline"
+                          href={`https://${container.runtime.routedHost}`}
+                          onClick={(event) => event.stopPropagation()}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          <span className="truncate">{container.runtime.routedHost}</span>
+                          <ArrowSquareOut className="size-3 shrink-0" aria-hidden="true" />
+                        </a>
+                      ) : (
+                        <span className="font-mono text-[9px] text-[var(--quiet)]">not routed</span>
+                      )}
                     </Table.Cell>
                   </Table.Row>
                 );
