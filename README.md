@@ -6,8 +6,8 @@
 
 [![GitHub package version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=for-the-badge&color=111827)](https://github.com/dedkola/vercelab)
 [![Node.js](https://img.shields.io/badge/Node.js-24_LTS-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16.2.6-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.2.6-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.3.1-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2.8-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-11.1.1-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
 
@@ -25,13 +25,14 @@
 
 </div>
 
-Vercelab turns an Ubuntu box or local Docker host into a deployment cockpit for Dockerized GitHub projects. It clones repositories, detects a root `Dockerfile` or compose file, stores control-plane state in PostgreSQL, writes metrics to InfluxDB 3 Core, encrypts GitHub tokens at rest, and publishes apps behind Traefik with wildcard self-signed HTTPS.
+Vercelab turns an Ubuntu box or local Docker host into a compact deployment workspace for Dockerized GitHub projects. From one responsive interface, you can deploy repositories, inspect workloads, follow logs, operate containers, and monitor live host telemetry. Vercelab stores control-plane state in PostgreSQL, writes metrics to InfluxDB 3 Core, encrypts GitHub tokens at rest, and publishes apps behind Traefik with wildcard self-signed HTTPS.
 
 ## Contents
 
 - [Highlights](#highlights)
 - [Architecture](#architecture)
 - [Stack](#stack)
+- [Interactive Preview](#interactive-preview)
 - [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
 - [Local Development](#local-development)
@@ -49,7 +50,7 @@ Vercelab turns an Ubuntu box or local Docker host into a deployment cockpit for 
 | -------------------- | ------------------------------------------------------------------------------------------------------------ |
 | GitHub deployments   | Browse repositories, select branches, clone source, and deploy root `Dockerfile` or compose projects.        |
 | Self-hosted routing  | Places managed apps on a shared Docker network and exposes them through Traefik host rules.                  |
-| Metrics dashboard    | Tracks live host load, per-container CPU/memory/disk/network panels, and InfluxDB time-series history.       |
+| Metrics dashboard    | Combines System Pulse, two focused telemetry charts, and a searchable workload inventory with live history.  |
 | Containers workspace | Full container inventory with inspect, logs, recreation, and catalog-based creation for all host containers. |
 | Safe runtime state   | Stores repositories, deployments, and operations in PostgreSQL with encrypted GitHub tokens.                 |
 | Ubuntu bootstrap     | Installs host prerequisites, pins Docker Engine 28.x, creates TLS assets, and starts the stack.              |
@@ -80,11 +81,17 @@ flowchart LR
 | Metrics         | InfluxDB 3 Core plus InfluxDB Explorer                          |
 | Runtime         | Docker, Docker Compose, Traefik                                 |
 | Validation      | Zod, TypeScript, ESLint, Vitest                                 |
-| Package manager | pnpm 10                                                         |
+| Package manager | pnpm 11                                                         |
+
+## Interactive Preview
+
+The repository root includes a dependency-free promotional page that uses the interactive Vercelab workspace as its background. The install card stays centered over the interface and opens an accessible dialog with the Ubuntu bootstrap command.
+
+Open `index.html` directly in a browser, or serve the repository root with any static file server. The embedded workspace preview lives in `prototype/index.html` and mirrors the production dashboard's compact visual system.
 
 ## Screenshots
 
-Captured from a live Vercelab deployment.
+Reference captures from a live Vercelab deployment. For the latest dashboard layout and interactions, use the root `index.html` preview.
 
 ### Metrics dashboard
 
@@ -196,12 +203,13 @@ Compose repositories with multiple services must provide `serviceName`. Single-s
 
 The metrics dashboard is the home route (`/`). It displays:
 
-- per-container CPU, memory, network, and disk metric panels powered by live Docker telemetry
-- host trend charts (CPU, memory, network I/O, disk read/write throughput) backed by InfluxDB 3 Core history
-- a deployments list with the latest operation status for each managed app
-- a time-range selector (1 h, 6 h, 24 h, 7 d) that applies to all InfluxDB history queries
+- a compact **System Pulse** header for host state, one-minute load, memory, running workloads, and current traffic
+- two focused host telemetry surfaces: **Compute load** for CPU and memory, and **Throughput** for network ingress, network egress, and disk activity
+- a searchable workload table with runtime type, status, CPU, memory, network, and endpoint information
+- contextual workload details with per-container CPU, memory, network, and disk history
+- a shared time-range selector (1 h, 6 h, 24 h, 7 d) that applies to InfluxDB history queries
 
-The shell polls `/api/metrics` on a live interval and merges server-side snapshots with historical series.
+The shell polls `/api/metrics` on a live interval and merges server-side snapshots with historical series. Missing or unavailable provider samples remain explicit instead of being replaced with demo values.
 
 ## Containers Workspace
 
@@ -494,3 +502,5 @@ pnpm run lint
 pnpm run test:run
 pnpm run build
 ```
+
+`pnpm run build` also runs the standalone bundle verifier used by the Docker image.
