@@ -405,9 +405,14 @@ describe('MetricsDashboardShell', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /compute load/i })).toBeVisible();
     expect(screen.getByRole('heading', { name: /i\/o throughput/i })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /network traffic/i })).toBeVisible();
+    expect(screen.getByText('2.21 Mb/s')).toBeVisible();
+    const hostTelemetry = screen.getByRole('region', { name: /host telemetry/i });
+    expect(within(hostTelemetry).getByText('Memory')).toHaveClass('text-[var(--muted-ink)]');
+    expect(hostTelemetry).toHaveClass('grid-cols-3', 'max-[760px]:grid-cols-1');
     expect(screen.getByRole('heading', { name: /workloads/i })).toBeVisible();
     expect(screen.getByRole('row', { name: /control-plane.*running/i })).toBeVisible();
-    expect(screen.getAllByTestId('echart-surface').length).toBe(2);
+    expect(screen.getAllByTestId('echart-surface').length).toBe(3);
   });
 
   it('avoids an immediate duplicate fetch after hydration and polls the light payload', async () => {
@@ -550,7 +555,7 @@ describe('MetricsDashboardShell', () => {
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByRole('heading', { name: /postgres-primary/i })).toBeVisible();
     expect(within(dialog).getByRole('heading', { name: /^cpu$/i })).toBeVisible();
-    expect(screen.getAllByTestId('echart-surface').length).toBe(6);
+    expect(screen.getAllByTestId('echart-surface').length).toBe(7);
 
     await user.click(within(dialog).getByRole('button', { name: /close workload details/i }));
     await user.click(screen.getByRole('tab', { name: /^apps$/i }));

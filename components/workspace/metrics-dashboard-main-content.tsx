@@ -21,10 +21,12 @@ import {
 } from '@/lib/metrics-chart-time';
 import {
   buildContainerMetricPanels,
+  bytesPerSecondToMegabitsPerSecond,
   formatAxisValue,
   formatDashboardRangeLabel,
   formatDetailedTimestamp,
   formatLoadAverage,
+  formatMegabitsPerSecond,
   formatMetricValue,
   type ChartMetricFormat,
   type ContainerMetricPanel,
@@ -265,7 +267,7 @@ const TelemetryChart = memo(function TelemetryChart({
           <div className="mt-1 flex justify-end gap-2">
             {series.map((item) => (
               <span
-                className="flex items-center gap-1 text-[9px] text-[var(--muted)]"
+                className="flex items-center gap-1 text-[9px] text-[var(--muted-ink)]"
                 key={item.label}
               >
                 <span className="size-1.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -479,6 +481,33 @@ export function MetricsDashboardMainContent({
 
     return series;
   }, [diskPanel, networkPanel]);
+  const networkTrafficSeries = useMemo<ChartSeries[]>(() => {
+    if (!networkPanel) {
+      return [];
+    }
+
+    return [
+      {
+        color: '#0284c7',
+        format: 'megabitsPerSecond',
+        label: 'In',
+        values: networkPanel.primaryValues.map(bytesPerSecondToMegabitsPerSecond),
+      },
+      {
+        color: '#7259c9',
+        format: 'megabitsPerSecond',
+        label: 'Out',
+        values: (networkPanel.secondaryValues ?? []).map(bytesPerSecondToMegabitsPerSecond),
+      },
+    ];
+  }, [networkPanel]);
+  const currentNetworkTraffic = snapshot
+    ? formatMegabitsPerSecond(
+        bytesPerSecondToMegabitsPerSecond(
+          snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond
+        )
+      )
+    : '--';
 
   function openContainerDetail(container: ContainerListEntry) {
     setDetailContainerId(container.display.id);
@@ -540,7 +569,7 @@ export function MetricsDashboardMainContent({
       </section>
 
       <section
-        className="grid grid-cols-2 gap-4 max-[980px]:grid-cols-1"
+        className="grid grid-cols-3 gap-4 max-[760px]:grid-cols-1"
         aria-label="Host telemetry"
       >
         <TelemetryChart
@@ -562,6 +591,16 @@ export function MetricsDashboardMainContent({
           timeZone={timeZone}
           timestamps={networkPanel?.timestamps ?? diskPanel?.timestamps ?? []}
           title="I/O throughput"
+        />
+        <TelemetryChart
+          caption={`In and out · ${rangeLabel}`}
+          currentValue={currentNetworkTraffic}
+          emptyMessage={chartEmptyMessage}
+          range={range}
+          series={networkTrafficSeries}
+          timeZone={timeZone}
+          timestamps={networkPanel?.timestamps ?? []}
+          title="Network traffic"
         />
       </section>
 
