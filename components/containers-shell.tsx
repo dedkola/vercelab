@@ -1,19 +1,14 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ContainersMainContent } from '@/components/workspace/containers-main-content';
+import {
+  ContainersInventoryContent,
+  type ContainerStatusFilter,
+} from '@/components/workspace/containers-inventory-content';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DashboardLeftSidebar } from '@/components/workspace/dashboard-left-sidebar';
-import { DashboardRightSidebar } from '@/components/workspace/dashboard-right-sidebar';
 import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
 import type { ContainerListEntry, DashboardLogView, LogLine } from '@/components/workspace-shell';
 import {
@@ -25,27 +20,12 @@ import type { ContainersData } from '@/lib/containers-data';
 import { type ContainerAction, getContainerInventoryMeta } from '@/lib/container-inventory';
 import type { ContainerInspectData } from '@/lib/container-inspect';
 import type { RecreateChanges } from '@/lib/container-recreate';
-import {
-  ALL_CONTAINERS_ID,
-  buildAggregateLogs,
-  buildContainerListEntries,
-  formatStatusLabel,
-  getStatusBadgeVariant,
-  LOG_VIEW_OPTIONS,
-} from '@/lib/metrics-dashboard-metrics';
+import { ALL_CONTAINERS_ID, buildContainerListEntries } from '@/lib/metrics-dashboard-metrics';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
 import { DEFAULT_TIME_DISPLAY_MODE, getTimeZoneForDisplayMode } from '@/lib/time-display';
 
 import type { ExposureMode } from '@/lib/validation';
 
-const LIST_PANEL_STORAGE_KEY = 'vercelab:containers-list-panel-width';
-const LOGS_PANEL_STORAGE_KEY = 'vercelab:containers-logs-panel-width';
-const DEFAULT_LIST_WIDTH_PX = 280;
-const DEFAULT_LOGS_WIDTH_PX = 320;
-const MIN_LIST_WIDTH_PX = 240;
-const MAX_LIST_WIDTH_PX = 400;
-const MIN_LOGS_WIDTH_PX = 280;
-const MAX_LOGS_WIDTH_PX = 480;
 const LIVE_POLL_INTERVAL_MS = 10000;
 const HIDDEN_LIVE_POLL_INTERVAL_MS = 30000;
 const LOG_TAIL_LINES = 150;
@@ -66,60 +46,6 @@ type CatalogSearchResult = {
 };
 
 type CreateMode = 'image' | 'compose';
-
-function getStorage() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const storage = window.localStorage;
-
-  if (
-    !storage ||
-    typeof storage.getItem !== 'function' ||
-    typeof storage.setItem !== 'function' ||
-    typeof storage.removeItem !== 'function'
-  ) {
-    return null;
-  }
-
-  return storage;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function useStoredPanelWidth(
-  key: string,
-  initialWidth: number,
-  minWidth: number,
-  maxWidth: number
-) {
-  const [width, setWidth] = useState(initialWidth);
-
-  useEffect(() => {
-    const storedWidth = getStorage()?.getItem(key);
-
-    if (!storedWidth) {
-      return;
-    }
-
-    const parsedWidth = Number.parseInt(storedWidth, 10);
-
-    if (!Number.isFinite(parsedWidth)) {
-      return;
-    }
-
-    setWidth(clamp(parsedWidth, minWidth, maxWidth));
-  }, [key, maxWidth, minWidth]);
-
-  useEffect(() => {
-    getStorage()?.setItem(key, String(Math.round(width)));
-  }, [key, width]);
-
-  return [width, setWidth] as const;
-}
 
 function isDocumentHidden() {
   if (typeof document === 'undefined') {
@@ -180,6 +106,30 @@ function formatCompactCount(value: number) {
   return COMPACT_COUNT_FORMATTER.format(Math.max(0, value));
 }
 
+function getContainerFilterState(
+  entry: ContainerListEntry
+): Exclude<ContainerStatusFilter, 'all'> | 'stopped' {
+  if (
+    entry.runtime?.health === 'unhealthy' ||
+    entry.runtime?.health === 'starting' ||
+    entry.deploymentStatus === 'deploying' ||
+    entry.deploymentStatus === 'failed' ||
+    entry.display.status === 'degraded'
+  ) {
+    return 'attention';
+  }
+
+  if (
+    entry.runtime?.status === 'running' ||
+    entry.deploymentStatus === 'running' ||
+    entry.display.status === 'running'
+  ) {
+    return 'running';
+  }
+
+  return 'stopped';
+}
+
 type ContainersShellProps = ContainersData;
 
 export function ContainersShell({
@@ -190,23 +140,12 @@ export function ContainersShell({
   const sharedChrome = useOptionalWorkspaceChrome();
   const timeDisplayMode = sharedChrome?.timeDisplayMode ?? DEFAULT_TIME_DISPLAY_MODE;
   const graphTimeZone = getTimeZoneForDisplayMode(timeDisplayMode);
-  const [listWidth, setListWidth] = useStoredPanelWidth(
-    LIST_PANEL_STORAGE_KEY,
-    DEFAULT_LIST_WIDTH_PX,
-    MIN_LIST_WIDTH_PX,
-    MAX_LIST_WIDTH_PX
-  );
-  const [logsWidth, setLogsWidth] = useStoredPanelWidth(
-    LOGS_PANEL_STORAGE_KEY,
-    DEFAULT_LOGS_WIDTH_PX,
-    MIN_LOGS_WIDTH_PX,
-    MAX_LOGS_WIDTH_PX
-  );
-  const [isLogsCollapsed, setIsLogsCollapsed] = useState(true);
   const [selectedContainerId, setSelectedContainerId] = useState(
     initialSnapshot?.containers.all[0]?.id ?? ALL_CONTAINERS_ID
   );
+  const [isContainerManagerOpen, setIsContainerManagerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [containerStatusFilter, setContainerStatusFilter] = useState<ContainerStatusFilter>('all');
   const [dashboardLogView, setDashboardLogView] = useState<DashboardLogView>('live');
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [runtimeLogs, setRuntimeLogs] = useState<Record<string, LogLine[]>>({});
@@ -239,15 +178,6 @@ export function ContainersShell({
   const [recreatePending, setRecreatePending] = useState(false);
   const [recreateError, setRecreateError] = useState<string | null>(null);
   const postActionRefreshTimeoutIdsRef = useRef<number[]>([]);
-  const dragStateRef = useRef<{
-    kind: 'list' | 'logs' | null;
-    startWidth: number;
-    startX: number;
-  }>({
-    kind: null,
-    startWidth: 0,
-    startX: 0,
-  });
 
   const refreshSnapshotNow = useCallback(async () => {
     const response = await fetch('/api/metrics?mode=current', {
@@ -325,6 +255,7 @@ export function ContainersShell({
   useEffect(() => {
     if (!containers.length) {
       setSelectedContainerId(ALL_CONTAINERS_ID);
+      setIsContainerManagerOpen(false);
       return;
     }
 
@@ -343,12 +274,14 @@ export function ContainersShell({
   const filteredContainers = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return containers;
-    }
+    return containers.filter((entry) => {
+      const matchesQuery = !normalizedQuery || entry.searchText.includes(normalizedQuery);
+      const matchesStatus =
+        containerStatusFilter === 'all' || getContainerFilterState(entry) === containerStatusFilter;
 
-    return containers.filter((entry) => entry.searchText.includes(normalizedQuery));
-  }, [containers, searchQuery]);
+      return matchesQuery && matchesStatus;
+    });
+  }, [containerStatusFilter, containers, searchQuery]);
 
   const isAllContainersSelected = selectedContainerId === ALL_CONTAINERS_ID;
   const selectedEntry = useMemo(
@@ -358,31 +291,10 @@ export function ContainersShell({
   // Stable primitive — won't change on every metrics poll, only when the container actually changes.
   const selectedRuntimeId = selectedEntry?.runtime?.id ?? null;
   const inventoryMeta = getContainerInventoryMeta(selectedEntry);
-  const aggregateLogs = useMemo(
-    () =>
-      buildAggregateLogs(
-        snapshot,
-        [],
-        initialAllContainerHistory,
-        initialDeployments,
-        graphTimeZone
-      ),
-    [graphTimeZone, initialAllContainerHistory, initialDeployments, snapshot]
-  );
-  const previewLogs = isAllContainersSelected
-    ? aggregateLogs[dashboardLogView]
-    : dashboardLogView === 'live'
+  const previewLogs =
+    dashboardLogView === 'live'
       ? (runtimeLogs[selectedRuntimeId ?? ''] ?? [])
       : (selectedEntry?.display.logs[dashboardLogView] ?? []);
-  const selectedContainerName = isAllContainersSelected
-    ? 'All containers'
-    : (selectedEntry?.sidebarName ?? 'Container');
-  const selectedContainerStatusLabel = selectedEntry
-    ? formatStatusLabel(selectedEntry.display.status)
-    : `${snapshot?.containers.running ?? 0} running`;
-  const selectedContainerStatusVariant = selectedEntry
-    ? getStatusBadgeVariant(selectedEntry.display.status)
-    : 'default';
 
   useEffect(() => {
     setAliasDraft(
@@ -394,7 +306,7 @@ export function ContainersShell({
   }, [aliases, selectedContainerId]);
 
   useEffect(() => {
-    if (!selectedRuntimeId || isAllContainersSelected) {
+    if (!isContainerManagerOpen || !selectedRuntimeId || isAllContainersSelected) {
       setInspectData(null);
       return;
     }
@@ -429,7 +341,7 @@ export function ContainersShell({
     return () => {
       active = false;
     };
-  }, [isAllContainersSelected, selectedRuntimeId]);
+  }, [isAllContainersSelected, isContainerManagerOpen, selectedRuntimeId]);
 
   useEffect(() => {
     let active = true;
@@ -506,7 +418,7 @@ export function ContainersShell({
   }, [initialSnapshot]);
 
   useEffect(() => {
-    if (isAllContainersSelected || !selectedRuntimeId) {
+    if (!isContainerManagerOpen || isAllContainersSelected || !selectedRuntimeId) {
       setLogsError(null);
       return;
     }
@@ -595,69 +507,7 @@ export function ContainersShell({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [graphTimeZone, isAllContainersSelected, selectedRuntimeId]);
-
-  useEffect(() => {
-    function handleMouseMove(event: MouseEvent) {
-      if (!dragStateRef.current.kind) {
-        return;
-      }
-
-      if (dragStateRef.current.kind === 'list') {
-        setListWidth(
-          clamp(
-            dragStateRef.current.startWidth + (event.clientX - dragStateRef.current.startX),
-            MIN_LIST_WIDTH_PX,
-            MAX_LIST_WIDTH_PX
-          )
-        );
-        return;
-      }
-
-      setLogsWidth(
-        clamp(
-          dragStateRef.current.startWidth - (event.clientX - dragStateRef.current.startX),
-          MIN_LOGS_WIDTH_PX,
-          MAX_LOGS_WIDTH_PX
-        )
-      );
-    }
-
-    function handleMouseUp() {
-      if (!dragStateRef.current.kind) {
-        return;
-      }
-
-      dragStateRef.current = {
-        kind: null,
-        startWidth: 0,
-        startX: 0,
-      };
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    }
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [setListWidth, setLogsWidth]);
-
-  const handleResizeStart = (kind: 'list' | 'logs', event: ReactMouseEvent<HTMLDivElement>) => {
-    dragStateRef.current = {
-      kind,
-      startWidth: kind === 'list' ? listWidth : logsWidth,
-      startX: event.clientX,
-    };
-
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  };
+  }, [graphTimeZone, isAllContainersSelected, isContainerManagerOpen, selectedRuntimeId]);
 
   const handleAliasSave = () => {
     if (!selectedEntry) {
@@ -818,6 +668,25 @@ export function ContainersShell({
     }
   };
 
+  const handleOpenCreatePanel = useCallback((mode: CreateMode) => {
+    setCreateMode(mode);
+    setCatalogError(null);
+    setCreateError(null);
+    setCreateSuccess(null);
+    setIsCreatePanelOpen(true);
+  }, []);
+
+  const handleCloseCreatePanel = useCallback(() => {
+    setIsCreatePanelOpen(false);
+  }, []);
+
+  const handleContainerSelect = useCallback((containerId: string) => {
+    setSelectedContainerId(containerId);
+    setActionError(null);
+    setRecreateError(null);
+    setIsContainerManagerOpen(true);
+  }, []);
+
   const createPanel = (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -970,61 +839,52 @@ export function ContainersShell({
       : previewLogs;
 
   return (
-    <div className="vercelab-split-layout flex min-w-0 flex-1 overflow-hidden">
-      <DashboardLeftSidebar
-        activeContainerId={selectedContainerId}
-        addPanel={createPanel}
-        containers={filteredContainers}
-        isAddPanelOpen={isCreatePanelOpen}
-        isAllContainersSelected={isAllContainersSelected}
-        listWidth={listWidth}
-        onAddContainerAction={() => {
-          setIsCreatePanelOpen((current) => !current);
-          setCatalogError(null);
-          setCreateError(null);
-          setCreateSuccess(null);
-        }}
-        onAllContainersSelectAction={() => setSelectedContainerId(ALL_CONTAINERS_ID)}
-        onContainerSelectAction={setSelectedContainerId}
-        onListResizeStartAction={(event) => handleResizeStart('list', event)}
-        onSearchQueryChangeAction={setSearchQuery}
-        runningContainersCount={snapshot?.containers.running ?? null}
-        searchQuery={searchQuery}
-        visibleCount={filteredContainers.length}
-      />
+    <div className="relative flex min-w-0 flex-1 overflow-hidden bg-[var(--canvas)]">
+      <main className="min-w-0 flex-1 overflow-auto">
+        <ContainersInventoryContent
+          containers={filteredContainers}
+          createModeLabel={createMode === 'image' ? 'Image launch' : 'Compose stack'}
+          createPanel={createPanel}
+          isCreatePanelOpen={isCreatePanelOpen}
+          onCloseCreatePanelAction={handleCloseCreatePanel}
+          onContainerSelectAction={handleContainerSelect}
+          onOpenComposeCreateAction={() => handleOpenCreatePanel('compose')}
+          onOpenImageCreateAction={() => handleOpenCreatePanel('image')}
+          onSearchQueryChangeAction={setSearchQuery}
+          onStatusFilterChangeAction={setContainerStatusFilter}
+          runningContainersCount={
+            filteredContainers.filter((entry) => getContainerFilterState(entry) === 'running')
+              .length
+          }
+          searchQuery={searchQuery}
+          selectedContainerId={isContainerManagerOpen ? selectedContainerId : null}
+          statusFilter={containerStatusFilter}
+          totalContainersCount={containers.length}
+        />
+      </main>
 
-      <ContainersMainContent
-        actionError={actionError}
-        actionPending={actionPending}
-        aliasDraft={aliasDraft}
-        inspectData={inspectData}
-        inspectLoading={inspectLoading}
-        inventoryMeta={inventoryMeta}
-        onAliasDraftChangeAction={setAliasDraft}
-        onAliasSaveAction={handleAliasSave}
-        onRecreateAction={handleRecreate}
-        onRunAction={handleRunAction}
-        recreateError={recreateError}
-        recreatePending={recreatePending}
-        runtimeEntry={selectedEntry}
-      />
-
-      <DashboardRightSidebar
-        activeLogView={dashboardLogView}
-        isCollapsed={isLogsCollapsed}
-        isAggregateSelection={isAllContainersSelected}
-        logOptions={LOG_VIEW_OPTIONS}
-        logs={liveRailLogs}
-        onCollapseAction={() => setIsLogsCollapsed(true)}
-        onExpandAction={() => setIsLogsCollapsed(false)}
-        onLogViewChangeAction={setDashboardLogView}
-        onResizeStartAction={(event) => handleResizeStart('logs', event)}
-        selectedContainerName={selectedContainerName}
-        selectedContainerStatusLabel={selectedContainerStatusLabel}
-        selectedContainerStatusVariant={selectedContainerStatusVariant}
-        selectedPreviewAvailable={!isAllContainersSelected && Boolean(selectedEntry)}
-        width={logsWidth}
-      />
+      {isContainerManagerOpen && selectedEntry ? (
+        <ContainersMainContent
+          actionError={actionError}
+          actionPending={actionPending}
+          activeLogView={dashboardLogView}
+          aliasDraft={aliasDraft}
+          inspectData={inspectData}
+          inspectLoading={inspectLoading}
+          inventoryMeta={inventoryMeta}
+          key={selectedEntry.display.id}
+          logs={liveRailLogs}
+          onAliasDraftChangeAction={setAliasDraft}
+          onAliasSaveAction={handleAliasSave}
+          onCloseAction={() => setIsContainerManagerOpen(false)}
+          onLogViewChangeAction={setDashboardLogView}
+          onRecreateAction={handleRecreate}
+          onRunAction={handleRunAction}
+          recreateError={recreateError}
+          recreatePending={recreatePending}
+          runtimeEntry={selectedEntry}
+        />
+      ) : null}
     </div>
   );
 }

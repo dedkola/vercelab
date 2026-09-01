@@ -105,6 +105,22 @@ describe('ContainersShell', () => {
         });
       }
 
+      if (url === '/api/containers/runtime-control-plane/inspect') {
+        return jsonResponse({
+          appPort: '3000/tcp',
+          envVars: [],
+          id: 'runtime-control-plane',
+          image: 'vercelab/control-plane:latest',
+          imageVersion: 'latest',
+          labels: {},
+          name: 'vercelab-ui',
+          portBindings: [],
+          traefikMethod: 'http',
+          traefikPort: '3000',
+          traefikRouterName: 'control-plane',
+        });
+      }
+
       if (url === '/api/metrics?mode=current') {
         return jsonResponse({
           snapshot: runtimeSnapshot,
@@ -153,7 +169,8 @@ describe('ContainersShell', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { name: /vercelab ui/i })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /containers 1 runtime/i })).toBeVisible();
+    await user.click(screen.getByRole('row', { name: /manage vercelab ui/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
@@ -162,9 +179,9 @@ describe('ContainersShell', () => {
       );
     });
 
-    await user.click(screen.getByRole('button', { name: /show logs sidebar/i }));
+    expect(screen.getByText(/protected service/i)).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: /logs/i }));
     expect(await screen.findByText(/server booted/i)).toBeVisible();
-    expect(screen.getByText(/protected system service/i)).toBeVisible();
     expect(
       screen.getByRole('link', {
         name: /https:\/\/control-plane\.myhomelan\.com/i,
@@ -183,7 +200,8 @@ describe('ContainersShell', () => {
       />
     );
 
-    await user.click(await screen.findByRole('button', { name: /edit container/i }));
+    await user.click(screen.getByRole('row', { name: /manage vercelab ui/i }));
+    await user.click(screen.getByRole('tab', { name: /settings/i }));
 
     const aliasInput = await screen.findByLabelText(/label/i);
     await user.clear(aliasInput);
@@ -207,6 +225,7 @@ describe('ContainersShell', () => {
       />
     );
 
+    await user.click(screen.getByRole('row', { name: /manage vercelab ui/i }));
     await user.click(screen.getByRole('button', { name: /^restart$/i }));
 
     await waitFor(() => {
@@ -241,7 +260,7 @@ describe('ContainersShell', () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: /add new container/i }));
+    await user.click(screen.getByRole('button', { name: /review image/i }));
     await user.clear(screen.getByLabelText(/container image reference/i));
     await user.type(screen.getByLabelText(/container image reference/i), 'nginx:latest');
     await user.type(screen.getByLabelText(/container name/i), 'web-app');
@@ -293,6 +312,22 @@ describe('ContainersShell', () => {
         return jsonResponse({ output: '2026-04-22T11:10:00.000Z listening' });
       }
 
+      if (url === '/api/containers/runtime-web-app/inspect') {
+        return jsonResponse({
+          appPort: '3000/tcp',
+          envVars: [],
+          id: 'runtime-web-app',
+          image: 'manual-stack/web:latest',
+          imageVersion: 'latest',
+          labels: {},
+          name: 'web-app',
+          portBindings: [],
+          traefikMethod: 'http',
+          traefikPort: '3000',
+          traefikRouterName: 'web-app',
+        });
+      }
+
       if (url === '/api/metrics?mode=current') {
         return jsonResponse({ snapshot: currentSnapshot });
       }
@@ -330,6 +365,7 @@ describe('ContainersShell', () => {
       />
     );
 
+    await user.click(screen.getByRole('row', { name: /manage web-app/i }));
     await user.click(screen.getByRole('button', { name: /^remove$/i }));
 
     await waitFor(() => {
