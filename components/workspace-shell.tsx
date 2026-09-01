@@ -23,9 +23,11 @@ import {
   type FocusedMetricChart,
 } from '@/components/workspace/dashboard-main-content';
 import { DashboardRightSidebar } from '@/components/workspace/dashboard-right-sidebar';
-import { GitAppPageLeftSidebar } from '@/components/workspace/git-app-page-left-sidebar';
+import {
+  GitAppPageLeftSidebar,
+  type AppStatusFilter,
+} from '@/components/workspace/git-app-page-left-sidebar';
 import { GitAppPageMainContent } from '@/components/workspace/git-app-page-main-content';
-import { GitAppPageRightSidebar } from '@/components/workspace/git-app-page-right-sidebar';
 import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
 import {
   HostMetricsSidebar,
@@ -34,7 +36,6 @@ import {
 import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
 import { WorkspaceHeader } from '@/components/workspace/workspace-header';
 import { WorkspaceRail } from '@/components/workspace/workspace-rail';
-import { SectionLabel } from '@/components/workspace/workspace-ui';
 import {
   fetchDeploymentFromGitAction,
   redeployDeploymentAction,
@@ -1520,7 +1521,7 @@ const WORKSPACE_PAGES: Array<{
   },
   {
     id: 'git-app-page',
-    label: 'Git App Page',
+    label: 'Apps',
     iconComponent: GitBranch,
     description: 'Deployments and repo wiring',
   },
@@ -1676,18 +1677,6 @@ function getDeploymentStatusBadgeVariant(
   }
 }
 
-function getDeploymentStatusDotClassName(status: DeploymentSummary['status']) {
-  switch (status) {
-    case 'running':
-      return 'bg-emerald-500';
-    case 'failed':
-    case 'deploying':
-      return 'bg-amber-500';
-    default:
-      return 'bg-slate-400';
-  }
-}
-
 function formatDeploymentStatus(status: DeploymentSummary['status']) {
   switch (status) {
     case 'deploying':
@@ -1808,8 +1797,10 @@ export function WorkspaceShell({
   const [selectedAppId, setSelectedAppId] = useState(deploymentSeed[0]?.id ?? '');
   const [searchQuery, setSearchQuery] = useState('');
   const [appSearchQuery, setAppSearchQuery] = useState('');
+  const [appStatusFilter, setAppStatusFilter] = useState<AppStatusFilter>('all');
   const [dashboardLogView, setDashboardLogView] = useState<DashboardLogView>('live');
   const [appLogTab, setAppLogTab] = useState<LogTab>('build');
+  const [isAppManagerOpen, setIsAppManagerOpen] = useState(false);
   const [isCreateAppExpanded, setIsCreateAppExpanded] = useState(false);
   const [isCreateAppPending, setIsCreateAppPending] = useState(false);
   const [draftApp, setDraftApp] = useState<DraftAppState>(createEmptyDraftAppState);
@@ -1963,24 +1954,28 @@ export function WorkspaceShell({
   const filteredDeployments = useMemo(() => {
     const normalizedQuery = appSearchQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return deployments;
-    }
+    return deployments.filter((deployment) => {
+      const matchesStatus =
+        appStatusFilter === 'all' ||
+        (appStatusFilter === 'running' && deployment.status === 'running') ||
+        (appStatusFilter === 'attention' && deployment.status !== 'running');
+      const matchesQuery =
+        !normalizedQuery ||
+        [
+          deploymentDisplayNames.get(deployment.id) ?? deployment.appName,
+          deployment.appName,
+          deployment.repositoryName,
+          deployment.repositoryUrl,
+          deployment.subdomain,
+          deployment.serviceName ?? '',
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedQuery);
 
-    return deployments.filter((deployment) =>
-      [
-        deploymentDisplayNames.get(deployment.id) ?? deployment.appName,
-        deployment.appName,
-        deployment.repositoryName,
-        deployment.repositoryUrl,
-        deployment.subdomain,
-        deployment.serviceName ?? '',
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(normalizedQuery)
-    );
-  }, [appSearchQuery, deploymentDisplayNames, deployments]);
+      return matchesStatus && matchesQuery;
+    });
+  }, [appSearchQuery, appStatusFilter, deploymentDisplayNames, deployments]);
   const selectedDeployment =
     filteredDeployments.find((deployment) => deployment.id === selectedAppId) ??
     deployments.find((deployment) => deployment.id === selectedAppId) ??
@@ -2146,6 +2141,7 @@ export function WorkspaceShell({
   useEffect(() => {
     if (!deployments.length) {
       setSelectedAppId('');
+      setIsAppManagerOpen(false);
       return;
     }
 
@@ -2533,6 +2529,23 @@ export function WorkspaceShell({
 
   const loadRepositoriesAction = isEmbedded ? sharedChrome.loadRepositories : loadRepositories;
 
+  useEffect(() => {
+    if (
+      activeView !== 'git-app-page' ||
+      effectiveRepositoryState.hasLoaded ||
+      effectiveRepositoryState.isLoading
+    ) {
+      return;
+    }
+
+    void loadRepositoriesAction();
+  }, [
+    activeView,
+    effectiveRepositoryState.hasLoaded,
+    effectiveRepositoryState.isLoading,
+    loadRepositoriesAction,
+  ]);
+
   const handleGithubTokenSaved = useCallback(
     (payload: { repositories: GitHubRepository[]; tokenConfigured: boolean }) => {
       setRepositoryState({
@@ -2545,9 +2558,6 @@ export function WorkspaceShell({
     },
     []
   );
-
-  // Repositories are fetched lazily — only when the create-app panel is opened
-  // (see handleToggleCreateAppPanel). No auto-fetch on page/view load.
 
   const loadBranches = useCallback(async (repository: GitHubRepository) => {
     const repositoryId = String(repository.id);
@@ -2817,15 +2827,18 @@ export function WorkspaceShell({
   }
 
   function handleToggleCreateAppPanel() {
-    setIsCreateAppExpanded((current) => {
-      const next = !current;
+    const next = !isCreateAppExpanded;
 
-      if (next && !effectiveRepositoryState.hasLoaded && !effectiveRepositoryState.isLoading) {
-        void loadRepositoriesAction();
-      }
+    setIsCreateAppExpanded(next);
 
-      return next;
-    });
+    if (next && !effectiveRepositoryState.hasLoaded && !effectiveRepositoryState.isLoading) {
+      void loadRepositoriesAction();
+    }
+  }
+
+  function handleSelectApp(id: string) {
+    setSelectedAppId(id);
+    setIsAppManagerOpen(true);
   }
 
   function handleRepositorySelect(value: string) {
@@ -2885,16 +2898,22 @@ export function WorkspaceShell({
   const aggregateLogsStatusVariant = isAllContainersSelected
     ? 'default'
     : selectedContainerStatusVariant;
-  const liveAppsCount = deployments.filter((deployment) => deployment.status === 'running').length;
+  const liveAppsCount = filteredDeployments.filter(
+    (deployment) => deployment.status === 'running'
+  ).length;
   const gitSidebarAppItems = filteredDeployments.map((deployment) => ({
     appName: deploymentDisplayNames.get(deployment.id) ?? deployment.appName,
+    branchLabel: deployment.branch ?? 'default',
+    composeMode: deployment.composeMode ?? 'auto',
     domain: formatDeploymentDomain(deployment, baseDomain),
-    dotClassName: getDeploymentStatusDotClassName(deployment.status),
     exposureMode: deployment.exposureMode ?? 'http',
     hostPort: deployment.hostPort ?? null,
     id: deployment.id,
-    isActive: deployment.id === selectedAppId,
+    isActive: isAppManagerOpen && deployment.id === selectedAppId,
+    port: deployment.port,
     relativeUpdatedAt: formatRelativeTime(deployment.updatedAt),
+    repositoryName: deployment.repositoryName,
+    revisionLabel: deployment.commitSha?.slice(0, 7) ?? 'head',
     statusLabel: formatDeploymentStatus(deployment.status),
     statusVariant: getDeploymentStatusBadgeVariant(deployment.status),
   }));
@@ -2918,9 +2937,9 @@ export function WorkspaceShell({
         selectedDeployment.subdomain,
       ])
     : '';
-  const workspacePanels = (
-    <div className="vercelab-split-layout flex min-w-0 flex-1 overflow-hidden">
-      {activeView === 'dashboard' ? (
+  const workspacePanels =
+    activeView === 'dashboard' ? (
+      <div className="vercelab-split-layout flex min-w-0 flex-1 overflow-hidden">
         <DashboardLeftSidebar
           activeContainerId={activeContainerId}
           containers={filteredContainers}
@@ -2934,38 +2953,9 @@ export function WorkspaceShell({
           searchQuery={searchQuery}
           visibleCount={filteredContainers.length}
         />
-      ) : (
-        <GitAppPageLeftSidebar
-          appItems={gitSidebarAppItems}
-          appSearchQuery={appSearchQuery}
-          baseDomain={baseDomain}
-          branchError={branchState.error}
-          branchHelperText={branchHelperText}
-          branchOptions={branchOptions}
-          draftApp={draftApp}
-          isBranchLoading={branchState.isLoading}
-          isCreateAppExpanded={isCreateAppExpanded}
-          isCreateAppPending={isCreateAppPending}
-          listWidth={listWidth}
-          liveAppsCount={liveAppsCount}
-          onAppSearchQueryChangeAction={setAppSearchQuery}
-          onCreateAppAction={handleCreateApp}
-          onDraftChangeAction={handleDraftAppChange}
-          onListResizeStartAction={(event) => handleResizeStart('list', event)}
-          onRepositorySelectAction={handleRepositorySelect}
-          onSelectAppAction={setSelectedAppId}
-          onToggleCreateAppAction={handleToggleCreateAppPanel}
-          repositoryOptions={repositoryOptions}
-          repositoryState={effectiveRepositoryState}
-          selectedRepositorySummary={selectedRepositorySummary}
-          selectedRepositoryValue={selectedRepositoryValue}
-          totalAppsCount={deployments.length}
-        />
-      )}
 
-      <main className="vercelab-detail-pane min-w-0 flex-1 overflow-auto bg-[var(--canvas)] p-4 md:p-5">
-        {activeView === 'dashboard' ? (
-          isAllContainersSelected ? (
+        <main className="vercelab-detail-pane min-w-0 flex-1 overflow-auto bg-[var(--canvas)] p-4 md:p-5">
+          {isAllContainersSelected ? (
             <DashboardAllContainersContent
               charts={allContainersMetricCharts}
               onRangeChangeAction={setDashboardRange}
@@ -2989,41 +2979,9 @@ export function WorkspaceShell({
               selectedStatusVariant={selectedContainerStatusVariant}
               serviceOrPortLabel={serviceOrPortLabel}
             />
-          )
-        ) : selectedDeployment ? (
-          <GitAppPageMainContent
-            baseDomain={baseDomain}
-            deployment={selectedDeployment}
-            deploymentHref={selectedDeploymentHref}
-            deploymentStatusLabel={selectedDeploymentStatusLabel}
-            deploymentStatusVariant={selectedDeploymentStatusVariant}
-            key={selectedDeploymentSettingsKey}
-            onDeleteAction={handleDeleteApp}
-            onFetchAction={handleFetchApp}
-            onRefreshAction={() => router.refresh()}
-            onRecreateAction={handleRecreateApp}
-            onSaveSettingsAction={handleSaveApp}
-            onStartAction={handleStartApp}
-            onStopAction={handleStopApp}
-            publicDomainLabel={selectedDeploymentDomain}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center p-4">
-            <div className="max-w-md rounded-xl border border-border/70 bg-background px-5 py-6 text-center shadow-sm">
-              <SectionLabel icon="github" text="Git App Page" />
-              <h1 className="mt-3 text-lg font-semibold tracking-tight text-foreground">
-                Add your first app
-              </h1>
-              <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-                Open the compact create panel in the sidebar to pick a repository and start a live
-                deployment.
-              </p>
-            </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
 
-      {activeView === 'dashboard' ? (
         <DashboardRightSidebar
           activeLogView={dashboardLogView}
           isCollapsed={isLogsCollapsed}
@@ -3040,21 +2998,62 @@ export function WorkspaceShell({
           selectedPreviewAvailable={!isAllContainersSelected && Boolean(selectedPreviewContainer)}
           width={logsWidth}
         />
-      ) : (
-        <GitAppPageRightSidebar
-          activeLogTab={appLogTab}
-          deploymentId={selectedDeployment?.id ?? null}
-          deployments={deployments}
-          isCollapsed={isLogsCollapsed}
-          onCollapseAction={() => setIsLogsCollapsed(true)}
-          onExpandAction={() => setIsLogsCollapsed(false)}
-          onLogTabChangeAction={setAppLogTab}
-          onResizeStartAction={(event) => handleResizeStart('logs', event)}
-          width={logsWidth}
-        />
-      )}
-    </div>
-  );
+      </div>
+    ) : (
+      <div className="relative flex min-w-0 flex-1 overflow-hidden bg-[var(--canvas)]">
+        <main className="min-w-0 flex-1 overflow-auto">
+          <GitAppPageLeftSidebar
+            appItems={gitSidebarAppItems}
+            appSearchQuery={appSearchQuery}
+            baseDomain={baseDomain}
+            branchError={branchState.error}
+            branchHelperText={branchHelperText}
+            branchOptions={branchOptions}
+            draftApp={draftApp}
+            isBranchLoading={branchState.isLoading}
+            isCreateAppExpanded={isCreateAppExpanded}
+            isCreateAppPending={isCreateAppPending}
+            liveAppsCount={liveAppsCount}
+            onAppSearchQueryChangeAction={setAppSearchQuery}
+            onCreateAppAction={handleCreateApp}
+            onDraftChangeAction={handleDraftAppChange}
+            onRepositorySelectAction={handleRepositorySelect}
+            onSelectAppAction={handleSelectApp}
+            onStatusFilterChangeAction={setAppStatusFilter}
+            onToggleCreateAppAction={handleToggleCreateAppPanel}
+            repositoryOptions={repositoryOptions}
+            repositoryState={effectiveRepositoryState}
+            selectedRepositorySummary={selectedRepositorySummary}
+            selectedRepositoryValue={selectedRepositoryValue}
+            statusFilter={appStatusFilter}
+            totalAppsCount={deployments.length}
+          />
+        </main>
+
+        {isAppManagerOpen && selectedDeployment ? (
+          <GitAppPageMainContent
+            activeLogTab={appLogTab}
+            baseDomain={baseDomain}
+            deployment={selectedDeployment}
+            deploymentHref={selectedDeploymentHref}
+            deploymentStatusLabel={selectedDeploymentStatusLabel}
+            deploymentStatusVariant={selectedDeploymentStatusVariant}
+            deployments={deployments}
+            key={selectedDeploymentSettingsKey}
+            onCloseAction={() => setIsAppManagerOpen(false)}
+            onDeleteAction={handleDeleteApp}
+            onFetchAction={handleFetchApp}
+            onLogTabChangeAction={setAppLogTab}
+            onRefreshAction={() => router.refresh()}
+            onRecreateAction={handleRecreateApp}
+            onSaveSettingsAction={handleSaveApp}
+            onStartAction={handleStartApp}
+            onStopAction={handleStopApp}
+            publicDomainLabel={selectedDeploymentDomain}
+          />
+        ) : null}
+      </div>
+    );
 
   if (isEmbedded) {
     return workspacePanels;

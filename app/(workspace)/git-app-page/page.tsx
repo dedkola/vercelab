@@ -4,8 +4,8 @@ import { WorkspaceShell } from './workspace-shell';
 import { loadWorkspaceShellData } from '@/lib/workspace-shell-data';
 
 export const metadata: Metadata = {
-  title: 'Git App Page | Vercelab',
-  description: 'Git app page for creating, reviewing, and updating repository deployments.',
+  title: 'Apps | Vercelab',
+  description: 'Create, review, and update Git-backed app deployments.',
 };
 
 export const dynamic = 'force-dynamic';

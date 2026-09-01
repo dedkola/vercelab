@@ -1,20 +1,17 @@
 'use client';
 
-import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react';
-import { ChevronDown, ChevronRight, Plus, Search, type LucideIcon } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import { ArrowUpRight, ChevronRight, GitBranch, PackagePlus, Plus, Search, X } from 'lucide-react';
 
 import type { DraftAppState, RepositoryState } from '@/components/workspace-shell';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { ExposureMode } from '@/lib/validation';
-
-import { ResizeHandle, SectionLabel } from './workspace-ui';
 
 type SelectOption = {
   description?: string;
@@ -22,15 +19,21 @@ type SelectOption = {
   value: string;
 };
 
+export type AppStatusFilter = 'all' | 'running' | 'attention';
+
 type GitAppPageListItem = {
   appName: string;
+  branchLabel: string;
+  composeMode: string;
   domain: string;
-  dotClassName: string;
   exposureMode?: ExposureMode;
   hostPort: number | null;
   id: string;
   isActive: boolean;
+  port: number;
   relativeUpdatedAt: string;
+  repositoryName: string;
+  revisionLabel: string;
   statusLabel: string;
   statusVariant: 'success' | 'warning' | 'default';
 };
@@ -46,86 +49,88 @@ type GitAppPageLeftSidebarProps = {
   isBranchLoading: boolean;
   isCreateAppExpanded: boolean;
   isCreateAppPending: boolean;
-  listWidth: number;
   liveAppsCount: number;
   onAppSearchQueryChangeAction: (value: string) => void;
   onCreateAppAction: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onDraftChangeAction: (field: keyof DraftAppState, value: string) => void;
-  onListResizeStartAction: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onRepositorySelectAction: (value: string) => void;
   onSelectAppAction: (id: string) => void;
+  onStatusFilterChangeAction: (filter: AppStatusFilter) => void;
   onToggleCreateAppAction: () => void;
   repositoryOptions: SelectOption[];
   repositoryState: RepositoryState;
   selectedRepositorySummary: string | null;
   selectedRepositoryValue: string;
+  statusFilter: AppStatusFilter;
   totalAppsCount: number;
 };
 
-function getStatusDotClassName(statusVariant: GitAppPageListItem['statusVariant']) {
+const APP_TONES = [
+  'border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]',
+  'border-blue-200 bg-[var(--blue-soft)] text-[var(--blue)]',
+  'border-violet-200 bg-violet-50 text-[var(--purple)]',
+  'border-emerald-200 bg-[var(--green-soft)] text-[var(--green)]',
+];
+
+function getStatusClassName(statusVariant: GitAppPageListItem['statusVariant']) {
   switch (statusVariant) {
     case 'success':
-      return 'bg-emerald-500';
+      return 'text-[var(--green)]';
     case 'warning':
-      return 'bg-amber-500';
+      return 'text-[var(--blue)]';
     default:
-      return 'bg-slate-400';
+      return 'text-[var(--quiet)]';
   }
 }
 
-function getAppMetaLabel(deployment: GitAppPageListItem) {
-  if (deployment.exposureMode === 'internal') {
-    return 'No public route';
+function getAppInitials(appName: string) {
+  const words = appName.split(/[-_\s]+/).filter(Boolean);
+
+  if (words.length > 1) {
+    return words
+      .slice(0, 2)
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase();
   }
 
+  return appName.slice(0, 2).toUpperCase();
+}
+
+function getRuntimeLabel(deployment: GitAppPageListItem) {
   if (
     (deployment.exposureMode === 'tcp' || deployment.exposureMode === 'host') &&
     deployment.hostPort
   ) {
-    return `Host port ${deployment.hostPort}`;
+    return `${deployment.composeMode} · :${deployment.hostPort}`;
   }
 
-  return deployment.domain || 'No public route';
+  return `${deployment.composeMode} · :${deployment.port}`;
 }
 
-function getAppFreshnessLabel(deployment: GitAppPageListItem) {
-  return deployment.relativeUpdatedAt === 'Unknown'
-    ? 'Updated unknown'
-    : `Updated ${deployment.relativeUpdatedAt}`;
-}
-
-function getAppExposureLabel(deployment: GitAppPageListItem) {
-  switch (deployment.exposureMode) {
-    case 'tcp':
-      return 'tcp';
-    case 'host':
-      return 'host';
-    case 'internal':
-      return null;
-    case 'http':
-    default:
-      return deployment.domain ? 'routed' : null;
-  }
-}
-
-function SidebarIconBox({
-  icon: IconComponent,
-  isActive,
+function FilterButton({
+  active,
+  children,
+  onClick,
 }: {
-  icon: LucideIcon;
-  isActive?: boolean;
+  active: boolean;
+  children: ReactNode;
+  onClick: () => void;
 }) {
   return (
-    <span
+    <button
+      aria-pressed={active}
       className={cn(
-        'flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors',
-        isActive
-          ? 'border-emerald-200 bg-background text-emerald-700'
-          : 'border-border/70 bg-background text-muted-foreground group-hover:text-foreground'
+        'h-7 rounded-[5px] px-2.5 text-[11px] font-medium transition-colors',
+        active
+          ? 'bg-white text-foreground shadow-[0_1px_2px_rgb(16_24_40_/_0.08)]'
+          : 'text-[var(--quiet)] hover:text-foreground'
       )}
+      onClick={onClick}
+      type="button"
     >
-      <IconComponent aria-hidden="true" className="size-4" />
-    </span>
+      {children}
+    </button>
   );
 }
 
@@ -140,19 +145,19 @@ export function GitAppPageLeftSidebar({
   isBranchLoading,
   isCreateAppExpanded,
   isCreateAppPending,
-  listWidth,
   liveAppsCount,
   onAppSearchQueryChangeAction,
   onCreateAppAction,
   onDraftChangeAction,
-  onListResizeStartAction,
   onRepositorySelectAction,
   onSelectAppAction,
+  onStatusFilterChangeAction,
   onToggleCreateAppAction,
   repositoryOptions,
   repositoryState,
   selectedRepositorySummary,
   selectedRepositoryValue,
+  statusFilter,
   totalAppsCount,
 }: GitAppPageLeftSidebarProps) {
   const needsHostPort = draftApp.exposureMode === 'tcp' || draftApp.exposureMode === 'host';
@@ -165,314 +170,498 @@ export function GitAppPageLeftSidebar({
     (draftApp.exposureMode === 'http' && !draftApp.subdomain.trim()) ||
     !draftApp.port.trim() ||
     (needsHostPort && !draftApp.hostPort.trim());
+  const deployingAppsCount = useMemo(
+    () => appItems.filter((deployment) => deployment.statusVariant === 'warning').length,
+    [appItems]
+  );
+
+  useEffect(() => {
+    if (!isCreateAppExpanded) {
+      return;
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onToggleCreateAppAction();
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isCreateAppExpanded, onToggleCreateAppAction]);
 
   return (
-    <>
-      <aside
-        className="vercelab-list-rail flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-300"
-        style={{ width: `${listWidth}px` }}
+    <div className="mx-auto w-full max-w-[1680px] space-y-5 px-6 py-5 max-[760px]:px-3 max-[760px]:py-3">
+      <header className="flex min-h-8 flex-wrap items-center justify-between gap-3 px-0.5">
+        <h1 className="text-xl font-semibold tracking-[-0.035em] text-foreground">
+          Apps{' '}
+          <span className="ml-1 font-mono text-[11px] font-normal tracking-normal text-[var(--quiet)]">
+            {totalAppsCount} deployment{totalAppsCount === 1 ? '' : 's'}
+          </span>
+        </h1>
+      </header>
+
+      <section
+        aria-labelledby="deploy-new-app-title"
+        className="relative grid min-h-20 grid-cols-[minmax(220px,1fr)_minmax(440px,1.35fr)] items-center gap-5 overflow-hidden rounded-[10px] border border-orange-200 bg-white px-4 py-3 shadow-[var(--shadow)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--orange)] max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[640px]:px-3"
       >
-        <div className="flex flex-col gap-2 border-b border-border/70 px-3 py-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <SectionLabel icon="github" text="Git App Page" />
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-1.5">
-              <Badge className="h-5 rounded-md border-emerald-200/80 bg-emerald-50/90 px-1.5 text-[11px] text-emerald-700">
-                {liveAppsCount} live
-              </Badge>
-              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground">
-                {totalAppsCount} apps
-              </Badge>
-            </div>
-          </div>
-          <div className="relative">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              aria-label="Search apps"
-              className="h-8 rounded-lg border-border/70 bg-background pl-8 text-xs"
-              onChange={(event) => onAppSearchQueryChangeAction(event.target.value)}
-              placeholder="Search apps, repos, domains..."
-              value={appSearchQuery}
-            />
-          </div>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-[var(--orange-soft)] text-[var(--orange)]">
+            <PackagePlus aria-hidden="true" className="size-4" />
+          </span>
+          <span className="min-w-0">
+            <strong className="block text-[13px] font-semibold" id="deploy-new-app-title">
+              Deploy new app
+            </strong>
+            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+              Choose a repository and branch. Review before creation.
+            </span>
+          </span>
         </div>
 
-        <ScrollArea className="h-full">
-          <div className="flex flex-col gap-2 p-2">
-            <div
-              className={cn(
-                'overflow-hidden rounded-lg border transition-colors',
-                isCreateAppExpanded
-                  ? 'border-emerald-200 bg-emerald-50/55'
-                  : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
-              )}
-            >
-              <button
-                className="group flex w-full items-center justify-between gap-3 py-2 pl-2.5 pr-3 text-left"
-                onClick={onToggleCreateAppAction}
-                type="button"
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <SidebarIconBox icon={Plus} isActive={isCreateAppExpanded} />
-                  <div className="min-w-0">
-                    <div className="truncate text-xs font-semibold tracking-tight text-foreground">
-                      Add Git app
-                    </div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      Deploy from repository
-                    </div>
-                  </div>
-                </div>
-                {isCreateAppExpanded ? (
-                  <ChevronDown
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-muted-foreground"
-                  />
-                ) : (
-                  <ChevronRight
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-muted-foreground"
-                  />
-                )}
-              </button>
+        <div className="grid min-w-0 grid-cols-[minmax(190px,1fr)_minmax(120px,0.55fr)_auto] items-center gap-2 max-[640px]:grid-cols-[minmax(0,1fr)_6.5rem]">
+          <Combobox
+            ariaLabel="Repository"
+            buttonClassName="h-9 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-2.5 text-[12px] shadow-none"
+            disabled={repositoryState.isLoading}
+            emptyText={repositoryState.error ?? 'No repositories found'}
+            onValueChangeAction={onRepositorySelectAction}
+            options={repositoryOptions}
+            placeholder={repositoryState.isLoading ? 'Loading repositories…' : 'Select repository'}
+            searchPlaceholder="Search repositories"
+            value={selectedRepositoryValue}
+          />
+          <Combobox
+            ariaLabel="Branch"
+            buttonClassName="h-9 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-2.5 text-[12px] shadow-none"
+            disabled={!selectedRepositoryValue || isBranchLoading || branchOptions.length === 0}
+            emptyText={
+              selectedRepositoryValue
+                ? (branchError ?? 'No branches found')
+                : 'Select a repository first'
+            }
+            onValueChangeAction={(value) => onDraftChangeAction('branch', value)}
+            options={branchOptions}
+            placeholder={
+              !selectedRepositoryValue ? 'Branch' : isBranchLoading ? 'Loading…' : 'Select branch'
+            }
+            searchPlaceholder="Search branches"
+            value={draftApp.branch}
+          />
+          <Button
+            className="h-9 rounded-[7px] border-[var(--orange)] bg-[var(--orange)] px-3 text-[12px] text-white shadow-none hover:bg-[#dc6f13] max-[640px]:col-span-2"
+            disabled={!draftApp.repositoryUrl.trim() || isBranchLoading}
+            onClick={onToggleCreateAppAction}
+            type="button"
+          >
+            Review deploy
+            <ChevronRight aria-hidden="true" className="size-3.5" />
+          </Button>
+        </div>
+      </section>
 
-              {isCreateAppExpanded ? (
-                <form
-                  className="grid gap-2 border-t border-border/60 px-3 py-2.5"
-                  onSubmit={onCreateAppAction}
-                >
-                  <div className="space-y-1">
-                    <Combobox
-                      ariaLabel="Repository"
-                      buttonClassName="h-8 rounded-lg border border-border/70 bg-background text-xs"
-                      disabled={repositoryState.isLoading}
-                      emptyText="No repositories found"
-                      onValueChangeAction={onRepositorySelectAction}
-                      options={repositoryOptions}
-                      placeholder={
-                        repositoryState.isLoading
-                          ? 'Loading repositories...'
-                          : 'Select a repository'
-                      }
-                      searchPlaceholder="Search repositories"
-                      value={selectedRepositoryValue}
-                    />
-                    {selectedRepositorySummary ? (
-                      <div className="text-[11px] text-muted-foreground">
-                        {selectedRepositorySummary}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-1">
-                    <Combobox
-                      ariaLabel="Branch"
-                      buttonClassName="h-8 rounded-lg border border-border/70 bg-background text-xs"
-                      disabled={
-                        !selectedRepositoryValue || isBranchLoading || branchOptions.length === 0
-                      }
-                      emptyText={
-                        selectedRepositoryValue
-                          ? (branchError ?? 'No branches found')
-                          : 'Select a repository first'
-                      }
-                      onValueChangeAction={(value) => onDraftChangeAction('branch', value)}
-                      options={branchOptions}
-                      placeholder={
-                        !selectedRepositoryValue
-                          ? 'Select a repository first'
-                          : isBranchLoading
-                            ? 'Loading branches...'
-                            : 'Select a branch'
-                      }
-                      searchPlaceholder="Search branches"
-                      value={draftApp.branch}
-                    />
-                    {branchHelperText ? (
-                      <div className="text-[11px] text-muted-foreground">{branchHelperText}</div>
-                    ) : null}
-                  </div>
-
-                  <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">App name</Label>
-                      <Input
-                        className="h-8 rounded-lg border-border/70 bg-background text-xs"
-                        onChange={(event) => onDraftChangeAction('appName', event.target.value)}
-                        value={draftApp.appName}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Container port
-                      </Label>
-                      <Input
-                        className="h-8 rounded-lg border-border/70 bg-background text-xs"
-                        inputMode="numeric"
-                        onChange={(event) => onDraftChangeAction('port', event.target.value)}
-                        value={draftApp.port}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                      Exposure mode
-                    </Label>
-                    <select
-                      className="h-8 w-full rounded-lg border border-input bg-background px-3 text-xs"
-                      onChange={(event) => onDraftChangeAction('exposureMode', event.target.value)}
-                      value={draftApp.exposureMode}
-                    >
-                      <option value="http">HTTP — Traefik reverse proxy</option>
-                      <option value="tcp">
-                        TCP — Traefik TCP passthrough (pre-configure entrypoint)
-                      </option>
-                      <option value="host">Host port — bind directly to host</option>
-                      <option value="internal">Internal — no external exposure</option>
-                    </select>
-                  </div>
-
-                  {(draftApp.exposureMode === 'tcp' || draftApp.exposureMode === 'host') && (
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">Host port</Label>
-                      <Input
-                        className="h-8 rounded-lg border-border/70 bg-background text-xs"
-                        inputMode="numeric"
-                        onChange={(event) => onDraftChangeAction('hostPort', event.target.value)}
-                        placeholder={
-                          draftApp.exposureMode === 'tcp'
-                            ? 'e.g. 27017 (TCP entrypoint)'
-                            : 'e.g. 27017'
-                        }
-                        value={draftApp.hostPort}
-                      />
-                    </div>
-                  )}
-
-                  {draftApp.exposureMode === 'http' && (
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium text-muted-foreground">Subdomain</Label>
-                      <InputGroup className="h-8">
-                        <InputGroupInput
-                          className="text-xs"
-                          onChange={(event) => onDraftChangeAction('subdomain', event.target.value)}
-                          value={draftApp.subdomain}
-                        />
-                        {baseDomain ? (
-                          <InputGroupSuffix className="text-xs leading-8">
-                            .{baseDomain}
-                          </InputGroupSuffix>
-                        ) : null}
-                      </InputGroup>
-                    </div>
-                  )}
-
-                  {repositoryState.error ? (
-                    <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
-                      {repositoryState.error}
-                    </div>
-                  ) : null}
-
-                  {branchError ? (
-                    <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-800">
-                      {branchError}
-                    </div>
-                  ) : null}
-
-                  {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (
-                    <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-                      Configure a GitHub token to browse repositories from the sidebar.
-                    </div>
-                  ) : null}
-
-                  <Button
-                    className="h-8 w-full rounded-lg text-xs"
-                    disabled={isCreateDisabled}
-                    type="submit"
-                  >
-                    {isCreateAppPending ? 'Creating...' : 'Create app'}
-                  </Button>
-                </form>
-              ) : null}
+      <section
+        aria-labelledby="applications-title"
+        className="overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-white shadow-[var(--shadow)]"
+      >
+        <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-3 py-2.5 max-[640px]:grid max-[640px]:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="flex min-w-0 flex-1 items-center gap-3 max-[640px]:contents">
+            <div className="min-w-0 shrink-0 max-[640px]:col-span-2">
+              <h2 className="text-[13px] font-semibold" id="applications-title">
+                Applications
+              </h2>
+              <p className="mt-1 whitespace-nowrap font-mono text-[10px] text-[var(--quiet)]">
+                {appItems.length} visible · {liveAppsCount} running
+                {deployingAppsCount ? ` · ${deployingAppsCount} deploying` : ''}
+              </p>
             </div>
-
-            <div className="flex flex-col gap-1">
-              {appItems.length ? (
-                appItems.map((deployment) => {
-                  const exposureLabel = getAppExposureLabel(deployment);
-
-                  return (
-                    <button
-                      aria-label={`${deployment.appName} ${deployment.domain} ${deployment.statusLabel} ${deployment.relativeUpdatedAt}`}
-                      className={cn(
-                        'group w-full overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors',
-                        deployment.isActive
-                          ? 'border-emerald-200 bg-emerald-50/60'
-                          : 'border-transparent bg-transparent hover:border-border/70 hover:bg-muted/40'
-                      )}
-                      key={deployment.id}
-                      onClick={() => onSelectAppAction(deployment.id)}
-                      type="button"
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <span
-                          className={cn(
-                            'mt-1.5 size-1.5 shrink-0 rounded-full',
-                            getStatusDotClassName(deployment.statusVariant)
-                          )}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className="min-w-0 truncate text-xs font-medium tracking-tight text-foreground">
-                              {deployment.appName}
-                            </span>
-                          </span>
-                          <span className="block truncate text-[11px] text-muted-foreground">
-                            {getAppMetaLabel(deployment)}
-                          </span>
-                          <span className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
-                            <span className="truncate rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                              {getAppFreshnessLabel(deployment)}
-                            </span>
-                            <span
-                              className={cn(
-                                'truncate rounded-md border px-1.5 py-0.5 text-[11px] font-medium',
-                                deployment.statusVariant === 'success'
-                                  ? 'border-emerald-200/80 bg-emerald-50/80 text-emerald-700'
-                                  : deployment.statusVariant === 'warning'
-                                    ? 'border-amber-200/80 bg-amber-50/80 text-amber-700'
-                                    : 'border-border/60 bg-background text-muted-foreground'
-                              )}
-                            >
-                              {deployment.statusLabel}
-                            </span>
-                            {exposureLabel ? (
-                              <span className="truncate rounded-md border border-sky-200/70 bg-sky-50/80 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
-                                {exposureLabel}
-                              </span>
-                            ) : null}
-                          </span>
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="rounded-lg border border-dashed border-border/70 bg-background px-3 py-5 text-xs text-muted-foreground">
-                  No apps match the current filter.
-                </div>
-              )}
+            <div className="relative w-56 max-w-full max-[640px]:col-start-1 max-[640px]:row-start-2 max-[640px]:w-full">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--quiet)]"
+              />
+              <Input
+                aria-label="Search apps"
+                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 text-[12px] shadow-none"
+                onChange={(event) => onAppSearchQueryChangeAction(event.target.value)}
+                placeholder="Find app or route"
+                value={appSearchQuery}
+              />
             </div>
           </div>
-        </ScrollArea>
-      </aside>
+          <div
+            aria-label="Filter applications"
+            className="grid grid-flow-col rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-0.5 max-[640px]:col-start-2 max-[640px]:row-start-2"
+            role="group"
+          >
+            <FilterButton
+              active={statusFilter === 'all'}
+              onClick={() => onStatusFilterChangeAction('all')}
+            >
+              All
+            </FilterButton>
+            <FilterButton
+              active={statusFilter === 'running'}
+              onClick={() => onStatusFilterChangeAction('running')}
+            >
+              Running
+            </FilterButton>
+            <FilterButton
+              active={statusFilter === 'attention'}
+              onClick={() => onStatusFilterChangeAction('attention')}
+            >
+              Attention
+            </FilterButton>
+          </div>
+        </header>
 
-      <ResizeHandle onMouseDown={onListResizeStartAction} />
-    </>
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed border-collapse">
+            <caption className="sr-only">Git-backed applications and deployment state</caption>
+            <colgroup>
+              <col className="w-[27%] max-[760px]:w-auto" />
+              <col className="w-[11%] max-[760px]:w-[6.5rem]" />
+              <col className="w-[18%] max-[760px]:hidden" />
+              <col className="w-[20%] max-[760px]:hidden" />
+              <col className="w-[12%] max-[760px]:hidden" />
+              <col className="w-[8%] max-[960px]:hidden" />
+              <col className="w-[8%] max-[760px]:w-[5rem]" />
+            </colgroup>
+            <thead className="bg-[var(--surface-subtle)]">
+              <tr className="h-9 border-b border-[var(--hairline)]">
+                {['App', 'State', 'Source', 'Route', 'Runtime', 'Updated'].map((label, index) => (
+                  <th
+                    className={cn(
+                      'px-3 text-left font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase',
+                      index >= 2 && index <= 4 && 'max-[760px]:hidden',
+                      index === 5 && 'max-[960px]:hidden'
+                    )}
+                    key={label}
+                    scope="col"
+                  >
+                    {label}
+                  </th>
+                ))}
+                <th scope="col">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {appItems.map((deployment, index) => (
+                <tr
+                  aria-label={`Manage ${deployment.appName}`}
+                  className={cn(
+                    'group h-[58px] cursor-pointer border-b border-[var(--hairline)] outline-none transition-colors last:border-b-0 hover:bg-[#f8fafc] focus-visible:ring-2 focus-visible:ring-[var(--blue)] focus-visible:ring-inset',
+                    deployment.isActive && 'bg-[color-mix(in_srgb,var(--blue-soft)_34%,white)]'
+                  )}
+                  key={deployment.id}
+                  onClick={() => onSelectAppAction(deployment.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelectAppAction(deployment.id);
+                    }
+                  }}
+                  tabIndex={0}
+                >
+                  <td className="px-3 py-1.5">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className={cn(
+                          'grid size-8 shrink-0 place-items-center rounded-[7px] border font-mono text-[10px] font-bold',
+                          APP_TONES[index % APP_TONES.length]
+                        )}
+                      >
+                        {getAppInitials(deployment.appName)}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-semibold tracking-[-0.01em]">
+                          {deployment.appName}
+                        </span>
+                        <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                          {deployment.id}
+                        </span>
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] uppercase',
+                        getStatusClassName(deployment.statusVariant)
+                      )}
+                    >
+                      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+                      {deployment.statusLabel}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 max-[760px]:hidden">
+                    <span className="block truncate font-mono text-[11px] text-foreground">
+                      {deployment.repositoryName}
+                    </span>
+                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                      {deployment.branchLabel}@{deployment.revisionLabel}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 max-[760px]:hidden">
+                    {deployment.domain ? (
+                      <a
+                        className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-[var(--blue)] underline-offset-2 hover:underline"
+                        href={`https://${deployment.domain}`}
+                        onClick={(event) => event.stopPropagation()}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <span className="truncate">{deployment.domain}</span>
+                        <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
+                      </a>
+                    ) : (
+                      <span className="font-mono text-[11px] text-[var(--quiet)]">not routed</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 max-[760px]:hidden">
+                    <span className="font-mono text-[11px] text-[var(--muted-ink)]">
+                      {getRuntimeLabel(deployment)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 max-[960px]:hidden">
+                    <span className="font-mono text-[11px] text-[var(--muted-ink)]">
+                      {deployment.relativeUpdatedAt}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    <Button
+                      className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-blue-200 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelectAppAction(deployment.id);
+                      }}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Manage
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {appItems.length === 0 ? (
+            <div className="px-4 py-10 text-center font-mono text-[12px] text-[var(--quiet)]">
+              No applications match this view.
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {isCreateAppExpanded ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[rgb(26_26_29_/_0.28)] p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              onToggleCreateAppAction();
+            }
+          }}
+        >
+          <form
+            aria-labelledby="review-deployment-title"
+            aria-modal="true"
+            className="my-auto w-full max-w-[610px] overflow-hidden rounded-[12px] border border-[var(--hairline)] bg-white shadow-[0_24px_90px_rgb(16_24_40_/_0.18)]"
+            onSubmit={onCreateAppAction}
+            role="dialog"
+          >
+            <header className="flex min-h-[54px] items-center justify-between gap-4 border-b border-[var(--hairline)] px-4">
+              <div>
+                <h2 className="text-[15px] font-semibold" id="review-deployment-title">
+                  Review new deployment
+                </h2>
+                <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                  Git source → build → runtime
+                </p>
+              </div>
+              <Button
+                aria-label="Close deployment review"
+                autoFocus
+                className="size-7"
+                onClick={onToggleCreateAppAction}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <X aria-hidden="true" className="size-4" />
+              </Button>
+            </header>
+
+            <div className="grid gap-3 p-4">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground">App name</Label>
+                  <Input
+                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                    onChange={(event) => onDraftChangeAction('appName', event.target.value)}
+                    value={draftApp.appName}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground">
+                    Internal port
+                  </Label>
+                  <Input
+                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                    inputMode="numeric"
+                    onChange={(event) => onDraftChangeAction('port', event.target.value)}
+                    value={draftApp.port}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-medium text-muted-foreground">Repository</Label>
+                <Combobox
+                  ariaLabel="Deployment repository"
+                  buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 font-mono text-[12px] shadow-none"
+                  disabled={repositoryState.isLoading}
+                  emptyText={repositoryState.error ?? 'No repositories found'}
+                  onValueChangeAction={onRepositorySelectAction}
+                  options={repositoryOptions}
+                  placeholder="Select repository"
+                  searchPlaceholder="Search repositories"
+                  value={selectedRepositoryValue}
+                />
+                {selectedRepositorySummary ? (
+                  <p className="font-mono text-[10px] text-[var(--quiet)]">
+                    {selectedRepositorySummary}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground">Branch</Label>
+                  <Combobox
+                    ariaLabel="Deployment branch"
+                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 font-mono text-[12px] shadow-none"
+                    disabled={
+                      !selectedRepositoryValue || isBranchLoading || branchOptions.length === 0
+                    }
+                    emptyText={branchError ?? 'No branches found'}
+                    onValueChangeAction={(value) => onDraftChangeAction('branch', value)}
+                    options={branchOptions}
+                    placeholder={isBranchLoading ? 'Loading branches…' : 'Select branch'}
+                    searchPlaceholder="Search branches"
+                    value={draftApp.branch}
+                  />
+                  {branchHelperText ? (
+                    <p className="font-mono text-[10px] text-[var(--quiet)]">{branchHelperText}</p>
+                  ) : null}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground">Exposure</Label>
+                  <select
+                    className="h-9 w-full rounded-[7px] border border-input bg-white px-3 text-[12px]"
+                    onChange={(event) => onDraftChangeAction('exposureMode', event.target.value)}
+                    value={draftApp.exposureMode}
+                  >
+                    <option value="http">HTTP — reverse proxy</option>
+                    <option value="tcp">TCP passthrough</option>
+                    <option value="host">Host port</option>
+                    <option value="internal">Internal only</option>
+                  </select>
+                </div>
+              </div>
+
+              {draftApp.exposureMode === 'http' ? (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground">
+                    Public route
+                  </Label>
+                  <InputGroup className="h-9 rounded-[7px] shadow-none">
+                    <InputGroupInput
+                      className="font-mono text-[12px]"
+                      onChange={(event) => onDraftChangeAction('subdomain', event.target.value)}
+                      value={draftApp.subdomain}
+                    />
+                    {baseDomain ? (
+                      <InputGroupSuffix className="font-mono text-[11px] leading-9">
+                        .{baseDomain}
+                      </InputGroupSuffix>
+                    ) : null}
+                  </InputGroup>
+                </div>
+              ) : null}
+
+              {needsHostPort ? (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-medium text-muted-foreground">Host port</Label>
+                  <Input
+                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                    inputMode="numeric"
+                    onChange={(event) => onDraftChangeAction('hostPort', event.target.value)}
+                    placeholder="e.g. 27017"
+                    value={draftApp.hostPort}
+                  />
+                </div>
+              ) : null}
+
+              {repositoryState.error || branchError ? (
+                <div className="rounded-[7px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+                  {repositoryState.error ?? branchError}
+                </div>
+              ) : null}
+
+              {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (
+                <div className="rounded-[7px] border border-border bg-[var(--surface-subtle)] px-3 py-2 text-[12px] text-muted-foreground">
+                  Configure a GitHub token to browse private repositories.
+                </div>
+              ) : null}
+
+              <div className="mt-1 grid grid-cols-3 gap-2 border-t border-[var(--hairline)] pt-4 max-[560px]:grid-cols-1">
+                <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2.5">
+                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                    Source
+                  </span>
+                  <span className="mt-1 flex items-center gap-1.5 truncate font-mono text-[11px] font-semibold">
+                    <GitBranch aria-hidden="true" className="size-3 text-[var(--orange)]" />
+                    {draftApp.branch || 'default'}
+                  </span>
+                </div>
+                <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2.5">
+                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                    Build
+                  </span>
+                  <span className="mt-1 block truncate font-mono text-[11px] font-semibold">
+                    Auto-detect
+                  </span>
+                </div>
+                <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2.5">
+                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                    Runtime
+                  </span>
+                  <span className="mt-1 block truncate font-mono text-[11px] font-semibold">
+                    port {draftApp.port || '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <footer className="flex items-center justify-end gap-2 border-t border-[var(--hairline)] bg-[var(--surface-subtle)] px-4 py-3">
+              <Button onClick={onToggleCreateAppAction} type="button" variant="secondary">
+                Cancel
+              </Button>
+              <Button
+                className="border-[var(--orange)] bg-[var(--orange)] text-white shadow-none hover:bg-[#dc6f13]"
+                disabled={isCreateDisabled}
+                type="submit"
+              >
+                {isCreateAppPending ? 'Deploying…' : 'Deploy app'}
+                {!isCreateAppPending ? <Plus aria-hidden="true" className="size-3.5" /> : null}
+              </Button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
+    </div>
   );
 }

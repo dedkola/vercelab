@@ -621,11 +621,10 @@ describe('WorkspaceShell', () => {
       />
     );
 
-    expect(
-      await screen.findByRole('button', {
-        name: /platform ui.*control-plane-app\.example\.com.*running/i,
-      })
-    ).toBeVisible();
+    const appRow = await screen.findByRole('row', { name: /manage platform ui/i });
+
+    expect(within(appRow).getByText('control-plane-app.example.com')).toBeVisible();
+    expect(within(appRow).getByText(/^running$/i)).toBeVisible();
   });
 
   it('shows app names for managed containers and raw names for docker containers in the sidebar', async () => {
@@ -833,7 +832,7 @@ describe('WorkspaceShell', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: /git app page/i,
+        name: /^apps$/i,
       })
     );
 
@@ -859,7 +858,7 @@ describe('WorkspaceShell', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: /git app page/i,
+        name: /^apps$/i,
       })
     );
 
@@ -908,6 +907,8 @@ describe('WorkspaceShell', () => {
   });
 
   it('renders the git app page with editable deployment details', async () => {
+    const user = userEvent.setup();
+
     render(
       <WorkspaceShell
         baseDomain="example.com"
@@ -939,25 +940,35 @@ describe('WorkspaceShell', () => {
       />
     );
 
-    expect(await screen.findByRole('heading', { name: /docs-app/i })).toBeVisible();
-    expect(screen.queryByText(/focused app/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/current app snapshot/i)).toBeVisible();
-    expect(screen.getByText(/editable runtime settings/i)).toBeVisible();
-    expect(screen.getByRole('button', { name: /save and recreate/i })).toBeVisible();
-    expect(screen.getByRole('button', { name: /^refresh$/i })).toBeVisible();
-    expect(screen.getByDisplayValue('docs-app')).toBeVisible();
-    expect(screen.getAllByRole('link', { name: 'docs.example.com' })[0]).toHaveAttribute(
+    expect(await screen.findByRole('heading', { name: /apps.*1 deployment/i })).toBeVisible();
+    const appRow = screen.getByRole('row', { name: /manage docs-app/i });
+
+    expect(within(appRow).getByText('dedkola/vercelab')).toBeVisible();
+    expect(within(appRow).getByText('docs.example.com')).toBeVisible();
+    await user.click(within(appRow).getByRole('button', { name: /manage/i }));
+
+    const appManager = await screen.findByRole('dialog', { name: /docs-app/i });
+
+    expect(within(appManager).getByRole('heading', { name: /docs-app/i })).toBeVisible();
+    expect(within(appManager).getByRole('tab', { name: /overview/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(within(appManager).getByRole('button', { name: /pull source/i })).toBeVisible();
+    expect(within(appManager).getByRole('link', { name: /open route/i })).toHaveAttribute(
       'href',
       'https://docs.example.com'
     );
+
+    await user.click(within(appManager).getByRole('tab', { name: /settings/i }));
+
+    expect(screen.queryByText(/focused app/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/application settings/i)).toBeVisible();
+    expect(screen.getByText(/saved value.*next deployment value/i)).toBeVisible();
+    expect(screen.getByRole('button', { name: /save and recreate/i })).toBeVisible();
+    expect(screen.getByDisplayValue('docs-app')).toBeVisible();
     expect(screen.queryByText(/deploy mode/i)).not.toBeInTheDocument();
-    expect(screen.getAllByText(/a1b2c3d/i)[0]).toBeVisible();
-
-    const appRowButton = screen.getByRole('button', {
-      name: /docs-app.*example\.com/i,
-    });
-
-    expect(within(appRowButton).queryByText('dedkola/vercelab')).not.toBeInTheDocument();
+    expect(within(appManager).getAllByText(/a1b2c3d/i).length).toBeGreaterThan(0);
   });
 
   it('loads branches for the selected repository and lets the user choose one', async () => {
@@ -965,31 +976,33 @@ describe('WorkspaceShell', () => {
 
     render(<WorkspaceShell initialView="git-app-page" />);
 
-    await user.click(
-      screen.getByRole('button', {
-        name: /add git app/i,
-      })
-    );
-
     const repositoryCombobox = await screen.findByRole('combobox', {
-      name: /repository/i,
+      name: /^repository$/i,
     });
+
+    await waitFor(() => expect(repositoryCombobox).toBeEnabled());
 
     await user.click(repositoryCombobox);
     await user.click(await screen.findByText('dedkola/vercelab'));
 
-    expect(await screen.findByText(/3 branches available for selection\./i)).toBeVisible();
-
     const branchCombobox = screen.getByRole('combobox', {
-      name: /branch/i,
+      name: /^branch$/i,
     });
 
-    expect(branchCombobox).toHaveTextContent('main');
+    await waitFor(() => expect(branchCombobox).toHaveTextContent('main'));
 
     await user.click(branchCombobox);
     await user.click(await screen.findByText('release'));
 
     expect(branchCombobox).toHaveTextContent('release');
+
+    await user.click(screen.getByRole('button', { name: /review deploy/i }));
+
+    const reviewDialog = screen.getByRole('dialog', { name: /review new deployment/i });
+    expect(
+      within(reviewDialog).getByRole('combobox', { name: /deployment branch/i })
+    ).toHaveTextContent('release');
+    expect(within(reviewDialog).getByText(/3 branches available for selection\./i)).toBeVisible();
     expect(
       fetchSpy.mock.calls.some(([input]) =>
         getRequestUrl(input).includes('/api/github/repos/dedkola/vercelab/branches')

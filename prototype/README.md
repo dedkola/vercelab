@@ -2,6 +2,11 @@
 
 This prototype explores a lighter Vercelab shell before the production React refactor.
 
+## Prototype pages
+
+- `index.html` — Overview telemetry and the unified workloads inventory.
+- `apps.html` — Compact new-app entry, application inventory, deployment review dialog, and on-demand app management drawer.
+
 ## Direction
 
 - Adopt the Homelab Index visual system: compact chrome, neutral canvas, hairline surfaces, tabular data, quiet shadows, and restrained orange/blue/green accents.

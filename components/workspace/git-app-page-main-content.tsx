@@ -2,10 +2,9 @@
 
 import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowRight,
   ExternalLink,
   GitBranch,
-  GitCommitHorizontal,
-  Globe,
   LoaderCircle,
   Package,
   Play,
@@ -20,9 +19,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { GitLogPanel, type LogTab } from '@/components/git-log-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
@@ -65,13 +64,17 @@ type EnvVariableDraft = {
 type PendingAction = 'delete' | 'fetch' | 'recreate' | 'save' | 'start' | 'stop' | null;
 
 type GitAppPageMainContentProps = {
+  activeLogTab: LogTab;
   baseDomain?: string;
   deployment: DeploymentSummary;
   deploymentHref: string | null;
   deploymentStatusLabel: string;
   deploymentStatusVariant: 'success' | 'warning' | 'default';
+  deployments: DeploymentSummary[];
+  onCloseAction: () => void;
   onDeleteAction: () => Promise<void>;
   onFetchAction: () => Promise<void>;
+  onLogTabChangeAction: (tab: LogTab) => void;
   onRefreshAction: () => void;
   onRecreateAction: () => Promise<void>;
   onSaveSettingsAction: (formData: FormData) => Promise<void>;
@@ -80,17 +83,15 @@ type GitAppPageMainContentProps = {
   publicDomainLabel: string;
 };
 
-type SnapshotRowProps = {
-  label: string;
-  value: React.ReactNode;
-};
+type ManagerTab = 'overview' | 'settings' | 'variables' | 'logs';
 
-type SettingsRowProps = {
-  currentValue: React.ReactNode;
-  editor: React.ReactNode;
+type ConfigurationFieldProps = {
+  changed: boolean;
+  children: React.ReactNode;
+  description: string;
   label: string;
   onReset: () => void;
-  resetDisabled?: boolean;
+  savedValue: React.ReactNode;
 };
 
 function createDraftId() {
@@ -141,26 +142,6 @@ function serializeEnvVariableDrafts(rows: EnvVariableDraft[]) {
     .join('\n');
 }
 
-// Reuse formatter instance — `new Intl.DateTimeFormat` is expensive to construct
-// and source commits can be re-rendered frequently while switching deployments.
-const SOURCE_DATE_FORMATTER = new Intl.DateTimeFormat('en', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: 'UTC',
-});
-
-function formatSourceDate(value: string | null) {
-  if (!value) {
-    return 'Unknown date';
-  }
-
-  try {
-    return SOURCE_DATE_FORMATTER.format(new Date(value));
-  } catch {
-    return value;
-  }
-}
-
 function getRepositoryDescriptor(repositoryUrl: string) {
   try {
     const parsed = new URL(repositoryUrl);
@@ -191,69 +172,69 @@ function getRepositoryDescriptor(repositoryUrl: string) {
   }
 }
 
-function SnapshotRow({ label, value }: SnapshotRowProps) {
-  return (
-    <div className="grid gap-1 border-b border-border/50 py-2.5 last:border-b-0 md:grid-cols-[9rem_minmax(0,1fr)] md:items-start md:gap-3">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div className="min-w-0 text-sm leading-5 text-foreground">{value}</div>
-    </div>
-  );
-}
-
-function SettingsRow({
-  currentValue,
-  editor,
+function ConfigurationField({
+  changed,
+  children,
+  description,
   label,
   onReset,
-  resetDisabled = false,
-}: SettingsRowProps) {
+  savedValue,
+}: ConfigurationFieldProps) {
   return (
-    <div className="grid gap-2 px-3 py-2 md:grid-cols-[10rem_minmax(0,0.9fr)_minmax(0,1.15fr)_5rem] md:items-center">
-      <div>
-        <div className="text-xs font-semibold tracking-tight text-foreground">{label}</div>
-      </div>
-
-      <div className="min-w-0 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5">
-        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
-          Current
+    <div
+      className={cn(
+        'rounded-[8px] border bg-background p-3 transition-[border-color,box-shadow]',
+        changed ? 'border-orange-200 shadow-[0_0_0_3px_rgb(244_129_32_/_0.07)]' : 'border-border/70'
+      )}
+    >
+      <div className="mb-2.5 flex min-h-8 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-semibold tracking-tight text-foreground">{label}</div>
+            {changed ? (
+              <span className="font-mono text-[11px] font-semibold tracking-[0.05em] text-[var(--orange)] uppercase">
+                Changed
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{description}</p>
         </div>
-        <div className="min-w-0 text-sm leading-5 text-foreground">{currentValue}</div>
+        {changed ? (
+          <Button
+            aria-label={`Undo ${label} change`}
+            className="h-6 shrink-0 px-2 text-[12px]"
+            onClick={onReset}
+            size="xs"
+            type="button"
+            variant="ghost"
+          >
+            <Undo2 className="size-3" />
+            Undo
+          </Button>
+        ) : null}
       </div>
 
-      <div className="min-w-0">
-        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
-          New value
-        </div>
-        {editor}
-      </div>
+      {children}
 
-      <div className="flex md:justify-end">
-        <Button
-          className="w-full md:w-auto"
-          disabled={resetDisabled}
-          onClick={onReset}
-          size="xs"
-          type="button"
-          variant="ghost"
-        >
-          <Undo2 className="h-3.5 w-3.5" />
-          Undo
-        </Button>
+      <div className="mt-2 truncate font-mono text-[11px] text-[var(--quiet)]">
+        Saved · {savedValue}
       </div>
     </div>
   );
 }
 
 export function GitAppPageMainContent({
+  activeLogTab,
   baseDomain,
   deployment,
   deploymentHref,
   deploymentStatusLabel,
   deploymentStatusVariant,
+  deployments,
+  onCloseAction,
   onDeleteAction,
   onFetchAction,
+  onLogTabChangeAction,
   onRefreshAction,
   onRecreateAction,
   onSaveSettingsAction,
@@ -261,6 +242,7 @@ export function GitAppPageMainContent({
   onStopAction,
   publicDomainLabel,
 }: GitAppPageMainContentProps) {
+  const [activeTab, setActiveTab] = useState<ManagerTab>('overview');
   const [appName, setAppName] = useState(deployment.appName);
   const [branchValue, setBranchValue] = useState(deployment.branch ?? '');
   const [commitSha, setCommitSha] = useState(deployment.commitSha ?? '');
@@ -282,7 +264,6 @@ export function GitAppPageMainContent({
   // after hydration so the route render stays fast, then branch changes can
   // re-use the same background source fetch.
   const sourceRequestedRef = useRef(false);
-  const [sourceRequested, setSourceRequested] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchSourceData = useCallback(
@@ -348,7 +329,6 @@ export function GitAppPageMainContent({
   const requestSourceData = useCallback(
     (branch: string) => {
       sourceRequestedRef.current = true;
-      setSourceRequested(true);
       fetchSourceData(branch);
     },
     [fetchSourceData]
@@ -396,7 +376,6 @@ export function GitAppPageMainContent({
   const activeCommit = activeSourceData?.currentCommit;
   const currentEnvPayload = deployment.envVariables ?? '';
   const envPayload = serializeEnvVariableDrafts(envRows);
-  const liveHref = deploymentHref ?? `https://${publicDomainLabel}`;
   const branchBrowserError = sourceError ?? activeSourceData?.browserError ?? null;
   const isBusy = pendingAction !== null;
   const normalizedCurrentEnvPayload = useMemo(
@@ -542,586 +521,688 @@ export function GitAppPageMainContent({
     setEnvRows(buildEnvVariableDrafts(deployment.envVariables));
   }
 
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onCloseAction();
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onCloseAction]);
+
+  const envVariableCount = envRows.filter((row) => row.enabled && row.key.trim()).length;
+  const stateSummary =
+    deployment.status === 'running'
+      ? 'Healthy'
+      : deployment.status === 'deploying'
+        ? 'Building image'
+        : deployment.status === 'failed'
+          ? 'Needs attention'
+          : 'Stopped';
+  const managerTabs: Array<{ label: string; value: ManagerTab }> = [
+    { label: 'Overview', value: 'overview' },
+    { label: 'Settings', value: 'settings' },
+    { label: 'Variables', value: 'variables' },
+    { label: 'Logs', value: 'logs' },
+  ];
+
   return (
-    <div className="space-y-3">
-      <section className="rounded-xl border border-border/70 bg-background p-3 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                className="rounded-md border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground"
-                variant="outline"
+    <>
+      <button
+        aria-label="Close app manager"
+        className="fixed inset-0 z-50 cursor-default bg-[rgb(26_26_29_/_0.2)]"
+        onClick={onCloseAction}
+        type="button"
+      />
+      <aside
+        aria-labelledby="app-manager-title"
+        aria-modal="true"
+        className="fixed inset-y-0 right-0 z-[60] flex w-[min(540px,calc(100vw-24px))] flex-col border-l border-[var(--hairline)] bg-white shadow-[-20px_0_60px_rgb(16_24_40_/_0.12)] max-[640px]:w-screen max-[640px]:border-l-0"
+        role="dialog"
+      >
+        <header className="flex min-h-[58px] items-center justify-between gap-3 border-b border-[var(--hairline)] px-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+              <Package aria-hidden="true" className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <h2
+                className="truncate text-[14px] font-semibold tracking-[-0.015em]"
+                id="app-manager-title"
               >
-                Deployment
-              </Badge>
-              <Badge className="rounded-md text-[11px]" variant={deploymentStatusVariant}>
-                {deploymentStatusLabel}
-              </Badge>
-              <Badge
-                className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
-                variant="outline"
-              >
-                {deployment.composeMode ?? 'auto'}
-              </Badge>
-            </div>
-            <h1 className="text-base font-semibold tracking-tight text-foreground">
-              {deployment.appName}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>Endpoint</span>
-              <a
-                className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
-                href={liveHref}
-                rel="noreferrer"
-                target="_blank"
-              >
-                {publicDomainLabel}
-                <ExternalLink className="h-3 w-3" />
-              </a>
+                {deployment.appName}
+              </h2>
+              <p className="mt-0.5 truncate font-mono text-[10px] text-[var(--quiet)]">
+                {repositoryDescriptor.fullName} · {deployment.branch ?? 'default'}
+              </p>
             </div>
           </div>
+          <Button
+            aria-label="Close app manager"
+            autoFocus
+            className="size-7"
+            onClick={onCloseAction}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <X aria-hidden="true" className="size-4" />
+          </Button>
+        </header>
 
-          <div className="flex flex-wrap gap-2">
-            <Badge
-              className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
-              variant="outline"
+        <div
+          aria-label="Application management"
+          className="flex min-h-[39px] shrink-0 gap-4 overflow-x-auto border-b border-[var(--hairline)] px-4"
+          role="tablist"
+        >
+          {managerTabs.map((tab) => (
+            <button
+              aria-selected={activeTab === tab.value}
+              className={cn(
+                'relative shrink-0 px-0 text-[11px] font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5',
+                activeTab === tab.value
+                  ? 'text-foreground after:bg-[var(--orange)]'
+                  : 'text-[var(--quiet)] after:bg-transparent hover:text-foreground'
+              )}
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              role="tab"
+              type="button"
             >
-              Updated{' '}
-              {new Date(deployment.updatedAt).toLocaleString('en', {
-                hour: '2-digit',
-                minute: '2-digit',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </Badge>
-            <Badge
-              className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
-              variant="outline"
-            >
-              Port {deployment.port}
-            </Badge>
-          </div>
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </section>
 
-      <Card className="overflow-hidden rounded-xl border-border/70 shadow-sm">
-        <CardHeader className="border-b border-border/60 pb-2 pt-3">
-          <CardTitle>Current app snapshot</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 py-3">
-          <div className="rounded-lg border border-border/60 bg-background px-3 py-1">
-            <SnapshotRow label="App name" value={deployment.appName} />
-            <SnapshotRow
-              label="Traefik URL"
-              value={
-                <a
-                  className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
-                  href={liveHref}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                  {publicDomainLabel}
-                </a>
-              }
-            />
-            <SnapshotRow
-              label="Repository"
-              value={
-                <a
-                  className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
-                  href={repositoryDescriptor.url}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                  {repositoryDescriptor.fullName}
-                </a>
-              }
-            />
-            <SnapshotRow
-              label="Branch"
-              value={
-                <div className="flex flex-wrap items-center gap-2">
-                  <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>
-                    {activeSourceData?.currentBranch ?? deployment.branch ?? 'Default branch'}
-                  </span>
-                  {deployment.branch ? (
-                    <Badge className="border-border/60 bg-muted/45 text-foreground">
-                      Saved ref
-                    </Badge>
-                  ) : null}
-                </div>
-              }
-            />
-            <SnapshotRow
-              label="Commit"
-              value={
-                activeCommit ? (
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {activeCommit.url ? (
-                        <a
-                          className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/80"
-                          href={activeCommit.url}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <GitCommitHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                          {activeCommit.shortSha}
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                          <GitCommitHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-                          {activeCommit.shortSha}
-                        </span>
-                      )}
-                      {deployment.commitSha ? (
-                        <Badge className="border-border/60 bg-muted/45 text-foreground">
-                          Pinned
-                        </Badge>
-                      ) : (
-                        <Badge className="border-border/60 bg-muted/45 text-foreground">
-                          Tracking branch head
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-xs leading-5 text-muted-foreground">
-                      {activeCommit.message}
-                      {activeCommit.committedAt
-                        ? ` • ${formatSourceDate(activeCommit.committedAt)}`
-                        : ''}
-                    </div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--canvas)] p-4 max-[640px]:p-3">
+          {activeTab === 'overview' ? (
+            <div className="space-y-5">
+              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                      Current deployment
+                    </span>
+                    <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
+                      {stateSummary}
+                    </h3>
                   </div>
-                ) : (
-                  <span className="text-muted-foreground">
-                    {!sourceRequested || isSourceLoading
-                      ? 'Loading current commit in the background...'
-                      : 'Current commit metadata is not available yet.'}
-                  </span>
-                )
-              }
-            />
-          </div>
+                  <Badge className="rounded-[6px] shadow-none" variant={deploymentStatusVariant}>
+                    {deploymentStatusLabel}
+                  </Badge>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] text-[var(--quiet)]">
+                  <span>{deployment.id}</span>
+                  <span>{new Date(deployment.updatedAt).toLocaleString()}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {deploymentHref ? (
+                    <Button asChild className="shadow-none" size="xs" variant="secondary">
+                      <a href={deploymentHref} rel="noreferrer" target="_blank">
+                        <ExternalLink aria-hidden="true" className="size-3.5" />
+                        Open route
+                      </a>
+                    </Button>
+                  ) : null}
+                  <Button
+                    disabled={isBusy}
+                    onClick={() => void runPendingAction('recreate', onRecreateAction)}
+                    size="xs"
+                    type="button"
+                    variant="secondary"
+                  >
+                    {pendingAction === 'recreate' ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="size-3.5" />
+                    )}
+                    Redeploy
+                  </Button>
+                  <Button
+                    disabled={isBusy}
+                    onClick={() => void runPendingAction('fetch', onFetchAction)}
+                    size="xs"
+                    type="button"
+                    variant="secondary"
+                  >
+                    {pendingAction === 'fetch' ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="size-3.5" />
+                    )}
+                    Pull source
+                  </Button>
+                  <Button
+                    onClick={() => setActiveTab('logs')}
+                    size="xs"
+                    type="button"
+                    variant="secondary"
+                  >
+                    View logs
+                  </Button>
+                  {deployment.status === 'stopped' ? (
+                    <Button
+                      disabled={isBusy}
+                      onClick={() => void runPendingAction('start', onStartAction)}
+                      size="xs"
+                      type="button"
+                    >
+                      {pendingAction === 'start' ? (
+                        <LoaderCircle className="size-3.5 animate-spin" />
+                      ) : (
+                        <Play className="size-3.5" />
+                      )}
+                      Start
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={isBusy}
+                      onClick={() => void runPendingAction('stop', onStopAction)}
+                      size="xs"
+                      type="button"
+                      variant="danger"
+                    >
+                      {pendingAction === 'stop' ? (
+                        <LoaderCircle className="size-3.5 animate-spin" />
+                      ) : (
+                        <Square className="size-3.5" />
+                      )}
+                      Stop
+                    </Button>
+                  )}
+                </div>
+              </section>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={isBusy || deployment.status !== 'stopped'}
-              onClick={() => void runPendingAction('start', onStartAction)}
-              size="sm"
-              type="button"
-            >
-              {pendingAction === 'start' ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              Start
-            </Button>
-            <Button
-              disabled={isBusy || deployment.status === 'stopped'}
-              onClick={() => void runPendingAction('stop', onStopAction)}
-              size="sm"
-              type="button"
-              variant="secondary"
-            >
-              {pendingAction === 'stop' ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <Square className="h-4 w-4" />
-              )}
-              Stop
-            </Button>
-            <Button
-              disabled={isBusy}
-              onClick={() => void runPendingAction('fetch', onFetchAction)}
-              size="sm"
-              type="button"
-              variant="secondary"
-            >
-              {pendingAction === 'fetch' ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCcw className="h-4 w-4" />
-              )}
-              Refresh
-            </Button>
-            <Button
-              disabled={isBusy}
-              onClick={() => void runPendingAction('recreate', onRecreateAction)}
-              size="sm"
-              type="button"
-            >
-              {pendingAction === 'recreate' ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <RotateCcw className="h-4 w-4" />
-              )}
-              Recreate
-            </Button>
-            <Button
-              disabled={isBusy}
-              onClick={() => void runPendingAction('delete', onDeleteAction)}
-              size="sm"
-              type="button"
-              variant="danger"
-            >
-              {pendingAction === 'delete' ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-              Delete
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              <section>
+                <h3 className="mb-2 text-[12px] font-semibold">Deployment path</h3>
+                <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1.5 max-[640px]:grid-cols-1">
+                  <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
+                    <span className="grid size-4 place-items-center rounded-full bg-[var(--green-soft)] font-mono text-[10px] font-bold text-[var(--green)]">
+                      ✓
+                    </span>
+                    <strong className="mt-1.5 block text-[11px]">Source</strong>
+                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                      {deployment.branch ?? 'default'}@
+                      {(activeCommit?.shortSha ?? deployment.commitSha?.slice(0, 7)) || 'head'}
+                    </span>
+                  </div>
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="size-3 text-[var(--quiet)] max-[640px]:mx-auto max-[640px]:rotate-90"
+                  />
+                  <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
+                    <span
+                      className={cn(
+                        'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
+                        deployment.status === 'deploying'
+                          ? 'bg-[var(--blue-soft)] text-[var(--blue)]'
+                          : 'bg-[var(--green-soft)] text-[var(--green)]'
+                      )}
+                    >
+                      {deployment.status === 'deploying' ? '↻' : '✓'}
+                    </span>
+                    <strong className="mt-1.5 block text-[11px]">Build</strong>
+                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                      {deployment.status === 'deploying'
+                        ? 'in progress'
+                        : (deployment.composeMode ?? 'auto') + ' ready'}
+                    </span>
+                  </div>
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="size-3 text-[var(--quiet)] max-[640px]:mx-auto max-[640px]:rotate-90"
+                  />
+                  <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
+                    <span
+                      className={cn(
+                        'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
+                        deploymentHref
+                          ? 'bg-[var(--green-soft)] text-[var(--green)]'
+                          : 'bg-[var(--surface-subtle)] text-[var(--quiet)]'
+                      )}
+                    >
+                      {deploymentHref ? '✓' : '·'}
+                    </span>
+                    <strong className="mt-1.5 block text-[11px]">Route</strong>
+                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                      {publicDomainLabel || 'not routed'}
+                    </span>
+                  </div>
+                </div>
+              </section>
 
-      <Card className="overflow-hidden rounded-xl border-border/70 shadow-sm">
-        <CardHeader className="border-b border-border/60 pb-2 pt-3">
-          <CardTitle>Editable runtime settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 py-3">
-          {branchBrowserError ? (
-            <div className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-5 text-amber-900">
-              {branchBrowserError}
+              <section>
+                <h3 className="mb-2 text-[12px] font-semibold">Runtime</h3>
+                <div className="border-t border-[var(--hairline)]">
+                  {[
+                    ['Build mode', deployment.composeMode ?? 'auto'],
+                    ['Internal port', ':' + deployment.port],
+                    [
+                      'Exposure',
+                      deployment.exposureMode === 'internal'
+                        ? 'internal only'
+                        : deployment.exposureMode === 'http'
+                          ? 'reverse proxy'
+                          : deployment.exposureMode + ' · :' + (deployment.hostPort ?? '—'),
+                    ],
+                    [
+                      'Environment',
+                      envVariableCount + ' variable' + (envVariableCount === 1 ? '' : 's'),
+                    ],
+                  ].map(([label, value]) => (
+                    <div
+                      className="flex min-h-[39px] items-center justify-between gap-4 border-b border-[var(--hairline)]"
+                      key={label}
+                    >
+                      <span className="text-[11px] text-muted-foreground">{label}</span>
+                      <span className="max-w-[65%] truncate font-mono text-[10px] text-foreground">
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-2 text-[12px] font-semibold">Recent activity</h3>
+                <div className="border-t border-[var(--hairline)]">
+                  <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
+                    <span className="font-mono text-[10px] text-[var(--quiet)]">Latest</span>
+                    <span className="mt-0.5 size-1.5 rounded-full bg-[var(--green)]" />
+                    <span className="min-w-0">
+                      <strong className="block text-[11px]">Deployment state updated</strong>
+                      <span className="mt-0.5 block break-words font-mono text-[10px] leading-4 text-[var(--quiet)]">
+                        {deployment.lastOperationSummary ??
+                          deploymentStatusLabel + ' · no operation summary'}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
+                    <span className="font-mono text-[10px] text-[var(--quiet)]">Output</span>
+                    <span className="mt-0.5 size-1.5 rounded-full bg-[var(--orange)]" />
+                    <details className="group min-w-0">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-semibold marker:content-none">
+                        <span>Last recorded output</span>
+                        <span className="font-mono text-[10px] font-normal text-[var(--quiet)] group-open:hidden">
+                          Show
+                        </span>
+                        <span className="hidden font-mono text-[10px] font-normal text-[var(--quiet)] group-open:inline">
+                          Hide
+                        </span>
+                      </summary>
+                      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-[7px] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-4 break-words text-[var(--quiet)]">
+                        {deployment.lastOutput ?? 'No output recorded for this deployment.'}
+                      </pre>
+                    </details>
+                  </div>
+                </div>
+              </section>
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded-lg border border-border/60 bg-background">
-            <div className="hidden border-b border-border/60 bg-muted/30 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[11rem_minmax(0,0.9fr)_minmax(0,1.15fr)_5rem]">
-              <div>Setting</div>
-              <div>Current</div>
-              <div>New value</div>
-              <div className="text-right">Undo</div>
-            </div>
+          {activeTab === 'settings' ? (
+            <div className="space-y-3">
+              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+                <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  Application settings
+                </span>
+                <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">Runtime & route</h3>
+                <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+                  Saved value → next deployment value
+                </p>
+              </section>
 
-            <div className="divide-y divide-border/60">
-              <SettingsRow
-                currentValue={deployment.appName}
-                editor={
-                  <Input
-                    className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none"
-                    onChange={(event) => setAppName(event.target.value)}
-                    value={appName}
-                  />
-                }
-                label="App name"
+              {branchBrowserError ? (
+                <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-4 text-amber-900">
+                  {branchBrowserError}
+                </div>
+              ) : null}
+
+              <ConfigurationField
+                changed={hasAppNameChange}
+                description="Deployment and container project name."
+                label="Application name"
                 onReset={() => setAppName(deployment.appName)}
-                resetDisabled={!hasAppNameChange}
-              />
+                savedValue={deployment.appName}
+              >
+                <Input
+                  className="h-9 rounded-[7px] text-[12px] shadow-none"
+                  onChange={(event) => setAppName(event.target.value)}
+                  value={appName}
+                />
+              </ConfigurationField>
 
-              <SettingsRow
-                currentValue={
-                  <span className="font-medium text-foreground">{publicDomainLabel}</span>
-                }
-                editor={
-                  <InputGroup className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none">
-                    <InputGroupInput
-                      className="px-2.5 text-xs"
-                      onChange={(event) => setSubdomain(event.target.value)}
-                      value={subdomain}
-                    />
-                    {baseDomain ? (
-                      <InputGroupSuffix className="text-xs leading-8">
-                        .{baseDomain}
-                      </InputGroupSuffix>
-                    ) : null}
-                  </InputGroup>
-                }
-                label="Traefik URL"
+              <ConfigurationField
+                changed={hasSubdomainChange}
+                description="Public hostname used by the reverse proxy."
+                label="Public URL"
                 onReset={() => setSubdomain(deployment.subdomain)}
-                resetDisabled={!hasSubdomainChange}
-              />
-
-              <SettingsRow
-                currentValue={
-                  activeSourceData?.currentBranch ?? deployment.branch ?? 'Default branch'
-                }
-                editor={
-                  <Combobox
-                    ariaLabel="Saved branch"
-                    buttonClassName="h-8 rounded-lg border border-border/70 bg-background px-2.5 text-xs shadow-none"
-                    disabled={isSourceLoading}
-                    emptyText={branchBrowserError ?? 'No branches available'}
-                    onOpenChangeAction={handleBranchComboboxOpen}
-                    onValueChangeAction={handleBranchSelect}
-                    options={branchOptions}
-                    placeholder={
-                      isSourceLoading
-                        ? 'Loading branches...'
-                        : sourceRequested
-                          ? 'Select a branch'
-                          : 'Click to load branches'
-                    }
-                    searchPlaceholder="Search branches"
-                    value={branchValue}
+                savedValue={publicDomainLabel || 'Not routed'}
+              >
+                <InputGroup className="h-9 rounded-[7px] shadow-none">
+                  <InputGroupInput
+                    className="px-2.5 text-[12px]"
+                    onChange={(event) => setSubdomain(event.target.value)}
+                    value={subdomain}
                   />
-                }
-                label="Branch"
-                onReset={() => {
-                  setBranchValue(deployment.branch ?? '');
-                  setCommitSha(deployment.commitSha ?? '');
-                }}
-                resetDisabled={!hasBranchChange}
-              />
+                  {baseDomain ? (
+                    <InputGroupSuffix className="font-mono text-[11px] leading-8">
+                      .{baseDomain}
+                    </InputGroupSuffix>
+                  ) : null}
+                </InputGroup>
+              </ConfigurationField>
 
-              <SettingsRow
-                currentValue={
-                  activeCommit ? (
-                    <span className="font-medium text-foreground">{activeCommit.shortSha}</span>
-                  ) : (
-                    <span className="text-muted-foreground">Latest branch head</span>
-                  )
-                }
-                editor={
-                  <Combobox
-                    ariaLabel="Saved commit"
-                    buttonClassName="h-8 rounded-lg border border-border/70 bg-background px-2.5 text-xs shadow-none"
-                    disabled={isSourceLoading || Boolean(branchBrowserError)}
-                    emptyText={branchBrowserError ?? 'No commits available'}
-                    onValueChangeAction={handleCommitSelect}
-                    options={commitOptions}
-                    placeholder={isSourceLoading ? 'Loading commits...' : 'Select a commit'}
-                    searchPlaceholder="Search commits"
-                    value={commitSha}
-                  />
-                }
-                label="Commit"
-                onReset={() => setCommitSha(deployment.commitSha ?? '')}
-                resetDisabled={!hasCommitChange}
-              />
-
-              <SettingsRow
-                currentValue={`:${deployment.port}`}
-                editor={
+              <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+                <ConfigurationField
+                  changed={hasExposureModeChange}
+                  description="How traffic reaches the container."
+                  label="Exposure"
+                  onReset={() => setExposureMode(deployment.exposureMode ?? 'http')}
+                  savedValue={deployment.exposureMode ?? 'http'}
+                >
+                  <select
+                    className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 text-[12px]"
+                    onChange={(event) => setExposureMode(event.target.value as ExposureMode)}
+                    value={exposureMode}
+                  >
+                    <option value="http">HTTP — reverse proxy</option>
+                    <option value="tcp">TCP passthrough</option>
+                    <option value="host">Host port</option>
+                    <option value="internal">Internal only</option>
+                  </select>
+                </ConfigurationField>
+                <ConfigurationField
+                  changed={hasPortChange}
+                  description="Port used inside the container."
+                  label="Internal port"
+                  onReset={() => setPort(String(deployment.port))}
+                  savedValue={':' + deployment.port}
+                >
                   <Input
-                    className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none"
+                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
                     inputMode="numeric"
                     onChange={(event) => setPort(event.target.value)}
                     value={port}
                   />
-                }
-                label="App port"
-                onReset={() => setPort(String(deployment.port))}
-                resetDisabled={!hasPortChange}
-              />
+                </ConfigurationField>
+              </div>
 
-              <SettingsRow
-                currentValue={deployment.exposureMode ?? 'http'}
-                editor={
-                  <select
-                    className="h-8 w-full rounded-lg border border-input bg-background px-3 text-xs shadow-none"
-                    onChange={(event) => setExposureMode(event.target.value as ExposureMode)}
-                    value={exposureMode}
-                  >
-                    <option value="http">HTTP — Traefik reverse proxy</option>
-                    <option value="tcp">TCP — Traefik TCP passthrough</option>
-                    <option value="host">Host port — bind to host</option>
-                    <option value="internal">Internal — no external exposure</option>
-                  </select>
-                }
-                label="Exposure mode"
-                onReset={() => setExposureMode(deployment.exposureMode ?? 'http')}
-                resetDisabled={!hasExposureModeChange}
-              />
-
-              {(exposureMode === 'tcp' || exposureMode === 'host') && (
-                <SettingsRow
-                  currentValue={deployment.hostPort ? `:${deployment.hostPort}` : '—'}
-                  editor={
-                    <Input
-                      className="h-8 rounded-lg border-border/70 bg-background text-xs shadow-none"
-                      inputMode="numeric"
-                      onChange={(event) => setHostPort(event.target.value)}
-                      placeholder="e.g. 27017"
-                      value={hostPort}
-                    />
-                  }
+              {exposureMode === 'tcp' || exposureMode === 'host' ? (
+                <ConfigurationField
+                  changed={hasHostPortChange}
+                  description="Port published directly on the host."
                   label="Host port"
                   onReset={() => setHostPort(String(deployment.hostPort ?? ''))}
-                  resetDisabled={!hasHostPortChange}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-lg border border-border/60 bg-background">
-            <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/24 px-3 py-2 md:flex-row md:items-center md:justify-between">
-              <div className="text-xs font-semibold tracking-tight text-foreground">
-                Environment variables
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() => {
-                    setEnvRows((current) => [...current, createEnvVariableDraft()]);
-                  }}
-                  size="xs"
-                  type="button"
-                  variant="secondary"
+                  savedValue={deployment.hostPort ? ':' + deployment.hostPort : 'Not configured'}
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add variable
-                </Button>
-                <Button
-                  disabled={!hasEnvChange}
-                  onClick={resetEnvRows}
-                  size="xs"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Undo2 className="h-3.5 w-3.5" />
-                  Undo env edits
-                </Button>
-              </div>
-            </div>
-
-            <div className="hidden border-b border-border/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[5.5rem_minmax(0,0.7fr)_minmax(0,1.3fr)_3rem]">
-              <div>Use</div>
-              <div>Key</div>
-              <div>Value</div>
-              <div className="text-right">Remove</div>
-            </div>
-
-            {envRows.length ? (
-              <div className="divide-y divide-border/60">
-                {envRows.map((row) => (
-                  <div
-                    className="grid gap-2 px-3 py-2 md:grid-cols-[5.5rem_minmax(0,0.7fr)_minmax(0,1.3fr)_3rem] md:items-center"
-                    key={row.id}
-                  >
-                    <label className="inline-flex items-center gap-2 text-xs font-medium text-foreground">
-                      <input
-                        checked={row.enabled}
-                        className="h-4 w-4 rounded border-border/70 text-foreground accent-foreground"
-                        onChange={(event) => {
-                          setEnvRows((current) =>
-                            current.map((item) =>
-                              item.id === row.id
-                                ? {
-                                    ...item,
-                                    enabled: event.target.checked,
-                                  }
-                                : item
-                            )
-                          );
-                        }}
-                        type="checkbox"
-                      />
-                      Enable
-                    </label>
-
-                    <Input
-                      className={cn(
-                        'h-8 rounded-lg border-border/70 bg-background text-xs shadow-none',
-                        !row.enabled && 'opacity-65'
-                      )}
-                      onChange={(event) => {
-                        setEnvRows((current) =>
-                          current.map((item) =>
-                            item.id === row.id
-                              ? {
-                                  ...item,
-                                  key: event.target.value,
-                                }
-                              : item
-                          )
-                        );
-                      }}
-                      placeholder="KEY"
-                      value={row.key}
-                    />
-
-                    <Input
-                      className={cn(
-                        'h-8 rounded-lg border-border/70 bg-background text-xs shadow-none',
-                        !row.enabled && 'opacity-65'
-                      )}
-                      onChange={(event) => {
-                        setEnvRows((current) =>
-                          current.map((item) =>
-                            item.id === row.id
-                              ? {
-                                  ...item,
-                                  value: event.target.value,
-                                }
-                              : item
-                          )
-                        );
-                      }}
-                      placeholder="VALUE"
-                      value={row.value}
-                    />
-
-                    <div className="flex md:justify-end">
-                      <Button
-                        onClick={() => {
-                          setEnvRows((current) => current.filter((item) => item.id !== row.id));
-                        }}
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="px-3 py-5 text-xs leading-5 text-muted-foreground">
-                No environment variables are configured yet. Add the ones you need and include the
-                row in the next save.
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold tracking-tight text-foreground">
-                Save changes
-              </div>
-              {changeCount > 0 ? (
-                <Badge
-                  className="rounded-md border-border/60 bg-background px-2 py-0.5 text-[11px] text-foreground"
-                  variant="outline"
-                >
-                  {changeCount} pending
-                </Badge>
+                  <Input
+                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                    inputMode="numeric"
+                    onChange={(event) => setHostPort(event.target.value)}
+                    placeholder="e.g. 27017"
+                    value={hostPort}
+                  />
+                </ConfigurationField>
               ) : null}
-            </div>
 
-            <div className="flex flex-wrap gap-2">
+              <section className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-3">
+                <div className="mb-3 flex items-start gap-2.5">
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-[6px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+                    <GitBranch aria-hidden="true" className="size-3.5" />
+                  </span>
+                  <div>
+                    <h3 className="text-[13px] font-semibold">Source and revision</h3>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Follow a branch head or pin one commit.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+                  <ConfigurationField
+                    changed={hasBranchChange}
+                    description="Git branch used for future pulls."
+                    label="Branch"
+                    onReset={() => {
+                      setBranchValue(deployment.branch ?? '');
+                      setCommitSha(deployment.commitSha ?? '');
+                    }}
+                    savedValue={deployment.branch ?? 'Default branch'}
+                  >
+                    <Combobox
+                      ariaLabel="Saved branch"
+                      buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
+                      disabled={isSourceLoading}
+                      emptyText={branchBrowserError ?? 'No branches available'}
+                      onOpenChangeAction={handleBranchComboboxOpen}
+                      onValueChangeAction={handleBranchSelect}
+                      options={branchOptions}
+                      placeholder={isSourceLoading ? 'Loading branches…' : 'Select branch'}
+                      searchPlaceholder="Search branches"
+                      value={branchValue}
+                    />
+                  </ConfigurationField>
+                  <ConfigurationField
+                    changed={hasCommitChange}
+                    description="Leave latest selected to track the branch."
+                    label="Revision"
+                    onReset={() => setCommitSha(deployment.commitSha ?? '')}
+                    savedValue={
+                      activeCommit?.shortSha ??
+                      deployment.commitSha?.slice(0, 7) ??
+                      'Latest branch head'
+                    }
+                  >
+                    <Combobox
+                      ariaLabel="Saved commit"
+                      buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
+                      disabled={isSourceLoading || Boolean(branchBrowserError)}
+                      emptyText={branchBrowserError ?? 'No commits available'}
+                      onValueChangeAction={handleCommitSelect}
+                      options={commitOptions}
+                      placeholder={isSourceLoading ? 'Loading commits…' : 'Select commit'}
+                      searchPlaceholder="Search commits"
+                      value={commitSha}
+                    />
+                  </ConfigurationField>
+                </div>
+              </section>
+
+              <section className="flex items-center justify-between gap-4 rounded-[8px] border border-red-200 bg-red-50/60 p-3">
+                <div>
+                  <h3 className="text-[12px] font-semibold">Remove deployment</h3>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Stop the runtime and remove this app record.
+                  </p>
+                </div>
+                <Button
+                  disabled={isBusy}
+                  onClick={() => void runPendingAction('delete', onDeleteAction)}
+                  size="xs"
+                  type="button"
+                  variant="danger"
+                >
+                  {pendingAction === 'delete' ? (
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3.5" />
+                  )}
+                  Remove
+                </Button>
+              </section>
+            </div>
+          ) : null}
+
+          {activeTab === 'variables' ? (
+            <div className="space-y-3">
+              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+                <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  Environment
+                </span>
+                <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
+                  {envVariableCount} variable{envVariableCount === 1 ? '' : 's'}
+                </h3>
+                <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+                  Included during the next build
+                </p>
+              </section>
+
+              <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
+                <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
+                  <div>
+                    <h3 className="text-[12px] font-semibold">Variables</h3>
+                    <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                      Enable only rows that should be saved
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button
+                      onClick={() =>
+                        setEnvRows((current) => [...current, createEnvVariableDraft('', '', true)])
+                      }
+                      size="xs"
+                      type="button"
+                      variant="secondary"
+                    >
+                      <Plus className="size-3.5" />
+                      Add
+                    </Button>
+                    <Button onClick={resetEnvRows} size="xs" type="button" variant="ghost">
+                      Reset
+                    </Button>
+                  </div>
+                </header>
+
+                {envRows.length ? (
+                  <div className="divide-y divide-[var(--hairline)]">
+                    {envRows.map((row) => (
+                      <div
+                        className="grid grid-cols-[auto_minmax(0,0.75fr)_minmax(0,1.25fr)_auto] items-center gap-2 px-3 py-2.5 max-[640px]:grid-cols-[auto_minmax(0,1fr)_auto]"
+                        key={row.id}
+                      >
+                        <label className="inline-flex items-center gap-1.5 text-[11px]">
+                          <input
+                            checked={row.enabled}
+                            onChange={(event) =>
+                              setEnvRows((current) =>
+                                current.map((candidate) =>
+                                  candidate.id === row.id
+                                    ? { ...candidate, enabled: event.target.checked }
+                                    : candidate
+                                )
+                              )
+                            }
+                            type="checkbox"
+                          />
+                          <span className="max-[640px]:sr-only">Use</span>
+                        </label>
+                        <Input
+                          aria-label="Environment key"
+                          className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                          onChange={(event) =>
+                            setEnvRows((current) =>
+                              current.map((candidate) =>
+                                candidate.id === row.id
+                                  ? { ...candidate, key: event.target.value }
+                                  : candidate
+                              )
+                            )
+                          }
+                          placeholder="KEY"
+                          value={row.key}
+                        />
+                        <Input
+                          aria-label="Environment value"
+                          className="h-9 rounded-[7px] font-mono text-[11px] shadow-none max-[640px]:col-start-2"
+                          onChange={(event) =>
+                            setEnvRows((current) =>
+                              current.map((candidate) =>
+                                candidate.id === row.id
+                                  ? { ...candidate, value: event.target.value }
+                                  : candidate
+                              )
+                            )
+                          }
+                          placeholder="value"
+                          value={row.value}
+                        />
+                        <Button
+                          aria-label={'Remove ' + (row.key || 'environment variable')}
+                          className="size-7 max-[640px]:row-span-2 max-[640px]:row-start-1"
+                          onClick={() =>
+                            setEnvRows((current) =>
+                              current.filter((candidate) => candidate.id !== row.id)
+                            )
+                          }
+                          size="icon"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
+                    No environment variables configured.
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : null}
+
+          {activeTab === 'logs' ? (
+            <section className="min-h-[32rem] overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-white">
+              <GitLogPanel
+                currentView="detail"
+                deploymentId={deployment.id}
+                deployments={deployments}
+                initialActiveLogTab={activeLogTab}
+                onLogTabChangeAction={onLogTabChangeAction}
+                showHeader
+              />
+            </section>
+          ) : null}
+        </div>
+
+        {activeTab === 'settings' || activeTab === 'variables' ? (
+          <footer className="flex min-h-[54px] shrink-0 items-center justify-between gap-3 border-t border-[var(--hairline)] bg-white px-4 py-3">
+            <span className="font-mono text-[10px] text-[var(--quiet)]">
+              {changeCount
+                ? changeCount + ' pending change' + (changeCount === 1 ? '' : 's')
+                : 'All changes saved'}
+            </span>
+            <div className="flex gap-1.5">
+              <Button
+                aria-label="Refresh deployment data"
+                disabled={isBusy}
+                onClick={onRefreshAction}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <RefreshCcw className="size-3.5" />
+              </Button>
               <Button
                 disabled={isBusy || changeCount === 0}
                 onClick={() => void handleSaveSettings()}
-                size="sm"
+                size="xs"
                 type="button"
               >
                 {pendingAction === 'save' ? (
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  <LoaderCircle className="size-3.5 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4" />
+                  <Save className="size-3.5" />
                 )}
                 Save and recreate
               </Button>
-              <Button
-                disabled={isBusy}
-                onClick={onRefreshAction}
-                size="sm"
-                type="button"
-                variant="secondary"
-              >
-                <RefreshCcw className="h-4 w-4" />
-                Refresh data
-              </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </footer>
+        ) : null}
+      </aside>
+    </>
   );
 }
