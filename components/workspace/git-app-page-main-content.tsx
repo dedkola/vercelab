@@ -87,7 +87,11 @@ type GitAppPageMainContentProps = {
 
 type ManagerTab = 'overview' | 'settings' | 'variables' | 'files' | 'logs';
 
+type DeploymentFileAccess = 'private' | 'container-readable';
+
 type ManagedDeploymentFile = {
+  access: DeploymentFileAccess;
+  mode: '0600' | '0644';
   name: string;
   size: number;
   updatedAt: string;
@@ -108,6 +112,11 @@ function createDraftId() {
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getRecommendedFileAccess(fileName: string): DeploymentFileAccess {
+  const normalized = fileName.trim().toLowerCase();
+  return normalized === '.env' || normalized.startsWith('.env.') ? 'private' : 'container-readable';
 }
 
 function createEnvVariableDraft(key = '', value = '', enabled = true): EnvVariableDraft {
@@ -283,6 +292,7 @@ export function GitAppPageMainContent({
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState(deployment.subdomain);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFileAccess, setUploadFileAccess] = useState<DeploymentFileAccess>('private');
   const [uploadFileName, setUploadFileName] = useState('');
   const deferredBranch = useDeferredValue(branchValue);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -585,6 +595,7 @@ export function GitAppPageMainContent({
       const formData = new FormData();
       formData.set('file', uploadFile);
       formData.set('fileName', uploadFileName.trim() || uploadFile.name);
+      formData.set('access', uploadFileAccess);
       const response = await fetch(`/api/deployments/${deployment.id}/files`, {
         body: formData,
         method: 'POST',
@@ -606,6 +617,7 @@ export function GitAppPageMainContent({
       );
       setManagedFilesLoaded(true);
       setUploadFile(null);
+      setUploadFileAccess('private');
       setUploadFileName('');
       if (uploadInputRef.current) {
         uploadInputRef.current.value = '';
@@ -622,6 +634,43 @@ export function GitAppPageMainContent({
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to upload deployment file.';
+      setManagedFilesError(message);
+      toast.error(message);
+    } finally {
+      setManagedFilesPending(null);
+    }
+  }
+
+  async function handleFileAccessChange(fileName: string, access: DeploymentFileAccess) {
+    setManagedFilesPending(`access:${fileName}`);
+    setManagedFilesError(null);
+
+    try {
+      const response = await fetch(`/api/deployments/${deployment.id}/files`, {
+        body: JSON.stringify({ access, fileName }),
+        headers: { 'content-type': 'application/json' },
+        method: 'PATCH',
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        file?: ManagedDeploymentFile;
+      };
+
+      if (!response.ok || !payload.file) {
+        throw new Error(payload.error ?? 'Unable to update file access.');
+      }
+
+      const updatedFile = payload.file;
+      setManagedFiles((current) =>
+        current.map((file) => (file.name === updatedFile.name ? updatedFile : file))
+      );
+      toast.success(
+        access === 'private'
+          ? `${fileName} is private (0600).`
+          : `${fileName} is readable inside containers (0644).`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update file access.';
       setManagedFilesError(message);
       toast.error(message);
     } finally {
@@ -1356,26 +1405,58 @@ export function GitAppPageMainContent({
                     const selectedFile = event.target.files?.[0] ?? null;
                     setUploadFile(selectedFile);
                     setUploadFileName(selectedFile?.name ?? '');
+                    setUploadFileAccess(
+                      selectedFile ? getRecommendedFileAccess(selectedFile.name) : 'private'
+                    );
                   }}
                   ref={uploadInputRef}
                   type="file"
                 />
-                <div className="mt-2">
-                  <label
-                    className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
-                    htmlFor="deployment-file-name"
-                  >
-                    Workspace filename
-                  </label>
-                  <Input
-                    className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
-                    disabled={!uploadFile}
-                    id="deployment-file-name"
-                    onChange={(event) => setUploadFileName(event.target.value)}
-                    placeholder=".env"
-                    value={uploadFileName}
-                  />
+                <div className="mt-2 grid grid-cols-2 gap-2 max-[640px]:grid-cols-1">
+                  <div>
+                    <label
+                      className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
+                      htmlFor="deployment-file-name"
+                    >
+                      Workspace filename
+                    </label>
+                    <Input
+                      className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                      disabled={!uploadFile}
+                      id="deployment-file-name"
+                      onChange={(event) => {
+                        setUploadFileName(event.target.value);
+                        setUploadFileAccess(getRecommendedFileAccess(event.target.value));
+                      }}
+                      placeholder=".env"
+                      value={uploadFileName}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
+                      htmlFor="deployment-file-access"
+                    >
+                      File access
+                    </label>
+                    <select
+                      className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 font-mono text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!uploadFile}
+                      id="deployment-file-access"
+                      onChange={(event) =>
+                        setUploadFileAccess(event.target.value as DeploymentFileAccess)
+                      }
+                      value={uploadFileAccess}
+                    >
+                      <option value="private">Private · 0600</option>
+                      <option value="container-readable">Container-readable · 0644</option>
+                    </select>
+                  </div>
                 </div>
+                <p className="mt-1.5 text-[10px] leading-4 text-[var(--quiet)]">
+                  Private is recommended for <span className="font-mono">.env</span>. Use
+                  container-readable for bind-mounted configuration files.
+                </p>
                 <div className="mt-3 flex flex-wrap justify-end gap-1.5">
                   <Button
                     disabled={!uploadFile || !uploadFileName.trim() || managedFilesPending !== null}
@@ -1413,7 +1494,7 @@ export function GitAppPageMainContent({
                   <div>
                     <h3 className="text-[12px] font-semibold">Managed files</h3>
                     <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
-                      Contents stay hidden · stored with restricted permissions
+                      Contents stay hidden · access mode persists across redeploys
                     </p>
                   </div>
                   <Button
@@ -1440,7 +1521,10 @@ export function GitAppPageMainContent({
                 ) : managedFiles.length ? (
                   <div className="divide-y divide-[var(--hairline)]">
                     {managedFiles.map((file) => (
-                      <div className="flex items-center gap-3 px-3 py-2.5" key={file.name}>
+                      <div
+                        className="flex flex-wrap items-center gap-3 px-3 py-2.5"
+                        key={file.name}
+                      >
                         <span className="grid size-7 shrink-0 place-items-center rounded-[6px] bg-[var(--surface-subtle)] text-[var(--quiet)]">
                           <FileText aria-hidden="true" className="size-3.5" />
                         </span>
@@ -1449,10 +1533,25 @@ export function GitAppPageMainContent({
                             {file.name}
                           </strong>
                           <span className="mt-0.5 block font-mono text-[9px] text-[var(--quiet)]">
-                            {formatFileSize(file.size)} ·{' '}
+                            {formatFileSize(file.size)} · mode {file.mode} ·{' '}
                             {new Date(file.updatedAt).toLocaleString()}
                           </span>
                         </span>
+                        <select
+                          aria-label={`Access for ${file.name}`}
+                          className="h-8 w-48 rounded-[6px] border border-input bg-white px-2 font-mono text-[10px] disabled:cursor-not-allowed disabled:opacity-50 max-[640px]:order-4 max-[640px]:ml-10 max-[640px]:w-[calc(100%-2.5rem)]"
+                          disabled={managedFilesPending !== null}
+                          onChange={(event) =>
+                            void handleFileAccessChange(
+                              file.name,
+                              event.target.value as DeploymentFileAccess
+                            )
+                          }
+                          value={file.access}
+                        >
+                          <option value="private">Private · 0600</option>
+                          <option value="container-readable">Container-readable · 0644</option>
+                        </select>
                         <Button
                           aria-label={`Remove ${file.name}`}
                           className="size-7"

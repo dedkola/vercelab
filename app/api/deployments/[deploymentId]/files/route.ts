@@ -3,6 +3,7 @@ import {
   listDeploymentFiles,
   MAX_DEPLOYMENT_FILE_SIZE,
   saveDeploymentFile,
+  updateDeploymentFileAccess,
 } from '@/lib/deployment-files';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +39,7 @@ export async function POST(
     const formData = await request.formData();
     const uploadedFile = formData.get('file');
     const requestedFileName = formData.get('fileName');
+    const requestedAccess = formData.get('access');
 
     if (!(uploadedFile instanceof File)) {
       throw new Error('Choose a file to upload.');
@@ -54,10 +56,32 @@ export async function POST(
     const file = await saveDeploymentFile(
       deploymentId,
       requestedFileName?.trim() || uploadedFile.name,
-      new Uint8Array(await uploadedFile.arrayBuffer())
+      new Uint8Array(await uploadedFile.arrayBuffer()),
+      requestedAccess
     );
 
     return Response.json({ file }, { status: 201 });
+  } catch (error) {
+    return Response.json({ error: getErrorMessage(error) }, { status: 400 });
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ deploymentId: string }> }
+) {
+  const { deploymentId } = await params;
+
+  try {
+    const payload = (await request.json()) as { access?: unknown; fileName?: unknown };
+
+    if (typeof payload.fileName !== 'string' || !payload.fileName.trim()) {
+      throw new Error('Missing file name.');
+    }
+
+    return Response.json({
+      file: await updateDeploymentFileAccess(deploymentId, payload.fileName, payload.access),
+    });
   } catch (error) {
     return Response.json({ error: getErrorMessage(error) }, { status: 400 });
   }

@@ -7,10 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyDeploymentFiles,
   deleteDeploymentFile,
+  getDefaultDeploymentFileAccess,
   listDeploymentFiles,
   MAX_DEPLOYMENT_FILE_SIZE,
   normalizeDeploymentFileName,
   saveDeploymentFile,
+  updateDeploymentFileAccess,
 } from '@/lib/deployment-files';
 import type { StoredDeployment } from '@/lib/persistence';
 
@@ -58,6 +60,13 @@ describe('deployment files', () => {
     expect(() => normalizeDeploymentFileName('.vercelab.base.compose.yml')).toThrow(/reserved/i);
   });
 
+  it('defaults environment files to private and other configuration to container-readable', () => {
+    expect(getDefaultDeploymentFileAccess('.env')).toBe('private');
+    expect(getDefaultDeploymentFileAccess('.env.production')).toBe('private');
+    expect(getDefaultDeploymentFileAccess('k3s.config')).toBe('container-readable');
+    expect(getDefaultDeploymentFileAccess('settings.json')).toBe('container-readable');
+  });
+
   it('persists an uploaded file and reapplies it after the workspace is recreated', async () => {
     const contents = new TextEncoder().encode('API_TOKEN=secret\n');
 
@@ -66,16 +75,20 @@ describe('deployment files', () => {
     expect(await fs.readFile(path.join(workspacePath, '.env'), 'utf8')).toBe('API_TOKEN=secret\n');
     expect(await listDeploymentFiles('deployment-1')).toEqual([
       expect.objectContaining({
+        access: 'private',
+        mode: '0600',
         name: '.env',
         size: contents.byteLength,
       }),
     ]);
+    expect((await fs.stat(path.join(workspacePath, '.env'))).mode & 0o777).toBe(0o600);
 
     await fs.rm(workspacePath, { recursive: true, force: true });
     await fs.mkdir(workspacePath, { recursive: true });
     await applyDeploymentFiles(testState.deployment as StoredDeployment);
 
     expect(await fs.readFile(path.join(workspacePath, '.env'), 'utf8')).toBe('API_TOKEN=secret\n');
+    expect((await fs.stat(path.join(workspacePath, '.env'))).mode & 0o777).toBe(0o600);
   });
 
   it('replaces an empty Docker-created bind placeholder directory with the uploaded file', async () => {
@@ -90,6 +103,56 @@ describe('deployment files', () => {
 
     expect((await fs.stat(placeholderPath)).isFile()).toBe(true);
     expect(await fs.readFile(placeholderPath, 'utf8')).toBe('apiVersion: v1\n');
+    expect((await fs.stat(placeholderPath)).mode & 0o777).toBe(0o644);
+    expect(await listDeploymentFiles('deployment-1')).toEqual([
+      expect.objectContaining({
+        access: 'container-readable',
+        mode: '0644',
+        name: 'k3s.config',
+      }),
+    ]);
+  });
+
+  it('updates access on both the managed file and matching workspace copy', async () => {
+    const managedPath = path.join(
+      testState.appsDirectory,
+      '.vercelab-files',
+      'deployment-1',
+      'k3s.config'
+    );
+    const workspaceFilePath = path.join(workspacePath, 'k3s.config');
+
+    await saveDeploymentFile(
+      'deployment-1',
+      'k3s.config',
+      new TextEncoder().encode('apiVersion: v1\n'),
+      'private'
+    );
+    expect((await fs.stat(managedPath)).mode & 0o777).toBe(0o600);
+    expect((await fs.stat(workspaceFilePath)).mode & 0o777).toBe(0o600);
+
+    const updated = await updateDeploymentFileAccess(
+      'deployment-1',
+      'k3s.config',
+      'container-readable'
+    );
+
+    expect(updated).toEqual(
+      expect.objectContaining({ access: 'container-readable', mode: '0644' })
+    );
+    expect((await fs.stat(managedPath)).mode & 0o777).toBe(0o644);
+    expect((await fs.stat(workspaceFilePath)).mode & 0o777).toBe(0o644);
+  });
+
+  it('rejects unsupported file access modes', async () => {
+    await expect(
+      saveDeploymentFile(
+        'deployment-1',
+        'k3s.config',
+        new TextEncoder().encode('apiVersion: v1\n'),
+        'executable'
+      )
+    ).rejects.toThrow(/private or container-readable/i);
   });
 
   it('does not replace a non-empty directory', async () => {

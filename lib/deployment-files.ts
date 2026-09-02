@@ -7,6 +7,10 @@ import { getStoredDeploymentById, type StoredDeployment } from '@/lib/persistenc
 
 export const MAX_DEPLOYMENT_FILE_SIZE = 5 * 1024 * 1024;
 
+export const DEPLOYMENT_FILE_ACCESSES = ['private', 'container-readable'] as const;
+
+export type DeploymentFileAccess = (typeof DEPLOYMENT_FILE_ACCESSES)[number];
+
 const MANAGED_FILES_DIRECTORY = '.vercelab-files';
 const RESERVED_FILE_NAMES = new Set([
   '.git',
@@ -16,9 +20,16 @@ const RESERVED_FILE_NAMES = new Set([
 ]);
 
 export type DeploymentFileSummary = {
+  access: DeploymentFileAccess;
+  mode: '0600' | '0644';
   name: string;
   size: number;
   updatedAt: string;
+};
+
+const DEPLOYMENT_FILE_MODES: Record<DeploymentFileAccess, number> = {
+  private: 0o600,
+  'container-readable': 0o644,
 };
 
 function resolveRuntimePath(runtimePath: string) {
@@ -61,6 +72,34 @@ export function normalizeDeploymentFileName(value: string) {
   return normalized;
 }
 
+export function getDefaultDeploymentFileAccess(fileName: string): DeploymentFileAccess {
+  const normalized = fileName.trim().toLowerCase();
+  return normalized === '.env' || normalized.startsWith('.env.') ? 'private' : 'container-readable';
+}
+
+function normalizeDeploymentFileAccess(value: unknown, fileName: string): DeploymentFileAccess {
+  if (value === undefined || value === null || value === '') {
+    return getDefaultDeploymentFileAccess(fileName);
+  }
+
+  if (
+    typeof value !== 'string' ||
+    !DEPLOYMENT_FILE_ACCESSES.includes(value as DeploymentFileAccess)
+  ) {
+    throw new Error('File access must be private or container-readable.');
+  }
+
+  return value as DeploymentFileAccess;
+}
+
+function getDeploymentFileAccessFromMode(mode: number): DeploymentFileAccess {
+  return (mode & 0o004) !== 0 ? 'container-readable' : 'private';
+}
+
+function getDeploymentFileMode(access: DeploymentFileAccess) {
+  return DEPLOYMENT_FILE_MODES[access];
+}
+
 function getManagedFilesRoot(deploymentId: string) {
   const appsDirectory = getAppConfig().paths.appsDir;
   const managedRoot = path.join(
@@ -101,6 +140,9 @@ async function applyManagedFile(deployment: StoredDeployment, fileName: string) 
   }
 
   const managedPath = getManagedFilePath(deployment.id, fileName);
+  const managedStats = await fs.stat(managedPath);
+  const managedAccess = getDeploymentFileAccessFromMode(managedStats.mode);
+  const managedMode = getDeploymentFileMode(managedAccess);
   const workspacePath = path.join(/*turbopackIgnore: true*/ deployment.workspacePath, fileName);
   assertPathWithin(deployment.workspacePath, workspacePath, 'workspace file');
 
@@ -141,7 +183,7 @@ async function applyManagedFile(deployment: StoredDeployment, fileName: string) 
 
   try {
     await fs.copyFile(managedPath, temporaryPath);
-    await fs.chmod(temporaryPath, 0o600);
+    await fs.chmod(temporaryPath, managedMode);
     await fs.rename(temporaryPath, workspacePath);
   } finally {
     await fs.unlink(temporaryPath).catch(() => undefined);
@@ -150,8 +192,11 @@ async function applyManagedFile(deployment: StoredDeployment, fileName: string) 
 
 async function toDeploymentFileSummary(filePath: string, name: string) {
   const stats = await fs.stat(filePath);
+  const access = getDeploymentFileAccessFromMode(stats.mode);
 
   return {
+    access,
+    mode: access === 'private' ? '0600' : '0644',
     name,
     size: stats.size,
     updatedAt: stats.mtime.toISOString(),
@@ -186,9 +231,12 @@ export async function listDeploymentFiles(deploymentId: string) {
 export async function saveDeploymentFile(
   deploymentId: string,
   originalFileName: string,
-  contents: Uint8Array
+  contents: Uint8Array,
+  requestedAccess?: unknown
 ) {
   const fileName = normalizeDeploymentFileName(originalFileName);
+  const access = normalizeDeploymentFileAccess(requestedAccess, fileName);
+  const fileMode = getDeploymentFileMode(access);
 
   if (contents.byteLength > MAX_DEPLOYMENT_FILE_SIZE) {
     throw new Error('File is too large. The maximum upload size is 5 MB.');
@@ -205,21 +253,34 @@ export async function saveDeploymentFile(
 
     throw error;
   });
+  const previousMode = await fs
+    .stat(managedPath)
+    .then((stats) => stats.mode & 0o777)
+    .catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') {
+        return null;
+      }
+
+      throw error;
+    });
   let didStoreUpload = false;
 
   await fs.mkdir(managedRoot, { recursive: true, mode: 0o700 });
 
   try {
-    await fs.writeFile(temporaryPath, contents, { flag: 'wx', mode: 0o600 });
+    await fs.writeFile(temporaryPath, contents, { flag: 'wx', mode: fileMode });
     await fs.rename(temporaryPath, managedPath);
     didStoreUpload = true;
-    await fs.chmod(managedPath, 0o600);
+    await fs.chmod(managedPath, fileMode);
     await applyManagedFile(deployment, fileName);
     return await toDeploymentFileSummary(managedPath, fileName);
   } catch (error) {
     if (didStoreUpload) {
       if (previousContents) {
-        await fs.writeFile(managedPath, previousContents, { mode: 0o600 });
+        await fs.writeFile(managedPath, previousContents, {
+          mode: previousMode ?? 0o600,
+        });
+        await fs.chmod(managedPath, previousMode ?? 0o600);
       } else {
         await fs.unlink(managedPath).catch(() => undefined);
       }
@@ -229,6 +290,48 @@ export async function saveDeploymentFile(
   } finally {
     await fs.unlink(temporaryPath).catch(() => undefined);
   }
+}
+
+export async function updateDeploymentFileAccess(
+  deploymentId: string,
+  originalFileName: string,
+  requestedAccess: unknown
+) {
+  const fileName = normalizeDeploymentFileName(originalFileName);
+  const access = normalizeDeploymentFileAccess(requestedAccess, fileName);
+  const fileMode = getDeploymentFileMode(access);
+  const deployment = await getStoredDeploymentById(deploymentId);
+  const managedPath = getManagedFilePath(deployment.id, fileName);
+
+  if (!(await pathExists(managedPath))) {
+    throw new Error(`Managed file "${fileName}" was not found.`);
+  }
+
+  await fs.chmod(managedPath, fileMode);
+
+  assertWorkspacePath(deployment);
+  const workspacePath = path.join(/*turbopackIgnore: true*/ deployment.workspacePath, fileName);
+  assertPathWithin(deployment.workspacePath, workspacePath, 'workspace file');
+  const workspaceStats = await fs.lstat(workspacePath).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  });
+
+  if (workspaceStats?.isFile()) {
+    const [managedContents, workspaceContents] = await Promise.all([
+      fs.readFile(managedPath),
+      fs.readFile(workspacePath),
+    ]);
+
+    if (workspaceContents.equals(managedContents)) {
+      await fs.chmod(workspacePath, fileMode);
+    }
+  }
+
+  return await toDeploymentFileSummary(managedPath, fileName);
 }
 
 export async function deleteDeploymentFile(deploymentId: string, originalFileName: string) {

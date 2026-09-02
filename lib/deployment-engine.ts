@@ -394,7 +394,11 @@ async function checkoutPinnedCommit(deployment: StoredDeployment) {
   return [fetchOutput, checkoutOutput].filter(Boolean).join('\n');
 }
 
-async function deployWorkspace(deployment: StoredDeployment, syncWithGit: boolean) {
+async function deployWorkspace(
+  deployment: StoredDeployment,
+  syncWithGit: boolean,
+  forceRecreate: boolean
+) {
   await ensureProxyNetwork();
 
   const shouldClone = syncWithGit || !(await pathExists(joinRuntimePath(deployment.workspacePath)));
@@ -413,7 +417,12 @@ async function deployWorkspace(deployment: StoredDeployment, syncWithGit: boolea
   let composeOutput = '';
 
   try {
-    composeOutput = await runComposeCommand(deployment, runtimeFiles, ['up', '-d', '--build']);
+    composeOutput = await runComposeCommand(deployment, runtimeFiles, [
+      'up',
+      '-d',
+      '--build',
+      ...(forceRecreate ? ['--force-recreate'] : []),
+    ]);
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(normalizeDeploymentErrorMessage(error.message));
@@ -875,7 +884,7 @@ export async function redeployDeploymentById(deploymentId: string) {
     deploymentId,
     'redeploy',
     async (deployment) => {
-      return await deployWorkspace(deployment, false);
+      return await deployWorkspace(deployment, false, true);
     },
     'running'
   );
@@ -888,7 +897,7 @@ export async function fetchDeploymentFromGitById(
   return await executeLifecycleOperation(
     deploymentId,
     operationType,
-    async (deployment) => await deployWorkspace(deployment, true),
+    async (deployment) => await deployWorkspace(deployment, true, operationType === 'redeploy'),
     'running'
   );
 }
