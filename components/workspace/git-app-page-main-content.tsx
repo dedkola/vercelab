@@ -4,6 +4,8 @@ import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } f
 import {
   ArrowRight,
   ExternalLink,
+  FileText,
+  FileUp,
   GitBranch,
   LoaderCircle,
   Package,
@@ -83,7 +85,13 @@ type GitAppPageMainContentProps = {
   publicDomainLabel: string;
 };
 
-type ManagerTab = 'overview' | 'settings' | 'variables' | 'logs';
+type ManagerTab = 'overview' | 'settings' | 'variables' | 'files' | 'logs';
+
+type ManagedDeploymentFile = {
+  name: string;
+  size: number;
+  updatedAt: string;
+};
 
 type ConfigurationFieldProps = {
   changed: boolean;
@@ -140,6 +148,18 @@ function serializeEnvVariableDrafts(rows: EnvVariableDraft[]) {
     .filter((row) => row.enabled && row.key.trim().length > 0)
     .map((row) => `${row.key.trim()}=${row.value}`)
     .join('\n');
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) {
+    return `${size} B`;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(size < 10 * 1024 ? 1 : 0)} KB`;
+  }
+
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function getRepositoryDescriptor(repositoryUrl: string) {
@@ -251,6 +271,10 @@ export function GitAppPageMainContent({
   );
   const [exposureMode, setExposureMode] = useState<ExposureMode>(deployment.exposureMode ?? 'http');
   const [hostPort, setHostPort] = useState(String(deployment.hostPort ?? ''));
+  const [managedFiles, setManagedFiles] = useState<ManagedDeploymentFile[]>([]);
+  const [managedFilesError, setManagedFilesError] = useState<string | null>(null);
+  const [managedFilesLoaded, setManagedFilesLoaded] = useState(false);
+  const [managedFilesPending, setManagedFilesPending] = useState<string | null>(null);
   const [isSourceLoading, setIsSourceLoading] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [port, setPort] = useState(String(deployment.port));
@@ -258,7 +282,10 @@ export function GitAppPageMainContent({
   const [sourceDataDeploymentId, setSourceDataDeploymentId] = useState<string | null>(null);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState(deployment.subdomain);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFileName, setUploadFileName] = useState('');
   const deferredBranch = useDeferredValue(branchValue);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   // Tracks whether source details have started loading. The first request runs
   // after hydration so the route render stays fast, then branch changes can
@@ -365,6 +392,51 @@ export function GitAppPageMainContent({
 
     return () => window.clearTimeout(timeoutId);
   }, [deployment.branch, deployment.id, requestSourceData]);
+
+  const loadManagedFiles = useCallback(
+    async (signal?: AbortSignal) => {
+      setManagedFilesPending('loading');
+      setManagedFilesError(null);
+
+      try {
+        const response = await fetch(`/api/deployments/${deployment.id}/files`, { signal });
+        const payload = (await response.json()) as {
+          error?: string;
+          files?: ManagedDeploymentFile[];
+        };
+
+        if (!response.ok || !payload.files) {
+          throw new Error(payload.error ?? 'Unable to load deployment files.');
+        }
+
+        setManagedFiles(payload.files);
+        setManagedFilesLoaded(true);
+      } catch (error) {
+        if (signal?.aborted) {
+          return;
+        }
+
+        setManagedFilesError(
+          error instanceof Error ? error.message : 'Unable to load deployment files.'
+        );
+      } finally {
+        if (!signal?.aborted) {
+          setManagedFilesPending(null);
+        }
+      }
+    },
+    [deployment.id]
+  );
+
+  useEffect(() => {
+    if (activeTab !== 'files' || managedFilesLoaded) {
+      return;
+    }
+
+    const controller = new AbortController();
+    void loadManagedFiles(controller.signal);
+    return () => controller.abort();
+  }, [activeTab, loadManagedFiles, managedFilesLoaded]);
 
   const activeSourceData = sourceDataDeploymentId === deployment.id ? sourceData : null;
   const repositoryDescriptor = activeSourceData?.repository
@@ -500,6 +572,94 @@ export function GitAppPageMainContent({
     }
   }
 
+  async function handleUploadFile(shouldRedeploy: boolean) {
+    if (!uploadFile) {
+      toast.error('Choose a file to upload.');
+      return;
+    }
+
+    setManagedFilesPending('upload');
+    setManagedFilesError(null);
+
+    try {
+      const formData = new FormData();
+      formData.set('file', uploadFile);
+      formData.set('fileName', uploadFileName.trim() || uploadFile.name);
+      const response = await fetch(`/api/deployments/${deployment.id}/files`, {
+        body: formData,
+        method: 'POST',
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        file?: ManagedDeploymentFile;
+      };
+
+      if (!response.ok || !payload.file) {
+        throw new Error(payload.error ?? 'Unable to upload deployment file.');
+      }
+
+      const savedFile = payload.file;
+      setManagedFiles((current) =>
+        [...current.filter((file) => file.name !== savedFile.name), savedFile].sort((left, right) =>
+          left.name.localeCompare(right.name)
+        )
+      );
+      setManagedFilesLoaded(true);
+      setUploadFile(null);
+      setUploadFileName('');
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = '';
+      }
+
+      toast.success(
+        shouldRedeploy
+          ? `Uploaded ${savedFile.name}. Starting redeploy…`
+          : `Uploaded ${savedFile.name}. Redeploy when ready.`
+      );
+
+      if (shouldRedeploy) {
+        await onRecreateAction();
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to upload deployment file.';
+      setManagedFilesError(message);
+      toast.error(message);
+    } finally {
+      setManagedFilesPending(null);
+    }
+  }
+
+  async function handleDeleteFile(fileName: string) {
+    if (!window.confirm(`Remove ${fileName} from this deployment?`)) {
+      return;
+    }
+
+    setManagedFilesPending(fileName);
+    setManagedFilesError(null);
+
+    try {
+      const searchParams = new URLSearchParams({ name: fileName });
+      const response = await fetch(
+        `/api/deployments/${deployment.id}/files?${searchParams.toString()}`,
+        { method: 'DELETE' }
+      );
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? 'Unable to remove deployment file.');
+      }
+
+      setManagedFiles((current) => current.filter((file) => file.name !== fileName));
+      toast.success(`Removed ${fileName}. Redeploy when ready.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to remove deployment file.';
+      setManagedFilesError(message);
+      toast.error(message);
+    } finally {
+      setManagedFilesPending(null);
+    }
+  }
+
   function handleBranchSelect(value: string) {
     setBranchValue(value);
     setCommitSha('');
@@ -545,6 +705,7 @@ export function GitAppPageMainContent({
     { label: 'Overview', value: 'overview' },
     { label: 'Settings', value: 'settings' },
     { label: 'Variables', value: 'variables' },
+    { label: 'Files', value: 'files' },
     { label: 'Logs', value: 'logs' },
   ];
 
@@ -1148,6 +1309,171 @@ export function GitAppPageMainContent({
                 ) : (
                   <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
                     No environment variables configured.
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : null}
+
+          {activeTab === 'files' ? (
+            <div className="space-y-3">
+              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+                <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  Workspace files
+                </span>
+                <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
+                  {managedFiles.length} managed file{managedFiles.length === 1 ? '' : 's'}
+                </h3>
+                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                  Uploaded to the app workspace root before every build and retained across source
+                  pulls.
+                </p>
+              </section>
+
+              {managedFilesError ? (
+                <div className="rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[12px] leading-4 text-red-900">
+                  {managedFilesError}
+                </div>
+              ) : null}
+
+              <section className="rounded-[8px] border border-[var(--hairline)] bg-white p-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+                    <FileUp aria-hidden="true" className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[12px] font-semibold">Upload configuration file</h3>
+                    <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                      Use this for files such as <span className="font-mono">.env</span> or{' '}
+                      <span className="font-mono">k3s.config</span>. Maximum size 5 MB.
+                    </p>
+                  </div>
+                </div>
+                <input
+                  aria-label="Choose deployment file"
+                  className="mt-3 block w-full rounded-[7px] border border-input bg-[var(--surface-subtle)] px-2.5 py-2 text-[11px] file:mr-2 file:rounded-[5px] file:border-0 file:bg-white file:px-2 file:py-1 file:text-[11px] file:font-semibold"
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0] ?? null;
+                    setUploadFile(selectedFile);
+                    setUploadFileName(selectedFile?.name ?? '');
+                  }}
+                  ref={uploadInputRef}
+                  type="file"
+                />
+                <div className="mt-2">
+                  <label
+                    className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
+                    htmlFor="deployment-file-name"
+                  >
+                    Workspace filename
+                  </label>
+                  <Input
+                    className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                    disabled={!uploadFile}
+                    id="deployment-file-name"
+                    onChange={(event) => setUploadFileName(event.target.value)}
+                    placeholder=".env"
+                    value={uploadFileName}
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap justify-end gap-1.5">
+                  <Button
+                    disabled={!uploadFile || !uploadFileName.trim() || managedFilesPending !== null}
+                    onClick={() => void handleUploadFile(false)}
+                    size="xs"
+                    type="button"
+                    variant="secondary"
+                  >
+                    {managedFilesPending === 'upload' ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <FileUp className="size-3.5" />
+                    )}
+                    Upload
+                  </Button>
+                  <Button
+                    disabled={
+                      !uploadFile ||
+                      !uploadFileName.trim() ||
+                      managedFilesPending !== null ||
+                      isBusy
+                    }
+                    onClick={() => void handleUploadFile(true)}
+                    size="xs"
+                    type="button"
+                  >
+                    <RotateCcw className="size-3.5" />
+                    Upload and redeploy
+                  </Button>
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
+                <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
+                  <div>
+                    <h3 className="text-[12px] font-semibold">Managed files</h3>
+                    <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                      Contents stay hidden · stored with restricted permissions
+                    </p>
+                  </div>
+                  <Button
+                    aria-label="Refresh deployment files"
+                    disabled={managedFilesPending !== null}
+                    onClick={() => void loadManagedFiles()}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {managedFilesPending === 'loading' ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="size-3.5" />
+                    )}
+                  </Button>
+                </header>
+
+                {managedFilesPending === 'loading' && !managedFilesLoaded ? (
+                  <div className="flex items-center justify-center gap-2 px-3 py-8 font-mono text-[11px] text-[var(--quiet)]">
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                    Loading files…
+                  </div>
+                ) : managedFiles.length ? (
+                  <div className="divide-y divide-[var(--hairline)]">
+                    {managedFiles.map((file) => (
+                      <div className="flex items-center gap-3 px-3 py-2.5" key={file.name}>
+                        <span className="grid size-7 shrink-0 place-items-center rounded-[6px] bg-[var(--surface-subtle)] text-[var(--quiet)]">
+                          <FileText aria-hidden="true" className="size-3.5" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <strong className="block truncate font-mono text-[11px] font-semibold">
+                            {file.name}
+                          </strong>
+                          <span className="mt-0.5 block font-mono text-[9px] text-[var(--quiet)]">
+                            {formatFileSize(file.size)} ·{' '}
+                            {new Date(file.updatedAt).toLocaleString()}
+                          </span>
+                        </span>
+                        <Button
+                          aria-label={`Remove ${file.name}`}
+                          className="size-7"
+                          disabled={managedFilesPending !== null}
+                          onClick={() => void handleDeleteFile(file.name)}
+                          size="icon"
+                          type="button"
+                          variant="ghost"
+                        >
+                          {managedFilesPending === file.name ? (
+                            <LoaderCircle className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
+                    No managed files uploaded.
                   </div>
                 )}
               </section>

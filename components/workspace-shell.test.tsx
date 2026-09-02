@@ -91,6 +91,10 @@ describe('WorkspaceShell', () => {
         });
       }
 
+      if (url.includes('/api/deployments/dep-1/files')) {
+        return jsonResponse({ files: [] });
+      }
+
       if (url.includes('/api/github/repos/dedkola/vercelab/branches')) {
         return jsonResponse({
           branches: ['main', 'release', 'preview'],
@@ -969,6 +973,21 @@ describe('WorkspaceShell', () => {
     expect(screen.getByDisplayValue('docs-app')).toBeVisible();
     expect(screen.queryByText(/deploy mode/i)).not.toBeInTheDocument();
     expect(within(appManager).getAllByText(/a1b2c3d/i).length).toBeGreaterThan(0);
+
+    await user.click(within(appManager).getByRole('tab', { name: /files/i }));
+
+    expect(await screen.findByText(/upload configuration file/i)).toBeVisible();
+    expect(screen.getByText(/retained across source pulls/i)).toBeVisible();
+    expect(screen.getByRole('button', { name: /upload and redeploy/i })).toBeDisabled();
+
+    const upload = new File(['API_TOKEN=secret\n'], 'homelab.env', { type: 'text/plain' });
+    await user.upload(screen.getByLabelText(/choose deployment file/i), upload);
+
+    const workspaceFileName = screen.getByLabelText(/workspace filename/i);
+    expect(workspaceFileName).toHaveValue('homelab.env');
+    await user.clear(workspaceFileName);
+    await user.type(workspaceFileName, '.env');
+    expect(screen.getByRole('button', { name: /upload and redeploy/i })).toBeEnabled();
   });
 
   it('loads branches for the selected repository and lets the user choose one', async () => {

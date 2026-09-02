@@ -7,6 +7,7 @@ import path from 'node:path';
 import { stringify } from 'yaml';
 
 import { getAppConfig } from '@/lib/app-config';
+import { applyDeploymentFiles, removeDeploymentFiles } from '@/lib/deployment-files';
 import {
   listGitHubBranches,
   listGitHubCommits,
@@ -400,6 +401,7 @@ async function deployWorkspace(deployment: StoredDeployment, syncWithGit: boolea
   const cloneOutput = shouldClone ? await cloneRepository(deployment) : '';
   const checkoutOutput =
     shouldClone && deployment.commitSha ? await checkoutPinnedCommit(deployment) : '';
+  await applyDeploymentFiles(deployment);
   const runtimeFiles = await detectRuntimeFiles(deployment);
 
   await updateDeploymentRecord(deployment.id, {
@@ -1104,6 +1106,7 @@ export async function removeDeploymentById(deploymentId: string) {
       }
 
       await removeWorkspace(joinRuntimePath(deployment.workspacePath));
+      await removeDeploymentFiles(deployment.id);
       await completeOperation(
         operationId,
         'success',
