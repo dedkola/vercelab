@@ -78,6 +78,32 @@ describe('deployment files', () => {
     expect(await fs.readFile(path.join(workspacePath, '.env'), 'utf8')).toBe('API_TOKEN=secret\n');
   });
 
+  it('replaces an empty Docker-created bind placeholder directory with the uploaded file', async () => {
+    const placeholderPath = path.join(workspacePath, 'k3s.config');
+    await fs.mkdir(placeholderPath);
+
+    await saveDeploymentFile(
+      'deployment-1',
+      'k3s.config',
+      new TextEncoder().encode('apiVersion: v1\n')
+    );
+
+    expect((await fs.stat(placeholderPath)).isFile()).toBe(true);
+    expect(await fs.readFile(placeholderPath, 'utf8')).toBe('apiVersion: v1\n');
+  });
+
+  it('does not replace a non-empty directory', async () => {
+    const directoryPath = path.join(workspacePath, 'config');
+    await fs.mkdir(directoryPath);
+    await fs.writeFile(path.join(directoryPath, 'keep.txt'), 'keep', 'utf8');
+
+    await expect(
+      saveDeploymentFile('deployment-1', 'config', new TextEncoder().encode('replacement'))
+    ).rejects.toThrow(/non-empty directory/i);
+    expect(await fs.readFile(path.join(directoryPath, 'keep.txt'), 'utf8')).toBe('keep');
+    expect(await listDeploymentFiles('deployment-1')).toEqual([]);
+  });
+
   it('removes the workspace copy only when it still matches the managed file', async () => {
     await saveDeploymentFile('deployment-1', '.env', new TextEncoder().encode('FIRST=1\n'));
     await deleteDeploymentFile('deployment-1', '.env');

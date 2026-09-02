@@ -113,9 +113,25 @@ async function applyManagedFile(deployment: StoredDeployment, fileName: string) 
   });
 
   if (existing?.isDirectory()) {
-    throw new Error(
-      `Cannot apply "${fileName}" because the repository contains a directory there.`
-    );
+    const directoryEntries = await fs.readdir(workspacePath);
+
+    if (directoryEntries.length > 0) {
+      throw new Error(
+        `Cannot replace "${fileName}" because a non-empty directory exists there. Remove or rename that directory first.`
+      );
+    }
+
+    try {
+      await fs.rmdir(workspacePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOTEMPTY') {
+        throw new Error(
+          `Cannot replace "${fileName}" because a non-empty directory exists there. Remove or rename that directory first.`
+        );
+      }
+
+      throw error;
+    }
   }
 
   const temporaryPath = path.join(
@@ -182,19 +198,37 @@ export async function saveDeploymentFile(
   const managedRoot = getManagedFilesRoot(deployment.id);
   const managedPath = getManagedFilePath(deployment.id, fileName);
   const temporaryPath = path.join(/*turbopackIgnore: true*/ managedRoot, `.upload-${randomUUID()}`);
+  const previousContents = await fs.readFile(managedPath).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') {
+      return null;
+    }
+
+    throw error;
+  });
+  let didStoreUpload = false;
 
   await fs.mkdir(managedRoot, { recursive: true, mode: 0o700 });
 
   try {
     await fs.writeFile(temporaryPath, contents, { flag: 'wx', mode: 0o600 });
     await fs.rename(temporaryPath, managedPath);
+    didStoreUpload = true;
     await fs.chmod(managedPath, 0o600);
+    await applyManagedFile(deployment, fileName);
+    return await toDeploymentFileSummary(managedPath, fileName);
+  } catch (error) {
+    if (didStoreUpload) {
+      if (previousContents) {
+        await fs.writeFile(managedPath, previousContents, { mode: 0o600 });
+      } else {
+        await fs.unlink(managedPath).catch(() => undefined);
+      }
+    }
+
+    throw error;
   } finally {
     await fs.unlink(temporaryPath).catch(() => undefined);
   }
-
-  await applyManagedFile(deployment, fileName);
-  return await toDeploymentFileSummary(managedPath, fileName);
 }
 
 export async function deleteDeploymentFile(deploymentId: string, originalFileName: string) {
