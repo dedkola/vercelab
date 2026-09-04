@@ -70,6 +70,8 @@
   --green-soft: #e7f6ed;
   --purple: #7259c9;
   --red: #c73737;
+  --red-soft: #fff0f0;
+  --warning-ink: #9a4c0b;
   --shadow: 0 1px 1px rgb(16 24 40 / 0.02), 0 10px 30px rgb(16 24 40 / 0.035);
   --radius: 0.625rem;
   --background: var(--canvas);
@@ -156,6 +158,17 @@
     text-rendering: optimizeLegibility;
   }
 
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+  }
+
+  select,
+  textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   ::selection {
     background: rgba(15, 23, 42, 0.12);
     color: inherit;
@@ -200,7 +213,48 @@
   }
 }
 
+@layer components {
+  .vercelab-page {
+    width: 100%;
+    max-width: 1680px;
+    margin-inline: auto;
+    padding: 20px 24px;
+  }
+
+  .vercelab-page-heading {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .vercelab-page-count {
+    margin-left: 4px;
+    color: var(--quiet);
+    font-family: var(--font-geist-mono), monospace;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@media (pointer: coarse) {
+  :where(button, [role='tab'], summary) {
+    min-height: 36px;
+  }
+}
+
 @media (max-width: 760px) {
+  .vercelab-page {
+    padding: 12px;
+  }
   .vercelab-split-layout {
     flex-direction: column;
     overflow-x: hidden;

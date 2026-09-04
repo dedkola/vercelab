@@ -3,6 +3,8 @@
 import { Button, Input, Popover, Tabs } from '@cloudflare/kumo';
 import { ChartLineUp, GearSix } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
+import { cn } from '@/lib/utils';
+import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { toast } from 'sonner';
 
 import type { WorkspaceView } from '@/components/workspace-shell';
@@ -21,6 +23,7 @@ type WorkspaceHeaderProps = {
   onTimeDisplayModeChangeAction?: (mode: TimeDisplayMode) => void;
   onViewChangeAction: (view: WorkspaceView) => void;
   statusLabel: string;
+  statusTone?: 'success' | 'warning' | 'neutral';
   timeDisplayMode?: TimeDisplayMode;
   updatedAtLabel: string;
 };
@@ -41,6 +44,7 @@ export function WorkspaceHeader({
   onTimeDisplayModeChangeAction,
   onViewChangeAction,
   statusLabel,
+  statusTone = 'neutral',
   timeDisplayMode = 'local',
   updatedAtLabel,
 }: WorkspaceHeaderProps) {
@@ -121,7 +125,17 @@ export function WorkspaceHeader({
         </nav>
 
         <div className="flex min-w-0 items-center justify-end gap-2">
-          <span className="flex items-center gap-1.5 text-[9px] font-semibold tracking-[0.04em] text-[var(--green)] uppercase max-[760px]:[&>span:last-child]:hidden">
+          <span
+            title={statusLabel}
+            className={cn(
+              'flex items-center gap-1.5 text-[9px] font-semibold tracking-[0.04em] uppercase max-[760px]:[&>span:last-child]:hidden',
+              statusTone === 'success'
+                ? 'text-[var(--green)]'
+                : statusTone === 'warning'
+                  ? 'text-[var(--warning-ink)]'
+                  : 'text-[var(--quiet)]'
+            )}
+          >
             <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
             <span>{statusLabel}</span>
           </span>
@@ -156,7 +170,7 @@ export function WorkspaceHeader({
             />
             <Popover.Content
               align="end"
-              className="w-[min(calc(100vw-2rem),23rem)] rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] p-1 shadow-[0_20px_50px_rgb(16_24_40_/_0.13)]"
+              className="max-h-[calc(100dvh-6rem)] overflow-y-auto w-[min(calc(100vw-2rem),23rem)] rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] p-1 shadow-[0_20px_50px_rgb(16_24_40_/_0.13)]"
               positionMethod="fixed"
               side="bottom"
               sideOffset={8}
@@ -172,6 +186,8 @@ export function WorkspaceHeader({
                 <div className="mt-3 flex gap-2">
                   <Input
                     aria-label="GitHub token"
+                    aria-invalid={Boolean(githubTokenError)}
+                    aria-describedby={githubTokenError ? 'github-token-error' : undefined}
                     autoComplete="off"
                     className="min-w-0 flex-1 font-mono text-xs"
                     onChange={(event) => {
@@ -187,7 +203,9 @@ export function WorkspaceHeader({
                   </Button>
                 </div>
                 {githubTokenError ? (
-                  <p className="mt-2 font-mono text-[9px] text-[var(--red)]">{githubTokenError}</p>
+                  <div id="github-token-error" className="mt-2">
+                    <WorkspaceNotice>{githubTokenError}</WorkspaceNotice>
+                  </div>
                 ) : null}
               </form>
 

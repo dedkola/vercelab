@@ -3060,7 +3060,7 @@ export function WorkspaceShell({
   }
 
   return (
-    <section className="flex h-screen flex-col bg-background" aria-label="Workspace shell">
+    <section className="flex h-dvh flex-col bg-background" aria-label="Workspace shell">
       <WorkspaceHeader
         activeView={activeView}
         influxExplorerUrl={influxExplorerUrl}

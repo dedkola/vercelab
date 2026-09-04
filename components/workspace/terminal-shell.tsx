@@ -4,17 +4,18 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Terminal } from '@xterm/xterm';
 import {
-  Clipboard,
-  ClipboardCheck,
+  ClipboardText as Clipboard,
+  Copy as ClipboardCheck,
   Minus,
   Plus,
-  PlugZap,
-  TerminalSquare,
-  Trash2,
-} from 'lucide-react';
+  Plug as PlugZap,
+  TerminalWindow as TerminalSquare,
+  Trash as Trash2,
+} from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -43,29 +44,29 @@ type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 const FONT_SIZES = [11, 12, 13, 14, 15, 16] as const;
 const DEFAULT_FONT_SIZE = 13;
 
-// Tokyo Night-inspired theme — rich, high-contrast, looks great with JetBrains Mono
+// Keep the terminal palette aligned with the workspace's light surfaces.
 const TERMINAL_THEME = {
-  background: '#0d0f17',
-  foreground: '#c0caf5',
-  cursor: '#c0caf5',
-  cursorAccent: '#0d0f17',
-  selectionBackground: '#283457',
-  black: '#15161e',
-  red: '#f7768e',
-  green: '#9ece6a',
-  yellow: '#e0af68',
-  blue: '#7aa2f7',
-  magenta: '#bb9af7',
-  cyan: '#7dcfff',
-  white: '#a9b1d6',
-  brightBlack: '#414868',
-  brightRed: '#f7768e',
-  brightGreen: '#9ece6a',
-  brightYellow: '#e0af68',
-  brightBlue: '#7aa2f7',
-  brightMagenta: '#bb9af7',
-  brightCyan: '#7dcfff',
-  brightWhite: '#c0caf5',
+  background: '#fafafa',
+  foreground: '#1a1a1d',
+  cursor: '#0f61d8',
+  cursorAccent: '#ffffff',
+  selectionBackground: '#d6e6fc',
+  black: '#1a1a1d',
+  red: '#c73737',
+  green: '#16864b',
+  yellow: '#9a4c0b',
+  blue: '#0f61d8',
+  magenta: '#7259c9',
+  cyan: '#167485',
+  white: '#686a70',
+  brightBlack: '#686a70',
+  brightRed: '#c73737',
+  brightGreen: '#16864b',
+  brightYellow: '#9a4c0b',
+  brightBlue: '#0f61d8',
+  brightMagenta: '#7259c9',
+  brightCyan: '#167485',
+  brightWhite: '#1a1a1d',
 };
 
 function buildTerminalWebSocketUrl(host: TerminalHost | null) {
@@ -115,10 +116,10 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
     <span
       className={cn(
         'inline-block h-1.5 w-1.5 rounded-full',
-        status === 'connected' && 'animate-pulse bg-emerald-400',
-        status === 'connecting' && 'animate-pulse bg-amber-400',
-        status === 'disconnected' && 'bg-zinc-500',
-        status === 'error' && 'bg-red-500'
+        status === 'connected' && 'bg-[var(--green)]',
+        status === 'connecting' && 'motion-safe:animate-pulse bg-[var(--orange)]',
+        status === 'disconnected' && 'bg-[var(--quiet)]',
+        status === 'error' && 'bg-[var(--red)]'
       )}
       aria-hidden="true"
     />
@@ -127,6 +128,8 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
 
 export function TerminalShell() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [hostRequestKey, setHostRequestKey] = useState(0);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [host, setHost] = useState<TerminalHost | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
@@ -162,6 +165,7 @@ export function TerminalShell() {
 
     webSocketRef.current?.close();
     setConnectionStatus('connecting');
+    setConnectionError(null);
     terminal.clear();
     terminal.writeln('\x1b[90mOpening host terminal…\x1b[0m');
 
@@ -169,17 +173,20 @@ export function TerminalShell() {
     webSocketRef.current = webSocket;
 
     webSocket.addEventListener('open', () => {
-      setConnectionStatus('connected');
+      if (webSocketRef.current !== webSocket) return;
       terminal.focus();
       sendResize();
     });
 
     webSocket.addEventListener('message', (event) => {
+      if (webSocketRef.current !== webSocket) return;
       const message = parseTerminalMessage(event.data);
       if (!message) return;
 
+      if (message.type === 'ready') setConnectionStatus('connected');
       if (message.type === 'output') terminal.write(message.data);
       if (message.type === 'error') {
+        setConnectionError(message.data);
         terminal.writeln(`\r\n\x1b[31m${message.data}\x1b[0m`);
         setConnectionStatus('error');
       }
@@ -196,6 +203,8 @@ export function TerminalShell() {
     });
 
     webSocket.addEventListener('error', () => {
+      if (webSocketRef.current !== webSocket) return;
+      setConnectionError('Unable to connect to the terminal server.');
       setConnectionStatus('error');
       terminal.writeln('\r\n\x1b[31mUnable to connect to the terminal server.\x1b[0m');
     });
@@ -216,6 +225,7 @@ export function TerminalShell() {
       } catch (error) {
         if (!isActive) return;
         setConnectionStatus('error');
+        setConnectionError(error instanceof Error ? error.message : 'Unable to open host shell.');
         terminalRef.current?.writeln(
           `\x1b[31m${error instanceof Error ? error.message : 'Unable to open host shell.'}\x1b[0m`
         );
@@ -226,7 +236,7 @@ export function TerminalShell() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [hostRequestKey]);
 
   // Initialize xterm
   useEffect(() => {
@@ -237,7 +247,7 @@ export function TerminalShell() {
       convertEol: true,
       cursorBlink: true,
       cursorStyle: 'block',
-      fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontFamily: `${getComputedStyle(document.documentElement).getPropertyValue('--font-geist-mono')}, ui-monospace, SFMono-Regular, Menlo, monospace`,
       fontSize,
       lineHeight: 1.2,
       letterSpacing: 0,
@@ -297,9 +307,9 @@ export function TerminalShell() {
     const terminal = terminalRef.current;
     if (!terminal) return;
     terminal.options.fontSize = fontSize;
-    fitAddonRef.current?.fit();
+    sendResize();
     terminal.focus();
-  }, [fontSize]);
+  }, [fontSize, sendResize]);
 
   async function handleCopySelection() {
     const selection = terminalRef.current?.getSelection();
@@ -325,124 +335,144 @@ export function TerminalShell() {
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#0d0f17]">
-      {/* Terminal header bar */}
-      <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-zinc-900/80 px-3 py-2 backdrop-blur-sm">
-        {/* Left — identity */}
-        <div className="flex items-center gap-2.5">
-          <TerminalSquare className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden="true" />
-          <span className="font-mono text-[11px] font-medium text-zinc-300 leading-none">
-            {host ? `${host.username}@${host.hostname}` : 'terminal'}
-          </span>
-          <span className="hidden items-center gap-1.5 sm:flex">
+    <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-[var(--canvas)]">
+      <div className="vercelab-page flex h-full min-h-[420px] flex-col gap-4">
+        <header className="flex min-h-8 shrink-0 flex-wrap items-center justify-between gap-3 px-0.5">
+          <h1 className="vercelab-page-heading">
+            Terminal{' '}
+            <span className="vercelab-page-count">{host?.hostname ?? 'Connecting to host'}</span>
+          </h1>
+          <span
+            className="flex items-center gap-1.5 text-[10px] text-[var(--muted-ink)]"
+            role="status"
+          >
             <StatusDot status={connectionStatus} />
-            <span className="text-[10px] text-zinc-500 leading-none">
-              {statusLabel[connectionStatus]}
-            </span>
+            {statusLabel[connectionStatus]}
           </span>
-        </div>
-
-        {/* Right — controls */}
-        <div className="flex items-center gap-1">
-          {/* Font size */}
-          <div className="flex items-center rounded border border-zinc-700/60 bg-zinc-800/60">
-            <button
-              type="button"
-              onClick={() => setFontSize((s) => Math.max(FONT_SIZES[0], s - 1))}
-              disabled={fontSize <= FONT_SIZES[0]}
-              className="flex h-6 w-6 items-center justify-center text-zinc-400 hover:text-zinc-200 disabled:opacity-30 transition-colors"
-              title="Decrease font size"
-            >
-              <Minus className="h-3 w-3" aria-hidden="true" />
-            </button>
-            <span className="w-6 text-center font-mono text-[10px] text-zinc-400 leading-none select-none">
-              {fontSize}
+        </header>
+        {connectionError || connectionStatus === 'disconnected' ? (
+          <WorkspaceNotice tone={connectionError ? 'error' : 'warning'}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>{connectionError ?? 'The terminal session has closed.'}</span>
+              <Button
+                onClick={() => {
+                  if (host) connectTerminal();
+                  else {
+                    setConnectionStatus('connecting');
+                    setConnectionError(null);
+                    setHostRequestKey((key) => key + 1);
+                  }
+                }}
+                size="xs"
+                variant="secondary"
+              >
+                <PlugZap className="size-3.5" aria-hidden="true" />
+                Reconnect
+              </Button>
+            </div>
+          </WorkspaceNotice>
+        ) : null}
+        <section
+          aria-label="Host terminal"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] shadow-[var(--shadow)]"
+        >
+          <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--hairline)] px-3 py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <TerminalSquare className="size-4 shrink-0 text-[var(--quiet)]" aria-hidden="true" />
+              <span className="truncate font-mono text-[11px] font-medium">
+                {host ? `${host.username}@${host.hostname}` : 'Host session'}
+              </span>
+            </div>
+            <div aria-label="Terminal controls" className="flex shrink-0 items-center gap-1">
+              <div
+                aria-label="Font size"
+                className="flex items-center rounded-[6px] border border-[var(--hairline)] bg-[var(--surface-subtle)]"
+              >
+                <Button
+                  aria-label="Decrease font size"
+                  title="Decrease font size"
+                  className="size-7"
+                  size="icon"
+                  variant="ghost"
+                  disabled={fontSize <= FONT_SIZES[0]}
+                  onClick={() => setFontSize((size) => Math.max(FONT_SIZES[0], size - 1))}
+                >
+                  <Minus className="size-3" aria-hidden="true" />
+                </Button>
+                <span className="w-6 text-center font-mono text-[10px] text-[var(--muted-ink)]">
+                  {fontSize}
+                </span>
+                <Button
+                  aria-label="Increase font size"
+                  title="Increase font size"
+                  className="size-7"
+                  size="icon"
+                  variant="ghost"
+                  disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                  onClick={() =>
+                    setFontSize((size) => Math.min(FONT_SIZES[FONT_SIZES.length - 1], size + 1))
+                  }
+                >
+                  <Plus className="size-3" aria-hidden="true" />
+                </Button>
+              </div>
+              <Button
+                aria-label="Copy selection"
+                title="Copy selection"
+                className="size-8"
+                size="icon"
+                variant="ghost"
+                disabled={!hasSelection}
+                onClick={handleCopySelection}
+              >
+                <ClipboardCheck className="size-3.5" aria-hidden="true" />
+              </Button>
+              <Button
+                aria-label="Copy all output"
+                title="Copy all output"
+                className="size-8"
+                size="icon"
+                variant="ghost"
+                onClick={handleCopyOutput}
+              >
+                <Clipboard className="size-3.5" aria-hidden="true" />
+              </Button>
+              <Button
+                aria-label="Clear terminal"
+                title="Clear (Ctrl+L)"
+                className="size-8"
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  terminalRef.current?.clear();
+                  terminalRef.current?.focus();
+                }}
+              >
+                <Trash2 className="size-3.5" aria-hidden="true" />
+              </Button>
+            </div>
+          </header>
+          <div
+            className="min-h-0 flex-1 overflow-hidden bg-[var(--surface-subtle)] p-3"
+            ref={terminalElementRef}
+          />
+          <footer className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-t border-[var(--hairline)] px-3 py-2 font-mono text-[9px] text-[var(--quiet)] [overflow-wrap:anywhere]">
+            <span>
+              OS{' '}
+              <span className="text-[var(--muted-ink)]">{host?.osName ?? 'Waiting for host'}</span>
             </span>
-            <button
-              type="button"
-              onClick={() => setFontSize((s) => Math.min(FONT_SIZES[FONT_SIZES.length - 1], s + 1))}
-              disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
-              className="flex h-6 w-6 items-center justify-center text-zinc-400 hover:text-zinc-200 disabled:opacity-30 transition-colors"
-              title="Increase font size"
-            >
-              <Plus className="h-3 w-3" aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="mx-1 h-4 w-px bg-zinc-700/60" />
-
-          {/* Copy selection */}
-          <Button
-            size="icon"
-            variant="ghost"
-            className={cn(
-              'h-6 w-6 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700/50',
-              !hasSelection && 'opacity-40 pointer-events-none'
-            )}
-            onClick={handleCopySelection}
-            title="Copy selection"
-          >
-            <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
-
-          {/* Copy all output */}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700/50"
-            onClick={handleCopyOutput}
-            title="Copy all output"
-          >
-            <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
-
-          {/* Clear */}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700/50"
-            onClick={() => {
-              terminalRef.current?.clear();
-              terminalRef.current?.focus();
-            }}
-            title="Clear (Ctrl+L)"
-          >
-            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-          </Button>
-
-          {/* Reconnect — only shown when disconnected/error */}
-          {(connectionStatus === 'disconnected' || connectionStatus === 'error') && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 gap-1 px-2 text-[10px] font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 ring-1 ring-amber-500/30"
-              onClick={connectTerminal}
-              title="Reconnect"
-            >
-              <PlugZap className="h-3 w-3" aria-hidden="true" />
-              Reconnect
-            </Button>
-          )}
-        </div>
+            <span>
+              Shell <span className="text-[var(--muted-ink)]">{host?.shell ?? '—'}</span>
+            </span>
+            <span>
+              Target{' '}
+              <span className="text-[var(--muted-ink)]">
+                {host ? (host.target ?? 'host') : '—'}
+              </span>
+            </span>
+          </footer>
+        </section>
       </div>
-
-      {/* xterm canvas */}
-      <div className="min-h-0 flex-1 overflow-hidden p-1" ref={terminalElementRef} />
-
-      {/* Footer — host metadata */}
-      <div className="flex shrink-0 items-center gap-4 border-t border-white/[0.06] bg-zinc-900/60 px-3 py-1.5">
-        <span className="text-[10px] text-zinc-600">
-          <span className="text-zinc-500">os</span> {host?.osName ?? '…'}
-        </span>
-        <span className="text-[10px] text-zinc-600">
-          <span className="text-zinc-500">shell</span>{' '}
-          <span className="font-mono">{host?.shell ?? '…'}</span>
-        </span>
-        <span className="text-[10px] text-zinc-600">
-          <span className="text-zinc-500">target</span>{' '}
-          {host?.target === 'host' ? 'Ubuntu host' : 'container'}
-        </span>
-      </div>
-    </div>
+    </main>
   );
 }

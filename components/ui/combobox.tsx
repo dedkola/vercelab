@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, CaretUpDown as ChevronsUpDown } from '@phosphor-icons/react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -91,8 +91,8 @@ export function Combobox({
                     <Check
                       className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')}
                     />
-                    <span className="flex flex-col">
-                      <span>{option.label}</span>
+                    <span className="flex min-w-0 flex-col break-words">
+                      <span className="truncate">{option.label}</span>
                       {option.description ? (
                         <span className="text-xs text-muted-foreground">{option.description}</span>
                       ) : null}

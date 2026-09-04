@@ -310,7 +310,13 @@ export function WorkspaceChromeShell({
 
   return (
     <WorkspaceChromeContext.Provider value={contextValue}>
-      <section aria-label="Workspace shell" className="flex h-screen flex-col bg-[var(--canvas)]">
+      <section aria-label="Workspace shell" className="flex h-dvh flex-col bg-[var(--canvas)]">
+        <a
+          href="#workspace-content"
+          className="sr-only z-[80] rounded-[7px] bg-[var(--surface)] p-3 text-[12px] text-[var(--blue)] focus:not-sr-only focus:absolute focus:left-3 focus:top-3"
+        >
+          Skip to content
+        </a>
         <WorkspaceHeader
           activeView={activeView}
           influxExplorerUrl={influxExplorerUrl}
@@ -320,11 +326,18 @@ export function WorkspaceChromeShell({
           onTimeDisplayModeChangeAction={handleTimeDisplayModeChange}
           onViewChangeAction={handleViewChange}
           statusLabel={statusLabel}
+          statusTone={metricsError ? 'warning' : sidebarSnapshot ? 'success' : 'neutral'}
           timeDisplayMode={timeDisplayMode}
           updatedAtLabel={updatedAtLabel}
         />
 
-        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
+        <div
+          id="workspace-content"
+          tabIndex={-1}
+          className="flex min-h-0 min-w-0 flex-1 overflow-hidden outline-none"
+        >
+          {children}
+        </div>
 
         <WorkspaceFooter activeViewLabel={activeViewMeta.label} updatedAtLabel={updatedAtLabel} />
       </section>

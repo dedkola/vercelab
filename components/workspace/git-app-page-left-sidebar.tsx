@@ -1,10 +1,20 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { ArrowUpRight, ChevronRight, GitBranch, PackagePlus, Plus, Search, X } from 'lucide-react';
+import {
+  ArrowUpRight,
+  CaretRight as ChevronRight,
+  GitBranch,
+  Package as PackagePlus,
+  Plus,
+  MagnifyingGlass as Search,
+  X,
+} from '@phosphor-icons/react';
 
 import type { DraftAppState, RepositoryState } from '@/components/workspace-shell';
+import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
+import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
@@ -175,27 +185,12 @@ export function GitAppPageLeftSidebar({
     [appItems]
   );
 
-  useEffect(() => {
-    if (!isCreateAppExpanded) {
-      return;
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onToggleCreateAppAction();
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isCreateAppExpanded, onToggleCreateAppAction]);
-
   return (
-    <div className="mx-auto w-full max-w-[1680px] space-y-5 px-6 py-5 max-[760px]:px-3 max-[760px]:py-3">
+    <div className="vercelab-page space-y-4">
       <header className="flex min-h-8 flex-wrap items-center justify-between gap-3 px-0.5">
-        <h1 className="text-xl font-semibold tracking-[-0.035em] text-foreground">
+        <h1 className="vercelab-page-heading">
           Apps{' '}
-          <span className="ml-1 font-mono text-[11px] font-normal tracking-normal text-[var(--quiet)]">
+          <span className="vercelab-page-count">
             {totalAppsCount} deployment{totalAppsCount === 1 ? '' : 's'}
           </span>
         </h1>
@@ -213,7 +208,7 @@ export function GitAppPageLeftSidebar({
             <strong className="block text-[13px] font-semibold" id="deploy-new-app-title">
               Deploy new app
             </strong>
-            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
               Choose a repository and branch. Review before creation.
             </span>
           </span>
@@ -259,6 +254,10 @@ export function GitAppPageLeftSidebar({
           </Button>
         </div>
       </section>
+
+      {repositoryState.error || branchError ? (
+        <WorkspaceNotice>{repositoryState.error ?? branchError}</WorkspaceNotice>
+      ) : null}
 
       <section
         aria-labelledby="applications-title"
@@ -319,13 +318,13 @@ export function GitAppPageLeftSidebar({
           <table className="w-full table-fixed border-collapse">
             <caption className="sr-only">Git-backed applications and deployment state</caption>
             <colgroup>
-              <col className="w-[27%] max-[760px]:w-auto" />
-              <col className="w-[11%] max-[760px]:w-[6.5rem]" />
+              <col className="w-auto" />
+              <col className="w-[7rem] max-[760px]:w-[6.5rem]" />
               <col className="w-[18%] max-[760px]:hidden" />
               <col className="w-[20%] max-[760px]:hidden" />
               <col className="w-[12%] max-[760px]:hidden" />
               <col className="w-[8%] max-[960px]:hidden" />
-              <col className="w-[8%] max-[760px]:w-[5rem]" />
+              <col className="w-[5.75rem] max-[760px]:w-[5.25rem]" />
             </colgroup>
             <thead className="bg-[var(--surface-subtle)]">
               <tr className="h-9 border-b border-[var(--hairline)]">
@@ -358,6 +357,7 @@ export function GitAppPageLeftSidebar({
                   key={deployment.id}
                   onClick={() => onSelectAppAction(deployment.id)}
                   onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault();
                       onSelectAppAction(deployment.id);
@@ -376,7 +376,7 @@ export function GitAppPageLeftSidebar({
                         {getAppInitials(deployment.appName)}
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate text-[13px] font-semibold tracking-[-0.01em]">
+                        <span className="block truncate text-[12px] font-semibold tracking-[-0.01em]">
                           {deployment.appName}
                         </span>
                         <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
@@ -430,7 +430,7 @@ export function GitAppPageLeftSidebar({
                       {deployment.relativeUpdatedAt}
                     </span>
                   </td>
-                  <td className="px-3 py-1.5 text-right">
+                  <td className="px-2 py-1.5 text-right">
                     <Button
                       className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-blue-200 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
                       onClick={(event) => {
@@ -450,28 +450,17 @@ export function GitAppPageLeftSidebar({
 
           {appItems.length === 0 ? (
             <div className="px-4 py-10 text-center font-mono text-[12px] text-[var(--quiet)]">
-              No applications match this view.
+              {totalAppsCount === 0
+                ? 'No apps deployed yet. Choose a repository above to get started.'
+                : 'No applications match this view.'}
             </div>
           ) : null}
         </div>
       </section>
 
       {isCreateAppExpanded ? (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[rgb(26_26_29_/_0.28)] p-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              onToggleCreateAppAction();
-            }
-          }}
-        >
-          <form
-            aria-labelledby="review-deployment-title"
-            aria-modal="true"
-            className="my-auto w-full max-w-[610px] overflow-hidden rounded-[12px] border border-[var(--hairline)] bg-white shadow-[0_24px_90px_rgb(16_24_40_/_0.18)]"
-            onSubmit={onCreateAppAction}
-            role="dialog"
-          >
+        <WorkspaceDialog onCloseAction={onToggleCreateAppAction} title="Review new deployment">
+          <form className="min-w-0" onSubmit={onCreateAppAction}>
             <header className="flex min-h-[54px] items-center justify-between gap-4 border-b border-[var(--hairline)] px-4">
               <div>
                 <h2 className="text-[15px] font-semibold" id="review-deployment-title">
@@ -499,6 +488,7 @@ export function GitAppPageLeftSidebar({
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-medium text-muted-foreground">App name</Label>
                   <Input
+                    aria-label="App name"
                     className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
                     onChange={(event) => onDraftChangeAction('appName', event.target.value)}
                     value={draftApp.appName}
@@ -509,6 +499,7 @@ export function GitAppPageLeftSidebar({
                     Internal port
                   </Label>
                   <Input
+                    aria-label="Internal port"
                     className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
                     inputMode="numeric"
                     onChange={(event) => onDraftChangeAction('port', event.target.value)}
@@ -560,6 +551,7 @@ export function GitAppPageLeftSidebar({
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-medium text-muted-foreground">Exposure</Label>
                   <select
+                    aria-label="Exposure"
                     className="h-9 w-full rounded-[7px] border border-input bg-white px-3 text-[12px]"
                     onChange={(event) => onDraftChangeAction('exposureMode', event.target.value)}
                     value={draftApp.exposureMode}
@@ -579,6 +571,7 @@ export function GitAppPageLeftSidebar({
                   </Label>
                   <InputGroup className="h-9 rounded-[7px] shadow-none">
                     <InputGroupInput
+                      aria-label="Public route"
                       className="font-mono text-[12px]"
                       onChange={(event) => onDraftChangeAction('subdomain', event.target.value)}
                       value={draftApp.subdomain}
@@ -596,6 +589,7 @@ export function GitAppPageLeftSidebar({
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-medium text-muted-foreground">Host port</Label>
                   <Input
+                    aria-label="Host port"
                     className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
                     inputMode="numeric"
                     onChange={(event) => onDraftChangeAction('hostPort', event.target.value)}
@@ -606,9 +600,7 @@ export function GitAppPageLeftSidebar({
               ) : null}
 
               {repositoryState.error || branchError ? (
-                <div className="rounded-[7px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
-                  {repositoryState.error ?? branchError}
-                </div>
+                <WorkspaceNotice>{repositoryState.error ?? branchError}</WorkspaceNotice>
               ) : null}
 
               {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (
@@ -660,7 +652,7 @@ export function GitAppPageLeftSidebar({
               </Button>
             </footer>
           </form>
-        </div>
+        </WorkspaceDialog>
       ) : null}
     </div>
   );

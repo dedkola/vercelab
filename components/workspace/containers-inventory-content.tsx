@@ -1,8 +1,16 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
-import { ArrowUpRight, Box, ChevronRight, Layers3, Search, X } from 'lucide-react';
+import { type ReactNode } from 'react';
+import {
+  ArrowUpRight,
+  Cube as Box,
+  CaretRight as ChevronRight,
+  Stack as Layers3,
+  MagnifyingGlass as Search,
+  X,
+} from '@phosphor-icons/react';
 
+import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ContainerListEntry } from '@/components/workspace-shell';
@@ -163,27 +171,12 @@ export function ContainersInventoryContent({
     (container) => getContainerState(container).tone === 'attention'
   ).length;
 
-  useEffect(() => {
-    if (!isCreatePanelOpen) {
-      return;
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onCloseCreatePanelAction();
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isCreatePanelOpen, onCloseCreatePanelAction]);
-
   return (
-    <div className="mx-auto w-full max-w-[1680px] space-y-5 px-6 py-5 max-[760px]:px-3 max-[760px]:py-3">
+    <div className="vercelab-page space-y-4">
       <header className="flex min-h-8 flex-wrap items-center justify-between gap-3 px-0.5">
-        <h1 className="text-xl font-semibold tracking-[-0.035em] text-foreground">
+        <h1 className="vercelab-page-heading">
           Containers{' '}
-          <span className="ml-1 font-mono text-[11px] font-normal tracking-normal text-[var(--quiet)]">
+          <span className="vercelab-page-count">
             {totalContainersCount} runtime{totalContainersCount === 1 ? '' : 's'}
           </span>
         </h1>
@@ -201,7 +194,7 @@ export function ContainersInventoryContent({
             <strong className="block text-[13px] font-semibold" id="create-container-title">
               Create container
             </strong>
-            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">
               Launch an image or review a Compose stack before it starts.
             </span>
           </span>
@@ -286,13 +279,13 @@ export function ContainersInventoryContent({
           <table className="w-full table-fixed border-collapse">
             <caption className="sr-only">Docker containers and current runtime state</caption>
             <colgroup>
-              <col className="w-[25%] max-[760px]:w-auto" />
-              <col className="w-[11%] max-[760px]:w-[6.75rem]" />
+              <col className="w-auto" />
+              <col className="w-[7rem] max-[760px]:w-[6.75rem]" />
               <col className="w-[17%] max-[760px]:hidden" />
               <col className="w-[21%] max-[760px]:hidden" />
               <col className="w-[16%] max-[960px]:hidden" />
               <col className="w-[12%] max-[760px]:hidden" />
-              <col className="w-[8%] max-[760px]:w-[5rem]" />
+              <col className="w-[5.75rem] max-[760px]:w-[5.25rem]" />
             </colgroup>
             <thead className="bg-[var(--surface-subtle)]">
               <tr className="h-9 border-b border-[var(--hairline)]">
@@ -331,6 +324,7 @@ export function ContainersInventoryContent({
                     key={container.display.id}
                     onClick={() => onContainerSelectAction(container.display.id)}
                     onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         onContainerSelectAction(container.display.id);
@@ -349,7 +343,7 @@ export function ContainersInventoryContent({
                           {getContainerInitials(container.sidebarName)}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-semibold tracking-[-0.01em]">
+                          <span className="block truncate text-[12px] font-semibold tracking-[-0.01em]">
                             {container.sidebarName}
                           </span>
                           <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
@@ -411,7 +405,7 @@ export function ContainersInventoryContent({
                         {container.display.memory || 'No sample'}
                       </span>
                     </td>
-                    <td className="px-3 py-1.5 text-right">
+                    <td className="px-2 py-1.5 text-right">
                       <Button
                         className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-blue-200 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
                         onClick={(event) => {
@@ -432,27 +426,17 @@ export function ContainersInventoryContent({
 
           {containers.length === 0 ? (
             <div className="px-4 py-10 text-center font-mono text-[12px] text-[var(--quiet)]">
-              No containers match this view.
+              {totalContainersCount === 0
+                ? 'No containers available. Create a container or check the Docker connection.'
+                : 'No containers match this view.'}
             </div>
           ) : null}
         </div>
       </section>
 
       {isCreatePanelOpen ? (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[rgb(26_26_29_/_0.28)] p-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              onCloseCreatePanelAction();
-            }
-          }}
-        >
-          <section
-            aria-labelledby="review-container-title"
-            aria-modal="true"
-            className="my-auto w-full max-w-[680px] overflow-hidden rounded-[12px] border border-[var(--hairline)] bg-white shadow-[0_24px_90px_rgb(16_24_40_/_0.18)]"
-            role="dialog"
-          >
+        <WorkspaceDialog onCloseAction={onCloseCreatePanelAction} title="Review new container">
+          <section className="min-w-0">
             <header className="flex min-h-[54px] items-center justify-between gap-4 border-b border-[var(--hairline)] px-4">
               <div className="flex min-w-0 items-center gap-2.5">
                 <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-blue-200 bg-[var(--blue-soft)] text-[var(--blue)]">
@@ -481,7 +465,7 @@ export function ContainersInventoryContent({
             </header>
             <div className="p-4">{createPanel}</div>
           </section>
-        </div>
+        </WorkspaceDialog>
       ) : null}
     </div>
   );
