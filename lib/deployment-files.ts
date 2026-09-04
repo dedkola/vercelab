@@ -7,7 +7,7 @@ import { getStoredDeploymentById, type StoredDeployment } from '@/lib/persistenc
 
 export const MAX_DEPLOYMENT_FILE_SIZE = 5 * 1024 * 1024;
 
-export const DEPLOYMENT_FILE_ACCESSES = ['private', 'container-readable'] as const;
+const DEPLOYMENT_FILE_ACCESSES = ['private', 'container-readable'] as const;
 
 export type DeploymentFileAccess = (typeof DEPLOYMENT_FILE_ACCESSES)[number];
 
@@ -19,7 +19,7 @@ const RESERVED_FILE_NAMES = new Set([
   '.vercelab.override.compose.yml',
 ]);
 
-export type DeploymentFileSummary = {
+type DeploymentFileSummary = {
   access: DeploymentFileAccess;
   mode: '0600' | '0644';
   name: string;

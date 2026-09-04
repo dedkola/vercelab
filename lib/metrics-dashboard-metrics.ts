@@ -57,22 +57,13 @@ const SERIES_COLORS = [
 
 export const ALL_CONTAINERS_ID = '__all-containers__';
 
-export const LOG_VIEW_OPTIONS: Array<{
-  value: DashboardLogView;
-  label: string;
-}> = [
-  { value: 'live', label: 'Live tail' },
-  { value: 'events', label: 'Events' },
-  { value: 'alerts', label: 'Alerts' },
-];
-
 export const METRICS_DASHBOARD_RANGE_OPTIONS = DASHBOARD_RANGE_OPTIONS.filter(
   (option) => option.value !== '90d'
 );
 
 export type ChartMetricFormat = 'percent' | 'bytes' | 'bytesPerSecond' | 'megabitsPerSecond';
 
-export type ChartStat = {
+type ChartStat = {
   label: string;
   value: string;
 };
@@ -95,7 +86,7 @@ export type SystemMetricPanel = {
   variant: 'area' | 'bars' | 'dual-line' | 'banded';
 };
 
-export type ContainerMetricSeries = {
+type ContainerMetricSeries = {
   color: string;
   id: string;
   isSelected: boolean;
@@ -685,11 +676,11 @@ export function formatDetailedTimestamp(value: string, timeZone: string | null =
   return getDateTimeFormatter('detailed', timeZone).format(new Date(value));
 }
 
-export function formatLoadAverage(loadAverage: MetricsSnapshot['system']['loadAverage']) {
+function formatLoadAverage(loadAverage: MetricsSnapshot['system']['loadAverage']) {
   return loadAverage.map((value) => value.toFixed(2)).join(' / ');
 }
 
-export function formatPercent(value: number, maximumFractionDigits = 0) {
+function formatPercent(value: number, maximumFractionDigits = 0) {
   return `${value.toFixed(maximumFractionDigits)}%`;
 }
 
@@ -706,7 +697,7 @@ export function formatBytes(value: number, maximumFractionDigits = value >= 1024
   return `${normalized.toFixed(digits)} ${units[exponent]}`;
 }
 
-export function formatBytesPerSecond(value: number) {
+function formatBytesPerSecond(value: number) {
   return `${formatBytes(value, value >= 1024 ** 2 ? 1 : 0)}/s`;
 }
 
@@ -746,7 +737,7 @@ export function formatAxisValue(value: number, format: ChartMetricFormat) {
   }
 }
 
-export function formatRuntimeHealthLabel(health: ContainerStats['health']) {
+function formatRuntimeHealthLabel(health: ContainerStats['health']) {
   switch (health) {
     case 'healthy':
       return 'Healthy';
@@ -757,132 +748,6 @@ export function formatRuntimeHealthLabel(health: ContainerStats['health']) {
     case 'none':
       return 'No healthcheck';
   }
-}
-
-export function formatRuntimeStatusLabel(runtime: ContainerStats) {
-  if (runtime.health === 'unhealthy') {
-    return 'Unhealthy';
-  }
-
-  if (runtime.health === 'starting') {
-    return 'Starting';
-  }
-
-  return runtime.status.charAt(0).toUpperCase() + runtime.status.slice(1);
-}
-
-export function formatStatusLabel(status: PreviewContainerStatus) {
-  switch (status) {
-    case 'running':
-      return 'Running';
-    case 'degraded':
-      return 'Degraded';
-    case 'idle':
-      return 'Idle';
-  }
-}
-
-export function getStatusBadgeVariant(
-  status: PreviewContainerStatus
-): 'success' | 'warning' | 'default' {
-  switch (status) {
-    case 'running':
-      return 'success';
-    case 'degraded':
-      return 'warning';
-    case 'idle':
-      return 'default';
-  }
-}
-
-export function buildLiveServerMetrics(
-  snapshot: MetricsSnapshot | null,
-  history: MetricsHistoryPoint[]
-): MetricCard[] {
-  if (!snapshot) {
-    return [
-      {
-        caption: 'Waiting for live host samples.',
-        delta: 'Connecting',
-        points: [],
-        title: 'CPU pressure',
-        tone: 'slate',
-        value: '--',
-      },
-      {
-        caption: 'Waiting for memory history.',
-        delta: 'Connecting',
-        points: [],
-        title: 'Memory footprint',
-        tone: 'slate',
-        value: '--',
-      },
-      {
-        caption: 'Recent ingress and egress will appear here.',
-        delta: 'Connecting',
-        points: [],
-        title: 'Network throughput',
-        tone: 'slate',
-        value: '--',
-      },
-      {
-        caption: 'Aggregate container demand will appear here.',
-        delta: 'Connecting',
-        points: [],
-        title: 'Container demand',
-        tone: 'slate',
-        value: '--',
-      },
-    ];
-  }
-
-  const cpuPoints = history.map((point) => point.cpu);
-  const memoryPoints = history.map((point) => point.memory);
-  const networkPoints = history.map((point) => point.networkTotal);
-  const containersCpuPoints = history.map((point) => point.containersCpu);
-
-  return [
-    {
-      caption: `Load avg ${formatLoadAverage(snapshot.system.loadAverage)}.`,
-      delta: getLatestDelta(cpuPoints, (value) => formatPercent(value, 1)),
-      points: cpuPoints,
-      title: 'CPU pressure',
-      tone: getUsageTone(snapshot.system.cpuPercent),
-      value: formatPercent(snapshot.system.cpuPercent),
-    },
-    {
-      caption: `${formatBytes(snapshot.system.memoryUsedBytes)} of ${formatBytes(snapshot.system.memoryTotalBytes)} in use.`,
-      delta: getLatestDelta(memoryPoints, (value) => formatPercent(value, 1)),
-      points: memoryPoints,
-      title: 'Memory footprint',
-      tone: getUsageTone(snapshot.system.memoryPercent, {
-        calm: 45,
-        elevated: 80,
-      }),
-      value: formatPercent(snapshot.system.memoryPercent),
-    },
-    {
-      caption: `${snapshot.network.interfaces.length} active interfaces tracked.`,
-      delta: getLatestDelta(networkPoints, (value) => formatBytesPerSecond(value), 1024),
-      points: networkPoints,
-      title: 'Network throughput',
-      tone: 'slate',
-      value: formatBytesPerSecond(
-        snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond
-      ),
-    },
-    {
-      caption: `${snapshot.containers.running} running containers using ${formatBytes(snapshot.containers.memoryUsedBytes)}.`,
-      delta: getLatestDelta(containersCpuPoints, (value) => formatPercent(value, 1)),
-      points: containersCpuPoints,
-      title: 'Container demand',
-      tone: getUsageTone(snapshot.containers.cpuPercent, {
-        calm: 20,
-        elevated: 70,
-      }),
-      value: formatPercent(snapshot.containers.cpuPercent),
-    },
-  ];
 }
 
 export function buildContainerListEntries(
@@ -980,93 +845,6 @@ export function buildContainerListEntries(
       searchText: `${descriptor.label} history only`.toLowerCase(),
     } satisfies ContainerListEntry;
   });
-}
-
-export function buildAggregateLogs(
-  snapshot: MetricsSnapshot | null,
-  history: MetricsHistoryPoint[],
-  allContainerHistory: AllContainersMetricsHistorySeries[],
-  deployments: DeploymentSummary[] = [],
-  timeZone: string | null = 'UTC'
-) {
-  const timestamp =
-    snapshot?.timestamp ?? history[history.length - 1]?.timestamp ?? new Date().toISOString();
-  const descriptors = buildContainerDescriptors(snapshot, allContainerHistory, deployments);
-  const hottestCpuRuntime =
-    descriptors
-      .map((descriptor) => {
-        const latest = descriptor.history[descriptor.history.length - 1] ?? null;
-
-        return {
-          label: descriptor.label,
-          value: latest?.cpuPercent ?? descriptor.runtime?.cpuPercent ?? 0,
-        };
-      })
-      .sort((left, right) => right.value - left.value)[0] ?? null;
-
-  const live: LogLine[] = [
-    createLogLine(
-      'fleet-live-1',
-      timestamp,
-      'info',
-      snapshot
-        ? `Host CPU ${formatPercent(snapshot.system.cpuPercent, 1)} • memory ${formatBytes(snapshot.system.memoryUsedBytes)} • net ${formatBytesPerSecond(snapshot.network.rxBytesPerSecond + snapshot.network.txBytesPerSecond)}.`
-        : 'Waiting for the current host snapshot.',
-      timeZone
-    ),
-    createLogLine(
-      'fleet-live-2',
-      timestamp,
-      hottestCpuRuntime && hottestCpuRuntime.value >= 80 ? 'warning' : 'success',
-      hottestCpuRuntime
-        ? `${hottestCpuRuntime.label} is the current CPU hotspot at ${formatPercent(hottestCpuRuntime.value, 1)}.`
-        : 'Container hotspot data is not available yet.',
-      timeZone
-    ),
-  ];
-
-  const events: LogLine[] = [
-    createLogLine(
-      'fleet-event-1',
-      timestamp,
-      'info',
-      `${snapshot?.containers.running ?? descriptors.length} running containers are being compared in the explorer.`,
-      timeZone
-    ),
-    createLogLine(
-      'fleet-event-2',
-      timestamp,
-      'success',
-      `History window includes ${history.length} host buckets and ${allContainerHistory.length} container series.`,
-      timeZone
-    ),
-  ];
-
-  const alerts: LogLine[] = [];
-
-  if ((snapshot?.containers.statusBreakdown.unhealthy ?? 0) > 0) {
-    alerts.push(
-      createLogLine(
-        'fleet-alert-health',
-        timestamp,
-        'warning',
-        `${snapshot?.containers.statusBreakdown.unhealthy ?? 0} container health warnings are active.`,
-        timeZone
-      )
-    );
-  }
-
-  for (const [index, warning] of (snapshot?.warnings ?? []).entries()) {
-    alerts.push(
-      createLogLine(`fleet-alert-warning-${index}`, timestamp, 'warning', warning, timeZone)
-    );
-  }
-
-  return {
-    alerts,
-    events,
-    live,
-  } satisfies Record<DashboardLogView, LogLine[]>;
 }
 
 export function buildSystemMetricPanels(

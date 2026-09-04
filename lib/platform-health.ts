@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { getAppConfig } from '@/lib/app-config';
 
-export type PlatformCheck = {
+type PlatformCheck = {
   id: string;
   label: string;
   ok: boolean;

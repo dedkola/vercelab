@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Button, Dialog, Input, Table, Tabs } from '@cloudflare/kumo';
+import { Button, Dialog, Input, Table, Tabs } from '@cloudflare/kumo';
 import { ArrowSquareOut, MagnifyingGlass, X } from '@phosphor-icons/react';
 import type { EChartsCoreOption } from 'echarts';
 import Image from 'next/image';

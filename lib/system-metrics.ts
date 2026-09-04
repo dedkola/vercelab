@@ -39,10 +39,10 @@ type ContainerIoCounters = {
   blockWriteBytes: number;
 };
 
-export type ContainerRuntimeState =
+type ContainerRuntimeState =
   'running' | 'stopped' | 'paused' | 'restarting' | 'dead' | 'created' | 'unknown';
 
-export type ContainerHealthState = 'healthy' | 'unhealthy' | 'starting' | 'none';
+type ContainerHealthState = 'healthy' | 'unhealthy' | 'starting' | 'none';
 
 export type ContainerStats = {
   id: string;

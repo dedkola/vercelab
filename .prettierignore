@@ -6,6 +6,8 @@ dist
 
 # Dependencies
 node_modules
+.playwright-cli
+output/playwright
 
 # Logs
 *.log

@@ -14,9 +14,11 @@ type LiveMetricsPollingOptions = {
   enabled: boolean;
   initialSnapshot: MetricsSnapshot | null;
   initialHistory: MetricsHistoryPoint[];
+  // Restart polling when a caller changes its selected history window.
+  refreshKey?: string;
   onSnapshot: (snapshot: MetricsSnapshot) => void;
   onHistory: (history: MetricsHistoryPoint[]) => void;
-  onError: (error: string | null) => void;
+  onError?: (error: string | null) => void;
 };
 
 function isDocumentHidden() {
@@ -27,6 +29,7 @@ export function useLiveMetricsPolling({
   enabled,
   initialSnapshot,
   initialHistory,
+  refreshKey,
   onSnapshot,
   onHistory,
   onError,
@@ -35,7 +38,7 @@ export function useLiveMetricsPolling({
   const inFlightRef = useRef(false);
   const updateSnapshot = useEffectEvent(onSnapshot);
   const updateHistory = useEffectEvent(onHistory);
-  const updateError = useEffectEvent(onError);
+  const updateError = useEffectEvent((error: string | null) => onError?.(error));
 
   useEffect(() => {
     if (!enabled) {
@@ -150,5 +153,5 @@ export function useLiveMetricsPolling({
 
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [enabled, initialHistory.length, initialSnapshot, onError, onHistory, onSnapshot]);
+  }, [enabled, initialHistory.length, initialSnapshot, onError, onHistory, onSnapshot, refreshKey]);
 }

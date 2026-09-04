@@ -56,7 +56,7 @@ type ReadComposeLogsOptions = {
   timestamps?: boolean;
 };
 
-export type DeploymentSourceCommit = {
+type DeploymentSourceCommit = {
   authorName: string | null;
   committedAt: string | null;
   message: string;
@@ -280,7 +280,7 @@ async function runCommand(command: string, args: string[], options: CommandOptio
   });
 }
 
-export function shouldFallbackToDockerComposeBinary(message: string) {
+function shouldFallbackToDockerComposeBinary(message: string) {
   const normalizedMessage = message.toLowerCase();
 
   return (
@@ -1169,7 +1169,7 @@ export async function readDeploymentContainerLog(deploymentId: string) {
   };
 }
 
-export async function readDeploymentContainerLogTail(
+async function readDeploymentContainerLogTail(
   deploymentId: string,
   options: ReadComposeLogsOptions = {}
 ) {

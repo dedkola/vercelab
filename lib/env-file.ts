@@ -9,11 +9,11 @@ function normalizeEnvFile(source: string) {
   return source.replace(/\r\n/g, '\n');
 }
 
-export function getWorkspaceEnvPath() {
+function getWorkspaceEnvPath() {
   return path.join(/*turbopackIgnore: true*/ process.cwd(), '.env');
 }
 
-export async function readWorkspaceEnvFile() {
+async function readWorkspaceEnvFile() {
   try {
     const source = await fs.readFile(getWorkspaceEnvPath(), 'utf8');
     return normalizeEnvFile(source);

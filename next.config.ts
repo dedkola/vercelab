@@ -23,11 +23,6 @@ const nextConfig: NextConfig = {
       'eslint.config.mjs',
       'postcss.config.mjs',
       'public/screenshots/**/*',
-      'public/file.svg',
-      'public/globe.svg',
-      'public/next.svg',
-      'public/vercel.svg',
-      'public/window.svg',
     ],
   },
 };

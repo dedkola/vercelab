@@ -16,7 +16,7 @@ import {
 } from '@/lib/container-routing';
 import type { ExposureMode } from '@/lib/validation';
 
-export type CatalogImage = {
+type CatalogImage = {
   description: string | null;
   isOfficial: boolean;
   name: string;

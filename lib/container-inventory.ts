@@ -2,7 +2,7 @@ import type { ContainerListEntry } from '@/components/workspace-shell';
 import type { ContainerStats } from '@/lib/system-metrics';
 
 export type ContainerAction = 'remove' | 'restart' | 'start' | 'stop';
-export type ContainerInventoryKind = 'managed' | 'system' | 'unmanaged';
+type ContainerInventoryKind = 'managed' | 'system' | 'unmanaged';
 
 export type ContainerInventoryMeta = {
   availableActions: ContainerAction[];
