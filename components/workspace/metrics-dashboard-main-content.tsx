@@ -103,8 +103,16 @@ function buildChartOption({
   return {
     animation: false,
     color: series.map((item) => item.color),
-    grid: { bottom: 26, containLabel: true, left: 8, right: 10, top: 18 },
+    grid: {
+      bottom: 26,
+      outerBoundsMode: 'same',
+      outerBoundsContain: 'axisLabel',
+      left: 8,
+      right: 10,
+      top: 18,
+    },
     tooltip: {
+      confine: true,
       axisPointer: { lineStyle: { color: 'rgba(26,26,29,.22)' }, type: 'line' },
       backgroundColor: 'transparent',
       borderWidth: 0,
@@ -138,6 +146,9 @@ function buildChartOption({
     },
     xAxis: {
       axisLabel: {
+        hideOverlap: true,
+        alignMinLabel: 'left',
+        alignMaxLabel: 'right',
         color: '#92959b',
         fontFamily: 'var(--font-geist-mono)',
         fontSize: 9,
@@ -579,7 +590,7 @@ export function MetricsDashboardMainContent({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1680px] space-y-4 px-6 py-5 max-[760px]:px-3 max-[760px]:py-3">
+    <div className="vercelab-page space-y-4">
       <section className="space-y-2" aria-labelledby="system-pulse-title">
         <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">
           <h1
@@ -702,14 +713,17 @@ export function MetricsDashboardMainContent({
         </header>
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[860px]" layout="fixed">
+          <Table
+            className="[&_th]:text-[9px] max-[960px]:[&_tr>:nth-child(6)]:hidden max-[640px]:[&_tr>:nth-child(4)]:hidden max-[640px]:[&_tr>:nth-child(5)]:hidden"
+            layout="fixed"
+          >
             <colgroup>
-              <col className="w-[30%]" />
-              <col className="w-[12%]" />
-              <col className="w-[10%]" />
-              <col className="w-[12%]" />
-              <col className="w-[13%]" />
-              <col className="w-[23%]" />
+              <col className="w-auto" />
+              <col className="w-[6rem]" />
+              <col className="w-[4.5rem]" />
+              <col className="w-[12%] max-[640px]:hidden" />
+              <col className="w-[13%] max-[640px]:hidden" />
+              <col className="w-[23%] max-[960px]:hidden" />
             </colgroup>
             <Table.Header className="bg-[var(--surface-subtle)]" variant="compact">
               <Table.Row>
@@ -746,6 +760,7 @@ export function MetricsDashboardMainContent({
                     key={container.display.id}
                     onClick={() => openContainerDetail(container)}
                     onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault();
                         openContainerDetail(container);
@@ -878,7 +893,7 @@ export function MetricsDashboardMainContent({
                 </div>
 
                 <section className="mt-4 overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-white">
-                  <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] px-4 py-3">
+                  <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-4 py-3">
                     <div>
                       <h3 className="text-[11px] font-semibold">Runtime log</h3>
                       <p className="mt-1 font-mono text-[9px] text-[var(--quiet)]">
@@ -893,32 +908,37 @@ export function MetricsDashboardMainContent({
                       variant="segmented"
                     />
                   </header>
-                  <div className="max-h-64 overflow-auto bg-[#1a1a1d] px-4 py-3 font-mono text-[10px] leading-5 text-[#d7d8db]">
+                  <div className="max-h-64 overflow-auto bg-[var(--surface-subtle)] px-4 py-3 font-mono text-[10px] leading-5 text-[var(--ink)]">
                     {detailContainer.display.logs[detailLogView].length ? (
                       detailContainer.display.logs[detailLogView].map((line) => (
-                        <div className="grid grid-cols-[5.5rem_4rem_1fr] gap-3" key={line.id}>
-                          <span className="text-[#92959b]">{line.timestamp}</span>
+                        <div
+                          className="grid grid-cols-[5.5rem_4rem_minmax(0,1fr)] gap-3 max-[520px]:grid-cols-[5.5rem_minmax(0,1fr)] max-[520px]:[&>span:last-child]:col-span-2"
+                          key={line.id}
+                        >
+                          <span className="text-[var(--quiet)]">{line.timestamp}</span>
                           <span
                             className={cn(
                               'uppercase',
-                              line.level === 'success' && 'text-[#64c58a]',
-                              line.level === 'warning' && 'text-[#f5a65d]',
-                              line.level === 'info' && 'text-[#7ca9ed]'
+                              line.level === 'success' && 'text-[var(--green)]',
+                              line.level === 'warning' && 'text-[var(--warning-ink)]',
+                              line.level === 'info' && 'text-[var(--blue)]'
                             )}
                           >
                             {line.level}
                           </span>
-                          <span className="min-w-0 break-words">{line.message}</span>
+                          <span className="min-w-0 [overflow-wrap:anywhere]">{line.message}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-[#92959b]">No {detailLogView} entries available.</div>
+                      <div className="text-[var(--quiet)]">
+                        No {detailLogView} entries available.
+                      </div>
                     )}
                   </div>
                 </section>
               </div>
 
-              <footer className="flex items-center justify-between gap-3 border-t border-[var(--hairline)] px-5 py-3">
+              <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] px-5 py-3">
                 <span className="font-mono text-[9px] text-[var(--quiet)]">
                   {detailContainer.display.summary}
                 </span>

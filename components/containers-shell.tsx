@@ -7,6 +7,7 @@ import {
   ContainersInventoryContent,
   type ContainerStatusFilter,
 } from '@/components/workspace/containers-inventory-content';
+import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
@@ -174,6 +175,7 @@ export function ContainersShell({
   const [actionPending, setActionPending] = useState<ContainerAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [inspectData, setInspectData] = useState<ContainerInspectData | null>(null);
+  const [inspectError, setInspectError] = useState<string | null>(null);
   const [inspectLoading, setInspectLoading] = useState(false);
   const [recreatePending, setRecreatePending] = useState(false);
   const [recreateError, setRecreateError] = useState<string | null>(null);
@@ -314,6 +316,7 @@ export function ContainersShell({
     let active = true;
     setInspectData(null);
     setInspectLoading(true);
+    setInspectError(null);
 
     void (async () => {
       try {
@@ -326,11 +329,13 @@ export function ContainersShell({
           return;
         }
 
-        if (response.ok) {
-          setInspectData(payload);
-        }
-      } catch {
-        // inspect failure is non-fatal
+        if (!response.ok) throw new Error(payload.error ?? 'Unable to inspect this container.');
+        setInspectData(payload);
+      } catch (error) {
+        if (active)
+          setInspectError(
+            error instanceof Error ? error.message : 'Unable to inspect this container.'
+          );
       } finally {
         if (active) {
           setInspectLoading(false);
@@ -807,7 +812,7 @@ export function ContainersShell({
           />
           <textarea
             aria-label="Compose content"
-            className="min-h-44 w-full rounded-md border border-border/70 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-emerald-300/80"
+            className="min-h-44 w-full rounded-[7px] border border-border bg-card px-3 py-2 font-mono text-[12px] text-foreground outline-none transition focus:border-ring focus:ring-1 focus:ring-ring/70"
             onChange={(event) => setComposeContent(event.target.value)}
             placeholder="Paste docker compose yaml"
             value={composeContent}
@@ -815,10 +820,12 @@ export function ContainersShell({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-xs text-muted-foreground">
-          {catalogError ?? createError ?? createSuccess ?? ''}
-        </div>
+      {catalogError || createError ? (
+        <WorkspaceNotice>{catalogError ?? createError}</WorkspaceNotice>
+      ) : createSuccess ? (
+        <WorkspaceNotice tone="success">{createSuccess}</WorkspaceNotice>
+      ) : null}
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button disabled={createPending} onClick={handleCreateContainer} size="xs" type="button">
           {createPending ? 'Creating...' : 'Create'}
         </Button>
@@ -871,6 +878,7 @@ export function ContainersShell({
           aliasDraft={aliasDraft}
           inspectData={inspectData}
           inspectLoading={inspectLoading}
+          inspectError={inspectError}
           inventoryMeta={inventoryMeta}
           key={selectedEntry.display.id}
           logs={liveRailLogs}

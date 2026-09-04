@@ -373,7 +373,7 @@ export function MetricsDashboardShell({
   }
 
   return (
-    <section aria-label="Workspace shell" className="flex h-screen flex-col bg-background">
+    <section aria-label="Workspace shell" className="flex h-dvh flex-col bg-background">
       <WorkspaceHeader
         activeView="dashboard"
         influxExplorerUrl={influxExplorerUrl}

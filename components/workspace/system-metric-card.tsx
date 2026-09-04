@@ -96,12 +96,14 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
     animation: false,
     grid: {
       bottom: 26,
-      containLabel: true,
+      outerBoundsMode: 'same',
+      outerBoundsContain: 'axisLabel',
       left: 8,
       right: 8,
       top: 16,
     },
     tooltip: {
+      confine: true,
       backgroundColor: 'transparent',
       borderWidth: 0,
       extraCssText: 'box-shadow:none;',
@@ -143,6 +145,9 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
     },
     xAxis: {
       axisLabel: {
+        hideOverlap: true,
+        alignMinLabel: 'left',
+        alignMaxLabel: 'right',
         color: 'rgba(71,85,105,0.88)',
         formatter: (value: number) =>
           formatChartAxisTimestamp(value, '1h', panel.timeZone).replace(/\s?(AM|PM)$/i, ''),

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Icon } from '@/components/dashboard-kit';
 import { Badge } from '@/components/ui/badge';
 import { CardTitle } from '@/components/ui/card';
@@ -223,14 +224,12 @@ export function GitLogPanel({
       : `docker logs -f --tail 150 ${deployment?.appName ?? ''}`.trim();
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-linear-to-b from-background via-muted/10 to-background">
+    <div className="flex h-full min-w-0 flex-col bg-[var(--surface)]">
       {showHeader ? (
-        <div className="sticky top-0 z-10 border-b border-border/70 bg-linear-to-r from-background via-muted/40 to-background px-3 py-3 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.45)]">
-          <div className="flex items-center justify-between gap-3 pl-10">
+        <div className="sticky top-0 z-10 border-b border-border/70 bg-[var(--surface)] px-3 py-3 ">
+          <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <CardTitle className="truncate text-right text-sm sm:text-base">
-                Deployment logs
-              </CardTitle>
+              <CardTitle className="truncate text-[12px]">Deployment logs</CardTitle>
               <div className="text-xs text-muted-foreground">
                 {deployment ? deployment.appName : emptyState.title}
               </div>
@@ -260,12 +259,13 @@ export function GitLogPanel({
             },
           ].map((option) => (
             <button
+              aria-pressed={activeLogTab === option.value}
               key={option.value}
               type="button"
               className={cn(
-                'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold tracking-tight transition-all duration-200',
+                'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1.5 text-[11px] font-medium transition-colors',
                 activeLogTab === option.value
-                  ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700 shadow-sm'
+                  ? 'border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]'
                   : 'border-border/60 bg-background/80 text-muted-foreground hover:text-foreground'
               )}
               onClick={() => {
@@ -281,16 +281,18 @@ export function GitLogPanel({
       </div>
 
       <ScrollArea className="min-h-0 flex-1 min-w-0 [&>[data-radix-scroll-area-viewport]>div]:block! [&>[data-radix-scroll-area-viewport]>div]:w-full! [&>[data-radix-scroll-area-viewport]>div]:min-w-0">
-        <div className="flex min-w-0 flex-col space-y-4 p-3">
+        <div className="flex min-w-0 flex-col space-y-3 p-3">
           {deployment ? (
             <>
-              <div className="w-full rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background/96 via-muted/14 to-background px-4 py-4 shadow-[0_20px_56px_-46px_rgba(15,23,42,0.32)]">
-                <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 w-full rounded-[8px] border border-border bg-[var(--surface-subtle)] px-3 py-3">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold tracking-tight text-foreground">
+                    <div className="break-words text-[12px] font-semibold text-foreground">
                       {deployment.appName}
                     </div>
-                    <div className="text-xs text-muted-foreground">{activeLogCommand}</div>
+                    <div className="break-all font-mono text-[10px] text-muted-foreground">
+                      {activeLogCommand}
+                    </div>
                   </div>
                   <Badge variant={formatStatusBadgeVariant(deployment.status)}>
                     {formatDeploymentStatus(deployment.status)}
@@ -298,28 +300,24 @@ export function GitLogPanel({
                 </div>
               </div>
 
-              {logState.error ? (
-                <div className="w-full rounded-[1.2rem] border border-amber-200/80 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-800 shadow-[0_18px_44px_-40px_rgba(217,119,6,0.35)]">
-                  {logState.error}
-                </div>
-              ) : null}
+              {logState.error ? <WorkspaceNotice>{logState.error}</WorkspaceNotice> : null}
 
-              <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[#0f1720] shadow-[0_24px_70px_-50px_rgba(15,23,42,0.5)]">
-                <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <div className="min-w-0 overflow-hidden rounded-[8px] border border-border bg-[var(--surface-subtle)]">
+                <div className="flex items-center justify-between border-b border-[var(--hairline)] px-4 py-3">
+                  <div className="flex items-center gap-2 text-xs text-[var(--muted-ink)]">
+                    <span className="h-2 w-2 rounded-full bg-[var(--green)]" />
                     {activeLogLabel}
                   </div>
-                  <div className="font-mono text-[11px] text-slate-400">
+                  <div className="font-mono text-[11px] text-[var(--quiet)]">
                     {logState.isLoading ? 'Loading...' : `${logLineCount} lines`}
                   </div>
                 </div>
 
-                <div className="max-h-[52vh] min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 font-mono text-[12px] leading-6 text-slate-200">
+                <div className="max-h-[52vh] min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 font-mono text-[11px] leading-5 text-[var(--ink)]">
                   {logState.isLoading ? (
-                    <div className="text-slate-400">Loading logs...</div>
+                    <div className="text-[var(--quiet)]">Loading logs...</div>
                   ) : (
-                    <pre className="max-w-full whitespace-pre-wrap wrap-break-word text-slate-100">
+                    <pre className="max-w-full whitespace-pre-wrap [overflow-wrap:anywhere] text-[var(--ink)]">
                       {logOutput}
                     </pre>
                   )}
@@ -329,7 +327,7 @@ export function GitLogPanel({
           ) : (
             <div className="flex min-w-0 flex-col space-y-3">
               <div className="w-full rounded-xl border border-border/70 bg-background px-3 py-3 shadow-sm">
-                <div className="text-sm font-semibold tracking-tight text-foreground">
+                <div className="break-words text-[12px] font-semibold text-foreground">
                   {emptyState.title}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
@@ -337,15 +335,15 @@ export function GitLogPanel({
                 </div>
               </div>
 
-              <div className="min-w-0 overflow-hidden rounded-xl border border-border/70 bg-[#0f1720] shadow-sm">
-                <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
+              <div className="min-w-0 overflow-hidden rounded-xl border border-border/70 bg-[var(--surface-subtle)] shadow-sm">
+                <div className="flex items-center justify-between border-b border-[var(--hairline)] px-3 py-2">
+                  <div className="flex items-center gap-2 text-xs text-[var(--muted-ink)]">
                     <span className="h-2 w-2 rounded-full bg-slate-400" />
                     Tail preview
                   </div>
-                  <div className="font-mono text-[11px] text-slate-400">Idle</div>
+                  <div className="font-mono text-[11px] text-[var(--quiet)]">Idle</div>
                 </div>
-                <div className="px-3 py-3 font-mono text-[12px] leading-5 text-slate-400">
+                <div className="px-3 py-3 font-mono text-[12px] leading-5 text-[var(--quiet)]">
                   {emptyState.description}
                 </div>
               </div>

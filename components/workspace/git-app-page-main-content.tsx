@@ -3,25 +3,28 @@
 import { useDeferredValue, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
-  ExternalLink,
+  ArrowSquareOut as ExternalLink,
   FileText,
-  FileUp,
+  FileArrowUp as FileUp,
   GitBranch,
-  LoaderCircle,
+  SpinnerGap as LoaderCircle,
   Package,
   Play,
   Plus,
-  RefreshCcw,
-  RotateCcw,
-  Save,
-  Square,
-  Trash2,
-  Undo2,
+  ArrowsClockwise as RefreshCcw,
+  ArrowCounterClockwise as RotateCcw,
+  FloppyDisk as Save,
+  Stop as Square,
+  Trash as Trash2,
+  ArrowUUpLeft as Undo2,
   X,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
 import { GitLogPanel, type LogTab } from '@/components/git-log-panel';
+import { WorkspaceTabs } from '@/components/workspace/workspace-tabs';
+import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
+import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
@@ -212,7 +215,7 @@ function ConfigurationField({
   return (
     <div
       className={cn(
-        'rounded-[8px] border bg-background p-3 transition-[border-color,box-shadow]',
+        'rounded-[8px] border bg-[var(--surface)] p-3 transition-[border-color,box-shadow]',
         changed ? 'border-orange-200 shadow-[0_0_0_3px_rgb(244_129_32_/_0.07)]' : 'border-border/70'
       )}
     >
@@ -730,17 +733,6 @@ export function GitAppPageMainContent({
     setEnvRows(buildEnvVariableDrafts(deployment.envVariables));
   }
 
-  useEffect(() => {
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onCloseAction();
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [onCloseAction]);
-
   const envVariableCount = envRows.filter((row) => row.enabled && row.key.trim()).length;
   const stateSummary =
     deployment.status === 'running'
@@ -759,875 +751,841 @@ export function GitAppPageMainContent({
   ];
 
   return (
-    <>
-      <button
-        aria-label="Close app manager"
-        className="fixed inset-0 z-50 cursor-default bg-[rgb(26_26_29_/_0.2)]"
-        onClick={onCloseAction}
-        type="button"
-      />
-      <aside
-        aria-labelledby="app-manager-title"
-        aria-modal="true"
-        className="fixed inset-y-0 right-0 z-[60] flex w-[min(540px,calc(100vw-24px))] flex-col border-l border-[var(--hairline)] bg-white shadow-[-20px_0_60px_rgb(16_24_40_/_0.12)] max-[640px]:w-screen max-[640px]:border-l-0"
-        role="dialog"
-      >
-        <header className="flex min-h-[58px] items-center justify-between gap-3 border-b border-[var(--hairline)] px-4">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
-              <Package aria-hidden="true" className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <h2
-                className="truncate text-[14px] font-semibold tracking-[-0.015em]"
-                id="app-manager-title"
-              >
-                {deployment.appName}
-              </h2>
-              <p className="mt-0.5 truncate font-mono text-[10px] text-[var(--quiet)]">
-                {repositoryDescriptor.fullName} · {deployment.branch ?? 'default'}
-              </p>
-            </div>
-          </div>
-          <Button
-            aria-label="Close app manager"
-            autoFocus
-            className="size-7"
-            onClick={onCloseAction}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </Button>
-        </header>
-
-        <div
-          aria-label="Application management"
-          className="flex min-h-[39px] shrink-0 gap-4 overflow-x-auto border-b border-[var(--hairline)] px-4"
-          role="tablist"
-        >
-          {managerTabs.map((tab) => (
-            <button
-              aria-selected={activeTab === tab.value}
-              className={cn(
-                'relative shrink-0 px-0 text-[11px] font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5',
-                activeTab === tab.value
-                  ? 'text-foreground after:bg-[var(--orange)]'
-                  : 'text-[var(--quiet)] after:bg-transparent hover:text-foreground'
-              )}
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              role="tab"
-              type="button"
+    <WorkspaceDialog onCloseAction={onCloseAction} title={deployment.appName} variant="drawer">
+      <header className="flex min-h-[58px] shrink-0 items-center justify-between gap-3 border-b border-[var(--hairline)] px-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+            <Package aria-hidden="true" className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <h2
+              className="truncate text-[14px] font-semibold tracking-[-0.015em]"
+              id="app-manager-title"
             >
-              {tab.label}
-            </button>
-          ))}
+              {deployment.appName}
+            </h2>
+            <p className="mt-0.5 truncate font-mono text-[10px] text-[var(--quiet)]">
+              {repositoryDescriptor.fullName} · {deployment.branch ?? 'default'}
+            </p>
+          </div>
         </div>
+        <Button
+          aria-label="Close app manager"
+          autoFocus
+          className="size-7"
+          onClick={onCloseAction}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          <X aria-hidden="true" className="size-4" />
+        </Button>
+      </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--canvas)] p-4 max-[640px]:p-3">
-          {activeTab === 'overview' ? (
-            <div className="space-y-5">
-              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                      Current deployment
-                    </span>
-                    <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
-                      {stateSummary}
-                    </h3>
-                  </div>
-                  <Badge className="rounded-[6px] shadow-none" variant={deploymentStatusVariant}>
-                    {deploymentStatusLabel}
-                  </Badge>
+      <WorkspaceTabs
+        id="app-management"
+        label="Application management"
+        onChange={setActiveTab}
+        tabs={managerTabs}
+        value={activeTab}
+      />
+
+      <div
+        role="tabpanel"
+        id="app-management-panel"
+        aria-labelledby={`app-management-${activeTab}`}
+        tabIndex={0}
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto [overflow-wrap:anywhere] bg-[var(--canvas)] p-4 max-[640px]:p-3"
+      >
+        {activeTab === 'overview' ? (
+          <div className="space-y-5">
+            <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                    Current deployment
+                  </span>
+                  <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">{stateSummary}</h3>
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] text-[var(--quiet)]">
-                  <span>{deployment.id}</span>
-                  <span>{new Date(deployment.updatedAt).toLocaleString()}</span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {deploymentHref ? (
-                    <Button asChild className="shadow-none" size="xs" variant="secondary">
-                      <a href={deploymentHref} rel="noreferrer" target="_blank">
-                        <ExternalLink aria-hidden="true" className="size-3.5" />
-                        Open route
-                      </a>
-                    </Button>
-                  ) : null}
-                  <Button
-                    disabled={isBusy}
-                    onClick={() => void runPendingAction('recreate', onRecreateAction)}
-                    size="xs"
-                    type="button"
-                    variant="secondary"
-                  >
-                    {pendingAction === 'recreate' ? (
-                      <LoaderCircle className="size-3.5 animate-spin" />
-                    ) : (
-                      <RotateCcw className="size-3.5" />
-                    )}
-                    Redeploy
+                <Badge className="rounded-[6px] shadow-none" variant={deploymentStatusVariant}>
+                  {deploymentStatusLabel}
+                </Badge>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] text-[var(--quiet)]">
+                <span>{deployment.id}</span>
+                <span>{new Date(deployment.updatedAt).toLocaleString()}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {deploymentHref ? (
+                  <Button asChild className="shadow-none" size="xs" variant="secondary">
+                    <a href={deploymentHref} rel="noreferrer" target="_blank">
+                      <ExternalLink aria-hidden="true" className="size-3.5" />
+                      Open route
+                    </a>
                   </Button>
-                  <Button
-                    disabled={isBusy}
-                    onClick={() => void runPendingAction('fetch', onFetchAction)}
-                    size="xs"
-                    type="button"
-                    variant="secondary"
-                  >
-                    {pendingAction === 'fetch' ? (
-                      <LoaderCircle className="size-3.5 animate-spin" />
-                    ) : (
-                      <RefreshCcw className="size-3.5" />
-                    )}
-                    Pull source
-                  </Button>
-                  <Button
-                    onClick={() => setActiveTab('logs')}
-                    size="xs"
-                    type="button"
-                    variant="secondary"
-                  >
-                    View logs
-                  </Button>
-                  {deployment.status === 'stopped' ? (
-                    <Button
-                      disabled={isBusy}
-                      onClick={() => void runPendingAction('start', onStartAction)}
-                      size="xs"
-                      type="button"
-                    >
-                      {pendingAction === 'start' ? (
-                        <LoaderCircle className="size-3.5 animate-spin" />
-                      ) : (
-                        <Play className="size-3.5" />
-                      )}
-                      Start
-                    </Button>
+                ) : null}
+                <Button
+                  disabled={isBusy}
+                  onClick={() => void runPendingAction('recreate', onRecreateAction)}
+                  size="xs"
+                  type="button"
+                  variant="secondary"
+                >
+                  {pendingAction === 'recreate' ? (
+                    <LoaderCircle className="size-3.5 animate-spin" />
                   ) : (
-                    <Button
-                      disabled={isBusy}
-                      onClick={() => void runPendingAction('stop', onStopAction)}
-                      size="xs"
-                      type="button"
-                      variant="danger"
-                    >
-                      {pendingAction === 'stop' ? (
-                        <LoaderCircle className="size-3.5 animate-spin" />
-                      ) : (
-                        <Square className="size-3.5" />
-                      )}
-                      Stop
-                    </Button>
+                    <RotateCcw className="size-3.5" />
                   )}
-                </div>
-              </section>
+                  Redeploy
+                </Button>
+                <Button
+                  disabled={isBusy}
+                  onClick={() => void runPendingAction('fetch', onFetchAction)}
+                  size="xs"
+                  type="button"
+                  variant="secondary"
+                >
+                  {pendingAction === 'fetch' ? (
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCcw className="size-3.5" />
+                  )}
+                  Pull source
+                </Button>
+                <Button
+                  onClick={() => setActiveTab('logs')}
+                  size="xs"
+                  type="button"
+                  variant="secondary"
+                >
+                  View logs
+                </Button>
+                {deployment.status === 'stopped' ? (
+                  <Button
+                    disabled={isBusy}
+                    onClick={() => void runPendingAction('start', onStartAction)}
+                    size="xs"
+                    type="button"
+                  >
+                    {pendingAction === 'start' ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <Play className="size-3.5" />
+                    )}
+                    Start
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={isBusy}
+                    onClick={() => void runPendingAction('stop', onStopAction)}
+                    size="xs"
+                    type="button"
+                    variant="danger"
+                  >
+                    {pendingAction === 'stop' ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <Square className="size-3.5" />
+                    )}
+                    Stop
+                  </Button>
+                )}
+              </div>
+            </section>
 
-              <section>
-                <h3 className="mb-2 text-[12px] font-semibold">Deployment path</h3>
-                <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1.5 max-[640px]:grid-cols-1">
-                  <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
-                    <span className="grid size-4 place-items-center rounded-full bg-[var(--green-soft)] font-mono text-[10px] font-bold text-[var(--green)]">
-                      ✓
-                    </span>
-                    <strong className="mt-1.5 block text-[11px]">Source</strong>
-                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
-                      {deployment.branch ?? 'default'}@
-                      {(activeCommit?.shortSha ?? deployment.commitSha?.slice(0, 7)) || 'head'}
-                    </span>
-                  </div>
-                  <ArrowRight
-                    aria-hidden="true"
-                    className="size-3 text-[var(--quiet)] max-[640px]:mx-auto max-[640px]:rotate-90"
-                  />
-                  <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
-                    <span
-                      className={cn(
-                        'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
-                        deployment.status === 'deploying'
-                          ? 'bg-[var(--blue-soft)] text-[var(--blue)]'
-                          : 'bg-[var(--green-soft)] text-[var(--green)]'
-                      )}
-                    >
-                      {deployment.status === 'deploying' ? '↻' : '✓'}
-                    </span>
-                    <strong className="mt-1.5 block text-[11px]">Build</strong>
-                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
-                      {deployment.status === 'deploying'
-                        ? 'in progress'
-                        : (deployment.composeMode ?? 'auto') + ' ready'}
-                    </span>
-                  </div>
-                  <ArrowRight
-                    aria-hidden="true"
-                    className="size-3 text-[var(--quiet)] max-[640px]:mx-auto max-[640px]:rotate-90"
-                  />
-                  <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
-                    <span
-                      className={cn(
-                        'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
-                        deploymentHref
-                          ? 'bg-[var(--green-soft)] text-[var(--green)]'
-                          : 'bg-[var(--surface-subtle)] text-[var(--quiet)]'
-                      )}
-                    >
-                      {deploymentHref ? '✓' : '·'}
-                    </span>
-                    <strong className="mt-1.5 block text-[11px]">Route</strong>
-                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
-                      {publicDomainLabel || 'not routed'}
-                    </span>
-                  </div>
+            <section>
+              <h3 className="mb-2 text-[12px] font-semibold">Deployment path</h3>
+              <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1.5 max-[640px]:grid-cols-1">
+                <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
+                  <span className="grid size-4 place-items-center rounded-full bg-[var(--green-soft)] font-mono text-[10px] font-bold text-[var(--green)]">
+                    ✓
+                  </span>
+                  <strong className="mt-1.5 block text-[11px]">Source</strong>
+                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                    {deployment.branch ?? 'default'}@
+                    {(activeCommit?.shortSha ?? deployment.commitSha?.slice(0, 7)) || 'head'}
+                  </span>
                 </div>
-              </section>
+                <ArrowRight
+                  aria-hidden="true"
+                  className="size-3 text-[var(--quiet)] max-[640px]:mx-auto max-[640px]:rotate-90"
+                />
+                <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
+                  <span
+                    className={cn(
+                      'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
+                      deployment.status === 'deploying'
+                        ? 'bg-[var(--blue-soft)] text-[var(--blue)]'
+                        : 'bg-[var(--green-soft)] text-[var(--green)]'
+                    )}
+                  >
+                    {deployment.status === 'deploying' ? '↻' : '✓'}
+                  </span>
+                  <strong className="mt-1.5 block text-[11px]">Build</strong>
+                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                    {deployment.status === 'deploying'
+                      ? 'in progress'
+                      : (deployment.composeMode ?? 'auto') + ' ready'}
+                  </span>
+                </div>
+                <ArrowRight
+                  aria-hidden="true"
+                  className="size-3 text-[var(--quiet)] max-[640px]:mx-auto max-[640px]:rotate-90"
+                />
+                <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
+                  <span
+                    className={cn(
+                      'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
+                      deploymentHref
+                        ? 'bg-[var(--green-soft)] text-[var(--green)]'
+                        : 'bg-[var(--surface-subtle)] text-[var(--quiet)]'
+                    )}
+                  >
+                    {deploymentHref ? '✓' : '·'}
+                  </span>
+                  <strong className="mt-1.5 block text-[11px]">Route</strong>
+                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                    {publicDomainLabel || 'not routed'}
+                  </span>
+                </div>
+              </div>
+            </section>
 
-              <section>
-                <h3 className="mb-2 text-[12px] font-semibold">Runtime</h3>
-                <div className="border-t border-[var(--hairline)]">
-                  {[
-                    ['Build mode', deployment.composeMode ?? 'auto'],
-                    ['Internal port', ':' + deployment.port],
-                    [
-                      'Exposure',
-                      deployment.exposureMode === 'internal'
-                        ? 'internal only'
-                        : deployment.exposureMode === 'http'
-                          ? 'reverse proxy'
-                          : deployment.exposureMode + ' · :' + (deployment.hostPort ?? '—'),
-                    ],
-                    [
-                      'Environment',
-                      envVariableCount + ' variable' + (envVariableCount === 1 ? '' : 's'),
-                    ],
-                  ].map(([label, value]) => (
-                    <div
-                      className="flex min-h-[39px] items-center justify-between gap-4 border-b border-[var(--hairline)]"
-                      key={label}
-                    >
-                      <span className="text-[11px] text-muted-foreground">{label}</span>
-                      <span className="max-w-[65%] truncate font-mono text-[10px] text-foreground">
-                        {value}
+            <section>
+              <h3 className="mb-2 text-[12px] font-semibold">Runtime</h3>
+              <div className="border-t border-[var(--hairline)]">
+                {[
+                  ['Build mode', deployment.composeMode ?? 'auto'],
+                  ['Internal port', ':' + deployment.port],
+                  [
+                    'Exposure',
+                    deployment.exposureMode === 'internal'
+                      ? 'internal only'
+                      : deployment.exposureMode === 'http'
+                        ? 'reverse proxy'
+                        : deployment.exposureMode + ' · :' + (deployment.hostPort ?? '—'),
+                  ],
+                  [
+                    'Environment',
+                    envVariableCount + ' variable' + (envVariableCount === 1 ? '' : 's'),
+                  ],
+                ].map(([label, value]) => (
+                  <div
+                    className="flex min-h-[39px] items-center justify-between gap-4 border-b border-[var(--hairline)]"
+                    key={label}
+                  >
+                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                    <span className="max-w-[65%] truncate font-mono text-[10px] text-foreground">
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-[12px] font-semibold">Recent activity</h3>
+              <div className="border-t border-[var(--hairline)]">
+                <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
+                  <span className="font-mono text-[10px] text-[var(--quiet)]">Latest</span>
+                  <span className="mt-0.5 size-1.5 rounded-full bg-[var(--green)]" />
+                  <span className="min-w-0">
+                    <strong className="block text-[11px]">Deployment state updated</strong>
+                    <span className="mt-0.5 block break-words font-mono text-[10px] leading-4 text-[var(--quiet)]">
+                      {deployment.lastOperationSummary ??
+                        deploymentStatusLabel + ' · no operation summary'}
+                    </span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
+                  <span className="font-mono text-[10px] text-[var(--quiet)]">Output</span>
+                  <span className="mt-0.5 size-1.5 rounded-full bg-[var(--orange)]" />
+                  <details className="group min-w-0">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-semibold marker:content-none">
+                      <span>Last recorded output</span>
+                      <span className="font-mono text-[10px] font-normal text-[var(--quiet)] group-open:hidden">
+                        Show
                       </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section>
-                <h3 className="mb-2 text-[12px] font-semibold">Recent activity</h3>
-                <div className="border-t border-[var(--hairline)]">
-                  <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
-                    <span className="font-mono text-[10px] text-[var(--quiet)]">Latest</span>
-                    <span className="mt-0.5 size-1.5 rounded-full bg-[var(--green)]" />
-                    <span className="min-w-0">
-                      <strong className="block text-[11px]">Deployment state updated</strong>
-                      <span className="mt-0.5 block break-words font-mono text-[10px] leading-4 text-[var(--quiet)]">
-                        {deployment.lastOperationSummary ??
-                          deploymentStatusLabel + ' · no operation summary'}
+                      <span className="hidden font-mono text-[10px] font-normal text-[var(--quiet)] group-open:inline">
+                        Hide
                       </span>
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
-                    <span className="font-mono text-[10px] text-[var(--quiet)]">Output</span>
-                    <span className="mt-0.5 size-1.5 rounded-full bg-[var(--orange)]" />
-                    <details className="group min-w-0">
-                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-semibold marker:content-none">
-                        <span>Last recorded output</span>
-                        <span className="font-mono text-[10px] font-normal text-[var(--quiet)] group-open:hidden">
-                          Show
-                        </span>
-                        <span className="hidden font-mono text-[10px] font-normal text-[var(--quiet)] group-open:inline">
-                          Hide
-                        </span>
-                      </summary>
-                      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-[7px] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-4 break-words text-[var(--quiet)]">
-                        {deployment.lastOutput ?? 'No output recorded for this deployment.'}
-                      </pre>
-                    </details>
-                  </div>
+                    </summary>
+                    <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-[7px] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-4 break-words text-[var(--quiet)]">
+                      {deployment.lastOutput ?? 'No output recorded for this deployment.'}
+                    </pre>
+                  </details>
                 </div>
-              </section>
-            </div>
-          ) : null}
+              </div>
+            </section>
+          </div>
+        ) : null}
 
-          {activeTab === 'settings' ? (
-            <div className="space-y-3">
-              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-                <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  Application settings
-                </span>
-                <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">Runtime & route</h3>
-                <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
-                  Saved value → next deployment value
-                </p>
-              </section>
+        {activeTab === 'settings' ? (
+          <div className="space-y-3">
+            <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+              <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                Application settings
+              </span>
+              <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">Runtime & route</h3>
+              <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+                Saved value → next deployment value
+              </p>
+            </section>
 
-              {branchBrowserError ? (
-                <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-4 text-amber-900">
-                  {branchBrowserError}
-                </div>
-              ) : null}
+            {branchBrowserError ? <WorkspaceNotice>{branchBrowserError}</WorkspaceNotice> : null}
 
+            <ConfigurationField
+              changed={hasAppNameChange}
+              description="Deployment and container project name."
+              label="Application name"
+              onReset={() => setAppName(deployment.appName)}
+              savedValue={deployment.appName}
+            >
+              <Input
+                aria-label="App name"
+                className="h-9 rounded-[7px] text-[12px] shadow-none"
+                onChange={(event) => setAppName(event.target.value)}
+                value={appName}
+              />
+            </ConfigurationField>
+
+            <ConfigurationField
+              changed={hasSubdomainChange}
+              description="Public hostname used by the reverse proxy."
+              label="Public URL"
+              onReset={() => setSubdomain(deployment.subdomain)}
+              savedValue={publicDomainLabel || 'Not routed'}
+            >
+              <InputGroup className="h-9 rounded-[7px] shadow-none">
+                <InputGroupInput
+                  aria-label="Public URL"
+                  className="px-2.5 text-[12px]"
+                  onChange={(event) => setSubdomain(event.target.value)}
+                  value={subdomain}
+                />
+                {baseDomain ? (
+                  <InputGroupSuffix className="font-mono text-[11px] leading-8">
+                    .{baseDomain}
+                  </InputGroupSuffix>
+                ) : null}
+              </InputGroup>
+            </ConfigurationField>
+
+            <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
               <ConfigurationField
-                changed={hasAppNameChange}
-                description="Deployment and container project name."
-                label="Application name"
-                onReset={() => setAppName(deployment.appName)}
-                savedValue={deployment.appName}
+                changed={hasExposureModeChange}
+                description="How traffic reaches the container."
+                label="Exposure"
+                onReset={() => setExposureMode(deployment.exposureMode ?? 'http')}
+                savedValue={deployment.exposureMode ?? 'http'}
+              >
+                <select
+                  aria-label="Exposure"
+                  className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 text-[12px]"
+                  onChange={(event) => setExposureMode(event.target.value as ExposureMode)}
+                  value={exposureMode}
+                >
+                  <option value="http">HTTP — reverse proxy</option>
+                  <option value="tcp">TCP passthrough</option>
+                  <option value="host">Host port</option>
+                  <option value="internal">Internal only</option>
+                </select>
+              </ConfigurationField>
+              <ConfigurationField
+                changed={hasPortChange}
+                description="Port used inside the container."
+                label="Internal port"
+                onReset={() => setPort(String(deployment.port))}
+                savedValue={':' + deployment.port}
               >
                 <Input
-                  className="h-9 rounded-[7px] text-[12px] shadow-none"
-                  onChange={(event) => setAppName(event.target.value)}
-                  value={appName}
+                  aria-label="Internal port"
+                  className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                  inputMode="numeric"
+                  onChange={(event) => setPort(event.target.value)}
+                  value={port}
                 />
               </ConfigurationField>
+            </div>
 
+            {exposureMode === 'tcp' || exposureMode === 'host' ? (
               <ConfigurationField
-                changed={hasSubdomainChange}
-                description="Public hostname used by the reverse proxy."
-                label="Public URL"
-                onReset={() => setSubdomain(deployment.subdomain)}
-                savedValue={publicDomainLabel || 'Not routed'}
+                changed={hasHostPortChange}
+                description="Port published directly on the host."
+                label="Host port"
+                onReset={() => setHostPort(String(deployment.hostPort ?? ''))}
+                savedValue={deployment.hostPort ? ':' + deployment.hostPort : 'Not configured'}
               >
-                <InputGroup className="h-9 rounded-[7px] shadow-none">
-                  <InputGroupInput
-                    className="px-2.5 text-[12px]"
-                    onChange={(event) => setSubdomain(event.target.value)}
-                    value={subdomain}
-                  />
-                  {baseDomain ? (
-                    <InputGroupSuffix className="font-mono text-[11px] leading-8">
-                      .{baseDomain}
-                    </InputGroupSuffix>
-                  ) : null}
-                </InputGroup>
+                <Input
+                  aria-label="Host port"
+                  className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                  inputMode="numeric"
+                  onChange={(event) => setHostPort(event.target.value)}
+                  placeholder="e.g. 27017"
+                  value={hostPort}
+                />
               </ConfigurationField>
+            ) : null}
 
+            <section className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-3">
+              <div className="mb-3 flex items-start gap-2.5">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-[6px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+                  <GitBranch aria-hidden="true" className="size-3.5" />
+                </span>
+                <div>
+                  <h3 className="text-[13px] font-semibold">Source and revision</h3>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    Follow a branch head or pin one commit.
+                  </p>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
                 <ConfigurationField
-                  changed={hasExposureModeChange}
-                  description="How traffic reaches the container."
-                  label="Exposure"
-                  onReset={() => setExposureMode(deployment.exposureMode ?? 'http')}
-                  savedValue={deployment.exposureMode ?? 'http'}
+                  changed={hasBranchChange}
+                  description="Git branch used for future pulls."
+                  label="Branch"
+                  onReset={() => {
+                    setBranchValue(deployment.branch ?? '');
+                    setCommitSha(deployment.commitSha ?? '');
+                  }}
+                  savedValue={deployment.branch ?? 'Default branch'}
                 >
-                  <select
-                    className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 text-[12px]"
-                    onChange={(event) => setExposureMode(event.target.value as ExposureMode)}
-                    value={exposureMode}
-                  >
-                    <option value="http">HTTP — reverse proxy</option>
-                    <option value="tcp">TCP passthrough</option>
-                    <option value="host">Host port</option>
-                    <option value="internal">Internal only</option>
-                  </select>
+                  <Combobox
+                    ariaLabel="Saved branch"
+                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
+                    disabled={isSourceLoading}
+                    emptyText={branchBrowserError ?? 'No branches available'}
+                    onOpenChangeAction={handleBranchComboboxOpen}
+                    onValueChangeAction={handleBranchSelect}
+                    options={branchOptions}
+                    placeholder={isSourceLoading ? 'Loading branches…' : 'Select branch'}
+                    searchPlaceholder="Search branches"
+                    value={branchValue}
+                  />
                 </ConfigurationField>
                 <ConfigurationField
-                  changed={hasPortChange}
-                  description="Port used inside the container."
-                  label="Internal port"
-                  onReset={() => setPort(String(deployment.port))}
-                  savedValue={':' + deployment.port}
+                  changed={hasCommitChange}
+                  description="Leave latest selected to track the branch."
+                  label="Revision"
+                  onReset={() => setCommitSha(deployment.commitSha ?? '')}
+                  savedValue={
+                    activeCommit?.shortSha ??
+                    deployment.commitSha?.slice(0, 7) ??
+                    'Latest branch head'
+                  }
                 >
-                  <Input
-                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
-                    inputMode="numeric"
-                    onChange={(event) => setPort(event.target.value)}
-                    value={port}
+                  <Combobox
+                    ariaLabel="Saved commit"
+                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
+                    disabled={isSourceLoading || Boolean(branchBrowserError)}
+                    emptyText={branchBrowserError ?? 'No commits available'}
+                    onValueChangeAction={handleCommitSelect}
+                    options={commitOptions}
+                    placeholder={isSourceLoading ? 'Loading commits…' : 'Select commit'}
+                    searchPlaceholder="Search commits"
+                    value={commitSha}
                   />
                 </ConfigurationField>
               </div>
+            </section>
 
-              {exposureMode === 'tcp' || exposureMode === 'host' ? (
-                <ConfigurationField
-                  changed={hasHostPortChange}
-                  description="Port published directly on the host."
-                  label="Host port"
-                  onReset={() => setHostPort(String(deployment.hostPort ?? ''))}
-                  savedValue={deployment.hostPort ? ':' + deployment.hostPort : 'Not configured'}
-                >
-                  <Input
-                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
-                    inputMode="numeric"
-                    onChange={(event) => setHostPort(event.target.value)}
-                    placeholder="e.g. 27017"
-                    value={hostPort}
-                  />
-                </ConfigurationField>
-              ) : null}
+            <section className="flex items-center justify-between gap-4 rounded-[8px] border border-red-200 bg-red-50/60 p-3">
+              <div>
+                <h3 className="text-[12px] font-semibold">Remove deployment</h3>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Stop the runtime and remove this app record.
+                </p>
+              </div>
+              <Button
+                disabled={isBusy}
+                onClick={() => void runPendingAction('delete', onDeleteAction)}
+                size="xs"
+                type="button"
+                variant="danger"
+              >
+                {pendingAction === 'delete' ? (
+                  <LoaderCircle className="size-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="size-3.5" />
+                )}
+                Remove
+              </Button>
+            </section>
+          </div>
+        ) : null}
 
-              <section className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-3">
-                <div className="mb-3 flex items-start gap-2.5">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-[6px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
-                    <GitBranch aria-hidden="true" className="size-3.5" />
-                  </span>
-                  <div>
-                    <h3 className="text-[13px] font-semibold">Source and revision</h3>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      Follow a branch head or pin one commit.
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
-                  <ConfigurationField
-                    changed={hasBranchChange}
-                    description="Git branch used for future pulls."
-                    label="Branch"
-                    onReset={() => {
-                      setBranchValue(deployment.branch ?? '');
-                      setCommitSha(deployment.commitSha ?? '');
-                    }}
-                    savedValue={deployment.branch ?? 'Default branch'}
-                  >
-                    <Combobox
-                      ariaLabel="Saved branch"
-                      buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
-                      disabled={isSourceLoading}
-                      emptyText={branchBrowserError ?? 'No branches available'}
-                      onOpenChangeAction={handleBranchComboboxOpen}
-                      onValueChangeAction={handleBranchSelect}
-                      options={branchOptions}
-                      placeholder={isSourceLoading ? 'Loading branches…' : 'Select branch'}
-                      searchPlaceholder="Search branches"
-                      value={branchValue}
-                    />
-                  </ConfigurationField>
-                  <ConfigurationField
-                    changed={hasCommitChange}
-                    description="Leave latest selected to track the branch."
-                    label="Revision"
-                    onReset={() => setCommitSha(deployment.commitSha ?? '')}
-                    savedValue={
-                      activeCommit?.shortSha ??
-                      deployment.commitSha?.slice(0, 7) ??
-                      'Latest branch head'
-                    }
-                  >
-                    <Combobox
-                      ariaLabel="Saved commit"
-                      buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
-                      disabled={isSourceLoading || Boolean(branchBrowserError)}
-                      emptyText={branchBrowserError ?? 'No commits available'}
-                      onValueChangeAction={handleCommitSelect}
-                      options={commitOptions}
-                      placeholder={isSourceLoading ? 'Loading commits…' : 'Select commit'}
-                      searchPlaceholder="Search commits"
-                      value={commitSha}
-                    />
-                  </ConfigurationField>
-                </div>
-              </section>
+        {activeTab === 'variables' ? (
+          <div className="space-y-3">
+            <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+              <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                Environment
+              </span>
+              <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
+                {envVariableCount} variable{envVariableCount === 1 ? '' : 's'}
+              </h3>
+              <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+                Included during the next build
+              </p>
+            </section>
 
-              <section className="flex items-center justify-between gap-4 rounded-[8px] border border-red-200 bg-red-50/60 p-3">
+            <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
+              <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
                 <div>
-                  <h3 className="text-[12px] font-semibold">Remove deployment</h3>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    Stop the runtime and remove this app record.
+                  <h3 className="text-[12px] font-semibold">Variables</h3>
+                  <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                    Enable only rows that should be saved
                   </p>
                 </div>
-                <Button
-                  disabled={isBusy}
-                  onClick={() => void runPendingAction('delete', onDeleteAction)}
-                  size="xs"
-                  type="button"
-                  variant="danger"
-                >
-                  {pendingAction === 'delete' ? (
-                    <LoaderCircle className="size-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-3.5" />
-                  )}
-                  Remove
-                </Button>
-              </section>
-            </div>
-          ) : null}
-
-          {activeTab === 'variables' ? (
-            <div className="space-y-3">
-              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-                <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  Environment
-                </span>
-                <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
-                  {envVariableCount} variable{envVariableCount === 1 ? '' : 's'}
-                </h3>
-                <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
-                  Included during the next build
-                </p>
-              </section>
-
-              <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
-                <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
-                  <div>
-                    <h3 className="text-[12px] font-semibold">Variables</h3>
-                    <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
-                      Enable only rows that should be saved
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Button
-                      onClick={() =>
-                        setEnvRows((current) => [...current, createEnvVariableDraft('', '', true)])
-                      }
-                      size="xs"
-                      type="button"
-                      variant="secondary"
-                    >
-                      <Plus className="size-3.5" />
-                      Add
-                    </Button>
-                    <Button onClick={resetEnvRows} size="xs" type="button" variant="ghost">
-                      Reset
-                    </Button>
-                  </div>
-                </header>
-
-                {envRows.length ? (
-                  <div className="divide-y divide-[var(--hairline)]">
-                    {envRows.map((row) => (
-                      <div
-                        className="grid grid-cols-[auto_minmax(0,0.75fr)_minmax(0,1.25fr)_auto] items-center gap-2 px-3 py-2.5 max-[640px]:grid-cols-[auto_minmax(0,1fr)_auto]"
-                        key={row.id}
-                      >
-                        <label className="inline-flex items-center gap-1.5 text-[11px]">
-                          <input
-                            checked={row.enabled}
-                            onChange={(event) =>
-                              setEnvRows((current) =>
-                                current.map((candidate) =>
-                                  candidate.id === row.id
-                                    ? { ...candidate, enabled: event.target.checked }
-                                    : candidate
-                                )
-                              )
-                            }
-                            type="checkbox"
-                          />
-                          <span className="max-[640px]:sr-only">Use</span>
-                        </label>
-                        <Input
-                          aria-label="Environment key"
-                          className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
-                          onChange={(event) =>
-                            setEnvRows((current) =>
-                              current.map((candidate) =>
-                                candidate.id === row.id
-                                  ? { ...candidate, key: event.target.value }
-                                  : candidate
-                              )
-                            )
-                          }
-                          placeholder="KEY"
-                          value={row.key}
-                        />
-                        <Input
-                          aria-label="Environment value"
-                          className="h-9 rounded-[7px] font-mono text-[11px] shadow-none max-[640px]:col-start-2"
-                          onChange={(event) =>
-                            setEnvRows((current) =>
-                              current.map((candidate) =>
-                                candidate.id === row.id
-                                  ? { ...candidate, value: event.target.value }
-                                  : candidate
-                              )
-                            )
-                          }
-                          placeholder="value"
-                          value={row.value}
-                        />
-                        <Button
-                          aria-label={'Remove ' + (row.key || 'environment variable')}
-                          className="size-7 max-[640px]:row-span-2 max-[640px]:row-start-1"
-                          onClick={() =>
-                            setEnvRows((current) =>
-                              current.filter((candidate) => candidate.id !== row.id)
-                            )
-                          }
-                          size="icon"
-                          type="button"
-                          variant="ghost"
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
-                    No environment variables configured.
-                  </div>
-                )}
-              </section>
-            </div>
-          ) : null}
-
-          {activeTab === 'files' ? (
-            <div className="space-y-3">
-              <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-                <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  Workspace files
-                </span>
-                <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
-                  {managedFiles.length} managed file{managedFiles.length === 1 ? '' : 's'}
-                </h3>
-                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                  Uploaded to the app workspace root before every build and retained across source
-                  pulls.
-                </p>
-              </section>
-
-              {managedFilesError ? (
-                <div className="rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[12px] leading-4 text-red-900">
-                  {managedFilesError}
-                </div>
-              ) : null}
-
-              <section className="rounded-[8px] border border-[var(--hairline)] bg-white p-3">
-                <div className="flex items-start gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
-                    <FileUp aria-hidden="true" className="size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-[12px] font-semibold">Upload configuration file</h3>
-                    <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-                      Use this for files such as <span className="font-mono">.env</span> or{' '}
-                      <span className="font-mono">k3s.config</span>. Maximum size 5 MB.
-                    </p>
-                  </div>
-                </div>
-                <input
-                  aria-label="Choose deployment file"
-                  className="mt-3 block w-full rounded-[7px] border border-input bg-[var(--surface-subtle)] px-2.5 py-2 text-[11px] file:mr-2 file:rounded-[5px] file:border-0 file:bg-white file:px-2 file:py-1 file:text-[11px] file:font-semibold"
-                  onChange={(event) => {
-                    const selectedFile = event.target.files?.[0] ?? null;
-                    setUploadFile(selectedFile);
-                    setUploadFileName(selectedFile?.name ?? '');
-                    setUploadFileAccess(
-                      selectedFile ? getRecommendedFileAccess(selectedFile.name) : 'private'
-                    );
-                  }}
-                  ref={uploadInputRef}
-                  type="file"
-                />
-                <div className="mt-2 grid grid-cols-2 gap-2 max-[640px]:grid-cols-1">
-                  <div>
-                    <label
-                      className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
-                      htmlFor="deployment-file-name"
-                    >
-                      Workspace filename
-                    </label>
-                    <Input
-                      className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
-                      disabled={!uploadFile}
-                      id="deployment-file-name"
-                      onChange={(event) => {
-                        setUploadFileName(event.target.value);
-                        setUploadFileAccess(getRecommendedFileAccess(event.target.value));
-                      }}
-                      placeholder=".env"
-                      value={uploadFileName}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
-                      htmlFor="deployment-file-access"
-                    >
-                      File access
-                    </label>
-                    <select
-                      className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 font-mono text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!uploadFile}
-                      id="deployment-file-access"
-                      onChange={(event) =>
-                        setUploadFileAccess(event.target.value as DeploymentFileAccess)
-                      }
-                      value={uploadFileAccess}
-                    >
-                      <option value="private">Private · 0600</option>
-                      <option value="container-readable">Container-readable · 0644</option>
-                    </select>
-                  </div>
-                </div>
-                <p className="mt-1.5 text-[10px] leading-4 text-[var(--quiet)]">
-                  Private is recommended for <span className="font-mono">.env</span>. Use
-                  container-readable for bind-mounted configuration files.
-                </p>
-                <div className="mt-3 flex flex-wrap justify-end gap-1.5">
+                <div className="flex gap-1.5">
                   <Button
-                    disabled={!uploadFile || !uploadFileName.trim() || managedFilesPending !== null}
-                    onClick={() => void handleUploadFile(false)}
+                    onClick={() =>
+                      setEnvRows((current) => [...current, createEnvVariableDraft('', '', true)])
+                    }
                     size="xs"
                     type="button"
                     variant="secondary"
                   >
-                    {managedFilesPending === 'upload' ? (
-                      <LoaderCircle className="size-3.5 animate-spin" />
-                    ) : (
-                      <FileUp className="size-3.5" />
-                    )}
-                    Upload
+                    <Plus className="size-3.5" />
+                    Add
                   </Button>
-                  <Button
-                    disabled={
-                      !uploadFile ||
-                      !uploadFileName.trim() ||
-                      managedFilesPending !== null ||
-                      isBusy
-                    }
-                    onClick={() => void handleUploadFile(true)}
-                    size="xs"
-                    type="button"
-                  >
-                    <RotateCcw className="size-3.5" />
-                    Upload and redeploy
+                  <Button onClick={resetEnvRows} size="xs" type="button" variant="ghost">
+                    Reset
                   </Button>
                 </div>
-              </section>
+              </header>
 
-              <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
-                <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
-                  <div>
-                    <h3 className="text-[12px] font-semibold">Managed files</h3>
-                    <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
-                      Contents stay hidden · access mode persists across redeploys
-                    </p>
-                  </div>
-                  <Button
-                    aria-label="Refresh deployment files"
-                    disabled={managedFilesPending !== null}
-                    onClick={() => void loadManagedFiles()}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    {managedFilesPending === 'loading' ? (
-                      <LoaderCircle className="size-3.5 animate-spin" />
-                    ) : (
-                      <RefreshCcw className="size-3.5" />
-                    )}
-                  </Button>
-                </header>
-
-                {managedFilesPending === 'loading' && !managedFilesLoaded ? (
-                  <div className="flex items-center justify-center gap-2 px-3 py-8 font-mono text-[11px] text-[var(--quiet)]">
-                    <LoaderCircle className="size-3.5 animate-spin" />
-                    Loading files…
-                  </div>
-                ) : managedFiles.length ? (
-                  <div className="divide-y divide-[var(--hairline)]">
-                    {managedFiles.map((file) => (
-                      <div
-                        className="flex flex-wrap items-center gap-3 px-3 py-2.5"
-                        key={file.name}
-                      >
-                        <span className="grid size-7 shrink-0 place-items-center rounded-[6px] bg-[var(--surface-subtle)] text-[var(--quiet)]">
-                          <FileText aria-hidden="true" className="size-3.5" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <strong className="block truncate font-mono text-[11px] font-semibold">
-                            {file.name}
-                          </strong>
-                          <span className="mt-0.5 block font-mono text-[9px] text-[var(--quiet)]">
-                            {formatFileSize(file.size)} · mode {file.mode} ·{' '}
-                            {new Date(file.updatedAt).toLocaleString()}
-                          </span>
-                        </span>
-                        <select
-                          aria-label={`Access for ${file.name}`}
-                          className="h-8 w-48 rounded-[6px] border border-input bg-white px-2 font-mono text-[10px] disabled:cursor-not-allowed disabled:opacity-50 max-[640px]:order-4 max-[640px]:ml-10 max-[640px]:w-[calc(100%-2.5rem)]"
-                          disabled={managedFilesPending !== null}
+              {envRows.length ? (
+                <div className="divide-y divide-[var(--hairline)]">
+                  {envRows.map((row) => (
+                    <div
+                      className="grid grid-cols-[auto_minmax(0,0.75fr)_minmax(0,1.25fr)_auto] items-center gap-2 px-3 py-2.5 max-[640px]:grid-cols-[auto_minmax(0,1fr)_auto]"
+                      key={row.id}
+                    >
+                      <label className="inline-flex items-center gap-1.5 text-[11px]">
+                        <input
+                          checked={row.enabled}
                           onChange={(event) =>
-                            void handleFileAccessChange(
-                              file.name,
-                              event.target.value as DeploymentFileAccess
+                            setEnvRows((current) =>
+                              current.map((candidate) =>
+                                candidate.id === row.id
+                                  ? { ...candidate, enabled: event.target.checked }
+                                  : candidate
+                              )
                             )
                           }
-                          value={file.access}
-                        >
-                          <option value="private">Private · 0600</option>
-                          <option value="container-readable">Container-readable · 0644</option>
-                        </select>
-                        <Button
-                          aria-label={`Remove ${file.name}`}
-                          className="size-7"
-                          disabled={managedFilesPending !== null}
-                          onClick={() => void handleDeleteFile(file.name)}
-                          size="icon"
-                          type="button"
-                          variant="ghost"
-                        >
-                          {managedFilesPending === file.name ? (
-                            <LoaderCircle className="size-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="size-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
-                    No managed files uploaded.
-                  </div>
-                )}
-              </section>
-            </div>
-          ) : null}
-
-          {activeTab === 'logs' ? (
-            <section className="min-h-[32rem] overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-white">
-              <GitLogPanel
-                currentView="detail"
-                deploymentId={deployment.id}
-                deployments={deployments}
-                initialActiveLogTab={activeLogTab}
-                onLogTabChangeAction={onLogTabChangeAction}
-                showHeader
-              />
+                          type="checkbox"
+                        />
+                        <span className="max-[640px]:sr-only">Use</span>
+                      </label>
+                      <Input
+                        aria-label="Environment key"
+                        className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                        onChange={(event) =>
+                          setEnvRows((current) =>
+                            current.map((candidate) =>
+                              candidate.id === row.id
+                                ? { ...candidate, key: event.target.value }
+                                : candidate
+                            )
+                          )
+                        }
+                        placeholder="KEY"
+                        value={row.key}
+                      />
+                      <Input
+                        aria-label="Environment value"
+                        className="h-9 rounded-[7px] font-mono text-[11px] shadow-none max-[640px]:col-start-2"
+                        onChange={(event) =>
+                          setEnvRows((current) =>
+                            current.map((candidate) =>
+                              candidate.id === row.id
+                                ? { ...candidate, value: event.target.value }
+                                : candidate
+                            )
+                          )
+                        }
+                        placeholder="value"
+                        value={row.value}
+                      />
+                      <Button
+                        aria-label={'Remove ' + (row.key || 'environment variable')}
+                        className="size-7 max-[640px]:row-span-2 max-[640px]:row-start-1"
+                        onClick={() =>
+                          setEnvRows((current) =>
+                            current.filter((candidate) => candidate.id !== row.id)
+                          )
+                        }
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
+                  No environment variables configured.
+                </div>
+              )}
             </section>
-          ) : null}
-        </div>
-
-        {activeTab === 'settings' || activeTab === 'variables' ? (
-          <footer className="flex min-h-[54px] shrink-0 items-center justify-between gap-3 border-t border-[var(--hairline)] bg-white px-4 py-3">
-            <span className="font-mono text-[10px] text-[var(--quiet)]">
-              {changeCount
-                ? changeCount + ' pending change' + (changeCount === 1 ? '' : 's')
-                : 'All changes saved'}
-            </span>
-            <div className="flex gap-1.5">
-              <Button
-                aria-label="Refresh deployment data"
-                disabled={isBusy}
-                onClick={onRefreshAction}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <RefreshCcw className="size-3.5" />
-              </Button>
-              <Button
-                disabled={isBusy || changeCount === 0}
-                onClick={() => void handleSaveSettings()}
-                size="xs"
-                type="button"
-              >
-                {pendingAction === 'save' ? (
-                  <LoaderCircle className="size-3.5 animate-spin" />
-                ) : (
-                  <Save className="size-3.5" />
-                )}
-                Save and recreate
-              </Button>
-            </div>
-          </footer>
+          </div>
         ) : null}
-      </aside>
-    </>
+
+        {activeTab === 'files' ? (
+          <div className="space-y-3">
+            <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
+              <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                Workspace files
+              </span>
+              <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
+                {managedFiles.length} managed file{managedFiles.length === 1 ? '' : 's'}
+              </h3>
+              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                Uploaded to the app workspace root before every build and retained across source
+                pulls.
+              </p>
+            </section>
+
+            {managedFilesError ? <WorkspaceNotice>{managedFilesError}</WorkspaceNotice> : null}
+
+            <section className="rounded-[8px] border border-[var(--hairline)] bg-white p-3">
+              <div className="flex items-start gap-2.5">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+                  <FileUp aria-hidden="true" className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[12px] font-semibold">Upload configuration file</h3>
+                  <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                    Use this for files such as <span className="font-mono">.env</span> or{' '}
+                    <span className="font-mono">k3s.config</span>. Maximum size 5 MB.
+                  </p>
+                </div>
+              </div>
+              <input
+                aria-label="Choose deployment file"
+                className="mt-3 block w-full rounded-[7px] border border-input bg-[var(--surface-subtle)] px-2.5 py-2 text-[11px] file:mr-2 file:rounded-[5px] file:border-0 file:bg-white file:px-2 file:py-1 file:text-[11px] file:font-semibold"
+                onChange={(event) => {
+                  const selectedFile = event.target.files?.[0] ?? null;
+                  setUploadFile(selectedFile);
+                  setUploadFileName(selectedFile?.name ?? '');
+                  setUploadFileAccess(
+                    selectedFile ? getRecommendedFileAccess(selectedFile.name) : 'private'
+                  );
+                }}
+                ref={uploadInputRef}
+                type="file"
+              />
+              <div className="mt-2 grid grid-cols-2 gap-2 max-[640px]:grid-cols-1">
+                <div>
+                  <label
+                    className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
+                    htmlFor="deployment-file-name"
+                  >
+                    Workspace filename
+                  </label>
+                  <Input
+                    className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                    disabled={!uploadFile}
+                    id="deployment-file-name"
+                    onChange={(event) => {
+                      setUploadFileName(event.target.value);
+                      setUploadFileAccess(getRecommendedFileAccess(event.target.value));
+                    }}
+                    placeholder=".env"
+                    value={uploadFileName}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
+                    htmlFor="deployment-file-access"
+                  >
+                    File access
+                  </label>
+                  <select
+                    className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 font-mono text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!uploadFile}
+                    id="deployment-file-access"
+                    onChange={(event) =>
+                      setUploadFileAccess(event.target.value as DeploymentFileAccess)
+                    }
+                    value={uploadFileAccess}
+                  >
+                    <option value="private">Private · 0600</option>
+                    <option value="container-readable">Container-readable · 0644</option>
+                  </select>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[10px] leading-4 text-[var(--quiet)]">
+                Private is recommended for <span className="font-mono">.env</span>. Use
+                container-readable for bind-mounted configuration files.
+              </p>
+              <div className="mt-3 flex flex-wrap justify-end gap-1.5">
+                <Button
+                  disabled={!uploadFile || !uploadFileName.trim() || managedFilesPending !== null}
+                  onClick={() => void handleUploadFile(false)}
+                  size="xs"
+                  type="button"
+                  variant="secondary"
+                >
+                  {managedFilesPending === 'upload' ? (
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                  ) : (
+                    <FileUp className="size-3.5" />
+                  )}
+                  Upload
+                </Button>
+                <Button
+                  disabled={
+                    !uploadFile || !uploadFileName.trim() || managedFilesPending !== null || isBusy
+                  }
+                  onClick={() => void handleUploadFile(true)}
+                  size="xs"
+                  type="button"
+                >
+                  <RotateCcw className="size-3.5" />
+                  Upload and redeploy
+                </Button>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
+              <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
+                <div>
+                  <h3 className="text-[12px] font-semibold">Managed files</h3>
+                  <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                    Contents stay hidden · access mode persists across redeploys
+                  </p>
+                </div>
+                <Button
+                  aria-label="Refresh deployment files"
+                  disabled={managedFilesPending !== null}
+                  onClick={() => void loadManagedFiles()}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  {managedFilesPending === 'loading' ? (
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCcw className="size-3.5" />
+                  )}
+                </Button>
+              </header>
+
+              {managedFilesPending === 'loading' && !managedFilesLoaded ? (
+                <div className="flex items-center justify-center gap-2 px-3 py-8 font-mono text-[11px] text-[var(--quiet)]">
+                  <LoaderCircle className="size-3.5 animate-spin" />
+                  Loading files…
+                </div>
+              ) : managedFiles.length ? (
+                <div className="divide-y divide-[var(--hairline)]">
+                  {managedFiles.map((file) => (
+                    <div className="flex flex-wrap items-center gap-3 px-3 py-2.5" key={file.name}>
+                      <span className="grid size-7 shrink-0 place-items-center rounded-[6px] bg-[var(--surface-subtle)] text-[var(--quiet)]">
+                        <FileText aria-hidden="true" className="size-3.5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <strong className="block truncate font-mono text-[11px] font-semibold">
+                          {file.name}
+                        </strong>
+                        <span className="mt-0.5 block font-mono text-[9px] text-[var(--quiet)]">
+                          {formatFileSize(file.size)} · mode {file.mode} ·{' '}
+                          {new Date(file.updatedAt).toLocaleString()}
+                        </span>
+                      </span>
+                      <select
+                        aria-label={`Access for ${file.name}`}
+                        className="h-8 w-48 rounded-[6px] border border-input bg-white px-2 font-mono text-[10px] disabled:cursor-not-allowed disabled:opacity-50 max-[640px]:order-4 max-[640px]:ml-10 max-[640px]:w-[calc(100%-2.5rem)]"
+                        disabled={managedFilesPending !== null}
+                        onChange={(event) =>
+                          void handleFileAccessChange(
+                            file.name,
+                            event.target.value as DeploymentFileAccess
+                          )
+                        }
+                        value={file.access}
+                      >
+                        <option value="private">Private · 0600</option>
+                        <option value="container-readable">Container-readable · 0644</option>
+                      </select>
+                      <Button
+                        aria-label={`Remove ${file.name}`}
+                        className="size-7"
+                        disabled={managedFilesPending !== null}
+                        onClick={() => void handleDeleteFile(file.name)}
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        {managedFilesPending === file.name ? (
+                          <LoaderCircle className="size-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
+                  No managed files uploaded.
+                </div>
+              )}
+            </section>
+          </div>
+        ) : null}
+
+        {activeTab === 'logs' ? (
+          <section className="min-h-[32rem] overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-white">
+            <GitLogPanel
+              currentView="detail"
+              deploymentId={deployment.id}
+              deployments={deployments}
+              initialActiveLogTab={activeLogTab}
+              onLogTabChangeAction={onLogTabChangeAction}
+              showHeader
+            />
+          </section>
+        ) : null}
+      </div>
+
+      {activeTab === 'settings' || activeTab === 'variables' ? (
+        <footer className="flex min-h-[54px] shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] bg-white px-4 py-3">
+          <span className="font-mono text-[10px] text-[var(--quiet)]">
+            {changeCount
+              ? changeCount + ' pending change' + (changeCount === 1 ? '' : 's')
+              : 'All changes saved'}
+          </span>
+          <div className="flex gap-1.5">
+            <Button
+              aria-label="Refresh deployment data"
+              disabled={isBusy}
+              onClick={onRefreshAction}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <RefreshCcw className="size-3.5" />
+            </Button>
+            <Button
+              disabled={isBusy || changeCount === 0}
+              onClick={() => void handleSaveSettings()}
+              size="xs"
+              type="button"
+            >
+              {pendingAction === 'save' ? (
+                <LoaderCircle className="size-3.5 animate-spin" />
+              ) : (
+                <Save className="size-3.5" />
+              )}
+              Save and recreate
+            </Button>
+          </div>
+        </footer>
+      ) : null}
+    </WorkspaceDialog>
   );
 }

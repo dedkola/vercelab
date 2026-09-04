@@ -182,6 +182,8 @@ describe('ContainersShell', () => {
     expect(screen.getByText(/protected service/i)).toBeVisible();
     await user.click(screen.getByRole('tab', { name: /logs/i }));
     expect(await screen.findByText(/server booted/i)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: /close container manager/i }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(
       screen.getByRole('link', {
         name: /https:\/\/control-plane\.myhomelan\.com/i,
