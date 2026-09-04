@@ -5,7 +5,7 @@ const commitShaPattern = /^[0-9a-f]{7,40}$/i;
 const slugPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const serviceNamePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
-export const EXPOSURE_MODES = ['http', 'tcp', 'host', 'internal'] as const;
+const EXPOSURE_MODES = ['http', 'tcp', 'host', 'internal'] as const;
 export type ExposureMode = (typeof EXPOSURE_MODES)[number];
 
 function normalizeOptionalString(value: unknown): string | undefined {
@@ -87,7 +87,7 @@ export const createDeploymentSchema = z
   })
   .superRefine(requireHostPortForExternalModes);
 
-export const deploymentActionSchema = z.object({
+const deploymentActionSchema = z.object({
   deploymentId: z.string().uuid('Deployment id is invalid.'),
 });
 
@@ -119,4 +119,3 @@ export const updateDeploymentSettingsSchema = deploymentActionSchema
   .superRefine(requireHostPortForExternalModes);
 
 export type CreateDeploymentInput = z.infer<typeof createDeploymentSchema>;
-export type UpdateDeploymentSettingsInput = z.infer<typeof updateDeploymentSettingsSchema>;

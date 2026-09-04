@@ -2,7 +2,7 @@ import 'server-only';
 
 import { spawn } from 'node:child_process';
 
-export type ContainerPortBinding = {
+type ContainerPortBinding = {
   containerPort: string;
   hostPort: string;
 };

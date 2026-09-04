@@ -4,7 +4,7 @@ export type TimeDisplayMode = 'local' | 'utc';
 
 export const DEFAULT_TIME_DISPLAY_MODE: TimeDisplayMode = 'local';
 
-export function isTimeDisplayMode(value: string | null): value is TimeDisplayMode {
+function isTimeDisplayMode(value: string | null): value is TimeDisplayMode {
   return value === 'local' || value === 'utc';
 }
 

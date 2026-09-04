@@ -127,20 +127,6 @@ export function ResizeHandle({
   );
 }
 
-export function usePixelWidthRef<T extends HTMLElement>(width: number) {
-  const ref = useRef<T | null>(null);
-
-  useEffect(() => {
-    if (!ref.current) {
-      return;
-    }
-
-    ref.current.style.width = `${width}px`;
-  }, [width]);
-
-  return ref;
-}
-
 export function usePercentWidthRef<T extends HTMLElement>(width: number) {
   const ref = useRef<T | null>(null);
 

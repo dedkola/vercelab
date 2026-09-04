@@ -71,7 +71,6 @@ export function MetricsDashboardShell({
     AllContainersMetricsHistorySeries[]
   >(initialAllContainerHistory);
   const [aliases, setAliases] = useState<Record<string, string>>({});
-  const [, setMetricsError] = useState<string | null>(null);
   const [containerHistoryError, setContainerHistoryError] = useState<string | null>(null);
   const [isContainerHistoryLoading, setIsContainerHistoryLoading] = useState(
     initialSnapshot !== null && initialAllContainerHistory.length === 0
@@ -91,12 +90,6 @@ export function MetricsDashboardShell({
     ? sharedChrome.timeDisplayMode
     : standaloneTimeDisplayMode;
   const graphTimeZone = getTimeZoneForDisplayMode(effectiveTimeDisplayMode);
-  const updateLiveSnapshot = useCallback(
-    (snapshot: MetricsSnapshot) => {
-      setSidebarSnapshot(snapshot);
-    },
-    [dashboardRange]
-  );
   const systemPanels = useMemo(
     () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory, graphTimeZone),
     [effectiveSidebarHistory, effectiveSidebarSnapshot, graphTimeZone]
@@ -198,9 +191,9 @@ export function MetricsDashboardShell({
     enabled: !isEmbedded,
     initialSnapshot,
     initialHistory,
-    onSnapshot: updateLiveSnapshot,
+    refreshKey: dashboardRange,
+    onSnapshot: setSidebarSnapshot,
     onHistory: setSidebarHistory,
-    onError: setMetricsError,
   });
 
   useEffect(() => {

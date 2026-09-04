@@ -1,7 +1,6 @@
 'use server';
 
 import {
-  createAndDeployFromForm,
   fetchDeploymentFromGitById,
   redeployDeploymentById,
   removeDeploymentById,
@@ -40,38 +39,6 @@ function createActionResult(
     message,
     status,
   };
-}
-
-export async function createDeploymentAction(formData: FormData) {
-  try {
-    const deployment = await createAndDeployFromForm({
-      repositoryUrl: getRequiredFormValue(formData, 'repositoryUrl'),
-      githubToken: formData.get('githubToken'),
-      branch: formData.get('branch'),
-      serviceName: formData.get('serviceName'),
-      appName: getRequiredFormValue(formData, 'appName'),
-      subdomain: getRequiredFormValue(formData, 'subdomain'),
-      port: getRequiredFormValue(formData, 'port'),
-      exposureMode: formData.get('exposureMode'),
-      hostPort: formData.get('hostPort'),
-      envVariables: formData.get('envVariables'),
-    });
-
-    let message: string;
-    if (deployment.exposureMode === 'http' && deployment.domain) {
-      message = `Deployment live at https://${deployment.domain}`;
-    } else if (deployment.exposureMode === 'tcp' && deployment.hostPort) {
-      message = `TCP service deployed on port ${deployment.hostPort}`;
-    } else if (deployment.exposureMode === 'host' && deployment.hostPort) {
-      message = `Deployment queued with host port ${deployment.hostPort}`;
-    } else {
-      message = 'Deployment created (internal only).';
-    }
-
-    return createActionResult('success', message);
-  } catch (error) {
-    return createActionResult('error', getActionErrorMessage(error));
-  }
 }
 
 export async function redeployDeploymentAction(

@@ -12,7 +12,7 @@ function getStorage() {
   return storage;
 }
 
-export const CONTAINER_ALIAS_STORAGE_KEY = 'vercelab:containers-friendly-labels';
+const CONTAINER_ALIAS_STORAGE_KEY = 'vercelab:containers-friendly-labels';
 
 const CONTAINER_ALIASES_EVENT = 'vercelab:container-aliases-changed';
 

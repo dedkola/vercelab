@@ -185,6 +185,8 @@ The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment ins
 | `pnpm run build`          | Build the production app.                              |
 | `pnpm run start`          | Start the built app.                                   |
 | `pnpm run lint`           | Run ESLint.                                            |
+| `pnpm run typecheck`      | Check types and unused local code.                     |
+| `pnpm run check:unused`   | Find unused files, exports, and dependencies.          |
 | `pnpm run test`           | Run Vitest in watch mode.                              |
 | `pnpm run test:run`       | Run Vitest once.                                       |
 

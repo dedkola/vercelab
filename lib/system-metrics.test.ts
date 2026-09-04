@@ -194,7 +194,7 @@ describe('getMetricsSnapshot', () => {
 
     // Advance Date.now() to 1000ms inside the spawn calls, which happen
     // after buildSystemMetrics and buildNetworkMetrics (i.e. late in the build).
-    spawnMock.mockImplementation((_command: string, _args: string[]) => {
+    spawnMock.mockImplementation(() => {
       dateSpy.mockReturnValue(1000);
 
       const child = new EventEmitter() as NodeJS.EventEmitter & {

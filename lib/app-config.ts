@@ -113,7 +113,7 @@ export function getAppConfig(): AppConfig {
   return cachedConfig;
 }
 
-export function invalidateAppConfig() {
+function invalidateAppConfig() {
   cachedConfig = undefined;
 }
 

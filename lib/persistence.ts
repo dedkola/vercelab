@@ -6,8 +6,8 @@ import { getAppConfig } from '@/lib/app-config';
 import { decryptSecret, encryptSecret } from '@/lib/crypto';
 import type { CreateDeploymentInput, ExposureMode } from '@/lib/validation';
 
-export type DeploymentStatus = 'deploying' | 'running' | 'failed' | 'stopped' | 'removing';
-export type DeploymentMode = 'dockerfile' | 'compose' | null;
+type DeploymentStatus = 'deploying' | 'running' | 'failed' | 'stopped' | 'removing';
+type DeploymentMode = 'dockerfile' | 'compose' | null;
 export type OperationType = 'deploy' | 'redeploy' | 'stop' | 'remove';
 export type OperationStatus = 'pending' | 'success' | 'failed';
 
@@ -71,46 +71,6 @@ export type DeploymentOperationLog = {
   updatedAt: string;
 };
 
-export type DashboardTrendPoint = {
-  label: string;
-  total: number;
-  success: number;
-  failed: number;
-};
-
-export type DashboardActivity = {
-  id: string;
-  appName: string;
-  operationType: OperationType;
-  status: OperationStatus;
-  summary: string | null;
-  createdAt: string;
-};
-
-export type DashboardStatusDistribution = {
-  status: DeploymentStatus;
-  count: number;
-};
-
-export type DashboardModeDistribution = {
-  mode: 'dockerfile' | 'compose' | 'unknown';
-  count: number;
-};
-
-export type WorkspaceData = {
-  deployments: DeploymentSummary[];
-  stats: {
-    totalDeployments: number;
-    runningDeployments: number;
-    failedDeployments: number;
-    totalRepositories: number;
-  };
-  trends: DashboardTrendPoint[];
-  recentActivity: DashboardActivity[];
-  statusDistribution: DashboardStatusDistribution[];
-  modeDistribution: DashboardModeDistribution[];
-};
-
 type StoredDeploymentRow = {
   id: string;
   repository_id: string;
@@ -171,23 +131,8 @@ type DeploymentOperationRow = {
   updated_at: string;
 };
 
-type DashboardActivityRow = {
-  id: string;
-  app_name: string;
-  operation_type: OperationType;
-  status: OperationStatus;
-  summary: string | null;
-  created_at: string;
-};
-
-type DashboardTrendRow = {
-  status: OperationStatus;
-  created_at: string;
-};
-
 let pool: Pool | undefined;
 let initPromise: Promise<void> | undefined;
-const trendLabelFormatter = new Intl.DateTimeFormat('en', { weekday: 'short' });
 const deploymentSummarySelect = `
   SELECT
     d.id,
@@ -299,51 +244,6 @@ function mapDeploymentSummary(row: DeploymentSummaryRow): DeploymentSummary {
     deployedAt: row.deployed_at,
     tokenStored: row.token_stored,
   };
-}
-
-function buildTrendPoints(rows: DashboardTrendRow[], days = 8): DashboardTrendPoint[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const buckets = Array.from({ length: days }, (_, index) => {
-    const bucketDate = new Date(today);
-    bucketDate.setDate(today.getDate() - (days - index - 1));
-
-    return {
-      dateKey: bucketDate.toISOString().slice(0, 10),
-      label: trendLabelFormatter.format(bucketDate),
-      total: 0,
-      success: 0,
-      failed: 0,
-    };
-  });
-
-  const bucketMap = new Map(buckets.map((bucket) => [bucket.dateKey, bucket]));
-
-  for (const row of rows) {
-    const bucket = bucketMap.get(row.created_at.slice(0, 10));
-
-    if (!bucket) {
-      continue;
-    }
-
-    bucket.total += 1;
-
-    if (row.status === 'success') {
-      bucket.success += 1;
-    }
-
-    if (row.status === 'failed') {
-      bucket.failed += 1;
-    }
-  }
-
-  return buckets.map((bucket) => ({
-    label: bucket.label,
-    total: bucket.total,
-    success: bucket.success,
-    failed: bucket.failed,
-  }));
 }
 
 function getPool() {
@@ -475,103 +375,6 @@ async function queryDeploymentSummaryRows() {
 
 export async function listDeploymentSummaries(): Promise<DeploymentSummary[]> {
   return (await queryDeploymentSummaryRows()).map(mapDeploymentSummary);
-}
-
-export async function listWorkspaceData(): Promise<WorkspaceData> {
-  const deployments = (await queryDeploymentSummaryRows()).map(mapDeploymentSummary);
-
-  const sinceDate = new Date();
-  sinceDate.setHours(0, 0, 0, 0);
-  sinceDate.setDate(sinceDate.getDate() - 7);
-
-  const [activityRows, trendRows, repositoryCountRows] = await Promise.all([
-    queryRows<DashboardActivityRow>(
-      `
-        SELECT
-          o.id,
-          d.app_name,
-          o.operation_type,
-          o.status,
-          o.summary,
-          o.created_at
-        FROM operations o
-        INNER JOIN deployments d ON d.id = o.deployment_id
-        ORDER BY o.created_at DESC
-        LIMIT 7
-      `
-    ),
-    queryRows<DashboardTrendRow>(
-      `
-        SELECT
-          status,
-          created_at
-        FROM operations
-        WHERE created_at >= $1
-        ORDER BY created_at ASC
-      `,
-      [sinceDate.toISOString()]
-    ),
-    queryRows<{ count: string }>('SELECT COUNT(*) AS count FROM repositories'),
-  ]);
-
-  const repositoryCount = Number.parseInt(repositoryCountRows[0]?.count ?? '0', 10);
-
-  const stats = deployments.reduce(
-    (accumulator, deployment) => {
-      accumulator.totalDeployments += 1;
-
-      if (deployment.status === 'running') {
-        accumulator.runningDeployments += 1;
-      }
-
-      if (deployment.status === 'failed') {
-        accumulator.failedDeployments += 1;
-      }
-
-      return accumulator;
-    },
-    {
-      totalDeployments: 0,
-      runningDeployments: 0,
-      failedDeployments: 0,
-    }
-  );
-
-  const statusDistribution = (['running', 'deploying', 'failed', 'stopped', 'removing'] as const)
-    .map((status) => ({
-      status,
-      count: deployments.filter((deployment) => deployment.status === status).length,
-    }))
-    .filter((entry) => entry.count > 0);
-
-  const modeDistribution = (['dockerfile', 'compose', 'unknown'] as const)
-    .map((mode) => ({
-      mode,
-      count: deployments.filter((deployment) => (deployment.composeMode ?? 'unknown') === mode)
-        .length,
-    }))
-    .filter((entry) => entry.count > 0);
-
-  return {
-    deployments,
-    stats: {
-      totalDeployments: stats.totalDeployments,
-      runningDeployments: stats.runningDeployments,
-      failedDeployments: stats.failedDeployments,
-      totalRepositories: Number.isFinite(repositoryCount) ? repositoryCount : 0,
-    },
-    trends: buildTrendPoints(trendRows),
-    recentActivity: activityRows.map((row) => ({
-      id: row.id,
-      appName: row.app_name,
-      operationType: row.operation_type,
-      status: row.status,
-      summary: row.summary,
-      createdAt: row.created_at,
-    })),
-    statusDistribution,
-    modeDistribution,
-  };
 }
 
 export async function createDeploymentRecord(input: CreateDeploymentInput) {

@@ -979,7 +979,6 @@ function alignAllContainersMetricSeries(
 }
 
 function buildAllContainersMetricCharts(
-  range: DashboardRange,
   snapshot: MetricsSnapshot | null,
   allContainerHistory: AllContainersMetricsHistorySeries[]
 ): AllContainersMetricChart[] {
@@ -1851,7 +1850,6 @@ export function WorkspaceShell({
   const [selectedContainerHistoryKey, setSelectedContainerHistoryKey] = useState<string | null>(
     initialSelectedContainerHistoryKey
   );
-  const [, setMetricsError] = useState<string | null>(null);
   const [aliases, setAliases] = useState<Record<string, string>>({});
   const branchCacheRef = useRef<Record<string, string[]>>({});
   const branchRequestIdRef = useRef(0);
@@ -2041,22 +2039,20 @@ export function WorkspaceShell({
       return EMPTY_ALL_CONTAINERS_METRIC_CHARTS;
     }
 
-    return buildAllContainersMetricCharts(dashboardRange, sidebarSnapshot, allContainerHistory).map(
-      (chart) => ({
-        ...chart,
-        series: chart.series.map((series) => {
-          const alias = aliases[series.id]?.trim();
+    return buildAllContainersMetricCharts(sidebarSnapshot, allContainerHistory).map((chart) => ({
+      ...chart,
+      series: chart.series.map((series) => {
+        const alias = aliases[series.id]?.trim();
 
-          return alias
-            ? {
-                ...series,
-                label: alias,
-              }
-            : series;
-        }),
-      })
-    );
-  }, [activeView, aliases, allContainerHistory, dashboardRange, sidebarSnapshot]);
+        return alias
+          ? {
+              ...series,
+              label: alias,
+            }
+          : series;
+      }),
+    }));
+  }, [activeView, aliases, allContainerHistory, sidebarSnapshot]);
   const detailedHistoryRequest = useMemo(() => {
     if (activeView !== 'dashboard') {
       return null;
@@ -2225,7 +2221,6 @@ export function WorkspaceShell({
           setSidebarHistory(payload.history);
         }
 
-        setMetricsError(null);
         errorBackoffMs = LIVE_POLL_INTERVAL_MS;
       } catch (error) {
         if (!active || (error instanceof DOMException && error.name === 'AbortError')) {
@@ -2235,7 +2230,6 @@ export function WorkspaceShell({
         const message = error instanceof Error ? error.message : 'Unable to load live metrics.';
 
         console.error(message);
-        setMetricsError(message);
         errorBackoffMs = Math.min(errorBackoffMs * 2, LIVE_POLL_ERROR_BACKOFF_MAX_MS);
       } finally {
         livePollInFlightRef.current = false;
