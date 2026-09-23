@@ -4,7 +4,7 @@ WORKDIR /workspaces/vercelab
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PNPM_VERSION=11.1.1
+ENV PNPM_VERSION=11.27.1
 
 # Install system tools: git, curl, Docker CLI, Docker Compose plugin
 RUN apt-get update \
