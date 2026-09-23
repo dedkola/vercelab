@@ -81,7 +81,7 @@ services:
       - devnet
 
   influxdb:
-    image: influxdb:3-core
+    image: influxdb:3.11.2-core
     container_name: vercelab-influxdb
     restart: unless-stopped
     environment:
@@ -106,7 +106,7 @@ services:
       - devnet
 
   influxdb-explorer-init:
-    image: alpine:3.22
+    image: alpine:3.24.1
     user: '0:0'
     entrypoint: ['/bin/sh', '-c']
     command:
@@ -134,7 +134,7 @@ services:
       - ./influxdb-explorer-config:/legacy-config:ro
 
   influxdb-explorer:
-    image: influxdata/influxdb3-ui:1.7.0
+    image: influxdata/influxdb3-ui:1.9.0
     container_name: vercelab-influxdb-explorer
     restart: unless-stopped
     command:
