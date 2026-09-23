@@ -2,8 +2,8 @@
 # Dependencies stage
 # =========================
 ARG NODE_IMAGE=node:24-bookworm-slim
-ARG PNPM_VERSION=11.1.1
-ARG COREPACK_VERSION=0.34.7
+ARG PNPM_VERSION=11.27.1
+ARG COREPACK_VERSION=0.36.0
 
 FROM ${NODE_IMAGE} AS deps
 

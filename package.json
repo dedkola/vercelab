@@ -2,10 +2,10 @@
   "name": "vercelab",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.1.1",
+  "packageManager": "pnpm@11.27.1",
   "engines": {
     "node": ">=24.0.0",
-    "pnpm": ">=11.1.1"
+    "pnpm": ">=11.27.1"
   },
   "scripts": {
     "setup-env": "bash scripts/setup-env.sh",

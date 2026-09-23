@@ -25,7 +25,7 @@ services:
       - proxy
 
   influxdb:
-    image: influxdb:3-core
+    image: influxdb:3.11.2-core
     container_name: vercelab-influxdb
     restart: unless-stopped
     environment:
@@ -50,7 +50,7 @@ services:
       - proxy
 
   influxdb-explorer:
-    image: influxdata/influxdb3-ui:1.7.0
+    image: influxdata/influxdb3-ui:1.9.0
     container_name: vercelab-influxdb-explorer
     restart: unless-stopped
     command:
@@ -74,7 +74,7 @@ services:
       - proxy
 
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.7.12
     restart: unless-stopped
     command:
       - --providers.docker=true

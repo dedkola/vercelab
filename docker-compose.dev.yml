@@ -48,7 +48,7 @@ services:
 
   # ── InfluxDB 3 Core ─────────────────────────────────────────────────────────
   influxdb:
-    image: influxdb:3-core
+    image: influxdb:3.11.2-core
     container_name: vercelab-dev-influxdb
     restart: unless-stopped
     environment:
@@ -76,7 +76,7 @@ services:
 
   # ── InfluxDB Explorer storage migration ─────────────────────────────────────
   influxdb-explorer-init:
-    image: alpine:3.22
+    image: alpine:3.24.1
     user: '0:0'
     entrypoint: ['/bin/sh', '-c']
     command:
@@ -107,7 +107,7 @@ services:
 
   # ── InfluxDB Explorer UI ────────────────────────────────────────────────────
   influxdb-explorer:
-    image: influxdata/influxdb3-ui:1.7.0
+    image: influxdata/influxdb3-ui:1.9.0
     container_name: vercelab-dev-influxdb-explorer
     restart: unless-stopped
     command:
@@ -141,7 +141,7 @@ services:
 
   # ── Traefik (HTTP only – no TLS needed locally) ─────────────────────────────
   traefik:
-    image: traefik:v3.7.1
+    image: traefik:v3.7.12
     container_name: vercelab-dev-traefik
     restart: unless-stopped
     command:
