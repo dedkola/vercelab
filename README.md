@@ -6,10 +6,10 @@
 
 [![GitHub package version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=for-the-badge&color=111827)](https://github.com/dedkola/vercelab)
 [![Node.js](https://img.shields.io/badge/Node.js-24_LTS-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16.3.1-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.2.8-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.3.6-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.3.0-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-11.1.1-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![pnpm](https://img.shields.io/badge/pnpm-11.27.1-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
 
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-state-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
@@ -36,13 +36,22 @@ Vercelab turns an Ubuntu box or local Docker host into a compact deployment work
 - [Screenshots](#screenshots)
 - [Quick Start](#quick-start)
 - [Local Development](#local-development)
+- [Commands](#commands)
 - [Deployment Flow](#deployment-flow)
+- [Deployment Files](#deployment-files)
 - [Metrics Dashboard](#metrics-dashboard)
 - [Containers Workspace](#containers-workspace)
+- [Terminal Workspace](#terminal-workspace)
 - [Ubuntu Server Install](#ubuntu-server-install)
 - [State and Storage](#state-and-storage)
 - [Configuration](#configuration)
+- [Runtime Files](#runtime-files)
+- [Health and Readiness](#health-and-readiness)
+- [Recreate the UI Container](#recreate-the-ui-container)
+- [Reinstall](#reinstall)
+- [Uninstall](#uninstall)
 - [Operational Notes](#operational-notes)
+- [Development Notes](#development-notes)
 
 ## Highlights
 
@@ -52,6 +61,8 @@ Vercelab turns an Ubuntu box or local Docker host into a compact deployment work
 | Self-hosted routing  | Places managed apps on a shared Docker network and exposes them through Traefik host rules.                  |
 | Metrics dashboard    | Combines System Pulse, two focused telemetry charts, and a searchable workload inventory with live history.  |
 | Containers workspace | Full container inventory with inspect, logs, recreation, and catalog-based creation for all host containers. |
+| Deployment files     | Upload supporting files, manage private or container-readable access, and preserve them across redeploys.    |
+| Terminal workspace   | Interactive terminal with host access in production and container access in the devcontainer.                |
 | Safe runtime state   | Stores repositories, deployments, and operations in PostgreSQL with encrypted GitHub tokens.                 |
 | Ubuntu bootstrap     | Installs host prerequisites, pins Docker Engine 28.x, creates TLS assets, and starts the stack.              |
 
@@ -72,16 +83,17 @@ flowchart LR
 
 ## Stack
 
-| Layer           | Technology                                                      |
-| --------------- | --------------------------------------------------------------- |
-| Web app         | Next.js 16 App Router, React 19, TypeScript                     |
-| UI              | Tailwind CSS 4, shadcn-style components, Radix UI, Lucide icons |
-| Charts          | ECharts via the local dashboard components                      |
-| Persistence     | PostgreSQL for control-plane state                              |
-| Metrics         | InfluxDB 3 Core plus InfluxDB Explorer                          |
-| Runtime         | Docker, Docker Compose, Traefik                                 |
-| Validation      | Zod, TypeScript, ESLint, Vitest                                 |
-| Package manager | pnpm 11                                                         |
+| Layer           | Technology                                                                                    |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| Web app         | Next.js 16 App Router, React 19, TypeScript                                                   |
+| UI              | Cloudflare Kumo, Tailwind CSS 4, shadcn-style components, Radix UI, Phosphor and Lucide icons |
+| Charts          | ECharts via the local dashboard components                                                    |
+| Terminal        | xterm.js, node-pty, WebSocket transport                                                       |
+| Persistence     | PostgreSQL for control-plane state                                                            |
+| Metrics         | InfluxDB 3 Core plus InfluxDB Explorer                                                        |
+| Runtime         | Docker, Docker Compose, Traefik                                                               |
+| Validation      | Zod, TypeScript, ESLint, Vitest                                                               |
+| Package manager | pnpm 11                                                                                       |
 
 ## Interactive Preview
 
@@ -107,7 +119,7 @@ Reference captures from a live Vercelab deployment. For the latest dashboard lay
 
 ## Quick Start
 
-For local development on macOS, run infrastructure in Docker and the Next.js app on the host:
+For local development on macOS, use Node.js 24, pnpm 11.27.1, and Docker with the Compose plugin. Run infrastructure in Docker and the Next.js app on the host:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -164,10 +176,20 @@ pnpm run dev:infra:down
 
 ### Option B: VS Code Devcontainer
 
-The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment inside Docker. Open the repository in VS Code and choose **Reopen in Container**, or run **Dev Containers: Reopen in Container** from the command palette.
+The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment inside Docker. Open the repository in VS Code and choose **Reopen in Container**, or run **Dev Containers: Reopen in Container** from the command palette. Dependencies are installed automatically, and the post-start script bootstraps the InfluxDB token and Explorer connection.
+
+In the container terminal, start the app:
+
+```bash
+pnpm run dev
+```
+
+Open `http://localhost:3100`. VS Code forwards the app on port `3100` and terminal WebSocket on port `3101`. Terminal sessions run inside the devcontainer at `/workspaces/vercelab`.
 
 | Resource           | Host macOS stack          | Devcontainer                |
 | ------------------ | ------------------------- | --------------------------- |
+| App                | `http://localhost:3000`   | `http://localhost:3100`     |
+| Terminal WebSocket | `localhost:3001`          | `localhost:3101`            |
 | Docker network     | `vercelab_dev_proxy`      | `vercelab_devcontainer_net` |
 | Postgres host port | `localhost:5432`          | not exposed                 |
 | InfluxDB host port | `localhost:8181`          | not exposed                 |
@@ -181,14 +203,16 @@ The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment ins
 | `pnpm run setup-env`      | Generate a local `.env.local` file.                    |
 | `pnpm run dev:infra`      | Start local Postgres, InfluxDB, Explorer, and Traefik. |
 | `pnpm run dev:infra:down` | Stop the local infrastructure stack.                   |
-| `pnpm run dev`            | Start the Next.js dev server.                          |
+| `pnpm run dev`            | Start Next.js and the terminal WebSocket server.       |
 | `pnpm run build`          | Build the production app.                              |
-| `pnpm run start`          | Start the built app.                                   |
+| `pnpm run start`          | Start the built app and terminal WebSocket server.     |
 | `pnpm run lint`           | Run ESLint.                                            |
 | `pnpm run typecheck`      | Check types and unused local code.                     |
 | `pnpm run check:unused`   | Find unused files, exports, and dependencies.          |
 | `pnpm run test`           | Run Vitest in watch mode.                              |
 | `pnpm run test:run`       | Run Vitest once.                                       |
+| `pnpm run format`         | Format repository files with Prettier.                 |
+| `pnpm run format:check`   | Check formatting without changing files.               |
 
 ## Deployment Flow
 
@@ -201,6 +225,15 @@ The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment ins
 
 Compose repositories with multiple services must provide `serviceName`. Single-service compose projects are auto-detected. Dockerfile deployments receive both runtime environment variables and Docker build args from the multiline `KEY=VALUE` payload.
 
+## Deployment Files
+
+The deployment manager in the Git workspace (`/git-app-page`) includes a **Files** tab for uploading supporting files such as `.env` or `k3s.config`. Each upload is limited to 5 MB. You can list files, change their access, and delete them.
+
+- **Private** files use mode `0600`; this is the default for `.env` and `.env.*`.
+- **Container-readable** files use mode `0644`; this is the default for other files.
+
+Files are stored under `.vercelab-files/<deploymentId>` in the managed apps directory and reapplied to the deployment workspace after clone or pull, before Compose detection. They survive redeploys. File names must stay within the workspace, and Vercelab-generated Compose file names are reserved. Redeploy after changing files or permissions to recreate the containers.
+
 ## Metrics Dashboard
 
 The metrics dashboard is the home route (`/`). It displays:
@@ -209,7 +242,7 @@ The metrics dashboard is the home route (`/`). It displays:
 - two focused host telemetry surfaces: **Compute load** for CPU and memory, and **Throughput** for network ingress, network egress, and disk activity
 - a searchable workload table with runtime type, status, CPU, memory, network, and endpoint information
 - contextual workload details with per-container CPU, memory, network, and disk history
-- a shared time-range selector (1 h, 6 h, 24 h, 7 d) that applies to InfluxDB history queries
+- a shared time-range selector (1 min, 5 min, 15 min, 1 h, 24 h, 7 d, 30 d, 90 d; default 15 min) that applies to InfluxDB history queries
 
 The shell polls `/api/metrics` on a live interval and merges server-side snapshots with historical series. Missing or unavailable provider samples remain explicit instead of being replaced with demo values.
 
@@ -223,6 +256,14 @@ The containers workspace (`/containers`) shows all containers visible to the hos
 - container recreation (pull latest image and restart with the same config)
 - catalog-based container creation with registry tag browsing and port exposure mode selection (`traefik`, `host`, `none`)
 
+## Terminal Workspace
+
+The terminal workspace (`/terminal`) provides an interactive shell with resize support, clickable links, copy/paste controls, and adjustable font size. `pnpm dev` and `pnpm start` launch the WebSocket server alongside Next.js.
+
+In production, `VERCELAB_TERMINAL_TARGET=host` opens the Ubuntu host shell through a short-lived privileged Docker helper using `nsenter`. In the devcontainer, `VERCELAB_TERMINAL_TARGET=container` runs the shell inside the development container. When Next.js runs directly on macOS, sessions use the local shell.
+
+Local terminal traffic uses `/terminal/ws` on port `3001` (`3101` in the devcontainer). In production, Traefik routes that path through the control-plane HTTPS hostname.
+
 ## Ubuntu Server Install
 
 The production path assumes an Ubuntu host. If you do not provide a custom domain, the installer derives a reachable default base domain from the server's primary LAN IPv4 using `sslip.io`, for example `10-10-0-36.sslip.io`.
@@ -233,7 +274,7 @@ curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | 
 
 The one-liner proposes `/home/<username>/vercelab` as the clone location and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
 
-For a fully unattended bootstrap, pass configuration as environment variables before the pipe:
+To override the domain and encryption secret, prefix the installer command with environment variables. This still runs the interactive wizard when a terminal is available:
 
 ```bash
 VERCELAB_BASE_DOMAIN=lab.example.com \
@@ -254,13 +295,13 @@ If you already have the repository cloned, run the installer directly:
 ./install.sh
 ```
 
-Any runtime variable listed in the configuration section can be exported before running the installer. On later runs, the installer proposes current `.env` values as defaults unless you override them with environment variables.
+Installer settings in the defaults table below can be exported before running the installer. Terminal and host metrics settings use the Compose defaults unless overridden in the environment or runtime `.env`; `NEXT_PUBLIC_*` settings must be supplied to the Next.js build. On later runs, the installer proposes current `.env` values as defaults unless you override them with environment variables.
 
 The installer:
 
 - installs Node.js and pnpm on the host
 - installs host packages required by the bootstrap scripts
-- installs and pins Docker Engine `28.x` plus the Compose plugin because this stack documents Docker `29.x` as incompatible with Traefik's Docker provider
+- installs and pins Docker Engine `28.x` plus the Compose and Buildx plugins
 - runs `pnpm install --frozen-lockfile`, then performs the production build in a clean temporary source copy so runtime data directories are never traced
 - creates a shared host root under `/home/<username>/vercelab` by default
 - auto-generates a reachable default base domain when one is not provided
@@ -299,26 +340,32 @@ Local macOS development stores application and database state under `./data/`:
 - `./data/logs`
 - `./data/locks`
 
-InfluxDB Explorer 1.7 runs as a non-root user. Local development and the devcontainer therefore keep its SQLite database and active config in Docker named volumes; `./data/influxdb-explorer` and `./data/influxdb-explorer-config` are retained as migration/config sources. The first start copies existing Explorer state before assigning the volume to the container user.
+InfluxDB Explorer 1.9.0 runs as a non-root user. Local development and the devcontainer therefore keep its SQLite database and active config in Docker named volumes; `./data/influxdb-explorer` and `./data/influxdb-explorer-config` are retained as migration/config sources. The first start copies existing Explorer state before assigning the volume to the container user.
 
 ## Configuration
 
 Important runtime variables:
 
-| Variable                      | Purpose                                                                    |
-| ----------------------------- | -------------------------------------------------------------------------- |
-| `VERCELAB_BASE_DOMAIN`        | Wildcard domain for deployed apps, such as `myhomelan.com`.                |
-| `VERCELAB_ADMIN_HOST`         | Full hostname for the control plane, such as `vercelab.myhomelan.com`.     |
-| `VERCELAB_HOST_ROOT`          | Shared absolute host path mounted into the app container at the same path. |
-| `VERCELAB_APPS_DIR`           | Managed clone and generated compose directory.                             |
-| `VERCELAB_LOGS_DIR`           | Deployment log directory.                                                  |
-| `VERCELAB_LOCKS_DIR`          | Deployment lock directory.                                                 |
-| `VERCELAB_POSTGRES_DATA_DIR`  | PostgreSQL data directory.                                                 |
-| `VERCELAB_INFLUXDB_DATA_DIR`  | InfluxDB data directory.                                                   |
-| `VERCELAB_DOCKER_SOCKET_PATH` | Docker socket passed through to Traefik and the control plane.             |
-| `VERCELAB_PROXY_NETWORK`      | Shared Docker network used by Traefik and deployed apps.                   |
-| `VERCELAB_ENCRYPTION_SECRET`  | Secret used to encrypt stored GitHub tokens.                               |
-| `VERCELAB_GITHUB_TOKEN`       | Optional workspace GitHub token for repository browsing.                   |
+| Variable                       | Purpose                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| `VERCELAB_BASE_DOMAIN`         | Wildcard domain for deployed apps, such as `myhomelan.com`.                            |
+| `VERCELAB_ADMIN_HOST`          | Full hostname for the control plane, such as `vercelab.myhomelan.com`.                 |
+| `VERCELAB_HOST_ROOT`           | Shared absolute host path mounted into the app container at the same path.             |
+| `VERCELAB_APPS_DIR`            | Managed clone and generated compose directory.                                         |
+| `VERCELAB_LOGS_DIR`            | Deployment log directory.                                                              |
+| `VERCELAB_LOCKS_DIR`           | Deployment lock directory.                                                             |
+| `VERCELAB_POSTGRES_DATA_DIR`   | PostgreSQL data directory.                                                             |
+| `VERCELAB_INFLUXDB_DATA_DIR`   | InfluxDB data directory.                                                               |
+| `VERCELAB_DOCKER_SOCKET_PATH`  | Docker socket passed through to Traefik and the control plane.                         |
+| `VERCELAB_PROXY_NETWORK`       | Shared Docker network used by Traefik and deployed apps.                               |
+| `VERCELAB_ENCRYPTION_SECRET`   | Secret used to encrypt stored GitHub tokens.                                           |
+| `VERCELAB_GITHUB_TOKEN`        | Optional workspace GitHub token for repository browsing.                               |
+| `VERCELAB_HOST_PROC_PATH`      | Host metrics mount inside the app container; defaults to `/host/proc`.                 |
+| `VERCELAB_TERMINAL_TARGET`     | `host` for the production host shell, or `container` for the container shell.          |
+| `VERCELAB_HOST_TERMINAL_IMAGE` | Optional helper image for host terminal access; defaults to the control-plane image.   |
+| `VERCELAB_TERMINAL_WS_PORT`    | Terminal WebSocket server port; defaults to `3001`.                                    |
+| `NEXT_PUBLIC_TERMINAL_WS_PORT` | Browser terminal port for localhost; set to `3101` in the devcontainer.                |
+| `NEXT_PUBLIC_TERMINAL_WS_URL`  | Optional full browser WebSocket URL overriding automatic routing; set before building. |
 
 <details>
 <summary>Default runtime variables written by the installer</summary>
@@ -329,7 +376,7 @@ Important runtime variables:
 | `HOSTNAME`                                  | `0.0.0.0`                                                                | Bind address inside the container.                                                   |
 | `PORT`                                      | `3000`                                                                   | Internal port Traefik forwards to.                                                   |
 | `VERCELAB_BASE_DOMAIN`                      | auto-derived from host IPv4 as `<ip>.sslip.io`, fallback `myhomelan.com` | Base wildcard domain for deployed apps.                                              |
-| `VERCELAB_ADMIN_HOST`                       | `vercelab.${VERCELAB_BASE_DOMAIN}`                                       | Control plane hostname.                                                              |
+| `VERCELAB_ADMIN_HOST`                       | `dash.${VERCELAB_BASE_DOMAIN}`                                           | Control plane hostname.                                                              |
 | `VERCELAB_HOST_LAN_IP`                      | auto-derived from host primary LAN IPv4                                  | Host LAN IPv4 shown in the dashboard and used to tag host metrics.                   |
 | `VERCELAB_PROXY_NETWORK`                    | `vercelab_proxy`                                                         | Shared Docker network for Traefik and managed apps.                                  |
 | `VERCELAB_PROXY_ENTRYPOINT`                 | `websecure`                                                              | Traefik HTTPS entrypoint.                                                            |
@@ -378,16 +425,18 @@ Important runtime variables:
 
 ## Health and Readiness
 
-`/api/health` reports full platform readiness. In production it verifies:
+`/api/health` reports platform checks and a separate database health result. In production, blocking platform checks cover:
 
 - the Docker socket exists
 - the Docker daemon is reachable
-- the Docker Compose plugin is installed
+- the Docker Compose and Buildx plugins are installed
 - managed directories are writable
 - `VERCELAB_HOST_ROOT` aligns with all managed paths
-- the base domain and encryption secret are not placeholders
+- the host metrics mount is available
+- a PostgreSQL connection URL is configured
+- the encryption secret is not the default placeholder
 
-The route returns HTTP `503` until the platform is ready.
+The route returns HTTP `503` when a blocking platform check fails, and `200` otherwise. A placeholder base domain is reported as a warning. Database connectivity is reported separately and does not determine the HTTP status. The Compose control-plane healthcheck probes `/` for liveness rather than `/api/health`.
 
 ## Recreate the UI Container
 
@@ -501,6 +550,8 @@ Before opening a pull request, run:
 
 ```bash
 pnpm run lint
+pnpm run typecheck
+pnpm run check:unused
 pnpm run test:run
 pnpm run build
 ```
