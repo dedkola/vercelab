@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent } from 'react';
 import {
   ArrowUpRight,
   CaretRight as ChevronRight,
@@ -15,6 +15,7 @@ import {
 import type { DraftAppState, RepositoryState } from '@/components/workspace-shell';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
+import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
@@ -76,10 +77,10 @@ type GitAppPageLeftSidebarProps = {
 };
 
 const APP_TONES = [
-  'border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]',
-  'border-blue-200 bg-[var(--blue-soft)] text-[var(--blue)]',
-  'border-violet-200 bg-violet-50 text-[var(--purple)]',
-  'border-emerald-200 bg-[var(--green-soft)] text-[var(--green)]',
+  'border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]',
+  'border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]',
+  'border-[var(--purple)]/20 bg-[var(--purple-soft)] text-[var(--purple)]',
+  'border-[var(--green)]/20 bg-[var(--green-soft)] text-[var(--green)]',
 ];
 
 function getStatusClassName(statusVariant: GitAppPageListItem['statusVariant']) {
@@ -87,7 +88,7 @@ function getStatusClassName(statusVariant: GitAppPageListItem['statusVariant']) 
     case 'success':
       return 'text-[var(--green)]';
     case 'warning':
-      return 'text-[var(--blue)]';
+      return 'text-[var(--orange)]';
     default:
       return 'text-[var(--quiet)]';
   }
@@ -116,32 +117,6 @@ function getRuntimeLabel(deployment: GitAppPageListItem) {
   }
 
   return `${deployment.composeMode} · :${deployment.port}`;
-}
-
-function FilterButton({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-pressed={active}
-      className={cn(
-        'h-7 rounded-[5px] px-2.5 text-[11px] font-medium transition-colors',
-        active
-          ? 'bg-white text-foreground shadow-[0_1px_2px_rgb(16_24_40_/_0.08)]'
-          : 'text-[var(--quiet)] hover:text-foreground'
-      )}
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </button>
-  );
 }
 
 export function GitAppPageLeftSidebar({
@@ -198,7 +173,7 @@ export function GitAppPageLeftSidebar({
 
       <section
         aria-labelledby="deploy-new-app-title"
-        className="relative grid min-h-20 grid-cols-[minmax(220px,1fr)_minmax(440px,1.35fr)] items-center gap-5 overflow-hidden rounded-[10px] border border-orange-200 bg-white px-4 py-3 shadow-[var(--shadow)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--orange)] max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[640px]:px-3"
+        className="relative grid min-h-20 grid-cols-[minmax(220px,1fr)_minmax(440px,1.35fr)] items-center gap-5 overflow-hidden rounded-[10px] border border-[var(--orange)]/25 bg-white px-4 py-3 shadow-[var(--shadow)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--orange)] max-[900px]:grid-cols-1 max-[900px]:gap-3 max-[640px]:px-3"
       >
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-[var(--orange-soft)] text-[var(--orange)]">
@@ -256,7 +231,11 @@ export function GitAppPageLeftSidebar({
       </section>
 
       {repositoryState.error || branchError ? (
-        <WorkspaceNotice>{repositoryState.error ?? branchError}</WorkspaceNotice>
+        <WorkspaceNotice
+          tone={repositoryState.error && !repositoryState.tokenConfigured ? 'warning' : 'error'}
+        >
+          {repositoryState.error ?? branchError}
+        </WorkspaceNotice>
       ) : null}
 
       <section
@@ -288,30 +267,17 @@ export function GitAppPageLeftSidebar({
               />
             </div>
           </div>
-          <div
-            aria-label="Filter applications"
-            className="grid grid-flow-col rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-0.5 max-[640px]:col-start-2 max-[640px]:row-start-2"
-            role="group"
-          >
-            <FilterButton
-              active={statusFilter === 'all'}
-              onClick={() => onStatusFilterChangeAction('all')}
-            >
-              All
-            </FilterButton>
-            <FilterButton
-              active={statusFilter === 'running'}
-              onClick={() => onStatusFilterChangeAction('running')}
-            >
-              Running
-            </FilterButton>
-            <FilterButton
-              active={statusFilter === 'attention'}
-              onClick={() => onStatusFilterChangeAction('attention')}
-            >
-              Attention
-            </FilterButton>
-          </div>
+          <SegmentedControl
+            ariaLabel="Filter applications"
+            className="max-[640px]:col-start-2 max-[640px]:row-start-2"
+            onChange={onStatusFilterChangeAction}
+            options={[
+              { label: 'All', value: 'all' },
+              { label: 'Running', value: 'running' },
+              { label: 'Attention', value: 'attention' },
+            ]}
+            value={statusFilter}
+          />
         </header>
 
         <div className="overflow-x-auto">
@@ -432,7 +398,7 @@ export function GitAppPageLeftSidebar({
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <Button
-                      className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-blue-200 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
+                      className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
                       onClick={(event) => {
                         event.stopPropagation();
                         onSelectAppAction(deployment.id);
@@ -462,13 +428,18 @@ export function GitAppPageLeftSidebar({
         <WorkspaceDialog onCloseAction={onToggleCreateAppAction} title="Review new deployment">
           <form className="min-w-0" onSubmit={onCreateAppAction}>
             <header className="flex min-h-[54px] items-center justify-between gap-4 border-b border-[var(--hairline)] px-4">
-              <div>
-                <h2 className="text-[15px] font-semibold" id="review-deployment-title">
-                  Review new deployment
-                </h2>
-                <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
-                  Git source → build → runtime
-                </p>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]">
+                  <PackagePlus aria-hidden="true" className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-[15px] font-semibold" id="review-deployment-title">
+                    Review new deployment
+                  </h2>
+                  <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                    Git source → build → runtime
+                  </p>
+                </div>
               </div>
               <Button
                 aria-label="Close deployment review"
@@ -600,7 +571,13 @@ export function GitAppPageLeftSidebar({
               ) : null}
 
               {repositoryState.error || branchError ? (
-                <WorkspaceNotice>{repositoryState.error ?? branchError}</WorkspaceNotice>
+                <WorkspaceNotice
+                  tone={
+                    repositoryState.error && !repositoryState.tokenConfigured ? 'warning' : 'error'
+                  }
+                >
+                  {repositoryState.error ?? branchError}
+                </WorkspaceNotice>
               ) : null}
 
               {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (

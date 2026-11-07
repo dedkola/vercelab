@@ -266,7 +266,7 @@ describe('ContainersShell', () => {
     await user.clear(screen.getByLabelText(/container image reference/i));
     await user.type(screen.getByLabelText(/container image reference/i), 'nginx:latest');
     await user.type(screen.getByLabelText(/container name/i), 'web-app');
-    await user.click(screen.getByRole('button', { name: /^create$/i }));
+    await user.click(screen.getByRole('button', { name: /^create container$/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
