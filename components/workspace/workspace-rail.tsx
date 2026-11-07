@@ -39,7 +39,9 @@ function getWorkspaceRailHref(view: WorkspaceView) {
         ? '/terminal'
         : view === 'git-app-page'
           ? '/git-app-page'
-          : '/containers';
+          : view === 'dev'
+            ? '/dev'
+            : '/containers';
 
   if (typeof window === 'undefined') {
     return pathname;

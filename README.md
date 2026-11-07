@@ -39,6 +39,7 @@ Vercelab turns an Ubuntu box or local Docker host into a compact deployment work
 - [Commands](#commands)
 - [Deployment Flow](#deployment-flow)
 - [Deployment Files](#deployment-files)
+- [Dev Preview Deployments](#dev-preview-deployments)
 - [Metrics Dashboard](#metrics-dashboard)
 - [Containers Workspace](#containers-workspace)
 - [Terminal Workspace](#terminal-workspace)
@@ -62,6 +63,7 @@ Vercelab turns an Ubuntu box or local Docker host into a compact deployment work
 | Metrics dashboard    | Combines System Pulse, two focused telemetry charts, and a searchable workload inventory with live history.  |
 | Containers workspace | Full container inventory with inspect, logs, recreation, and catalog-based creation for all host containers. |
 | Deployment files     | Upload supporting files, manage private or container-readable access, and preserve them across redeploys.    |
+| Dev previews         | Build every commit on a monitored branch into its own Docker container with a unique Traefik URL.            |
 | Terminal workspace   | Interactive terminal with host access in production and container access in the devcontainer.                |
 | Safe runtime state   | Stores repositories, deployments, and operations in PostgreSQL with encrypted GitHub tokens.                 |
 | Ubuntu bootstrap     | Installs host prerequisites, pins Docker Engine 28.x, creates TLS assets, and starts the stack.              |
@@ -234,6 +236,61 @@ The deployment manager in the Git workspace (`/git-app-page`) includes a **Files
 
 Files are stored under `.vercelab-files/<deploymentId>` in the managed apps directory and reapplied to the deployment workspace after clone or pull, before Compose detection. They survive redeploys. File names must stay within the workspace, and Vercelab-generated Compose file names are reserved. Redeploy after changing files or permissions to recreate the containers.
 
+## Dev Preview Deployments
+
+The **Dev** workspace (`/dev`) builds every commit on a monitored GitHub branch into its own Docker image and container. Preview deployments are completely separate from production deployments and never replace or modify them.
+
+Workflow:
+
+1. Add the GitHub token in the Vercelab settings popover if it is not already configured.
+2. Open **Dev** and select **Connect repository**.
+3. Choose the repository, branch, preview URL prefix, Dockerfile path, build context, container port, runtime environment, and optional build arguments.
+4. Enable automatic previews and optionally build the current HEAD immediately.
+5. Push a commit to the monitored branch. Vercelab detects it by polling every 60 seconds, or instantly through an optional signed GitHub webhook.
+6. Open the generated URL from the Dev page. Every previous preview remains available.
+
+Preview URLs use the existing base domain and Traefik configuration:
+
+```text
+<preview-prefix>-<short-commit-sha>.<VERCELAB_BASE_DOMAIN>
+```
+
+For example, with a `blade` preview prefix and `home.com` as the base domain:
+
+| Commit       | Preview URL                      |
+| ------------ | -------------------------------- |
+| `a1b2c3d...` | `https://blade-a1b2c3d.home.com` |
+| `e4f5g6h...` | `https://blade-e4f5g6h.home.com` |
+
+The URL scheme follows `VERCELAB_PROXY_ENTRYPOINT`: `web` produces `http://` URLs for local development, while `websecure` produces HTTPS URLs and TLS-enabled Traefik routers.
+
+Each preview records its commit SHA, message, author, commit date, build status, Docker container status, build log, container log, and preview URL. The Dev page supports opening, stopping, starting, restarting, retrying, and deleting individual previews. Deleting a preview removes its container, image, workspace, and build log only.
+
+Preview builds use a root or subdirectory Dockerfile with a configurable build context. Compose-only repositories are not supported for previews yet; production deployments still support both Dockerfile and compose projects.
+
+### Commit detection
+
+- **Polling** is enabled by default and works on private or LAN-only hosts. The worker checks each auto-deploy project every 60 seconds and queues new commits it has not seen before.
+- **Webhook** is optional. Each project has a payload URL and encrypted secret in its settings. In GitHub, add a webhook using the `push` event and `application/json`; Vercelab verifies `X-Hub-Signature-256` before queueing a build. Polling stays active as a fallback.
+- **Manual actions** include `Sync now`, `Deploy latest`, and `Deploy commit` for recent branch commits.
+
+### Preview lifecycle and storage
+
+Preview images are tagged `vercelab-dev-<prefix>:<full-sha>` and containers are named `vercelab-dev-<prefix>-<short-sha>`. Containers use `unless-stopped` and join the shared proxy network without publishing host ports.
+
+- Builds run through a persistent PostgreSQL-backed queue, one at a time.
+- A control-plane restart marks interrupted builds as failed; queued builds resume automatically.
+- Retention is configured per project. `0` keeps every preview forever, while a positive value removes the oldest settled previews after each successful build.
+- Preview workspaces are temporary and removed after each build. Images, containers, and logs remain until the preview is deleted or retention removes it.
+- Managed state lives in `dev_projects` and `dev_deployments` in PostgreSQL. Logs live under `VERCELAB_LOGS_DIR/dev`, and temporary clones live under `VERCELAB_APPS_DIR/dev`.
+
+Optional tuning:
+
+| Variable                        | Default   | Purpose                                         |
+| ------------------------------- | --------- | ----------------------------------------------- |
+| `VERCELAB_DEV_POLL_INTERVAL_MS` | `60000`   | GitHub polling cadence per auto-deploy project. |
+| `VERCELAB_DEV_BUILD_TIMEOUT_MS` | `1800000` | Maximum duration for a preview Docker build.    |
+
 ## Metrics Dashboard
 
 The metrics dashboard is the home route (`/`). It displays:
@@ -320,7 +377,9 @@ Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `
 | Path                                                      | Purpose                                                     |
 | --------------------------------------------------------- | ----------------------------------------------------------- |
 | `/home/<username>/vercelab/data/apps`                     | Cloned deployment repositories and generated compose files. |
+| `/home/<username>/vercelab/data/apps/dev`                 | Temporary preview build workspaces.                         |
 | `/home/<username>/vercelab/data/logs`                     | Deployment logs.                                            |
+| `/home/<username>/vercelab/data/logs/dev`                 | Preview build logs.                                         |
 | `/home/<username>/vercelab/data/locks`                    | Deployment lock files.                                      |
 | `/home/<username>/vercelab/data/postgres`                 | PostgreSQL data directory.                                  |
 | `/home/<username>/vercelab/data/influxdb`                 | InfluxDB 3 Core data directory.                             |
@@ -337,7 +396,9 @@ Local macOS development stores application and database state under `./data/`:
 - `./data/traefik/dynamic`
 - `./data/traefik/certs`
 - `./data/apps`
+- `./data/apps/dev`
 - `./data/logs`
+- `./data/logs/dev`
 - `./data/locks`
 
 InfluxDB Explorer 1.9.0 runs as a non-root user. Local development and the devcontainer therefore keep its SQLite database and active config in Docker named volumes; `./data/influxdb-explorer` and `./data/influxdb-explorer-config` are retained as migration/config sources. The first start copies existing Explorer state before assigning the volume to the container user.
@@ -346,26 +407,28 @@ InfluxDB Explorer 1.9.0 runs as a non-root user. Local development and the devco
 
 Important runtime variables:
 
-| Variable                       | Purpose                                                                                |
-| ------------------------------ | -------------------------------------------------------------------------------------- |
-| `VERCELAB_BASE_DOMAIN`         | Wildcard domain for deployed apps, such as `myhomelan.com`.                            |
-| `VERCELAB_ADMIN_HOST`          | Full hostname for the control plane, such as `vercelab.myhomelan.com`.                 |
-| `VERCELAB_HOST_ROOT`           | Shared absolute host path mounted into the app container at the same path.             |
-| `VERCELAB_APPS_DIR`            | Managed clone and generated compose directory.                                         |
-| `VERCELAB_LOGS_DIR`            | Deployment log directory.                                                              |
-| `VERCELAB_LOCKS_DIR`           | Deployment lock directory.                                                             |
-| `VERCELAB_POSTGRES_DATA_DIR`   | PostgreSQL data directory.                                                             |
-| `VERCELAB_INFLUXDB_DATA_DIR`   | InfluxDB data directory.                                                               |
-| `VERCELAB_DOCKER_SOCKET_PATH`  | Docker socket passed through to Traefik and the control plane.                         |
-| `VERCELAB_PROXY_NETWORK`       | Shared Docker network used by Traefik and deployed apps.                               |
-| `VERCELAB_ENCRYPTION_SECRET`   | Secret used to encrypt stored GitHub tokens.                                           |
-| `VERCELAB_GITHUB_TOKEN`        | Optional workspace GitHub token for repository browsing.                               |
-| `VERCELAB_HOST_PROC_PATH`      | Host metrics mount inside the app container; defaults to `/host/proc`.                 |
-| `VERCELAB_TERMINAL_TARGET`     | `host` for the production host shell, or `container` for the container shell.          |
-| `VERCELAB_HOST_TERMINAL_IMAGE` | Optional helper image for host terminal access; defaults to the control-plane image.   |
-| `VERCELAB_TERMINAL_WS_PORT`    | Terminal WebSocket server port; defaults to `3001`.                                    |
-| `NEXT_PUBLIC_TERMINAL_WS_PORT` | Browser terminal port for localhost; set to `3101` in the devcontainer.                |
-| `NEXT_PUBLIC_TERMINAL_WS_URL`  | Optional full browser WebSocket URL overriding automatic routing; set before building. |
+| Variable                        | Purpose                                                                                |
+| ------------------------------- | -------------------------------------------------------------------------------------- |
+| `VERCELAB_BASE_DOMAIN`          | Wildcard domain for deployed apps, such as `myhomelan.com`.                            |
+| `VERCELAB_ADMIN_HOST`           | Full hostname for the control plane, such as `vercelab.myhomelan.com`.                 |
+| `VERCELAB_HOST_ROOT`            | Shared absolute host path mounted into the app container at the same path.             |
+| `VERCELAB_APPS_DIR`             | Managed clone and generated compose directory.                                         |
+| `VERCELAB_LOGS_DIR`             | Deployment log directory.                                                              |
+| `VERCELAB_LOCKS_DIR`            | Deployment lock directory.                                                             |
+| `VERCELAB_POSTGRES_DATA_DIR`    | PostgreSQL data directory.                                                             |
+| `VERCELAB_INFLUXDB_DATA_DIR`    | InfluxDB data directory.                                                               |
+| `VERCELAB_DOCKER_SOCKET_PATH`   | Docker socket passed through to Traefik and the control plane.                         |
+| `VERCELAB_PROXY_NETWORK`        | Shared Docker network used by Traefik and deployed apps.                               |
+| `VERCELAB_ENCRYPTION_SECRET`    | Secret used to encrypt stored GitHub tokens.                                           |
+| `VERCELAB_GITHUB_TOKEN`         | Optional workspace GitHub token for repository browsing.                               |
+| `VERCELAB_DEV_POLL_INTERVAL_MS` | Optional Dev page GitHub polling interval in milliseconds; defaults to 60000.          |
+| `VERCELAB_DEV_BUILD_TIMEOUT_MS` | Optional maximum preview Docker build duration in milliseconds; defaults to 1800000.   |
+| `VERCELAB_HOST_PROC_PATH`       | Host metrics mount inside the app container; defaults to `/host/proc`.                 |
+| `VERCELAB_TERMINAL_TARGET`      | `host` for the production host shell, or `container` for the container shell.          |
+| `VERCELAB_HOST_TERMINAL_IMAGE`  | Optional helper image for host terminal access; defaults to the control-plane image.   |
+| `VERCELAB_TERMINAL_WS_PORT`     | Terminal WebSocket server port; defaults to `3001`.                                    |
+| `NEXT_PUBLIC_TERMINAL_WS_PORT`  | Browser terminal port for localhost; set to `3101` in the devcontainer.                |
+| `NEXT_PUBLIC_TERMINAL_WS_URL`   | Optional full browser WebSocket URL overriding automatic routing; set before building. |
 
 <details>
 <summary>Default runtime variables written by the installer</summary>

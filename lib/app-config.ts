@@ -45,6 +45,8 @@ const envSchema = z.object({
   VERCELAB_PROXY_ENTRYPOINT: z.string().trim().min(2).default('websecure'),
   VERCELAB_ENCRYPTION_SECRET: z.string().min(16).default('change-this-vercelab-secret'),
   VERCELAB_GITHUB_TOKEN: z.string().trim().optional(),
+  VERCELAB_DEV_POLL_INTERVAL_MS: z.coerce.number().int().min(15000).max(3600000).default(60000),
+  VERCELAB_DEV_BUILD_TIMEOUT_MS: z.coerce.number().int().min(60000).max(7200000).default(1800000),
 });
 
 export type AppConfig = ReturnType<typeof buildConfig>;
@@ -94,6 +96,11 @@ function buildConfig() {
     security: {
       encryptionSecret: parsed.VERCELAB_ENCRYPTION_SECRET,
       githubToken: parsed.VERCELAB_GITHUB_TOKEN ?? null,
+    },
+    dev: {
+      pollIntervalMs: parsed.VERCELAB_DEV_POLL_INTERVAL_MS,
+      buildTimeoutMs: parsed.VERCELAB_DEV_BUILD_TIMEOUT_MS,
+      maxCatchUpCommits: 5,
     },
     paths: {
       rootDir: /*turbopackIgnore: true*/ process.cwd(),

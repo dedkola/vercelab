@@ -11,6 +11,10 @@ export function buildDefaultHostedDomain(subdomain: string, baseDomain: string) 
   return `${subdomain}.${baseDomain}`;
 }
 
+export function getProxyProtocol(entrypoint: string): 'http' | 'https' {
+  return entrypoint === 'web' || entrypoint === 'http' ? 'http' : 'https';
+}
+
 export function buildTraefikRouterName(value: string) {
   return toContainerSlug(value) || 'container-route';
 }
@@ -21,19 +25,21 @@ export function buildTraefikLabels({
   network,
   port,
   routerName,
+  tls = true,
 }: {
   entrypoint: string;
   host: string;
   network: string;
   port: number;
   routerName: string;
+  tls?: boolean;
 }) {
   return {
     'traefik.enable': 'true',
     'traefik.docker.network': network,
     [`traefik.http.routers.${routerName}.rule`]: `Host(\`${host}\`)`,
     [`traefik.http.routers.${routerName}.entrypoints`]: entrypoint,
-    [`traefik.http.routers.${routerName}.tls`]: 'true',
+    ...(tls ? { [`traefik.http.routers.${routerName}.tls`]: 'true' } : {}),
     [`traefik.http.services.${routerName}.loadbalancer.server.port`]: String(port),
   } satisfies Record<string, string>;
 }

@@ -239,3 +239,33 @@ export async function listGitHubCommits(
     url: commit.html_url,
   }));
 }
+
+export async function getGitHubCommit(
+  token: string,
+  owner: string,
+  repo: string,
+  sha: string
+): Promise<GitHubCommit> {
+  const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${sha}`, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(getGitHubErrorMessage(response.status));
+  }
+
+  const commit = (await response.json()) as GitHubCommitResponse;
+
+  return {
+    authorName: commit.commit.author?.name ?? null,
+    committedAt: commit.commit.author?.date ?? null,
+    message: commit.commit.message.split('\n')[0] ?? 'Commit',
+    sha: commit.sha,
+    url: commit.html_url,
+  };
+}

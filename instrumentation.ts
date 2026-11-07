@@ -9,4 +9,7 @@ export async function register() {
 
   const { startMetricsSampler } = await import('@/lib/metrics-sampler');
   startMetricsSampler();
+
+  const { startDevWorker } = await import('@/lib/dev-worker');
+  startDevWorker();
 }

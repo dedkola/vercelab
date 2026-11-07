@@ -31,6 +31,7 @@ type WorkspaceHeaderProps = {
 const NAVIGATION_TABS = [
   { label: 'Overview', value: 'dashboard' },
   { label: 'Apps', value: 'git-app-page' },
+  { label: 'Dev', value: 'dev' },
   { label: 'Containers', value: 'containers' },
   { label: 'Terminal', value: 'terminal' },
 ] satisfies Array<{ label: string; value: WorkspaceView }>;
