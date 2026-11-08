@@ -58,6 +58,7 @@ const WORKSPACE_PAGES: Array<{
 }> = [
   { id: 'dashboard', label: 'Overview' },
   { id: 'git-app-page', label: 'Apps' },
+  { id: 'dev', label: 'Dev' },
   { id: 'containers', label: 'Containers' },
   { id: 'terminal', label: 'Terminal' },
 ];
@@ -68,11 +69,13 @@ function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
   const pathname =
     view === 'git-app-page'
       ? '/git-app-page'
-      : view === 'containers'
-        ? '/containers'
-        : view === 'terminal'
-          ? '/terminal'
-          : '/';
+      : view === 'dev'
+        ? '/dev'
+        : view === 'containers'
+          ? '/containers'
+          : view === 'terminal'
+            ? '/terminal'
+            : '/';
 
   if (range === '15m') {
     return pathname;
@@ -117,11 +120,13 @@ export function WorkspaceChromeShell({
   const activeView: WorkspaceView =
     pathname === '/git-app-page'
       ? 'git-app-page'
-      : pathname === '/containers'
-        ? 'containers'
-        : pathname === '/terminal'
-          ? 'terminal'
-          : 'dashboard';
+      : pathname === '/dev'
+        ? 'dev'
+        : pathname === '/containers'
+          ? 'containers'
+          : pathname === '/terminal'
+            ? 'terminal'
+            : 'dashboard';
   const graphTimeZone = getTimeZoneForDisplayMode(timeDisplayMode);
 
   const loadRepositories = useCallback(async () => {

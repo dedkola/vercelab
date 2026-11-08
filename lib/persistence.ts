@@ -253,6 +253,9 @@ function getPool() {
       connectionString: config.database.postgresUrl,
       max: 20,
     });
+    pool.on('error', (error) => {
+      console.error(`[db] Idle PostgreSQL client error: ${error.message}`);
+    });
   }
 
   return pool;
@@ -312,12 +315,78 @@ async function initDatabase() {
           CREATE INDEX IF NOT EXISTS idx_deployments_repository_id ON deployments(repository_id);
           CREATE INDEX IF NOT EXISTS idx_operations_deployment_id ON operations(deployment_id);
           CREATE INDEX IF NOT EXISTS idx_operations_created_at ON operations(created_at DESC);
+
+          CREATE TABLE IF NOT EXISTS dev_projects (
+            id TEXT PRIMARY KEY,
+            repository_url TEXT NOT NULL,
+            repository_name TEXT NOT NULL,
+            repository_owner TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            app_name TEXT NOT NULL,
+            app_slug TEXT NOT NULL UNIQUE,
+            dockerfile_path TEXT NOT NULL DEFAULT 'Dockerfile',
+            build_context TEXT NOT NULL DEFAULT '.',
+            port INTEGER NOT NULL,
+            env_variables TEXT,
+            build_args TEXT,
+            auto_deploy BOOLEAN NOT NULL DEFAULT TRUE,
+            retention_limit INTEGER NOT NULL DEFAULT 0,
+            encrypted_webhook_secret TEXT NOT NULL,
+            last_seen_sha TEXT,
+            last_polled_at TEXT,
+            last_poll_error TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (repository_url, branch)
+          );
+
+          CREATE TABLE IF NOT EXISTS dev_deployments (
+            id TEXT PRIMARY KEY,
+            project_id TEXT NOT NULL REFERENCES dev_projects(id) ON DELETE CASCADE,
+            commit_sha TEXT NOT NULL,
+            short_sha TEXT NOT NULL,
+            commit_message TEXT,
+            commit_author TEXT,
+            committed_at TEXT,
+            commit_url TEXT,
+            branch TEXT NOT NULL,
+            status TEXT NOT NULL,
+            container_id TEXT,
+            container_name TEXT NOT NULL,
+            image_tag TEXT NOT NULL,
+            subdomain TEXT NOT NULL UNIQUE,
+            dockerfile_path TEXT NOT NULL,
+            build_context TEXT NOT NULL,
+            port INTEGER NOT NULL,
+            env_variables TEXT,
+            build_args TEXT,
+            build_log_path TEXT NOT NULL,
+            last_output TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            build_started_at TEXT,
+            build_finished_at TEXT,
+            deployed_at TEXT,
+            UNIQUE (project_id, commit_sha)
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_dev_projects_repo_branch
+            ON dev_projects(repository_url, branch);
+          CREATE INDEX IF NOT EXISTS idx_dev_deployments_project_id
+            ON dev_deployments(project_id);
+          CREATE INDEX IF NOT EXISTS idx_dev_deployments_status
+            ON dev_deployments(status);
+          CREATE INDEX IF NOT EXISTS idx_dev_deployments_created_at
+            ON dev_deployments(created_at DESC);
         `);
         await client.query('ALTER TABLE repositories ADD COLUMN IF NOT EXISTS commit_sha TEXT');
         await client.query(
           "ALTER TABLE deployments ADD COLUMN IF NOT EXISTS exposure_mode TEXT NOT NULL DEFAULT 'http'"
         );
         await client.query('ALTER TABLE deployments ADD COLUMN IF NOT EXISTS host_port INTEGER');
+        await client.query(
+          "ALTER TABLE dev_deployments ADD COLUMN IF NOT EXISTS branch TEXT NOT NULL DEFAULT 'main'"
+        );
       } finally {
         client.release();
       }
@@ -339,6 +408,8 @@ async function queryRows<T>(
 
   return result.rows as T[];
 }
+
+export { queryRows };
 
 async function withTransaction<T>(task: (client: PoolClient) => Promise<T>) {
   await initDatabase();

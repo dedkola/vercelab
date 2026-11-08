@@ -10,7 +10,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type FormEvent,
 } from 'react';
-import { Activity, GitBranch, Home, type LucideIcon } from 'lucide-react';
+import { Activity, GitBranch, GitCommitHorizontal, Home, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DashboardLeftSidebar } from '@/components/workspace/dashboard-left-sidebar';
@@ -65,7 +65,7 @@ import type { ExposureMode } from '@/lib/validation';
 export type MetricTone = 'emerald' | 'amber' | 'slate';
 export type PreviewContainerStatus = 'running' | 'degraded' | 'idle';
 export type DashboardLogView = 'live' | 'events' | 'alerts';
-export type WorkspaceView = 'dashboard' | 'git-app-page' | 'containers' | 'terminal';
+export type WorkspaceView = 'dashboard' | 'git-app-page' | 'dev' | 'containers' | 'terminal';
 
 export type MetricCard = {
   title: string;
@@ -76,7 +76,7 @@ export type MetricCard = {
   tone: MetricTone;
 };
 
-export type ContainerSignal = {
+type ContainerSignal = {
   label: string;
   value: string;
   delta: string;
@@ -1524,10 +1524,25 @@ const WORKSPACE_PAGES: Array<{
     iconComponent: GitBranch,
     description: 'Deployments and repo wiring',
   },
+  {
+    id: 'dev',
+    label: 'Dev',
+    iconComponent: GitCommitHorizontal,
+    description: 'Commit-based Docker preview deployments',
+  },
 ];
 
 function getWorkspaceViewHref(view: WorkspaceView, range: DashboardRange) {
-  const pathname = view === 'dashboard' ? '/' : '/git-app-page';
+  const pathname =
+    view === 'dashboard'
+      ? '/'
+      : view === 'git-app-page'
+        ? '/git-app-page'
+        : view === 'dev'
+          ? '/dev'
+          : view === 'containers'
+            ? '/containers'
+            : '/terminal';
 
   if (range === '15m') {
     return pathname;
