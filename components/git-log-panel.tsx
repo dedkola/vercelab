@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ChartBar, Monitor } from '@phosphor-icons/react';
 
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
-import { Icon } from '@/components/dashboard-kit';
+import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { Badge } from '@/components/ui/badge';
 import { CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { DeploymentSummary } from '@/lib/persistence';
-import { cn } from '@/lib/utils';
 
 export type LogTab = 'build' | 'container';
 
@@ -52,18 +52,13 @@ function formatDeploymentStatus(status: DeploymentSummary['status']) {
 
 function formatStatusBadgeVariant(
   status: DeploymentSummary['status']
-): 'default' | 'success' | 'destructive' | 'warning' | 'info' {
+): 'default' | 'success' | 'warning' {
   switch (status) {
     case 'deploying':
-      return 'info';
+    case 'failed':
+      return 'warning';
     case 'running':
       return 'success';
-    case 'failed':
-      return 'destructive';
-    case 'stopped':
-      return 'default';
-    case 'removing':
-      return 'warning';
     default:
       return 'default';
   }
@@ -245,39 +240,26 @@ export function GitLogPanel({
       ) : null}
 
       <div className="shrink-0 border-b border-border/60 px-3 py-3">
-        <div className="flex flex-wrap gap-2">
-          {[
+        <SegmentedControl
+          ariaLabel="Deployment log type"
+          onChange={(value) => {
+            setActiveLogTab(value);
+            onLogTabChangeAction?.(value);
+          }}
+          options={[
             {
-              icon: 'bars' as const,
+              icon: <ChartBar aria-hidden="true" className="size-3.5" />,
               label: 'Build log',
-              value: 'build' as const,
+              value: 'build',
             },
             {
-              icon: 'monitor' as const,
+              icon: <Monitor aria-hidden="true" className="size-3.5" />,
               label: 'Container log',
-              value: 'container' as const,
+              value: 'container',
             },
-          ].map((option) => (
-            <button
-              aria-pressed={activeLogTab === option.value}
-              key={option.value}
-              type="button"
-              className={cn(
-                'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1.5 text-[11px] font-medium transition-colors',
-                activeLogTab === option.value
-                  ? 'border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]'
-                  : 'border-border/60 bg-background/80 text-muted-foreground hover:text-foreground'
-              )}
-              onClick={() => {
-                setActiveLogTab(option.value);
-                onLogTabChangeAction?.(option.value);
-              }}
-            >
-              <Icon name={option.icon} className="h-3.5 w-3.5" />
-              {option.label}
-            </button>
-          ))}
-        </div>
+          ]}
+          value={activeLogTab}
+        />
       </div>
 
       <ScrollArea className="min-h-0 flex-1 min-w-0 [&>[data-radix-scroll-area-viewport]>div]:block! [&>[data-radix-scroll-area-viewport]>div]:w-full! [&>[data-radix-scroll-area-viewport]>div]:min-w-0">
@@ -326,7 +308,7 @@ export function GitLogPanel({
             </>
           ) : (
             <div className="flex min-w-0 flex-col space-y-3">
-              <div className="w-full rounded-xl border border-border/70 bg-background px-3 py-3 shadow-sm">
+              <div className="w-full rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-3">
                 <div className="break-words text-[12px] font-semibold text-foreground">
                   {emptyState.title}
                 </div>
@@ -335,10 +317,10 @@ export function GitLogPanel({
                 </div>
               </div>
 
-              <div className="min-w-0 overflow-hidden rounded-xl border border-border/70 bg-[var(--surface-subtle)] shadow-sm">
+              <div className="min-w-0 overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)]">
                 <div className="flex items-center justify-between border-b border-[var(--hairline)] px-3 py-2">
                   <div className="flex items-center gap-2 text-xs text-[var(--muted-ink)]">
-                    <span className="h-2 w-2 rounded-full bg-slate-400" />
+                    <span className="h-2 w-2 rounded-full bg-[var(--quiet)]" />
                     Tail preview
                   </div>
                   <div className="font-mono text-[11px] text-[var(--quiet)]">Idle</div>

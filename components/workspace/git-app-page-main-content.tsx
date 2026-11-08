@@ -216,7 +216,9 @@ function ConfigurationField({
     <div
       className={cn(
         'rounded-[8px] border bg-[var(--surface)] p-3 transition-[border-color,box-shadow]',
-        changed ? 'border-orange-200 shadow-[0_0_0_3px_rgb(244_129_32_/_0.07)]' : 'border-border/70'
+        changed
+          ? 'border-[var(--orange)]/25 shadow-[0_0_0_3px_rgb(244_129_32_/_0.07)]'
+          : 'border-border/70'
       )}
     >
       <div className="mb-2.5 flex min-h-8 items-start justify-between gap-3">
@@ -754,7 +756,7 @@ export function GitAppPageMainContent({
     <WorkspaceDialog onCloseAction={onCloseAction} title={deployment.appName} variant="drawer">
       <header className="flex min-h-[58px] shrink-0 items-center justify-between gap-3 border-b border-[var(--hairline)] px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+          <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]">
             <Package aria-hidden="true" className="size-4" />
           </span>
           <div className="min-w-0">
@@ -1129,7 +1131,7 @@ export function GitAppPageMainContent({
 
             <section className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-3">
               <div className="mb-3 flex items-start gap-2.5">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-[6px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-[6px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]">
                   <GitBranch aria-hidden="true" className="size-3.5" />
                 </span>
                 <div>
@@ -1189,7 +1191,7 @@ export function GitAppPageMainContent({
               </div>
             </section>
 
-            <section className="flex items-center justify-between gap-4 rounded-[8px] border border-red-200 bg-red-50/60 p-3">
+            <section className="flex items-center justify-between gap-4 rounded-[8px] border border-[var(--red)]/20 bg-[var(--red-soft)] p-3">
               <div>
                 <h3 className="text-[12px] font-semibold">Remove deployment</h3>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -1352,7 +1354,7 @@ export function GitAppPageMainContent({
 
             <section className="rounded-[8px] border border-[var(--hairline)] bg-white p-3">
               <div className="flex items-start gap-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] border border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]">
                   <FileUp aria-hidden="true" className="size-4" />
                 </span>
                 <div className="min-w-0 flex-1">

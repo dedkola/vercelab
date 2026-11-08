@@ -11,6 +11,7 @@ import {
 } from '@phosphor-icons/react';
 
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
+import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ContainerListEntry } from '@/components/workspace-shell';
@@ -20,6 +21,7 @@ export type ContainerStatusFilter = 'all' | 'running' | 'attention';
 
 type ContainersInventoryContentProps = {
   containers: ContainerListEntry[];
+  createFooter?: ReactNode;
   createModeLabel: string;
   createPanel: ReactNode;
   isCreatePanelOpen: boolean;
@@ -37,10 +39,10 @@ type ContainersInventoryContentProps = {
 };
 
 const CONTAINER_TONES = [
-  'border-blue-200 bg-[var(--blue-soft)] text-[var(--blue)]',
-  'border-orange-200 bg-[var(--orange-soft)] text-[var(--orange)]',
-  'border-violet-200 bg-violet-50 text-[var(--purple)]',
-  'border-emerald-200 bg-[var(--green-soft)] text-[var(--green)]',
+  'border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]',
+  'border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]',
+  'border-[var(--purple)]/20 bg-[var(--purple-soft)] text-[var(--purple)]',
+  'border-[var(--green)]/20 bg-[var(--green-soft)] text-[var(--green)]',
 ];
 
 function getContainerInitials(name: string) {
@@ -124,34 +126,9 @@ function formatBytesPerSecond(value: number | null | undefined) {
   return `${scaledValue >= 10 || unitIndex === 0 ? scaledValue.toFixed(0) : scaledValue.toFixed(1)} ${units[unitIndex]}`;
 }
 
-function FilterButton({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      aria-pressed={active}
-      className={cn(
-        'h-7 rounded-[5px] px-2.5 text-[11px] font-medium transition-colors',
-        active
-          ? 'bg-white text-foreground shadow-[0_1px_2px_rgb(16_24_40_/_0.08)]'
-          : 'text-[var(--quiet)] hover:text-foreground'
-      )}
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </button>
-  );
-}
-
 export function ContainersInventoryContent({
   containers,
+  createFooter,
   createModeLabel,
   createPanel,
   isCreatePanelOpen,
@@ -184,7 +161,7 @@ export function ContainersInventoryContent({
 
       <section
         aria-labelledby="create-container-title"
-        className="relative grid min-h-20 grid-cols-[minmax(220px,1fr)_auto] items-center gap-5 overflow-hidden rounded-[10px] border border-blue-200 bg-white px-4 py-3 shadow-[var(--shadow)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--blue)] max-[720px]:grid-cols-1 max-[720px]:gap-3 max-[640px]:px-3"
+        className="relative grid min-h-20 grid-cols-[minmax(220px,1fr)_auto] items-center gap-5 overflow-hidden rounded-[10px] border border-[var(--blue)]/20 bg-white px-4 py-3 shadow-[var(--shadow)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--blue)] max-[720px]:grid-cols-1 max-[720px]:gap-3 max-[640px]:px-3"
       >
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-[var(--blue-soft)] text-[var(--blue)]">
@@ -210,9 +187,10 @@ export function ContainersInventoryContent({
             Compose stack
           </Button>
           <Button
-            className="h-9 rounded-[7px] border-[var(--blue)] bg-[var(--blue)] px-3 text-[12px] text-white shadow-none hover:bg-[#0d55bc]"
+            className="h-9 rounded-[7px] px-3 text-[12px] shadow-none"
             onClick={onOpenImageCreateAction}
             type="button"
+            variant="primary"
           >
             Review image
             <ChevronRight aria-hidden="true" className="size-3.5" />
@@ -249,30 +227,17 @@ export function ContainersInventoryContent({
               />
             </div>
           </div>
-          <div
-            aria-label="Filter containers"
-            className="grid grid-flow-col rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-0.5 max-[640px]:col-start-2 max-[640px]:row-start-2"
-            role="group"
-          >
-            <FilterButton
-              active={statusFilter === 'all'}
-              onClick={() => onStatusFilterChangeAction('all')}
-            >
-              All
-            </FilterButton>
-            <FilterButton
-              active={statusFilter === 'running'}
-              onClick={() => onStatusFilterChangeAction('running')}
-            >
-              Running
-            </FilterButton>
-            <FilterButton
-              active={statusFilter === 'attention'}
-              onClick={() => onStatusFilterChangeAction('attention')}
-            >
-              Attention
-            </FilterButton>
-          </div>
+          <SegmentedControl
+            ariaLabel="Filter containers"
+            className="max-[640px]:col-start-2 max-[640px]:row-start-2"
+            onChange={onStatusFilterChangeAction}
+            options={[
+              { label: 'All', value: 'all' },
+              { label: 'Running', value: 'running' },
+              { label: 'Attention', value: 'attention' },
+            ]}
+            value={statusFilter}
+          />
         </header>
 
         <div className="overflow-x-auto">
@@ -407,7 +372,7 @@ export function ContainersInventoryContent({
                     </td>
                     <td className="px-2 py-1.5 text-right">
                       <Button
-                        className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-blue-200 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
+                        className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
                         onClick={(event) => {
                           event.stopPropagation();
                           onContainerSelectAction(container.display.id);
@@ -439,7 +404,7 @@ export function ContainersInventoryContent({
           <section className="min-w-0">
             <header className="flex min-h-[54px] items-center justify-between gap-4 border-b border-[var(--hairline)] px-4">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-blue-200 bg-[var(--blue-soft)] text-[var(--blue)]">
+                <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]">
                   <Box aria-hidden="true" className="size-4" />
                 </span>
                 <div className="min-w-0">
@@ -464,6 +429,14 @@ export function ContainersInventoryContent({
               </Button>
             </header>
             <div className="p-4">{createPanel}</div>
+            {createFooter ? (
+              <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--hairline)] bg-[var(--surface-subtle)] px-4 py-3">
+                <Button onClick={onCloseCreatePanelAction} type="button" variant="secondary">
+                  Cancel
+                </Button>
+                {createFooter}
+              </footer>
+            ) : null}
           </section>
         </WorkspaceDialog>
       ) : null}

@@ -7,6 +7,7 @@ import {
   ContainersInventoryContent,
   type ContainerStatusFilter,
 } from '@/components/workspace/containers-inventory-content';
+import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -694,24 +695,15 @@ export function ContainersShell({
 
   const createPanel = (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Button
-          onClick={() => setCreateMode('image')}
-          size="xs"
-          type="button"
-          variant={createMode === 'image' ? 'default' : 'secondary'}
-        >
-          Image
-        </Button>
-        <Button
-          onClick={() => setCreateMode('compose')}
-          size="xs"
-          type="button"
-          variant={createMode === 'compose' ? 'default' : 'secondary'}
-        >
-          Compose
-        </Button>
-      </div>
+      <SegmentedControl
+        ariaLabel="Creation mode"
+        onChange={setCreateMode}
+        options={[
+          { label: 'Image', value: 'image' },
+          { label: 'Compose', value: 'compose' },
+        ]}
+        value={createMode}
+      />
 
       {createMode === 'image' ? (
         <div className="space-y-2.5">
@@ -825,12 +817,18 @@ export function ContainersShell({
       ) : createSuccess ? (
         <WorkspaceNotice tone="success">{createSuccess}</WorkspaceNotice>
       ) : null}
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button disabled={createPending} onClick={handleCreateContainer} size="xs" type="button">
-          {createPending ? 'Creating...' : 'Create'}
-        </Button>
-      </div>
     </div>
+  );
+
+  const createFooter = (
+    <Button
+      disabled={createPending}
+      onClick={handleCreateContainer}
+      type="button"
+      variant="primary"
+    >
+      {createPending ? 'Creating...' : 'Create container'}
+    </Button>
   );
 
   const liveRailLogs =
@@ -850,6 +848,7 @@ export function ContainersShell({
       <main className="min-w-0 flex-1 overflow-auto">
         <ContainersInventoryContent
           containers={filteredContainers}
+          createFooter={createFooter}
           createModeLabel={createMode === 'image' ? 'Image launch' : 'Compose stack'}
           createPanel={createPanel}
           isCreatePanelOpen={isCreatePanelOpen}

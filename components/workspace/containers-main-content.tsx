@@ -16,6 +16,7 @@ import {
 import { WorkspaceTabs } from '@/components/workspace/workspace-tabs';
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
+import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,9 +120,9 @@ function getLogDotClassName(level: LogLine['level']) {
     case 'success':
       return 'bg-[var(--green)]';
     case 'warning':
-      return 'bg-amber-400';
+      return 'bg-[var(--orange)]';
     case 'info':
-      return 'bg-slate-400';
+      return 'bg-[var(--quiet)]';
   }
 }
 
@@ -401,7 +402,7 @@ export function ContainersMainContent({
     >
       <header className="flex min-h-[58px] shrink-0 items-center justify-between gap-3 border-b border-[var(--hairline)] px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-blue-200 bg-[var(--blue-soft)] text-[var(--blue)]">
+          <span className="grid size-[30px] shrink-0 place-items-center rounded-[7px] border border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]">
             <Box aria-hidden="true" className="size-4" />
           </span>
           <div className="min-w-0">
@@ -630,7 +631,7 @@ export function ContainersMainContent({
             </ConfigurationField>
 
             {inventoryMeta.kind === 'system' ? (
-              <section className="rounded-[8px] border border-orange-200 bg-[var(--orange-soft)] px-3 py-3 text-[11px] leading-5 text-orange-900">
+              <section className="rounded-[8px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] px-3 py-3 text-[11px] leading-5 text-[var(--warning-ink)]">
                 Protected system containers can be relabeled and restarted. Runtime configuration
                 stays locked on this page.
               </section>
@@ -767,7 +768,7 @@ export function ContainersMainContent({
             ) : null}
 
             {inventoryMeta.kind === 'system' ? (
-              <section className="rounded-[8px] border border-orange-200 bg-[var(--orange-soft)] px-3 py-3 text-[11px] leading-5 text-orange-900">
+              <section className="rounded-[8px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] px-3 py-3 text-[11px] leading-5 text-[var(--warning-ink)]">
                 Environment editing is locked for protected system containers.
               </section>
             ) : (
@@ -795,22 +796,16 @@ export function ContainersMainContent({
                 </Badge>
               </div>
               <div className="mt-3 flex gap-1.5">
-                {(['live', 'events', 'alerts'] as const).map((view) => (
-                  <button
-                    aria-pressed={activeLogView === view}
-                    className={cn(
-                      'h-7 rounded-[6px] border px-2.5 text-[11px] font-medium transition-colors',
-                      activeLogView === view
-                        ? 'border-blue-200 bg-[var(--blue-soft)] text-[var(--blue)]'
-                        : 'border-[var(--hairline)] bg-white text-[var(--quiet)] hover:text-foreground'
-                    )}
-                    key={view}
-                    onClick={() => onLogViewChangeAction(view)}
-                    type="button"
-                  >
-                    {view.charAt(0).toUpperCase() + view.slice(1)}
-                  </button>
-                ))}
+                <SegmentedControl
+                  ariaLabel="Log view"
+                  onChange={onLogViewChangeAction}
+                  options={[
+                    { label: 'Live', value: 'live' },
+                    { label: 'Events', value: 'events' },
+                    { label: 'Alerts', value: 'alerts' },
+                  ]}
+                  value={activeLogView}
+                />
               </div>
             </section>
 
