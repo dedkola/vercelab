@@ -120,6 +120,7 @@ export function DevDeploymentsContent({
                   {project.autoDeploy ? 'Auto deploy' : 'Manual'}
                 </Badge>
                 <Badge variant="secondary">{project.branch}</Badge>
+                {project.autoDeployPullRequests ? <Badge variant="info">PR previews</Badge> : null}
               </div>
               <p className="mt-1 truncate font-mono text-[10px] text-[var(--quiet)]">
                 <a
@@ -299,6 +300,17 @@ export function DevDeploymentsContent({
                         >
                           {deployment.shortSha}
                         </Button>
+                        {deployment.pullRequestNumber ? (
+                          <a
+                            className="shrink-0 rounded-[4px] border border-[var(--hairline)] px-1.5 py-0.5 font-mono text-[9px] font-medium text-[var(--quiet)] transition-colors hover:border-[var(--blue)] hover:text-[var(--blue)]"
+                            href={`https://github.com/${project.repositoryOwner}/${project.repositoryName}/pull/${deployment.pullRequestNumber}`}
+                            rel="noopener noreferrer"
+                            target="_blank"
+                            title={deployment.pullRequestTitle ?? undefined}
+                          >
+                            PR #{deployment.pullRequestNumber}
+                          </a>
+                        ) : null}
                         <p
                           className="min-w-0 truncate text-[12px] font-medium"
                           title={deployment.commitMessage ?? undefined}
@@ -307,6 +319,12 @@ export function DevDeploymentsContent({
                         </p>
                       </div>
                       <p className="mt-1 truncate text-[10px] text-[var(--quiet)]">
+                        {deployment.pullRequestNumber ? (
+                          <>
+                            <span className="font-mono">{deployment.branch}</span>
+                            {' · '}
+                          </>
+                        ) : null}
                         {deployment.commitAuthor ?? 'Unknown author'}
                         {' · '}
                         <span title={formatDevDateTime(deployment.committedAt)}>

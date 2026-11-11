@@ -23,6 +23,7 @@ type DevProjectRow = {
   env_variables: string | null;
   build_args: string | null;
   auto_deploy: boolean;
+  auto_deploy_pull_requests: boolean;
   retention_limit: number;
   encrypted_webhook_secret: string | null;
   last_seen_sha: string | null;
@@ -41,6 +42,8 @@ type DevDeploymentRow = {
   commit_author: string | null;
   committed_at: string | null;
   commit_url: string | null;
+  pull_request_number: number | null;
+  pull_request_title: string | null;
   branch: string;
   status: DevDeploymentStatus;
   container_id: string | null;
@@ -65,6 +68,7 @@ export type CreateDevProjectRecordInput = {
   appName: string;
   appSlug: string;
   autoDeploy: boolean;
+  autoDeployPullRequests: boolean;
   branch: string;
   buildArgs: string | null;
   buildContext: string;
@@ -95,6 +99,8 @@ export type CreateDevDeploymentRecordInput = {
   imageTag: string;
   port: number;
   projectId: string;
+  pullRequestNumber: number | null;
+  pullRequestTitle: string | null;
   shortSha: string;
   subdomain: string;
 };
@@ -103,6 +109,7 @@ type DevProjectUpdate = Partial<{
   appName: string;
   appSlug: string;
   autoDeploy: boolean;
+  autoDeployPullRequests: boolean;
   branch: string;
   buildArgs: string | null;
   buildContext: string;
@@ -151,6 +158,7 @@ function mapDevProject(row: DevProjectRow): DevProject {
     envVariables: row.env_variables,
     buildArgs: row.build_args,
     autoDeploy: row.auto_deploy,
+    autoDeployPullRequests: row.auto_deploy_pull_requests,
     retentionLimit: row.retention_limit,
     lastSeenSha: row.last_seen_sha,
     lastPolledAt: row.last_polled_at,
@@ -170,6 +178,8 @@ function mapDevDeployment(row: DevDeploymentRow): DevDeployment {
     commitAuthor: row.commit_author,
     committedAt: row.committed_at,
     commitUrl: row.commit_url,
+    pullRequestNumber: row.pull_request_number,
+    pullRequestTitle: row.pull_request_title,
     branch: row.branch,
     status: row.status,
     containerId: row.container_id,
@@ -261,6 +271,7 @@ export async function createDevProjectRecord(
         env_variables,
         build_args,
         auto_deploy,
+        auto_deploy_pull_requests,
         retention_limit,
         encrypted_webhook_secret,
         last_seen_sha,
@@ -270,7 +281,8 @@ export async function createDevProjectRecord(
         updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+        $21
       )
       RETURNING *
     `,
@@ -288,6 +300,7 @@ export async function createDevProjectRecord(
       input.envVariables,
       input.buildArgs,
       input.autoDeploy,
+      input.autoDeployPullRequests,
       input.retentionLimit,
       input.encryptedWebhookSecret,
       input.lastSeenSha,
@@ -312,6 +325,7 @@ export async function updateDevProjectRecord(projectId: string, update: DevProje
     appName: 'app_name',
     appSlug: 'app_slug',
     autoDeploy: 'auto_deploy',
+    autoDeployPullRequests: 'auto_deploy_pull_requests',
     branch: 'branch',
     buildArgs: 'build_args',
     buildContext: 'build_context',
@@ -409,6 +423,8 @@ export async function createDevDeploymentRecord(
         commit_author,
         committed_at,
         commit_url,
+        pull_request_number,
+        pull_request_title,
         branch,
         status,
         container_id,
@@ -430,7 +446,7 @@ export async function createDevDeploymentRecord(
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26
+        $21, $22, $23, $24, $25, $26, $27, $28
       )
       ON CONFLICT (project_id, commit_sha) DO NOTHING
       RETURNING *
@@ -444,6 +460,8 @@ export async function createDevDeploymentRecord(
       input.commitAuthor,
       input.committedAt,
       input.commitUrl,
+      input.pullRequestNumber,
+      input.pullRequestTitle,
       input.branch,
       'queued',
       null,

@@ -27,6 +27,14 @@ export type GitHubRepositoryReference = {
   webUrl: string;
 };
 
+export type GitHubPullRequest = {
+  number: number;
+  title: string;
+  headSha: string;
+  headRef: string;
+  url: string;
+};
+
 type GitHubRepositoryResponse = {
   id: number;
   name: string;
@@ -51,6 +59,16 @@ type GitHubCommitResponse = {
       date?: string | null;
       name?: string | null;
     } | null;
+  };
+};
+
+type GitHubPullRequestResponse = {
+  number: number;
+  title: string;
+  html_url: string;
+  head: {
+    sha: string;
+    ref: string;
   };
 };
 
@@ -268,4 +286,49 @@ export async function getGitHubCommit(
     sha: commit.sha,
     url: commit.html_url,
   };
+}
+
+export async function listGitHubPullRequests(
+  token: string,
+  owner: string,
+  repo: string,
+  state: 'open' | 'closed' | 'all' = 'open'
+): Promise<GitHubPullRequest[]> {
+  const pullRequests: GitHubPullRequest[] = [];
+
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const response = await fetch(
+      `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls?state=${state}&sort=updated&direction=desc&per_page=${PAGE_SIZE}&page=${page}`,
+      {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${token}`,
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        cache: 'no-store',
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(getGitHubErrorMessage(response.status));
+    }
+
+    const pagePullRequests = (await response.json()) as GitHubPullRequestResponse[];
+
+    pullRequests.push(
+      ...pagePullRequests.map((pullRequest) => ({
+        headRef: pullRequest.head.ref,
+        headSha: pullRequest.head.sha,
+        number: pullRequest.number,
+        title: pullRequest.title,
+        url: pullRequest.html_url,
+      }))
+    );
+
+    if (pagePullRequests.length < PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return pullRequests;
 }

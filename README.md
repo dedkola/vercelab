@@ -245,7 +245,7 @@ Workflow:
 1. Add the GitHub token in the Vercelab settings popover if it is not already configured.
 2. Open **Dev** and select **Connect repository**.
 3. Choose the repository, branch, preview URL prefix, Dockerfile path, build context, container port, runtime environment, and optional build arguments.
-4. Enable automatic previews and optionally build the current HEAD immediately.
+4. Enable automatic previews and optionally build the current HEAD immediately. Enable **Auto-deploy open pull requests** to keep a preview for every open pull request as well.
 5. Push a commit to the monitored branch. Vercelab detects it by polling every 60 seconds, or instantly through an optional signed GitHub webhook.
 6. Open the generated URL from the Dev page. Every previous preview remains available.
 
@@ -268,6 +268,16 @@ Each preview records its commit SHA, message, author, commit date, build status,
 
 Preview builds use a root or subdirectory Dockerfile with a configurable build context. Compose-only repositories are not supported for previews yet; production deployments still support both Dockerfile and compose projects.
 
+### Pull request previews
+
+Enable **Auto-deploy open pull requests** on a Dev project and the worker keeps a local Docker preview for every open pull request in that repository. Each poll and each **Sync now**:
+
+- queues a build for every open pull request whose head commit has not been built yet, and rebuilds when the pull request receives new commits;
+- restarts a pull request preview that was stopped while the pull request is still open;
+- stops the preview once its pull request is closed.
+
+Pull request builds clone the monitored branch and then fetch `refs/pull/<number>/head`, so pull requests from forks work as long as the configured GitHub token can read the base repository. Builds, containers, preview URLs, logs, and lifecycle actions are identical to branch previews; the Dev list and preview drawer show a `PR #<number>` badge that links back to GitHub. Projects can enable pull request previews with or without branch auto-deploy.
+
 ### Commit detection
 
 - **Polling** is enabled by default and works on private or LAN-only hosts. The worker checks each auto-deploy project every 60 seconds and queues new commits it has not seen before.
@@ -280,7 +290,7 @@ Preview images are tagged `vercelab-dev-<prefix>:<full-sha>` and containers are 
 
 - Builds run through a persistent PostgreSQL-backed queue, one at a time.
 - A control-plane restart marks interrupted builds as failed; queued builds resume automatically.
-- Retention is configured per project. `0` keeps every preview forever, while a positive value removes the oldest settled previews after each successful build.
+- Retention is configured per project. `0` keeps every preview forever, while a positive value removes the oldest settled previews after each successful build. Running pull request previews are exempt so an open pull request keeps its preview; previews for closed pull requests are stopped first and then age out normally.
 - Preview workspaces are temporary and removed after each build. Images, containers, and logs remain until the preview is deleted or retention removes it.
 - Managed state lives in `dev_projects` and `dev_deployments` in PostgreSQL. Logs live under `VERCELAB_LOGS_DIR/dev`, and temporary clones live under `VERCELAB_APPS_DIR/dev`.
 

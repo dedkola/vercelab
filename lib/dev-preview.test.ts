@@ -59,6 +59,8 @@ function createDeployment(overrides: Partial<DevDeployment>): DevDeployment {
     buildFinishedAt: null,
     deployedAt: null,
     ...overrides,
+    pullRequestNumber: overrides.pullRequestNumber ?? null,
+    pullRequestTitle: overrides.pullRequestTitle ?? null,
   };
 }
 
@@ -151,6 +153,29 @@ describe('dev preview helpers', () => {
 
     expect(selectRetentionCandidates(deployments, 0)).toEqual([]);
     expect(selectRetentionCandidates(deployments, 3).map((deployment) => deployment.id)).toEqual([
+      'a',
+    ]);
+  });
+
+  it('keeps running pull request previews while retiring closed ones', () => {
+    const deployments = [
+      createDeployment({
+        id: 'closed',
+        createdAt: '2026-11-07T08:00:00.000Z',
+        pullRequestNumber: 11,
+        status: 'stopped',
+      }),
+      createDeployment({
+        id: 'open-pr',
+        createdAt: '2026-11-07T09:00:00.000Z',
+        pullRequestNumber: 12,
+      }),
+      createDeployment({ id: 'a', createdAt: '2026-11-07T10:00:00.000Z' }),
+      createDeployment({ id: 'b', createdAt: '2026-11-07T11:00:00.000Z' }),
+    ];
+
+    expect(selectRetentionCandidates(deployments, 1).map((deployment) => deployment.id)).toEqual([
+      'closed',
       'a',
     ]);
   });

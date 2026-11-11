@@ -141,9 +141,12 @@ export function selectRetentionCandidates(deployments: DevDeployment[], retentio
   const settled = deployments
     .filter((deployment) => deployment.status !== 'queued' && deployment.status !== 'building')
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
-  const excess = deployments.length - retentionLimit;
+  const removable = settled.filter(
+    (deployment) => !(deployment.pullRequestNumber && deployment.status === 'running')
+  );
+  const excess = deployments.length - retentionLimit - (settled.length - removable.length);
 
-  return settled.slice(0, Math.max(0, excess));
+  return removable.slice(0, Math.max(0, excess));
 }
 
 export function parseDevKeyValueLines(rawValue: string | null | undefined): DevKeyValueEntry[] {

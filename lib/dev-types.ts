@@ -25,6 +25,7 @@ export type DevProject = {
   envVariables: string | null;
   buildArgs: string | null;
   autoDeploy: boolean;
+  autoDeployPullRequests: boolean;
   retentionLimit: number;
   lastSeenSha: string | null;
   lastPolledAt: string | null;
@@ -46,6 +47,8 @@ export type DevDeployment = {
   commitAuthor: string | null;
   committedAt: string | null;
   commitUrl: string | null;
+  pullRequestNumber: number | null;
+  pullRequestTitle: string | null;
   branch: string;
   status: DevDeploymentStatus;
   containerId: string | null;

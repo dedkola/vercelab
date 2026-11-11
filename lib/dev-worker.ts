@@ -145,7 +145,7 @@ async function pollAllDevProjects() {
     const now = Date.now();
 
     for (const project of projects) {
-      if (!project.autoDeploy) {
+      if (!project.autoDeploy && !project.autoDeployPullRequests) {
         continue;
       }
 
@@ -161,6 +161,12 @@ async function pollAllDevProjects() {
 
         if (result.enqueued > 0) {
           console.info(`[dev] Queued ${result.enqueued} preview build(s) for ${project.appName}.`);
+        }
+
+        if (result.pullRequests.enqueued > 0) {
+          console.info(
+            `[dev] Queued ${result.pullRequests.enqueued} pull request preview(s) for ${project.appName}.`
+          );
         }
       } catch (error) {
         const message = getErrorMessage(error, 'Unable to poll GitHub for new commits.');
