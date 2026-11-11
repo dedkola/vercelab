@@ -801,6 +801,147 @@ start_stack() {
   )
 }
 
+extract_postgres_url_host() {
+  local authority="${1#*://}"
+
+  authority="${authority%%/*}"
+  authority="${authority##*@}"
+  authority="${authority%%:*}"
+  printf '%s' "$authority"
+}
+
+resolve_postgres_container_ip() {
+  # Password auth only applies to non-loopback addresses (the image trusts
+  # 127.0.0.1), so the credential probe targets the container's bridge IP.
+  run_postgres_compose sh -lc 'getent hosts "$(hostname)" 2>/dev/null || true' \
+    | tr -d '\r' \
+    | awk '{print $1}' \
+    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+    | head -n 1 || true
+}
+
+build_credential_probe_url() {
+  local url="$1"
+  local container_ip="$2"
+
+  if [[ -z "$container_ip" ]]; then
+    printf '%s' "$url"
+    return 0
+  fi
+
+  sed -E "s#@[^/@]+(:[0-9]+)?/#@${container_ip}:5432/#" <<<"$url"
+}
+
+run_postgres_compose() {
+  (
+    cd "$REPO_ROOT"
+    "${DOCKER_CMD[@]}" compose exec -T postgres "$@"
+  )
+}
+
+wait_for_postgres() {
+  local attempt
+
+  for ((attempt = 1; attempt <= 30; attempt += 1)); do
+    if run_postgres_compose pg_isready -U "$VERCELAB_POSTGRES_USER" -d "$VERCELAB_POSTGRES_DB" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+postgres_url_accepts_credentials() {
+  run_postgres_compose psql "$1" -v ON_ERROR_STOP=1 -tAc 'SELECT 1' >/dev/null 2>&1
+}
+
+run_postgres_admin_sql() {
+  # The official image keeps `local all all trust`, so this works even while the
+  # password in .env is wrong.
+  run_postgres_compose psql -U "$VERCELAB_POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -tAc "$1"
+}
+
+escape_postgres_literal() {
+  local quote="'"
+
+  printf '%s' "${1//$quote/$quote$quote}"
+}
+
+escape_postgres_identifier() {
+  local quote='"'
+
+  printf '%s' "${1//$quote/$quote$quote}"
+}
+
+ensure_postgres_credentials() {
+  local postgres_host=""
+  local container_ip=""
+  local probe_url=""
+  local escaped_user=""
+  local escaped_db_name=""
+  local user_literal=""
+  local db_literal=""
+  local password_literal=""
+
+  postgres_host="$(extract_postgres_url_host "$VERCELAB_POSTGRES_URL")"
+
+  if [[ "$postgres_host" != "vercelab-postgres" && "$postgres_host" != "postgres" ]]; then
+    log "VERCELAB_POSTGRES_URL targets '${postgres_host}', so the bundled Postgres credential check is skipped."
+    return 0
+  fi
+
+  log "Verifying that PostgreSQL accepts the credentials in $ENV_FILE."
+
+  if ! wait_for_postgres; then
+    fail "PostgreSQL did not become ready in time. Inspect it with: docker compose logs postgres"
+  fi
+
+  container_ip="$(resolve_postgres_container_ip)"
+  probe_url="$(build_credential_probe_url "$VERCELAB_POSTGRES_URL" "$container_ip")"
+
+  if postgres_url_accepts_credentials "$probe_url"; then
+    log "PostgreSQL credentials are valid."
+    return 0
+  fi
+
+  log "PostgreSQL rejected the credentials in $ENV_FILE. A reused data directory keeps the password it was initialized with, because POSTGRES_PASSWORD only applies on first init; a missing role or database has the same symptom."
+  log "Reconciling the '${VERCELAB_POSTGRES_USER}' role password with $ENV_FILE."
+
+  escaped_user="$(escape_postgres_identifier "$VERCELAB_POSTGRES_USER")"
+  escaped_db_name="$(escape_postgres_identifier "$VERCELAB_POSTGRES_DB")"
+  user_literal="$(escape_postgres_literal "$VERCELAB_POSTGRES_USER")"
+  db_literal="$(escape_postgres_literal "$VERCELAB_POSTGRES_DB")"
+  password_literal="$(escape_postgres_literal "$VERCELAB_POSTGRES_PASSWORD")"
+
+  if [[ "$(run_postgres_admin_sql "SELECT 1 FROM pg_roles WHERE rolname = '${user_literal}'" 2>&1 || true)" != "1" ]]; then
+    fail "The data directory at $VERCELAB_POSTGRES_DATA_DIR has no '${VERCELAB_POSTGRES_USER}' role, so it was initialized with different superuser credentials. Either point VERCELAB_POSTGRES_USER at the original owner, or move that directory aside and re-run the installer."
+  fi
+
+  if ! run_postgres_admin_sql "ALTER ROLE \"${escaped_user}\" WITH LOGIN PASSWORD '${password_literal}'" >/dev/null; then
+    fail "Could not update the password for role '${VERCELAB_POSTGRES_USER}'. Inspect it with: docker compose exec -T postgres psql -U ${VERCELAB_POSTGRES_USER} -d postgres"
+  fi
+
+  if [[ "$(run_postgres_admin_sql "SELECT 1 FROM pg_database WHERE datname = '${db_literal}'" 2>&1 || true)" != "1" ]]; then
+    if ! run_postgres_admin_sql "CREATE DATABASE \"${escaped_db_name}\" OWNER \"${escaped_user}\"" >/dev/null; then
+      fail "Could not create the '${VERCELAB_POSTGRES_DB}' database."
+    fi
+    log "Created the missing '${VERCELAB_POSTGRES_DB}' database."
+  fi
+
+  if ! postgres_url_accepts_credentials "$probe_url"; then
+    fail "PostgreSQL still rejects VERCELAB_POSTGRES_URL. Make sure VERCELAB_POSTGRES_URL uses the same user and password as VERCELAB_POSTGRES_USER and VERCELAB_POSTGRES_PASSWORD in $ENV_FILE."
+  fi
+
+  log "Restarting the control plane so it reconnects with the reconciled credentials."
+  (
+    cd "$REPO_ROOT"
+    "${DOCKER_CMD[@]}" compose restart control-plane >/dev/null
+  )
+
+  log "PostgreSQL credentials now match $ENV_FILE."
+}
+
 ensure_influx_bootstrap() {
   local generated_token=""
   local influx_host="http://127.0.0.1:8181"
@@ -994,6 +1135,7 @@ main() {
   ensure_certificate
   write_influx_explorer_config
   start_stack
+  ensure_postgres_credentials
   ensure_influx_bootstrap
   print_summary
 }

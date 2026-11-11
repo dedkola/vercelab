@@ -162,6 +162,8 @@ Start infrastructure:
 pnpm run dev:infra
 ```
 
+The command passes `--env-file .env.local` to Docker Compose when that file exists, so Postgres initializes with the same `VERCELAB_POSTGRES_*` credentials the app uses. If you reset the password in `.env.local` but keep `./data/postgres`, the existing cluster keeps its original password; run `rm -rf ./data/postgres` to start over, or reconcile the role manually.
+
 | Service           | URL                       |
 | ----------------- | ------------------------- |
 | App               | `http://localhost:3000`   |
@@ -374,6 +376,7 @@ The installer:
 - auto-generates a reachable default base domain when one is not provided
 - generates a wildcard self-signed certificate for the base domain
 - writes the runtime `.env` file, including derived paths and runtime settings
+- verifies the bundled PostgreSQL credentials after startup and reconciles them with `.env`, so reruns against an existing data directory cannot leave the control plane locked out
 - builds and starts the root Docker and Traefik stack
 
 If you later edit `.env`, rerun `./install.sh` so the stack and wildcard certificate stay aligned with the new domain and paths.
@@ -559,7 +562,7 @@ For an in-place reinstall, keep current data and rerun:
 ./install.sh
 ```
 
-Use that path after editing `.env`, changing the domain, changing storage paths, or pulling a newer version of Vercelab. The installer rebuilds the stack, refreshes the generated `.env`, and regenerates the wildcard certificate when the base domain changes.
+Use that path after editing `.env`, changing the domain, changing storage paths, or pulling a newer version of Vercelab. The installer rebuilds the stack, refreshes the generated `.env`, reconciles the PostgreSQL role password with that file, and regenerates the wildcard certificate when the base domain changes.
 
 For a clean reinstall:
 
@@ -604,6 +607,27 @@ Remove everything above plus host tooling installed by `install.sh` and local re
 Vercelab talks to the host Docker daemon through the Docker socket. Docker build contexts and bind mounts referenced by deployment compose files must therefore exist at the same absolute path on both the host and inside the control-plane container.
 
 The root stack handles this by mounting `VERCELAB_HOST_ROOT` into the container at the exact same absolute path. Keep deployment workspaces, logs, locks, PostgreSQL data, and InfluxDB data under that root.
+
+### PostgreSQL Credentials
+
+PostgreSQL only applies `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` when it initializes an empty data directory. A data directory that already exists under `VERCELAB_POSTGRES_DATA_DIR` keeps its original credentials, even if `install.sh` later writes a new password to `.env`.
+
+To make that safe, `install.sh` verifies the credentials after the stack starts and reconciles them automatically: it detects the mismatch, resets the `VERCELAB_POSTGRES_USER` role password to `VERCELAB_POSTGRES_PASSWORD`, creates `VERCELAB_POSTGRES_DB` when it is missing, and fails with guidance if the data directory belongs to a different superuser. Rerunning `./install.sh` therefore repairs a stack that reports `password authentication failed for user "vercelab"`.
+
+To repair a running stack without rerunning the installer:
+
+```bash
+docker compose exec -T postgres psql -U vercelab -d postgres \
+  -c "ALTER ROLE vercelab WITH LOGIN PASSWORD '$(grep ^VERCELAB_POSTGRES_PASSWORD= .env | cut -d= -f2-)';"
+```
+
+Replacing the password instead of reconciling it requires removing the data directory, which deletes all Vercelab state:
+
+```bash
+docker compose down
+sudo rm -rf /home/<username>/vercelab/data/postgres
+./install.sh
+```
 
 ### Certificates
 

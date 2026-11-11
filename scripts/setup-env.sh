@@ -150,7 +150,7 @@ EOF
 
 printf "\n%b✅  .env.local written to:%b\n   %s\n\n" "$GREEN$BOLD" "$RESET" "$ENV_FILE" >/dev/tty
 printf "Next steps:\n" >/dev/tty
-printf "  1. Start local infra:       %bdocker compose -f docker-compose.dev.yml up -d%b\n" "$BOLD" "$RESET" >/dev/tty
+printf "  1. Start local infra:       %bpnpm run dev:infra%b (reads .env.local)\n" "$BOLD" "$RESET" >/dev/tty
 printf "     (Postgres :5432 · InfluxDB :8181 · Traefik :80 · Dashboard :8088)\n" >/dev/tty
 printf "  2. Install dependencies:    %bpnpm install --frozen-lockfile%b\n" "$BOLD" "$RESET" >/dev/tty
 printf "  3. Start dev server:        %bpnpm run dev%b\n" "$BOLD" "$RESET" >/dev/tty
