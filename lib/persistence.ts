@@ -405,7 +405,14 @@ async function initDatabase() {
     })();
   }
 
-  await initPromise;
+  try {
+    await initPromise;
+  } catch (error) {
+    // A failed first connection (for example a stale password) must not be cached
+    // forever, or the control plane cannot recover without a restart.
+    initPromise = undefined;
+    throw error;
+  }
 }
 
 async function queryRows<T>(
