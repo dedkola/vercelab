@@ -597,7 +597,11 @@ gather_configuration() {
   VERCELAB_POSTGRES_USER="${VERCELAB_POSTGRES_USER:-${existing_postgres_user:-vercelab}}"
   VERCELAB_POSTGRES_PASSWORD="${VERCELAB_POSTGRES_PASSWORD:-${existing_postgres_password:-$(openssl rand -hex 16)}}"
   VERCELAB_POSTGRES_DB="${VERCELAB_POSTGRES_DB:-${existing_postgres_db:-vercelab}}"
-  VERCELAB_POSTGRES_URL="${VERCELAB_POSTGRES_URL:-${existing_postgres_url:-postgres://${VERCELAB_POSTGRES_USER}:${VERCELAB_POSTGRES_PASSWORD}@postgres:5432/${VERCELAB_POSTGRES_DB}}}"
+  # Older installs used the generic "postgres" DNS alias, which is shared by
+  # every container on VERCELAB_PROXY_NETWORK and can resolve to an unrelated
+  # Postgres instance. Move stored URLs to the dedicated vercelab-postgres alias.
+  existing_postgres_url="${existing_postgres_url/@postgres:5432\//@vercelab-postgres:5432\/}"
+  VERCELAB_POSTGRES_URL="${VERCELAB_POSTGRES_URL:-${existing_postgres_url:-postgres://${VERCELAB_POSTGRES_USER}:${VERCELAB_POSTGRES_PASSWORD}@vercelab-postgres:5432/${VERCELAB_POSTGRES_DB}}}"
   VERCELAB_INFLUXDB_URL="${VERCELAB_INFLUXDB_URL:-${existing_influx_url:-http://influxdb:8181}}"
   VERCELAB_INFLUXDB_DATABASE="${VERCELAB_INFLUXDB_DATABASE:-${existing_influx_database:-vercelab_metrics}}"
   VERCELAB_INFLUXDB_TOKEN="${VERCELAB_INFLUXDB_TOKEN:-${existing_influx_token:-}}"
