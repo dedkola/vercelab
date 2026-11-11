@@ -97,6 +97,7 @@ export const createDevProjectSchema = z.object({
   envVariables: optionalMultilineSchema('Environment variables', 12000),
   buildArgs: optionalMultilineSchema('Build arguments', 12000),
   autoDeploy: z.boolean().default(true),
+  autoDeployPullRequests: z.boolean().default(false),
   retentionLimit: z.coerce
     .number()
     .int()
@@ -133,6 +134,7 @@ export const updateDevProjectSchema = z.object({
   envVariables: nullableMultilineSchema('Environment variables', 12000),
   buildArgs: nullableMultilineSchema('Build arguments', 12000),
   autoDeploy: z.boolean().optional(),
+  autoDeployPullRequests: z.boolean().optional(),
   retentionLimit: z.coerce
     .number()
     .int()

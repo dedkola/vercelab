@@ -3,7 +3,13 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 
 import { getAppConfig } from '@/lib/app-config';
-import { applyDevRetention, enqueueDevDeployment, retryDevDeploymentById } from '@/lib/dev-engine';
+import {
+  applyDevRetention,
+  enqueueDevDeployment,
+  retryDevDeploymentById,
+  startDevDeploymentById,
+  stopDevDeploymentById,
+} from '@/lib/dev-engine';
 import {
   createDevProjectRecord,
   getDevProjectByRepositoryAndBranch,
@@ -25,6 +31,7 @@ import { encryptSecret } from '@/lib/crypto';
 import {
   getGitHubCommit,
   listGitHubCommits,
+  listGitHubPullRequests,
   parseGitHubRepositoryReference,
   type GitHubCommit,
 } from '@/lib/github';
@@ -124,6 +131,7 @@ export async function createDevProject(input: CreateDevProjectInput) {
       appName: input.appName,
       appSlug: input.appSlug,
       autoDeploy: input.autoDeploy,
+      autoDeployPullRequests: input.autoDeployPullRequests,
       branch: input.branch,
       buildArgs: input.buildArgs ?? null,
       buildContext: input.buildContext,
@@ -180,6 +188,9 @@ export async function updateDevProject(projectId: string, input: UpdateDevProjec
       ...(input.appName !== undefined ? { appName: input.appName } : {}),
       ...(input.appSlug !== undefined ? { appSlug: input.appSlug } : {}),
       ...(input.autoDeploy !== undefined ? { autoDeploy: input.autoDeploy } : {}),
+      ...(input.autoDeployPullRequests !== undefined
+        ? { autoDeployPullRequests: input.autoDeployPullRequests }
+        : {}),
       ...(input.branch !== undefined ? { branch: input.branch } : {}),
       ...(input.buildArgs !== undefined ? { buildArgs: input.buildArgs } : {}),
       ...(input.buildContext !== undefined ? { buildContext: input.buildContext } : {}),
@@ -269,11 +280,115 @@ export async function deployDevProjectCommit(projectId: string, commitSha?: stri
   };
 }
 
+async function syncDevPullRequests(
+  project: DevProject,
+  repository: DevRepositoryReference,
+  token: string
+): Promise<{ enqueued: number; error: string | null; started: number; stopped: number }> {
+  const openPullRequests = await listGitHubPullRequests(token, repository.owner, repository.name);
+  const openPullRequestNumbers = new Set(openPullRequests.map((pullRequest) => pullRequest.number));
+  const deployments = await listDevDeployments(project.id);
+  const deploymentBySha = new Map(
+    deployments.map((deployment) => [deployment.commitSha, deployment])
+  );
+  let enqueued = 0;
+  let started = 0;
+  const failures: string[] = [];
+
+  for (const pullRequest of openPullRequests) {
+    const commitSha = pullRequest.headSha.trim().toLowerCase();
+    const existing = deploymentBySha.get(commitSha);
+
+    if (!existing) {
+      try {
+        const commit = await getGitHubCommit(token, repository.owner, repository.name, commitSha);
+        const result = await enqueueDevDeployment(project, commit, {
+          branch: pullRequest.headRef,
+          pullRequestNumber: pullRequest.number,
+          pullRequestTitle: pullRequest.title,
+        });
+
+        if (result.created) {
+          deploymentBySha.set(commitSha, result.deployment);
+          enqueued += 1;
+        }
+      } catch (error) {
+        failures.push(
+          `PR #${pullRequest.number}: ${getErrorMessage(error, 'Unable to queue the preview.')}`
+        );
+      }
+
+      continue;
+    }
+
+    if (existing.status === 'stopped') {
+      try {
+        await startDevDeploymentById(existing.id);
+        started += 1;
+      } catch (error) {
+        failures.push(
+          `PR #${pullRequest.number}: ${getErrorMessage(error, 'Unable to start the preview.')}`
+        );
+      }
+    }
+  }
+
+  let stopped = 0;
+
+  for (const deployment of deployments) {
+    if (
+      !deployment.pullRequestNumber ||
+      openPullRequestNumbers.has(deployment.pullRequestNumber) ||
+      deployment.status !== 'running'
+    ) {
+      continue;
+    }
+
+    try {
+      await stopDevDeploymentById(deployment.id);
+      stopped += 1;
+    } catch (error) {
+      failures.push(
+        `PR #${deployment.pullRequestNumber}: ${getErrorMessage(
+          error,
+          'Unable to stop the closed preview.'
+        )}`
+      );
+    }
+  }
+
+  if (failures.length > 0) {
+    console.warn(`[dev] Pull request sync issues for ${project.appName}: ${failures.join('; ')}`);
+  }
+
+  return {
+    enqueued,
+    error: failures.length > 0 ? failures.join('; ') : null,
+    started,
+    stopped,
+  };
+}
+
 export async function syncDevProject(project: DevProject) {
   const repository = getRepositoryReference(project.repositoryUrl);
   const token = getGitHubToken();
   const commits = await listGitHubCommits(token, repository.owner, repository.name, project.branch);
   const polledAt = new Date().toISOString();
+
+  const syncPullRequests = async () => {
+    if (!project.autoDeployPullRequests) {
+      return { enqueued: 0, error: null, started: 0, stopped: 0 };
+    }
+
+    try {
+      return await syncDevPullRequests(project, repository, token);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Unable to sync open pull requests.');
+      console.error(`[dev] Pull request sync failed for ${project.appName}: ${message}`);
+
+      return { enqueued: 0, error: message, started: 0, stopped: 0 };
+    }
+  };
 
   if (commits.length === 0) {
     await updateDevProjectPollState(project.id, {
@@ -285,6 +400,7 @@ export async function syncDevProject(project: DevProject) {
       enqueued: 0,
       headSha: null,
       newCommits: [],
+      pullRequests: await syncPullRequests(),
     };
   }
 
@@ -299,6 +415,7 @@ export async function syncDevProject(project: DevProject) {
       enqueued: 0,
       headSha: commits[0]!.sha,
       newCommits: [],
+      pullRequests: await syncPullRequests(),
     };
   }
 
@@ -331,5 +448,6 @@ export async function syncDevProject(project: DevProject) {
       deploymentId: deployment.id,
       shortSha: deployment.shortSha,
     })),
+    pullRequests: await syncPullRequests(),
   };
 }

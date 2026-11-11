@@ -228,6 +228,17 @@ export function DevDeploymentDetail({
                   ) : null}
                   {getDevStatusLabel(deployment.status)}
                 </Badge>
+                {deployment.pullRequestNumber ? (
+                  <a
+                    className="rounded-[4px] border border-[var(--hairline)] px-1.5 py-0.5 font-mono text-[9px] font-medium text-[var(--quiet)] transition-colors hover:border-[var(--blue)] hover:text-[var(--blue)]"
+                    href={`https://github.com/${project.repositoryOwner}/${project.repositoryName}/pull/${deployment.pullRequestNumber}`}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title={deployment.pullRequestTitle ?? undefined}
+                  >
+                    PR #{deployment.pullRequestNumber}
+                  </a>
+                ) : null}
                 <span className="inline-flex items-center gap-1 text-[10px] text-[var(--quiet)]">
                   <span
                     aria-hidden="true"

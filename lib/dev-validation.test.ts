@@ -32,6 +32,7 @@ describe('dev validation', () => {
       appName: 'BladeVault',
       appSlug: 'blade',
       autoDeploy: true,
+      autoDeployPullRequests: false,
       branch: 'main',
       buildContext: '.',
       deployLatest: true,
@@ -41,6 +42,17 @@ describe('dev validation', () => {
     });
     expect(parsed.envVariables).toBeUndefined();
     expect(parsed.buildArgs).toBeUndefined();
+  });
+
+  it('carries the pull request preview toggle', () => {
+    expect(
+      createDevProjectSchema.parse({ ...validProject, autoDeployPullRequests: true })
+        .autoDeployPullRequests
+    ).toBe(true);
+    expect(
+      updateDevProjectSchema.parse({ autoDeployPullRequests: true }).autoDeployPullRequests
+    ).toBe(true);
+    expect(updateDevProjectSchema.parse({}).autoDeployPullRequests).toBeUndefined();
   });
 
   it('rejects unsafe paths and non-GitHub URLs', () => {

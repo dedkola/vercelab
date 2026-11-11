@@ -387,7 +387,8 @@ async function cloneRepositoryAtCommit(
   token: string | null,
   onChunk: (chunk: string) => void
 ) {
-  logger.writeLine(`Cloning ${project.repositoryUrl} (${deployment.branch})`);
+  const cloneBranch = deployment.pullRequestNumber ? project.branch : deployment.branch;
+  logger.writeLine(`Cloning ${project.repositoryUrl} (${cloneBranch})`);
   await runStreamingCommand(
     'git',
     [
@@ -396,7 +397,7 @@ async function cloneRepositoryAtCommit(
       '1',
       '--single-branch',
       '--branch',
-      deployment.branch,
+      cloneBranch,
       '--no-checkout',
       project.repositoryUrl,
       workspacePath,
@@ -409,12 +410,24 @@ async function cloneRepositoryAtCommit(
   );
 
   logger.writeLine(`Checking out commit ${deployment.commitSha}`);
-  await runStreamingCommand('git', ['fetch', '--depth', '1', 'origin', deployment.commitSha], {
-    cwd: workspacePath,
-    env: buildGitAuthEnv(token),
-    onChunk,
-    timeoutMs: GIT_TIMEOUT_MS,
-  });
+
+  if (deployment.pullRequestNumber) {
+    // Pull request heads (including forks) are always reachable through the base repository.
+    const pullRequestRef = `refs/pull/${deployment.pullRequestNumber}/head`;
+    await runStreamingCommand('git', ['fetch', '--depth', '1', 'origin', pullRequestRef], {
+      cwd: workspacePath,
+      env: buildGitAuthEnv(token),
+      onChunk,
+      timeoutMs: GIT_TIMEOUT_MS,
+    });
+  } else {
+    await runStreamingCommand('git', ['fetch', '--depth', '1', 'origin', deployment.commitSha], {
+      cwd: workspacePath,
+      env: buildGitAuthEnv(token),
+      onChunk,
+      timeoutMs: GIT_TIMEOUT_MS,
+    });
+  }
   await runStreamingCommand('git', ['checkout', '--detach', deployment.commitSha], {
     cwd: workspacePath,
     onChunk,
@@ -431,9 +444,16 @@ function isUniqueViolation(error: unknown) {
   );
 }
 
+type EnqueueDevDeploymentOptions = {
+  branch?: string;
+  pullRequestNumber?: number | null;
+  pullRequestTitle?: string | null;
+};
+
 export async function enqueueDevDeployment(
   project: DevProject,
-  commit: GitHubCommit
+  commit: GitHubCommit,
+  options: EnqueueDevDeploymentOptions = {}
 ): Promise<{ created: boolean; deployment: DevDeployment }> {
   const commitSha = commit.sha.trim().toLowerCase();
 
@@ -465,7 +485,7 @@ export async function enqueueDevDeployment(
 
     try {
       return await createDevDeploymentRecord({
-        branch: project.branch,
+        branch: options.branch ?? project.branch,
         buildArgs: project.buildArgs,
         buildContext: project.buildContext,
         buildLogPath: logPath,
@@ -480,6 +500,8 @@ export async function enqueueDevDeployment(
         imageTag,
         port: project.port,
         projectId: project.id,
+        pullRequestNumber: options.pullRequestNumber ?? null,
+        pullRequestTitle: options.pullRequestTitle ?? null,
         shortSha,
         subdomain,
       });

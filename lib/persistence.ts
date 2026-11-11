@@ -330,6 +330,7 @@ async function initDatabase() {
             env_variables TEXT,
             build_args TEXT,
             auto_deploy BOOLEAN NOT NULL DEFAULT TRUE,
+            auto_deploy_pull_requests BOOLEAN NOT NULL DEFAULT FALSE,
             retention_limit INTEGER NOT NULL DEFAULT 0,
             encrypted_webhook_secret TEXT NOT NULL,
             last_seen_sha TEXT,
@@ -349,6 +350,8 @@ async function initDatabase() {
             commit_author TEXT,
             committed_at TEXT,
             commit_url TEXT,
+            pull_request_number INTEGER,
+            pull_request_title TEXT,
             branch TEXT NOT NULL,
             status TEXT NOT NULL,
             container_id TEXT,
@@ -386,6 +389,15 @@ async function initDatabase() {
         await client.query('ALTER TABLE deployments ADD COLUMN IF NOT EXISTS host_port INTEGER');
         await client.query(
           "ALTER TABLE dev_deployments ADD COLUMN IF NOT EXISTS branch TEXT NOT NULL DEFAULT 'main'"
+        );
+        await client.query(
+          'ALTER TABLE dev_projects ADD COLUMN IF NOT EXISTS auto_deploy_pull_requests BOOLEAN NOT NULL DEFAULT FALSE'
+        );
+        await client.query(
+          'ALTER TABLE dev_deployments ADD COLUMN IF NOT EXISTS pull_request_number INTEGER'
+        );
+        await client.query(
+          'ALTER TABLE dev_deployments ADD COLUMN IF NOT EXISTS pull_request_title TEXT'
         );
       } finally {
         client.release();

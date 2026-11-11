@@ -72,6 +72,9 @@ export function DevProjectDialog({
   const [envVariables, setEnvVariables] = useState(project?.envVariables ?? '');
   const [buildArgs, setBuildArgs] = useState(project?.buildArgs ?? '');
   const [autoDeploy, setAutoDeploy] = useState(project?.autoDeploy ?? true);
+  const [autoDeployPullRequests, setAutoDeployPullRequests] = useState(
+    project?.autoDeployPullRequests ?? false
+  );
   const [retentionLimit, setRetentionLimit] = useState(String(project?.retentionLimit ?? 0));
   const [deployLatest, setDeployLatest] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -321,6 +324,7 @@ export function DevProjectDialog({
               appName: appName.trim(),
               appSlug: appSlug.trim(),
               autoDeploy,
+              autoDeployPullRequests,
               branch: branch.trim(),
               buildArgs,
               buildContext: buildContext.trim(),
@@ -335,6 +339,7 @@ export function DevProjectDialog({
               appName: appName.trim(),
               appSlug: appSlug.trim(),
               autoDeploy,
+              autoDeployPullRequests,
               branch: branch.trim(),
               buildArgs,
               buildContext: buildContext.trim(),
@@ -696,6 +701,16 @@ export function DevProjectDialog({
                   type="checkbox"
                 />
                 Auto-deploy new commits
+              </label>
+
+              <label className="flex items-center gap-2 text-[11px] font-medium">
+                <input
+                  checked={autoDeployPullRequests}
+                  className="size-3.5 accent-[var(--blue)]"
+                  onChange={(event) => setAutoDeployPullRequests(event.target.checked)}
+                  type="checkbox"
+                />
+                Auto-deploy open pull requests
               </label>
 
               {mode === 'create' ? (
