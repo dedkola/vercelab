@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 
-import { WorkspaceShell } from './workspace-shell';
-import { loadWorkspaceShellData } from '@/lib/workspace-shell-data';
+import { GitAppPageShell } from './git-app-page-shell';
+import { getAppConfig } from '@/lib/app-config';
+import { listDeploymentSummaries, type DeploymentSummary } from '@/lib/persistence';
 
 export const metadata: Metadata = {
   title: 'Apps | Vercelab',
@@ -10,18 +11,13 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-type GitAppPageRouteProps = {
-  searchParams?: Promise<{
-    page?: string | string[];
-    range?: string | string[];
-  }>;
-};
+export default async function GitAppPageRoute() {
+  const initialDeployments = await listDeploymentSummaries().catch(() => [] as DeploymentSummary[]);
 
-export default async function GitAppPageRoute({ searchParams }: GitAppPageRouteProps) {
-  const pageData = await loadWorkspaceShellData(searchParams, 'git-app-page', {
-    includeMetricsHistory: false,
-    includeMetricsSnapshot: false,
-  });
-
-  return <WorkspaceShell {...pageData} embedded />;
+  return (
+    <GitAppPageShell
+      baseDomain={getAppConfig().baseDomain}
+      initialDeployments={initialDeployments}
+    />
+  );
 }

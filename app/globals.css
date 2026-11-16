@@ -252,43 +252,4 @@
   .vercelab-page {
     padding: 0.75rem;
   }
-  .vercelab-split-layout {
-    flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .vercelab-list-rail {
-    width: 100% !important;
-    min-height: 260px;
-    max-height: 42dvh;
-    border-right: 0;
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .vercelab-detail-pane {
-    width: 100%;
-    min-height: min(560px, 68dvh);
-    flex: none;
-    overflow: visible;
-  }
-
-  .vercelab-resize-handle {
-    display: none;
-  }
-
-  .vercelab-context-rail {
-    width: 100% !important;
-    min-height: 42px;
-    max-height: 58dvh;
-    border-top: 1px solid var(--hairline);
-    border-left: 0;
-  }
-
-  .vercelab-context-rail:has(> button[aria-label='Show logs sidebar']) {
-    height: 42px;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 6px 12px;
-  }
 }

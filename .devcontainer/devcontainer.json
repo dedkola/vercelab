@@ -29,7 +29,6 @@
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
         "ms-azuretools.vscode-docker",
-        "prisma.prisma",
         "Upstash.context7-mcp"
       ],
       "settings": {
@@ -47,7 +46,6 @@
     "VERCELAB_TERMINAL_WS_PORT": "3101",
     "NEXT_PUBLIC_TERMINAL_WS_PORT": "3101",
     "VERCELAB_TERMINAL_TARGET": "container",
-    "VERCELAB_UI_DEV_MODE": "true",
     "VERCELAB_HOST_ROOT": "/workspaces/vercelab",
     "VERCELAB_DATA_ROOT": "/workspaces/vercelab/data",
     "VERCELAB_APPS_DIR": "/workspaces/vercelab/data/apps",

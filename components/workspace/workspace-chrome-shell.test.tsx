@@ -38,10 +38,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-vi.mock('@/components/workspace/host-metrics-sidebar', () => ({
-  HostMetricsSidebar: () => <div data-testid="host-metrics-sidebar" />,
-}));
-
 vi.mock('@/components/workspace/workspace-footer', () => ({
   WorkspaceFooter: () => <div data-testid="workspace-footer" />,
 }));

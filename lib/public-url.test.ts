@@ -18,7 +18,7 @@ describe('publicHttpsUrl', () => {
     process.env[ENV_KEY] = '8443';
 
     expect(publicHttpsUrl('demo.192-168-0-155.sslip.io')).toBe(
-      'https://demo.192-168-0-155.sslip.io:8443',
+      'https://demo.192-168-0-155.sslip.io:8443'
     );
   });
 
@@ -38,8 +38,6 @@ describe('publicHttpsUrl', () => {
   it('does not duplicate a port that is already part of the host', () => {
     process.env[ENV_KEY] = '8443';
 
-    expect(publicHttpsUrl('http://demo.localhost:8443/path')).toBe(
-      'https://demo.localhost:8443',
-    );
+    expect(publicHttpsUrl('http://demo.localhost:8443/path')).toBe('https://demo.localhost:8443');
   });
 });
