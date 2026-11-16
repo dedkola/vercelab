@@ -390,6 +390,9 @@ macOS uses the same one-liner. `install.sh` detects `Darwin`, checks for Xcode C
 - asks once for the storage folder, defaulting to `~/vercelab`, and derives every other path from it
 - generates the wildcard certificate, writes `.env`, and runs `pnpm install --frozen-lockfile` plus the production build smoke test on the host
 - starts the stack with `docker compose -f docker-compose.yml -f docker-compose.macos.yml` and records the install manifest
+- writes `COMPOSE_FILE=docker-compose.yml:docker-compose.macos.yml` into `.env`, so plain `docker compose ps`, `logs`, or `up -d` in the install folder address the same containers the installer created
+
+Traefik routes by hostname, so the dashboard answers on the printed `VERCELAB_ADMIN_HOST` (for example `https://dash.10-10-0-36.sslip.io`) and on `https://localhost` and `https://127.0.0.1`. Hitting port 80 or 443 with any other host returns Traefik's `404 page not found`.
 
 Overrides work the same way:
 

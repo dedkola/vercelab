@@ -1008,6 +1008,10 @@ NODE_ENV=$NODE_ENV
 HOSTNAME=$CONTROL_PLANE_HOSTNAME
 PORT=$PORT
 
+# macOS runs the stack through the override file, so plain `docker compose`
+# commands in this directory address the same containers the installer made.
+COMPOSE_FILE=docker-compose.yml:docker-compose.macos.yml
+
 VERCELAB_BASE_DOMAIN=$VERCELAB_BASE_DOMAIN
 VERCELAB_ADMIN_HOST=$VERCELAB_ADMIN_HOST
 VERCELAB_HOST_LAN_IP=$VERCELAB_HOST_LAN_IP
@@ -1337,8 +1341,15 @@ write_install_manifest() {
 }
 
 print_configuration_review() {
+  local influx_token_display=""
+
   if [[ "$ASSUME_YES" == true || ! -t 0 ]]; then
     return 0
+  fi
+
+  influx_token_display="generated during setup"
+  if [[ -n "$VERCELAB_INFLUXDB_TOKEN" ]]; then
+    influx_token_display="$(mask_secret "$VERCELAB_INFLUXDB_TOKEN")"
   fi
 
   log "Configuration review"
@@ -1370,7 +1381,7 @@ print_configuration_review() {
   printf '%b Security%b\n' "$C_YELLOW" "$C_RESET"
   printf '   VERCELAB_ENCRYPTION_SECRET: %s\n' "$(mask_secret "$VERCELAB_ENCRYPTION_SECRET")"
   printf '   VERCELAB_POSTGRES_PASSWORD: %s\n' "$(mask_secret "$VERCELAB_POSTGRES_PASSWORD")"
-  printf '   VERCELAB_INFLUXDB_TOKEN   : %s\n' "$(mask_secret "$VERCELAB_INFLUXDB_TOKEN")"
+  printf '   VERCELAB_INFLUXDB_TOKEN   : %s\n' "$influx_token_display"
   printf '   VERCELAB_GITHUB_TOKEN     : %s\n' "$(mask_secret "$VERCELAB_GITHUB_TOKEN")"
   printf '%b============================================================%b\n' "$C_CYAN" "$C_RESET"
   printf '\n'
