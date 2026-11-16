@@ -234,6 +234,25 @@ function getWorkloadGlyph(container: ContainerListEntry) {
   return 'ctr';
 }
 
+function buildWorkloadIconUrls(
+  container: ContainerListEntry,
+  deployment: DeploymentSummary | null
+) {
+  const urls: string[] = [];
+
+  if (deployment) {
+    urls.push(
+      `/api/deployments/${encodeURIComponent(deployment.id)}/icon?v=${encodeURIComponent(deployment.updatedAt)}`
+    );
+  }
+
+  if (container.runtime?.id) {
+    urls.push(`/api/workloads/${encodeURIComponent(container.runtime.id)}/logo`);
+  }
+
+  return urls;
+}
+
 function WorkloadIcon({
   container,
   deployment,
@@ -241,21 +260,24 @@ function WorkloadIcon({
   container: ContainerListEntry;
   deployment: DeploymentSummary | null;
 }) {
-  const iconUrl = deployment
-    ? `/api/deployments/${encodeURIComponent(deployment.id)}/icon?v=${encodeURIComponent(deployment.updatedAt)}`
-    : null;
-  const [failedIconUrl, setFailedIconUrl] = useState<string | null>(null);
-  const showRepositoryIcon = iconUrl !== null && failedIconUrl !== iconUrl;
+  const iconUrls = buildWorkloadIconUrls(container, deployment);
+  const [failedIconUrls, setFailedIconUrls] = useState<readonly string[]>([]);
+  const iconUrl = iconUrls.find((url) => !failedIconUrls.includes(url)) ?? null;
 
   return (
     <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-[10px] font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
       {getWorkloadGlyph(container)}
-      {showRepositoryIcon ? (
+      {iconUrl ? (
         <Image
           alt=""
           className="absolute inset-0 size-full bg-white object-contain p-1"
           height={32}
-          onError={() => setFailedIconUrl(iconUrl)}
+          key={iconUrl}
+          onError={() =>
+            setFailedIconUrls((failedUrls) =>
+              failedUrls.includes(iconUrl) ? failedUrls : [...failedUrls, iconUrl]
+            )
+          }
           src={iconUrl}
           unoptimized
           width={32}
