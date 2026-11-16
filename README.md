@@ -1,30 +1,43 @@
-# Vercelab
-
 <div align="center">
 
-**Self-hosted deployment control plane for homelabs.**
-Deploy GitHub projects with Docker, route them through Traefik, and watch your host from one dashboard.
+<img src="app/icon.svg" alt="Vercelab logo" width="72" height="72" />
 
-[![Version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=flat-square&color=111827)](https://github.com/dedkola/vercelab)
+# Vercelab
+
+**A self-hosted deployment control plane for homelabs.**
+
+Deploy GitHub projects with Docker, route them through Traefik,<br />
+and monitor your host from a single dashboard.
+
+[Quick start](#quick-start) · [Features](#features) · [Installation](#installation) · [Configuration](#configuration) · [Development](#local-development)
+
+[![CI](https://github.com/dedkola/vercelab/actions/workflows/ci.yml/badge.svg)](https://github.com/dedkola/vercelab/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=flat-square&color=111827)](https://github.com/dedkola/vercelab/releases)
 [![Node.js](https://img.shields.io/badge/Node.js-24-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-11-F69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
-[![CI](https://github.com/dedkola/vercelab/actions/workflows/ci.yml/badge.svg)](https://github.com/dedkola/vercelab/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
 
-![Vercelab metrics dashboard](public/screenshots/vercelab-dashboard-overview.png)
+![Vercelab overview dashboard](public/screenshots/vercelab-dashboard-overview.png)
 
 </div>
 
+## About
+
 Vercelab turns an Ubuntu server or a Mac with Docker into a compact deployment workspace for Dockerized GitHub projects. From one interface you can deploy repositories, build a preview for every commit, operate any container on the host, open a shell, and follow live host telemetry.
 
-Control-plane state lives in PostgreSQL, metrics go to InfluxDB 3 Core, GitHub tokens are encrypted at rest, and every app is published behind Traefik with a wildcard self-signed certificate.
+It is designed for a single trusted host on a home or lab network:
+
+- **One command to install.** The installer sets up Docker, generates a wildcard certificate, and starts the stack.
+- **No external services.** State lives in PostgreSQL and metrics in InfluxDB 3 Core, both running next to the control plane.
+- **Real URLs for every app.** Each deployment is published behind Traefik on your wildcard domain over HTTPS.
+- **Secrets stay encrypted.** GitHub tokens and webhook secrets are encrypted at rest.
 
 ## Contents
 
 - [Features](#features)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
 - [Quick start](#quick-start)
 - [Using Vercelab](#using-vercelab)
 - [Installation](#installation)
@@ -46,7 +59,20 @@ Control-plane state lives in PostgreSQL, metrics go to InfluxDB 3 Core, GitHub t
 | **Routing**    | Apps join a shared Docker network and are exposed through Traefik host rules on your wildcard domain.         |
 | **Installers** | One command on Ubuntu or macOS, with a manifest-driven uninstaller that removes only what it created.         |
 
-### Architecture
+<table>
+  <tr>
+    <td width="50%"><img src="public/screenshots/vercelab-git-deployments.png" alt="Apps page with GitHub deployments" /></td>
+    <td width="50%"><img src="public/screenshots/vercelab-containers.png" alt="Containers page with the host inventory" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Apps</strong>: deploy and manage GitHub repositories</td>
+    <td align="center"><strong>Containers</strong>: operate every container on the host</td>
+  </tr>
+</table>
+
+## How it works
+
+The control plane is a Next.js application that drives the host Docker daemon through its socket. It clones repositories, builds them with Docker Compose, attaches the resulting containers to a shared proxy network, and lets Traefik publish them on your wildcard domain.
 
 ```mermaid
 flowchart LR
@@ -71,17 +97,35 @@ flowchart LR
 | Runtime  | Docker, Docker Compose, Traefik                                                    |
 | Quality  | Zod, ESLint, Prettier, knip, Vitest                                                |
 
+## Requirements
+
+| Target            | You need                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| **Ubuntu server** | An Ubuntu host with `sudo` access. The installer adds Node.js, pnpm, and Docker Engine `28.x` for you.    |
+| **macOS**         | Xcode Command Line Tools. The installer adds Homebrew, Docker Desktop, Node.js 24, and pnpm when missing. |
+| **Development**   | Node.js 24, pnpm 11.27.1, and Docker with the Compose plugin.                                             |
+| **GitHub**        | A personal access token that can read the repositories you want to deploy.                                |
+| **Domain**        | Optional. Without one, the installer uses `<ip>.sslip.io` on Linux and `localhost` on macOS.              |
+
 ## Quick start
 
-**Install on a server** (Ubuntu or macOS):
+### Install on a server
+
+Run this on Ubuntu or macOS:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
 ```
 
-The script clones the repository to `~/vercelab`, runs an interactive setup wizard, and starts the stack. See [Installation](#installation) for options.
+The script clones the repository to `~/vercelab`, runs an interactive setup wizard, and starts the stack. When it finishes it prints the dashboard URL. From there:
 
-**Run it locally for development** (Node.js 24, pnpm 11.27.1, Docker with Compose):
+1. Open the dashboard URL. Your browser warns about the self-signed certificate until you [trust it](#troubleshooting).
+2. Add a GitHub personal access token from the settings popover in the header.
+3. Open **Apps**, choose a repository and branch, and deploy.
+
+See [Installation](#installation) for custom domains, install locations, and macOS LAN mode.
+
+### Run locally for development
 
 ```bash
 pnpm install --frozen-lockfile
@@ -94,7 +138,15 @@ Then open `http://localhost:3000`. See [Local development](#local-development) f
 
 ## Using Vercelab
 
-Add a GitHub personal access token from the settings popover in the header first. It is encrypted with `VERCELAB_ENCRYPTION_SECRET` and used to list repositories, branches, and commits.
+Vercelab has five pages, all reachable from the header. Add a GitHub personal access token from the settings popover in the header first: it is encrypted with `VERCELAB_ENCRYPTION_SECRET` and used to list repositories, branches, and commits.
+
+| Page                                 | Route           | Purpose                                         |
+| ------------------------------------ | --------------- | ----------------------------------------------- |
+| [Overview](#overview-)               | `/`             | Host telemetry and the workload table.          |
+| [Apps](#apps-git-app-page)           | `/git-app-page` | Deploy and manage GitHub repositories.          |
+| [Dev previews](#dev-previews-dev)    | `/dev`          | Per-commit and per-pull-request preview builds. |
+| [Containers](#containers-containers) | `/containers`   | Inventory and lifecycle of every container.     |
+| [Terminal](#terminal-terminal)       | `/terminal`     | Interactive shell.                              |
 
 ### Overview (`/`)
 
@@ -495,6 +547,8 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, knip, format check, tests,
 
 ## Security
 
+> [!IMPORTANT]
+> Vercelab is built for trusted homelab and LAN networks and has no login of its own. It controls the host Docker daemon, so put it behind your own authentication, VPN, or access controls before exposing it to the internet.
+
 - GitHub tokens and webhook secrets are encrypted at rest with `VERCELAB_ENCRYPTION_SECRET`.
 - Keep `.env`, `.env.local`, and `data/` out of version control (they are gitignored).
-- Vercelab is built for trusted homelab and LAN networks and has no login of its own. Put it behind your own authentication, VPN, or access controls before exposing it to the internet.
