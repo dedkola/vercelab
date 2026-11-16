@@ -39,14 +39,34 @@ if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
     _install_dir="${_install_dir:-$_default_install_dir}"
   fi
 
-  if [[ ${EUID} -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
+  # macOS never needs root for the clone target (it lives in $HOME), and its
+  # install path is handled by install-macos.sh.
+  if [[ "$(uname -s)" != "Darwin" && ${EUID} -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
     _sudo=(sudo)
   fi
 
   if ! command -v git >/dev/null 2>&1; then
     printf '[vercelab] git not found — installing...\n'
-    "${_sudo[@]}" apt-get update -q
-    "${_sudo[@]}" apt-get install -y --no-install-recommends git
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      # Xcode Command Line Tools provide git on macOS; no root package manager here.
+      if ! xcode-select -p >/dev/null 2>&1; then
+        printf '[vercelab] Requesting Xcode Command Line Tools (a system dialog will open)...\n'
+        xcode-select --install >/dev/null 2>&1 || true
+      fi
+      printf '[vercelab] Waiting for git to become available...\n'
+      for _attempt in $(seq 1 60); do
+        command -v git >/dev/null 2>&1 && break
+        sleep 10
+      done
+      if ! command -v git >/dev/null 2>&1 && command -v brew >/dev/null 2>&1; then
+        brew install git
+      fi
+      command -v git >/dev/null 2>&1 \
+        || { printf '[vercelab] ERROR: git is still unavailable. Install git and re-run.\n' >&2; exit 1; }
+    else
+      "${_sudo[@]}" apt-get update -q
+      "${_sudo[@]}" apt-get install -y --no-install-recommends git
+    fi
   fi
 
   if [[ -d "$_install_dir" && ! -d "$_install_dir/.git" ]]; then
@@ -88,6 +108,21 @@ readonly DEFAULT_NODE_ENV="production"
 readonly DEFAULT_HOSTNAME="0.0.0.0"
 readonly DEFAULT_PORT="3000"
 readonly DEFAULT_HOST_ROOT="$(default_vercelab_root)"
+
+# ── Platform dispatch ────────────────────────────────────────────────────────
+# This file stays the single entry point on every platform; each platform has
+# one implementation file that it hands off to. Linux (Ubuntu) continues below.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  readonly MACOS_INSTALLER="$REPO_ROOT/install-macos.sh"
+
+  if [[ ! -f "$MACOS_INSTALLER" ]]; then
+    printf '[vercelab] ERROR: %s is missing from the checkout.\n' "$MACOS_INSTALLER" >&2
+    printf '[vercelab] Re-clone the repository or restore that file.\n' >&2
+    exit 1
+  fi
+
+  exec bash "$MACOS_INSTALLER" "$@"
+fi
 
 CONTROL_PLANE_HOSTNAME=""
 
@@ -243,7 +278,9 @@ ensure_supported_os() {
   # shellcheck disable=SC1091
   . /etc/os-release
 
-  [[ ${ID:-} == "ubuntu" ]] || fail "install.sh currently supports Ubuntu hosts only."
+  if [[ ${ID:-} != "ubuntu" ]]; then
+    fail "install.sh installs on Ubuntu and macOS hosts; detected '${ID:-unknown}'. macOS is dispatched to install-macos.sh automatically."
+  fi
   [[ -n ${VERSION_CODENAME:-} ]] || fail "Ubuntu codename was not detected."
 }
 

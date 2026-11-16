@@ -1,0 +1,66 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Vercelab – macOS override for the production stack
+#
+# Applied on top of docker-compose.yml by install-macos.sh:
+#   docker compose -f docker-compose.yml -f docker-compose.macos.yml up -d --build
+#
+# Differences from the Linux stack:
+#   - The host /proc mount is removed (macOS has no /proc). The control plane
+#     falls back to its own container /proc, which Docker Desktop populates.
+#   - InfluxDB Explorer keeps its SQLite state in a Docker named volume because
+#     Docker Desktop bind mounts cannot be chowned to the image user (uid 1500).
+#     The generated config stays a read-only bind mount, exactly like Linux.
+#
+# Requires Docker Compose >= 2.24 for the `!override` tag.
+# ──────────────────────────────────────────────────────────────────────────────
+name: vercelab
+
+services:
+  control-plane:
+    environment:
+      # Read metrics from the container's own /proc instead of a host /proc.
+      VERCELAB_HOST_PROC_PATH: ${VERCELAB_HOST_PROC_PATH:-/proc}
+    volumes: !override
+      - ${VERCELAB_HOST_ROOT:-/opt/vercelab}:${VERCELAB_HOST_ROOT:-/opt/vercelab}
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+
+  # Gives the Explorer named volume to uid 1500 before the UI starts. Existing
+  # bind-mounted state from an older install is copied once, then ignored.
+  influxdb-explorer-init:
+    image: alpine:3.24.1
+    user: '0:0'
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        set -eu
+
+        migrate_directory() {
+          source_dir="$$1"
+          target_dir="$$2"
+
+          if [ -d "$$source_dir" ] &&
+            [ -n "$$(find "$$source_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ] &&
+            [ -z "$$(find "$$target_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+            cp -a "$$source_dir"/. "$$target_dir"/
+          fi
+        }
+
+        migrate_directory /legacy-db /db
+        chown -R 1500:1500 /db
+    network_mode: none
+    restart: 'no'
+    volumes:
+      - influxdb-explorer-data:/db
+      - ${VERCELAB_INFLUXDB_EXPLORER_DATA_DIR:-/opt/vercelab/data/influxdb-explorer}:/legacy-db:ro
+
+  influxdb-explorer:
+    depends_on:
+      influxdb-explorer-init:
+        condition: service_completed_successfully
+    volumes: !override
+      - influxdb-explorer-data:/db
+      - ${VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR:-/opt/vercelab/data/influxdb-explorer-config}:/app-root/config:ro
+
+volumes:
+  influxdb-explorer-data:
+    name: vercelab-influxdb-explorer-data

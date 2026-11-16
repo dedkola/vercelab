@@ -43,6 +43,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# installer bookkeeping (records what install.sh / install-macos.sh created)
+/.vercelab-install-manifest
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
