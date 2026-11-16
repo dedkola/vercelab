@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { VercelabBrandMark } from '@/components/workspace/vercelab-brand-mark';
 
 export function WorkspacePageState({
   children,
@@ -43,7 +44,7 @@ export function WorkspacePageState({
           href="/"
           className="flex items-center gap-2.5 text-[11px] font-semibold tracking-[0.08em]"
         >
-          <span className="vercelab-brand-mark" aria-hidden="true" />
+          <VercelabBrandMark />
           VERCELAB / LOCAL
         </Link>
       </header>
