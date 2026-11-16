@@ -112,7 +112,7 @@ export function DevProjectSidebar({
         </div>
 
         <Button
-          className="mt-3 h-9 w-full rounded-[7px] border-[var(--blue)] bg-[var(--blue)] text-[12px] text-white shadow-none hover:bg-[#0d55bc]"
+          className="mt-3 h-9 w-full rounded-[7px] border-[var(--blue)] bg-[var(--blue)] text-body text-white shadow-none hover:bg-[#0d55bc]"
           onClick={onConnectAction}
           type="button"
         >
@@ -127,7 +127,7 @@ export function DevProjectSidebar({
           />
           <Input
             aria-label="Search Dev projects"
-            className="h-9 rounded-[7px] bg-white pl-8 text-[12px] shadow-none"
+            className="h-9 rounded-[7px] bg-white pl-8 text-body shadow-none"
             onChange={(event) => onSearchQueryChangeAction(event.target.value)}
             placeholder="Find project or repository"
             value={searchQuery}
@@ -137,7 +137,7 @@ export function DevProjectSidebar({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {filteredProjects.length === 0 ? (
-          <div className="px-2 py-8 text-center text-[11px] leading-5 text-[var(--quiet)]">
+          <div className="px-2 py-8 text-center text-xs leading-5 text-[var(--quiet)]">
             {projects.length === 0
               ? 'No repositories connected yet.'
               : 'No projects match your search.'}
@@ -164,10 +164,10 @@ export function DevProjectSidebar({
                 >
                   <div className="flex min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate text-[12px] font-semibold tracking-tight">
+                      <div className="truncate text-body font-semibold tracking-tight">
                         {project.appName}
                       </div>
-                      <div className="mt-0.5 truncate font-mono text-[10px] text-[var(--quiet)]">
+                      <div className="mt-0.5 truncate font-mono text-2xs text-[var(--quiet)]">
                         {project.repositoryOwner}/{project.repositoryName}
                       </div>
                     </div>
@@ -182,7 +182,7 @@ export function DevProjectSidebar({
                     )}
                   </div>
 
-                  <div className="mt-2 flex min-w-0 items-center gap-2 text-[10px] text-[var(--quiet)]">
+                  <div className="mt-2 flex min-w-0 items-center gap-2 text-2xs text-[var(--quiet)]">
                     <span className="inline-flex min-w-0 items-center gap-1 truncate">
                       <GitBranch aria-hidden="true" className="size-3" />
                       {project.branch}
@@ -205,7 +205,7 @@ export function DevProjectSidebar({
                     ) : null}
                   </div>
 
-                  <div className="mt-1 flex min-w-0 items-center justify-between gap-2 text-[10px] text-[var(--quiet)]">
+                  <div className="mt-1 flex min-w-0 items-center justify-between gap-2 text-2xs text-[var(--quiet)]">
                     <span className="truncate">
                       {latest
                         ? `Updated ${formatDevRelativeTime(latest.updatedAt)}`

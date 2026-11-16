@@ -147,14 +147,14 @@ export function DevDeploymentsContent({
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-[15px] font-semibold tracking-tight">{project.appName}</h2>
+                <h2 className="text-[0.9375rem] font-semibold tracking-tight">{project.appName}</h2>
                 <Badge variant={project.autoDeploy ? 'success' : 'outline'}>
                   {project.autoDeploy ? 'Auto deploy' : 'Manual'}
                 </Badge>
                 <Badge variant="secondary">{project.branch}</Badge>
                 {project.autoDeployPullRequests ? <Badge variant="info">PR previews</Badge> : null}
               </div>
-              <p className="mt-1 truncate font-mono text-[10px] text-[var(--quiet)]">
+              <p className="mt-1 truncate font-mono text-2xs text-[var(--quiet)]">
                 <a
                   className="hover:text-[var(--blue)] hover:underline"
                   href={`https://github.com/${project.repositoryOwner}/${project.repositoryName}`}
@@ -168,7 +168,7 @@ export function DevDeploymentsContent({
                 {' · '}
                 port {project.port}
               </p>
-              <p className="mt-1 text-[10px] text-[var(--quiet)]">
+              <p className="mt-1 text-2xs text-[var(--quiet)]">
                 Last sync {formatDevRelativeTime(project.lastPolledAt)}
                 {project.lastSeenSha ? ` · head ${project.lastSeenSha.slice(0, 7)}` : ''}
                 {' · '}
@@ -238,10 +238,10 @@ export function DevDeploymentsContent({
               className="rounded-[7px] bg-[var(--surface-subtle)] px-2.5 py-1.5"
               key={stat.label}
             >
-              <div className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--quiet)]">
+              <div className="font-mono text-2xs uppercase tracking-[0.06em] text-[var(--quiet)]">
                 {stat.label}
               </div>
-              <div className={cn('text-[14px] font-semibold', stat.tone)}>{stat.value}</div>
+              <div className={cn('text-sm font-semibold', stat.tone)}>{stat.value}</div>
             </div>
           ))}
         </div>
@@ -259,14 +259,14 @@ export function DevDeploymentsContent({
       >
         <header className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-[var(--hairline)] px-3 py-2.5">
           <div>
-            <h2 className="text-[13px] font-semibold" id="dev-deployments-title">
+            <h2 className="text-sm font-semibold" id="dev-deployments-title">
               Preview deployments
             </h2>
-            <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+            <p className="mt-1 font-mono text-2xs text-[var(--quiet)]">
               Every commit gets its own container and URL.
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] text-[var(--quiet)]">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-2xs text-[var(--quiet)]">
             {buildingCount > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <SpinnerGap aria-hidden="true" className="size-3 animate-spin" />
@@ -300,8 +300,8 @@ export function DevDeploymentsContent({
             <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-[var(--blue-soft)] text-[var(--blue)]">
               <GitCommit aria-hidden="true" className="size-5" />
             </div>
-            <h3 className="mt-3 text-[13px] font-semibold">No preview deployments yet</h3>
-            <p className="mx-auto mt-1 max-w-md text-[11px] leading-5 text-[var(--quiet)]">
+            <h3 className="mt-3 text-sm font-semibold">No preview deployments yet</h3>
+            <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-[var(--quiet)]">
               Push a commit to <span className="font-mono">{project.branch}</span> or deploy the
               latest commit now. Each commit produces an isolated container.
             </p>
@@ -326,11 +326,11 @@ export function DevDeploymentsContent({
                   >
                     <X aria-hidden="true" className="size-3.5" />
                   </Button>
-                  <span className="text-[11px] font-semibold">
+                  <span className="text-xs font-semibold">
                     {selectedCount} preview{selectedCount === 1 ? '' : 's'} selected
                   </span>
                   {selectedBuildingCount > 0 ? (
-                    <span className="truncate text-[10px] text-[var(--quiet)]">
+                    <span className="truncate text-2xs text-[var(--quiet)]">
                       · {selectedBuildingCount} still building will be skipped
                     </span>
                   ) : null}
@@ -368,7 +368,7 @@ export function DevDeploymentsContent({
               </div>
             ) : null}
 
-            <div className="hidden grid-cols-[1.25rem_minmax(0,1fr)_9rem_12rem_8.5rem] items-center gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--quiet)] lg:grid">
+            <div className="hidden grid-cols-[1.25rem_minmax(0,1fr)_9rem_12rem_8.5rem] items-center gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2 font-mono text-2xs uppercase tracking-[0.06em] text-[var(--quiet)] lg:grid">
               <SelectionCheckbox
                 ariaLabel="Select all previews"
                 checked={allSelected}
@@ -416,7 +416,7 @@ export function DevDeploymentsContent({
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-2">
                         <Button
-                          className="h-6 rounded-[5px] px-1.5 font-mono text-[10px]"
+                          className="h-6 rounded-[5px] px-1.5 font-mono text-2xs"
                           onClick={() => onSelectDeploymentAction(deployment.id)}
                           size="xs"
                           title="Open preview details"
@@ -427,7 +427,7 @@ export function DevDeploymentsContent({
                         </Button>
                         {deployment.pullRequestNumber ? (
                           <a
-                            className="shrink-0 rounded-[4px] border border-[var(--hairline)] px-1.5 py-0.5 font-mono text-[9px] font-medium text-[var(--quiet)] transition-colors hover:border-[var(--blue)] hover:text-[var(--blue)]"
+                            className="shrink-0 rounded-[4px] border border-[var(--hairline)] px-1.5 py-0.5 font-mono text-2xs font-medium text-[var(--quiet)] transition-colors hover:border-[var(--blue)] hover:text-[var(--blue)]"
                             href={`https://github.com/${project.repositoryOwner}/${project.repositoryName}/pull/${deployment.pullRequestNumber}`}
                             rel="noopener noreferrer"
                             target="_blank"
@@ -437,13 +437,13 @@ export function DevDeploymentsContent({
                           </a>
                         ) : null}
                         <p
-                          className="min-w-0 truncate text-[12px] font-medium"
+                          className="min-w-0 truncate text-body font-medium"
                           title={deployment.commitMessage ?? undefined}
                         >
                           {deployment.commitMessage ?? 'Commit'}
                         </p>
                       </div>
-                      <p className="mt-1 truncate text-[10px] text-[var(--quiet)]">
+                      <p className="mt-1 truncate text-2xs text-[var(--quiet)]">
                         {deployment.pullRequestNumber ? (
                           <>
                             <span className="font-mono">{deployment.branch}</span>
@@ -479,7 +479,7 @@ export function DevDeploymentsContent({
                         {getDevStatusLabel(deployment.status)}
                       </Badge>
                       <span
-                        className="inline-flex min-w-0 items-center gap-1 text-[10px] text-[var(--quiet)]"
+                        className="inline-flex min-w-0 items-center gap-1 text-2xs text-[var(--quiet)]"
                         title={
                           containerState?.statusText ?? getContainerStatusLabel(containerState)
                         }
@@ -501,7 +501,7 @@ export function DevDeploymentsContent({
 
                     <div className="col-span-2 min-w-0 lg:col-span-1">
                       <a
-                        className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[10px] text-[var(--blue)] hover:underline"
+                        className="inline-flex max-w-full items-center gap-1 truncate font-mono text-2xs text-[var(--blue)] hover:underline"
                         href={previewUrl}
                         rel="noopener noreferrer"
                         target="_blank"

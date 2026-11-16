@@ -545,7 +545,7 @@ export function DevShell({ initialState }: DevShellProps) {
         ) : null}
 
         {!state && !stateError ? (
-          <div className="flex min-h-[50dvh] items-center justify-center gap-2 text-[11px] text-[var(--quiet)]">
+          <div className="flex min-h-[50dvh] items-center justify-center gap-2 text-xs text-[var(--quiet)]">
             <SpinnerGap aria-hidden="true" className="size-4 animate-spin" />
             Loading Dev workspace…
           </div>
@@ -585,10 +585,10 @@ export function DevShell({ initialState }: DevShellProps) {
               <div className="flex size-10 items-center justify-center rounded-[9px] bg-[var(--blue-soft)] text-[var(--blue)]">
                 <RocketLaunch aria-hidden="true" className="size-5" />
               </div>
-              <h1 className="mt-3 text-[18px] font-semibold tracking-tight">
+              <h1 className="mt-3 text-lg font-semibold tracking-tight">
                 Commit-based preview deployments
               </h1>
-              <p className="mt-2 max-w-xl text-[12px] leading-6 text-muted-foreground">
+              <p className="mt-2 max-w-xl text-body leading-6 text-muted-foreground">
                 Connect a GitHub repository and Vercelab will build every new commit into its own
                 Docker container. Each preview gets a unique URL, its own logs, and stays online
                 until you remove it.
@@ -604,11 +604,9 @@ export function DevShell({ initialState }: DevShellProps) {
                     className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-3"
                     key={step}
                   >
-                    <div className="font-mono text-[9px] text-[var(--quiet)]">STEP {step}</div>
-                    <div className="mt-1 text-[11px] font-semibold">{title}</div>
-                    <div className="mt-1 text-[10px] leading-4 text-[var(--quiet)]">
-                      {description}
-                    </div>
+                    <div className="font-mono text-2xs text-[var(--quiet)]">STEP {step}</div>
+                    <div className="mt-1 text-xs font-semibold">{title}</div>
+                    <div className="mt-1 text-2xs leading-4 text-[var(--quiet)]">{description}</div>
                   </div>
                 ))}
               </div>
@@ -623,7 +621,7 @@ export function DevShell({ initialState }: DevShellProps) {
                     <RocketLaunch aria-hidden="true" className="size-3.5" />
                     Connect repository
                   </Button>
-                  <span className="inline-flex items-center gap-1 text-[10px] text-[var(--quiet)]">
+                  <span className="inline-flex items-center gap-1 text-2xs text-[var(--quiet)]">
                     <GitBranch aria-hidden="true" className="size-3" />
                     Production deployments stay at their existing URLs.
                   </span>
@@ -697,8 +695,8 @@ export function DevShell({ initialState }: DevShellProps) {
             return (
               <WorkspaceDialog onCloseAction={() => setDeleteTargets(null)} title={heading}>
                 <div className="px-5 py-4">
-                  <h2 className="text-[16px] font-semibold tracking-tight">{heading}</h2>
-                  <p className="mt-2 text-[11px] leading-5 text-[var(--quiet)]">
+                  <h2 className="text-base font-semibold tracking-tight">{heading}</h2>
+                  <p className="mt-2 text-xs leading-5 text-[var(--quiet)]">
                     {release ? (
                       <>
                         This keeps the latest <span className="font-mono">{release.branch}</span>{' '}
@@ -715,7 +713,7 @@ export function DevShell({ initialState }: DevShellProps) {
                   </p>
 
                   {deleteTargets.skipped > 0 ? (
-                    <p className="mt-2 text-[11px] leading-5 text-[var(--warning-ink)]">
+                    <p className="mt-2 text-xs leading-5 text-[var(--warning-ink)]">
                       {deleteTargets.skipped} {release ? '' : 'selected '}preview
                       {deleteTargets.skipped === 1 ? ' is' : 's are'} still building and will be
                       skipped.
@@ -723,7 +721,7 @@ export function DevShell({ initialState }: DevShellProps) {
                   ) : null}
 
                   {targetCount > 1 ? (
-                    <ul className="mt-3 max-h-32 overflow-auto rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-5 text-[var(--quiet)]">
+                    <ul className="mt-3 max-h-32 overflow-auto rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2 font-mono text-2xs leading-5 text-[var(--quiet)]">
                       {deleteTargets.deployments.map((deployment) => (
                         <li className="truncate" key={deployment.id}>
                           {deployment.shortSha} · {deployment.commitMessage ?? deployment.branch}

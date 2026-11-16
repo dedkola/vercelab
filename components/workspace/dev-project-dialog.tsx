@@ -489,12 +489,12 @@ export function DevProjectDialog({
         <header className="flex items-start justify-between gap-4 border-b border-[var(--hairline)] px-5 py-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-[16px] font-semibold tracking-tight">
+              <h2 className="text-base font-semibold tracking-tight">
                 {mode === 'create' ? 'Connect a repository' : project?.appName}
               </h2>
               <Badge variant={autoDeploy ? 'success' : 'outline'}>{publishModeLabel}</Badge>
             </div>
-            <p className="mt-1 text-[11px] leading-5 text-[var(--quiet)]">
+            <p className="mt-1 text-xs leading-5 text-[var(--quiet)]">
               {mode === 'create'
                 ? 'Vercelab will build every commit on the selected branch into its own Docker container.'
                 : 'Build settings apply to future commits. Existing preview containers stay untouched.'}
@@ -530,10 +530,10 @@ export function DevProjectDialog({
 
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--quiet)]">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--quiet)]">
                 Repository
               </h3>
-              <span className="font-mono text-[10px] text-[var(--quiet)]">
+              <span className="font-mono text-2xs text-[var(--quiet)]">
                 {publishModeLabel} previews
               </span>
             </div>
@@ -544,7 +544,7 @@ export function DevProjectDialog({
                   <Label htmlFor="dev-project-repository">Repository</Label>
                   <Combobox
                     ariaLabel="Repository"
-                    buttonClassName="h-9 rounded-[7px] bg-white text-[12px] shadow-none"
+                    buttonClassName="h-9 rounded-[7px] bg-white text-body shadow-none"
                     disabled={repositoryState.isLoading}
                     emptyText={repositoryState.error ?? 'No repositories found'}
                     onValueChangeAction={handleRepositorySelect}
@@ -559,7 +559,7 @@ export function DevProjectDialog({
               ) : (
                 <div>
                   <Label>Repository</Label>
-                  <div className="mt-1.5 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-3 py-2 font-mono text-[11px]">
+                  <div className="mt-1.5 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-3 py-2 font-mono text-xs">
                     {project?.repositoryOwner}/{project?.repositoryName}
                   </div>
                 </div>
@@ -569,7 +569,7 @@ export function DevProjectDialog({
                 <Label htmlFor="dev-project-branch">Branch</Label>
                 <Combobox
                   ariaLabel="Branch"
-                  buttonClassName="h-9 rounded-[7px] bg-white text-[12px] shadow-none"
+                  buttonClassName="h-9 rounded-[7px] bg-white text-body shadow-none"
                   disabled={!repositoryUrl || branchState.isLoading}
                   emptyText={
                     !repositoryUrl
@@ -602,7 +602,7 @@ export function DevProjectDialog({
                   placeholder="blade"
                   value={appSlug}
                 />
-                <p className="mt-1.5 truncate font-mono text-[10px] text-[var(--quiet)]">
+                <p className="mt-1.5 truncate font-mono text-2xs text-[var(--quiet)]">
                   {previewExample}
                 </p>
               </div>
@@ -617,10 +617,10 @@ export function DevProjectDialog({
 
           <section className="mt-5 space-y-3 border-t border-[var(--hairline)] pt-4">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--quiet)]">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--quiet)]">
                 Docker build
               </h3>
-              <span className="font-mono text-[10px] text-[var(--quiet)]">
+              <span className="font-mono text-2xs text-[var(--quiet)]">
                 {dockerfilePath}:{port}
               </span>
             </div>
@@ -661,7 +661,7 @@ export function DevProjectDialog({
                   onChange={(event) => setRetentionLimit(event.target.value)}
                   value={retentionLimit}
                 />
-                <p className="mt-1.5 text-[10px] text-[var(--quiet)]">
+                <p className="mt-1.5 text-2xs text-[var(--quiet)]">
                   0 keeps every preview. A positive number removes the oldest settled previews.
                 </p>
               </div>
@@ -671,7 +671,7 @@ export function DevProjectDialog({
               <div>
                 <Label htmlFor="dev-project-env">Runtime environment</Label>
                 <textarea
-                  className="mt-1.5 min-h-24 w-full rounded-[7px] border border-border bg-white px-3 py-2 font-mono text-[11px] leading-5 outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="mt-1.5 min-h-24 w-full rounded-[7px] border border-border bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   id="dev-project-env"
                   onChange={(event) => setEnvVariables(event.target.value)}
                   placeholder={'NODE_ENV=production\nDATABASE_URL=...'}
@@ -682,7 +682,7 @@ export function DevProjectDialog({
               <div>
                 <Label htmlFor="dev-project-build-args">Build arguments</Label>
                 <textarea
-                  className="mt-1.5 min-h-24 w-full rounded-[7px] border border-border bg-white px-3 py-2 font-mono text-[11px] leading-5 outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="mt-1.5 min-h-24 w-full rounded-[7px] border border-border bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   id="dev-project-build-args"
                   onChange={(event) => setBuildArgs(event.target.value)}
                   placeholder={'NEXT_PUBLIC_API_URL=...'}
@@ -693,7 +693,7 @@ export function DevProjectDialog({
             </div>
 
             <div className="flex flex-wrap items-center gap-5 rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
-              <label className="flex items-center gap-2 text-[11px] font-medium">
+              <label className="flex items-center gap-2 text-xs font-medium">
                 <input
                   checked={autoDeploy}
                   className="size-3.5 accent-[var(--blue)]"
@@ -703,7 +703,7 @@ export function DevProjectDialog({
                 Auto-deploy new commits
               </label>
 
-              <label className="flex items-center gap-2 text-[11px] font-medium">
+              <label className="flex items-center gap-2 text-xs font-medium">
                 <input
                   checked={autoDeployPullRequests}
                   className="size-3.5 accent-[var(--blue)]"
@@ -714,7 +714,7 @@ export function DevProjectDialog({
               </label>
 
               {mode === 'create' ? (
-                <label className="flex items-center gap-2 text-[11px] font-medium">
+                <label className="flex items-center gap-2 text-xs font-medium">
                   <input
                     checked={deployLatest}
                     className="size-3.5 accent-[var(--blue)]"
@@ -730,18 +730,18 @@ export function DevProjectDialog({
           {mode === 'edit' && project ? (
             <section className="mt-5 border-t border-[var(--hairline)] pt-4">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--quiet)]">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--quiet)]">
                   GitHub webhook
                 </h3>
                 <Badge variant="info">Optional</Badge>
               </div>
-              <p className="mt-1.5 text-[10px] leading-5 text-[var(--quiet)]">
+              <p className="mt-1.5 text-2xs leading-5 text-[var(--quiet)]">
                 Polling already detects new commits. Add this webhook in GitHub for instant
                 deployments when this control plane is reachable from the internet.
               </p>
 
               {isDetailLoading ? (
-                <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-[var(--quiet)]">
+                <div className="mt-3 inline-flex items-center gap-2 text-xs text-[var(--quiet)]">
                   <SpinnerGap aria-hidden="true" className="size-3.5 animate-spin" />
                   Loading webhook details…
                 </div>
@@ -787,7 +787,7 @@ export function DevProjectDialog({
                       </Button>
                     </div>
                   </div>
-                  <p className="text-[10px] leading-5 text-[var(--quiet)]">
+                  <p className="text-2xs leading-5 text-[var(--quiet)]">
                     Use the <span className="font-mono">push</span> event and content type{' '}
                     <span className="font-mono">application/json</span>. Rotating the secret
                     requires updating the GitHub webhook.
@@ -800,19 +800,19 @@ export function DevProjectDialog({
           {mode === 'edit' && project ? (
             <section className="mt-5 border-t border-red-200 pt-4">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--red)]">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--red)]">
                   Danger zone
                 </h3>
                 <WarningCircle aria-hidden="true" className="size-4 text-[var(--red)]" />
               </div>
-              <p className="mt-1.5 text-[10px] leading-5 text-[var(--quiet)]">
+              <p className="mt-1.5 text-2xs leading-5 text-[var(--quiet)]">
                 Deleting this project removes every preview container, image, workspace, and log
                 created for this repository and branch. Production deployments are not affected.
               </p>
 
               {confirmDelete ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[8px] border border-red-200 bg-[var(--red-soft)] px-3 py-2.5">
-                  <span className="text-[11px] font-medium text-[var(--red)]">
+                  <span className="text-xs font-medium text-[var(--red)]">
                     Delete this project and all previews?
                   </span>
                   <Button
@@ -848,7 +848,7 @@ export function DevProjectDialog({
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--hairline)] bg-[var(--surface-subtle)] px-5 py-3">
-          <span className="text-[10px] text-[var(--quiet)]">
+          <span className="text-2xs text-[var(--quiet)]">
             {mode === 'create'
               ? 'New previews use the configured base domain and Traefik.'
               : 'Saving does not rebuild existing previews.'}

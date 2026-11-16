@@ -18,6 +18,7 @@ import {
   getTimedPointTimestamp,
   getTimedPointValue,
 } from '@/lib/metrics-chart-time';
+import { scaledFontSize } from '@/lib/typography';
 import { cn } from '@/lib/utils';
 
 type TooltipPoint = {
@@ -66,11 +67,11 @@ const SYSTEM_STYLES = {
 const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
 
 function createTooltipShell(title: string, rows: string) {
-  return `<div style="min-width: 180px; padding: 12px 14px; border-radius: 16px; background: rgba(15,23,42,0.96); color: #e2e8f0; box-shadow: 0 18px 48px -28px rgba(15,23,42,0.6);"><div style="margin-bottom: 10px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8;">${title}</div>${rows}</div>`;
+  return `<div style="min-width: 180px; padding: 12px 14px; border-radius: 16px; background: rgba(15,23,42,0.96); color: #e2e8f0; box-shadow: 0 18px 48px -28px rgba(15,23,42,0.6);"><div style="margin-bottom: 10px; font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8;">${title}</div>${rows}</div>`;
 }
 
 function createTooltipRow(label: string, value: string, color?: string) {
-  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:12px; line-height:1.5;"><span style="display:flex; align-items:center; gap:8px; color:#cbd5e1;"><span style="width:9px; height:9px; border-radius:999px; background:${color ?? '#94a3b8'};"></span>${label}</span><strong style="font-size:12px; color:#f8fafc;">${value}</strong></div>`;
+  return `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:0.8125rem; line-height:1.5;"><span style="display:flex; align-items:center; gap:8px; color:#cbd5e1;"><span style="width:9px; height:9px; border-radius:999px; background:${color ?? '#94a3b8'};"></span>${label}</span><strong style="font-size:0.8125rem; color:#f8fafc;">${value}</strong></div>`;
 }
 
 function EmptyChartState({ message }: { message: string }) {
@@ -151,7 +152,7 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
         color: 'rgba(71,85,105,0.88)',
         formatter: (value: number) =>
           formatChartAxisTimestamp(value, '1h', panel.timeZone).replace(/\s?(AM|PM)$/i, ''),
-        fontSize: 10,
+        fontSize: scaledFontSize(11),
         margin: 12,
       },
       axisLine: {
@@ -171,7 +172,7 @@ function buildSystemChartOption(panel: SystemMetricPanel): EChartsCoreOption {
     yAxis: {
       axisLabel: {
         color: 'rgba(100,116,139,0.82)',
-        fontSize: 10,
+        fontSize: scaledFontSize(11),
         formatter: (value: number) => formatAxisValue(value, panel.format),
       },
       axisLine: {
@@ -354,7 +355,7 @@ export const SystemMetricCard = memo(
       >
         <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/60 pb-2 pt-3">
           <CardTitle>{panel.title}</CardTitle>
-          <Badge className={cn('max-w-[140px] truncate text-[11px] shadow-none', style.badge)}>
+          <Badge className={cn('max-w-[140px] truncate text-xs shadow-none', style.badge)}>
             {panel.currentCaption}
           </Badge>
         </CardHeader>

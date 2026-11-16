@@ -36,7 +36,7 @@ function InputGroupSuffix({ className, ...props }: InputGroupSuffixProps) {
   return (
     <span
       className={cn(
-        'h-full max-w-[55%] shrink-0 truncate border-l border-border px-2.5 text-[12px] leading-9 text-muted-foreground',
+        'h-full max-w-[55%] shrink-0 truncate border-l border-border px-2.5 text-body leading-9 text-muted-foreground',
         className
       )}
       {...props}

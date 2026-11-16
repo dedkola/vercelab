@@ -36,6 +36,7 @@ import {
 import { getDashboardHistorySettings, type DashboardRange } from '@/lib/metrics-range';
 import type { DeploymentSummary } from '@/lib/persistence';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
+import { scaledFontSize } from '@/lib/typography';
 import { cn } from '@/lib/utils';
 
 type MetricsDashboardMainContentProps = {
@@ -76,11 +77,11 @@ type ChartSeries = {
 const CHART_SET_OPTION_OPTIONS = { lazyUpdate: true } as const;
 
 function createTooltipShell(title: string, rows: string) {
-  return `<div style="min-width:176px;padding:10px 12px;border:1px solid #313338;border-radius:8px;background:#1a1a1d;color:#f7f7f8;box-shadow:0 16px 38px rgba(0,0,0,.18)"><div style="margin-bottom:8px;font:500 9px ui-monospace,monospace;letter-spacing:.05em;text-transform:uppercase;color:#a7a9af">${title}</div>${rows}</div>`;
+  return `<div style="min-width:176px;padding:10px 12px;border:1px solid #313338;border-radius:8px;background:#1a1a1d;color:#f7f7f8;box-shadow:0 16px 38px rgba(0,0,0,.18)"><div style="margin-bottom:8px;font:500 0.6875rem ui-monospace,monospace;letter-spacing:.05em;text-transform:uppercase;color:#a7a9af">${title}</div>${rows}</div>`;
 }
 
 function createTooltipRow(label: string, value: string, color: string) {
-  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:18px;font-size:11px;line-height:1.65"><span style="display:flex;align-items:center;gap:7px;color:#d7d8db"><span style="width:7px;height:7px;border-radius:50%;background:${color}"></span>${label}</span><strong style="font:600 11px ui-monospace,monospace;color:#fff">${value}</strong></div>`;
+  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:18px;font-size:0.75rem;line-height:1.65"><span style="display:flex;align-items:center;gap:7px;color:#d7d8db"><span style="width:7px;height:7px;border-radius:50%;background:${color}"></span>${label}</span><strong style="font:600 0.75rem ui-monospace,monospace;color:#fff">${value}</strong></div>`;
 }
 
 function buildChartOption({
@@ -148,7 +149,7 @@ function buildChartOption({
         alignMaxLabel: 'right',
         color: '#92959b',
         fontFamily: 'var(--font-geist-mono)',
-        fontSize: 9,
+        fontSize: scaledFontSize(11),
         formatter: (value: number) => formatChartAxisTimestamp(value, range, timeZone),
         margin: 10,
       },
@@ -164,7 +165,7 @@ function buildChartOption({
       axisLabel: {
         color: '#92959b',
         fontFamily: 'var(--font-geist-mono)',
-        fontSize: 9,
+        fontSize: scaledFontSize(11),
         formatter: (value: number) => formatAxisValue(value, series[0]?.format ?? 'percent'),
       },
       axisLine: { show: false },
@@ -265,7 +266,7 @@ function WorkloadIcon({
   const iconUrl = iconUrls.find((url) => !failedIconUrls.includes(url)) ?? null;
 
   return (
-    <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-[10px] font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
+    <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-2xs font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
       {getWorkloadGlyph(container)}
       {iconUrl ? (
         <Image
@@ -302,7 +303,7 @@ function EmptyChartState({ compact, message }: { compact?: boolean; message: str
   return (
     <div
       className={cn(
-        'flex items-center justify-center border-t border-dashed border-[var(--hairline)] px-5 text-center font-mono text-[11px] text-[var(--quiet)]',
+        'flex items-center justify-center border-t border-dashed border-[var(--hairline)] px-5 text-center font-mono text-xs text-[var(--quiet)]',
         compact ? 'h-36' : 'h-48'
       )}
     >
@@ -342,17 +343,17 @@ const TelemetryChart = memo(function TelemetryChart({
     <article className="min-w-0 overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] shadow-[var(--shadow)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:border-[var(--hairline-strong)] hover:shadow-[0_16px_38px_rgb(16_24_40_/_0.07)]">
       <header className="flex min-h-14 items-start justify-between gap-4 border-b border-[var(--hairline)] px-4 py-3">
         <div className="min-w-0">
-          <h3 className="truncate whitespace-nowrap text-[12px] font-semibold tracking-[0.01em]">
+          <h3 className="truncate whitespace-nowrap text-body font-semibold tracking-[0.01em]">
             {title}
           </h3>
-          <p className="mt-1 truncate font-mono text-[10px] text-[var(--quiet)]">{caption}</p>
+          <p className="mt-1 truncate font-mono text-2xs text-[var(--quiet)]">{caption}</p>
         </div>
         <div className="text-right">
           <strong className="font-mono text-sm font-semibold tabular-nums">{currentValue}</strong>
           <div className="mt-1 flex justify-end gap-2">
             {series.map((item) => (
               <span
-                className="flex items-center gap-1 text-[10px] text-[var(--muted-ink)]"
+                className="flex items-center gap-1 text-2xs text-[var(--muted-ink)]"
                 key={item.label}
               >
                 <span className="size-1.5 rounded-full" style={{ backgroundColor: item.color }} />
@@ -438,14 +439,14 @@ function PulseMetric({
         aria-hidden="true"
         className={cn('absolute inset-x-0 top-0 h-px opacity-85', accentClassName)}
       />
-      <div className="font-mono text-[9px] font-medium tracking-[0.08em] text-[var(--quiet)] uppercase">
+      <div className="font-mono text-2xs font-medium tracking-[0.08em] text-[var(--quiet)] uppercase">
         {label}
       </div>
       <div className="mt-1 flex items-baseline justify-between gap-2">
-        <strong className="truncate font-mono text-[15px] font-semibold tracking-[-0.025em] tabular-nums">
+        <strong className="truncate font-mono text-[0.9375rem] font-semibold tracking-[-0.025em] tabular-nums">
           {value}
         </strong>
-        <span className="truncate text-[10px] text-[var(--quiet)]">{caption}</span>
+        <span className="truncate text-2xs text-[var(--quiet)]">{caption}</span>
       </div>
     </div>
   );
@@ -462,13 +463,13 @@ function DetailMetric({
 }) {
   return (
     <div className="min-w-0 border-r border-[var(--hairline)] px-4 py-3 last:border-r-0 max-[640px]:border-b max-[640px]:odd:border-r max-[640px]:even:border-r-0 max-[640px]:nth-last-[-n+2]:border-b-0">
-      <div className="font-mono text-[10px] font-medium tracking-[0.08em] text-[var(--quiet)] uppercase">
+      <div className="font-mono text-2xs font-medium tracking-[0.08em] text-[var(--quiet)] uppercase">
         {label}
       </div>
-      <strong className="mt-1 block truncate font-mono text-[13px] font-semibold tabular-nums">
+      <strong className="mt-1 block truncate font-mono text-sm font-semibold tabular-nums">
         {value}
       </strong>
-      <span className="mt-0.5 block truncate text-[10px] text-[var(--quiet)]">{caption}</span>
+      <span className="mt-0.5 block truncate text-2xs text-[var(--quiet)]">{caption}</span>
     </div>
   );
 }
@@ -620,10 +621,10 @@ export function MetricsDashboardMainContent({
       <section className="space-y-2" aria-labelledby="system-pulse-title">
         <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">
           <div>
-            <h2 className="text-[13px] font-semibold" id="system-pulse-title">
+            <h2 className="text-sm font-semibold" id="system-pulse-title">
               System pulse
             </h2>
-            <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+            <p className="mt-1 font-mono text-2xs text-[var(--quiet)]">
               Host and fleet · live sample
             </p>
           </div>
@@ -706,10 +707,10 @@ export function MetricsDashboardMainContent({
       >
         <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-3 py-2.5 max-[640px]:grid max-[640px]:grid-cols-[minmax(0,1fr)_auto]">
           <div className="min-w-0 max-[640px]:col-span-2">
-            <h2 className="text-[13px] font-semibold" id="workloads-title">
+            <h2 className="text-sm font-semibold" id="workloads-title">
               Workloads
             </h2>
-            <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+            <p className="mt-1 font-mono text-2xs text-[var(--quiet)]">
               {containers.length} visible · select a row for telemetry and logs
             </p>
           </div>
@@ -721,7 +722,7 @@ export function MetricsDashboardMainContent({
               />
               <Input
                 aria-label="Search workloads"
-                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 text-[12px] shadow-none"
+                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 text-body shadow-none"
                 onChange={(event) => onSearchQueryChangeAction(event.target.value)}
                 placeholder="Find workload"
                 value={searchQuery}
@@ -742,7 +743,7 @@ export function MetricsDashboardMainContent({
 
         <div className="overflow-x-auto">
           <Table
-            className="[&_th]:text-[10px] max-[960px]:[&_tr>:nth-child(6)]:hidden max-[640px]:[&_tr>:nth-child(4)]:hidden max-[640px]:[&_tr>:nth-child(5)]:hidden"
+            className="[&_th]:text-2xs max-[960px]:[&_tr>:nth-child(6)]:hidden max-[640px]:[&_tr>:nth-child(4)]:hidden max-[640px]:[&_tr>:nth-child(5)]:hidden"
             layout="fixed"
           >
             <colgroup>
@@ -756,22 +757,22 @@ export function MetricsDashboardMainContent({
             </colgroup>
             <Table.Header className="bg-[var(--surface-subtle)]" variant="compact">
               <Table.Row>
-                <Table.Head className="h-9 px-3 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                   Workload
                 </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                   State
                 </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                   CPU
                 </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                   Memory
                 </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                   Network
                 </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                   Endpoint
                 </Table.Head>
                 <Table.Head className="h-9 px-2">
@@ -805,10 +806,10 @@ export function MetricsDashboardMainContent({
                       <div className="flex min-w-0 items-center gap-2.5">
                         <WorkloadIcon container={container} deployment={deployment} />
                         <span className="min-w-0">
-                          <span className="block truncate text-[12px] font-semibold tracking-[-0.01em]">
+                          <span className="block truncate text-body font-semibold tracking-[-0.01em]">
                             {container.sidebarName}
                           </span>
-                          <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                          <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                             {container.sidebarSecondaryLabel || container.display.image}
                           </span>
                         </span>
@@ -817,7 +818,7 @@ export function MetricsDashboardMainContent({
                     <Table.Cell className="px-3 py-1.5">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] uppercase',
+                          'inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.04em] uppercase',
                           getWorkloadStateClassName(status.variant)
                         )}
                       >
@@ -825,19 +826,19 @@ export function MetricsDashboardMainContent({
                         {status.label}
                       </span>
                     </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5 font-mono text-[11px] text-[var(--muted-ink)] tabular-nums">
+                    <Table.Cell className="px-3 py-1.5 font-mono text-xs text-[var(--muted-ink)] tabular-nums">
                       {container.display.cpu || '--'}
                     </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5 font-mono text-[11px] text-[var(--muted-ink)] tabular-nums">
+                    <Table.Cell className="px-3 py-1.5 font-mono text-xs text-[var(--muted-ink)] tabular-nums">
                       {container.display.memory || '--'}
                     </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5 font-mono text-[11px] text-[var(--muted-ink)] tabular-nums">
+                    <Table.Cell className="px-3 py-1.5 font-mono text-xs text-[var(--muted-ink)] tabular-nums">
                       {container.display.requestRate || '--'}
                     </Table.Cell>
                     <Table.Cell className="px-3 py-1.5">
                       {container.runtime?.routedHost ? (
                         <a
-                          className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-[var(--blue)] underline-offset-2 hover:underline"
+                          className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
                           href={`https://${container.runtime.routedHost}`}
                           onClick={(event) => event.stopPropagation()}
                           rel="noreferrer"
@@ -847,14 +848,12 @@ export function MetricsDashboardMainContent({
                           <ArrowSquareOut className="size-3 shrink-0" aria-hidden="true" />
                         </a>
                       ) : (
-                        <span className="font-mono text-[11px] text-[var(--quiet)]">
-                          not routed
-                        </span>
+                        <span className="font-mono text-xs text-[var(--quiet)]">not routed</span>
                       )}
                     </Table.Cell>
                     <Table.Cell className="px-2 py-1.5 text-right">
                       <Button
-                        className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
+                        className="h-8 rounded-[6px] px-3 text-xs shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
                         onClick={(event) => {
                           event.stopPropagation();
                           openContainerDetail(container);
@@ -872,7 +871,7 @@ export function MetricsDashboardMainContent({
             </Table.Body>
           </Table>
           {containers.length === 0 ? (
-            <div className="border-t border-[var(--hairline)] px-4 py-10 text-center font-mono text-[12px] text-[var(--quiet)]">
+            <div className="border-t border-[var(--hairline)] px-4 py-10 text-center font-mono text-body text-[var(--quiet)]">
               No workloads match this search.
             </div>
           ) : null}
@@ -885,10 +884,10 @@ export function MetricsDashboardMainContent({
             <div className="flex max-h-[min(90dvh,900px)] min-h-0 flex-col">
               <header className="flex items-start justify-between gap-4 border-b border-[var(--hairline)] px-5 py-4">
                 <div className="min-w-0">
-                  <Dialog.Title className="truncate text-[15px] font-semibold tracking-[-0.02em]">
+                  <Dialog.Title className="truncate text-[0.9375rem] font-semibold tracking-[-0.02em]">
                     {detailContainer.sidebarName}
                   </Dialog.Title>
-                  <Dialog.Description className="mt-1 truncate font-mono text-[10px] text-[var(--quiet)]">
+                  <Dialog.Description className="mt-1 truncate font-mono text-2xs text-[var(--quiet)]">
                     {detailContainer.display.image} · {detailContainer.display.node}
                   </Dialog.Description>
                 </div>
@@ -943,8 +942,8 @@ export function MetricsDashboardMainContent({
                 <section className="mt-4 overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-white">
                   <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-4 py-3">
                     <div>
-                      <h3 className="text-[12px] font-semibold">Runtime log</h3>
-                      <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+                      <h3 className="text-body font-semibold">Runtime log</h3>
+                      <p className="mt-1 font-mono text-2xs text-[var(--quiet)]">
                         Context only — opens when requested
                       </p>
                     </div>
@@ -959,7 +958,7 @@ export function MetricsDashboardMainContent({
                       value={detailLogView}
                     />
                   </header>
-                  <div className="max-h-64 overflow-auto bg-[var(--surface-subtle)] px-4 py-3 font-mono text-[11px] leading-5 text-[var(--ink)]">
+                  <div className="max-h-64 overflow-auto bg-[var(--surface-subtle)] px-4 py-3 font-mono text-xs leading-5 text-[var(--ink)]">
                     {detailContainer.display.logs[detailLogView].length ? (
                       detailContainer.display.logs[detailLogView].map((line) => (
                         <div
@@ -990,7 +989,7 @@ export function MetricsDashboardMainContent({
               </div>
 
               <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] px-5 py-3">
-                <span className="font-mono text-[10px] text-[var(--quiet)]">
+                <span className="font-mono text-2xs text-[var(--quiet)]">
                   {detailContainer.display.summary}
                 </span>
                 {detailContainer.display.endpoints[0]?.url ? (

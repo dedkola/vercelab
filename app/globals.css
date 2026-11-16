@@ -11,6 +11,21 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* App type scale. Kept in rem so every size follows the responsive root size in
+     `html` below; at a 16px root these evaluate to 11px / 12px / 13px / 14px / 16px / 18px.
+     Signed explicitly so Kumo's px scale cannot win the cascade. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.45;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.4;
+  --text-body: 0.8125rem;
+  --text-body--line-height: 1.45;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.45;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.5;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -130,6 +145,9 @@
   }
 
   html {
+    /* Grows from 16px at 1280px wide to 19px at 4K so the dashboard stays legible
+       on large displays. Every rem-based size and space follows it. */
+    font-size: clamp(16px, calc(14.5px + 0.1172vw), 19px);
     min-width: 320px;
     min-height: 100%;
     background: var(--canvas);
@@ -150,7 +168,7 @@
       BlinkMacSystemFont,
       'Segoe UI',
       sans-serif;
-    font-size: 14px;
+    font-size: 0.875rem;
     font-feature-settings:
       'ss01' 1,
       'cv05' 1,
@@ -195,13 +213,13 @@
 @layer components {
   .vercelab-page {
     width: 100%;
-    max-width: 1680px;
+    max-width: 105rem;
     margin-inline: auto;
-    padding: 20px 24px;
+    padding: 1.25rem 1.5rem;
   }
 
   .vercelab-page-heading {
-    font-size: 11px;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -211,7 +229,7 @@
     margin-left: 4px;
     color: var(--quiet);
     font-family: var(--font-geist-mono), monospace;
-    font-size: 9px;
+    font-size: 0.6875rem;
     font-weight: 400;
     letter-spacing: normal;
     text-transform: none;
@@ -232,7 +250,7 @@
 
 @media (max-width: 760px) {
   .vercelab-page {
-    padding: 12px;
+    padding: 0.75rem;
   }
   .vercelab-split-layout {
     flex-direction: column;

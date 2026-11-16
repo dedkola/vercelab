@@ -88,7 +88,7 @@ export function DashboardRightSidebar({
         <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2">
           <div className="space-y-0.5">
             <SectionLabel icon="syslog" text="Logs" />
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {isAggregateSelection
                 ? 'Grouped history context for the full container fleet.'
                 : 'Tail preview for the selected container.'}
@@ -111,7 +111,7 @@ export function DashboardRightSidebar({
             {logOptions.map((option) => (
               <button
                 className={cn(
-                  'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                  'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
                   activeLogView === option.value
                     ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700'
                     : 'border-border/60 bg-background text-muted-foreground hover:text-foreground'
@@ -134,13 +134,13 @@ export function DashboardRightSidebar({
                   <div className="text-xs font-semibold tracking-tight text-foreground">
                     {selectedContainerName}
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {isAggregateSelection
                       ? 'Grouped Influx history and range-aware fleet context'
                       : `docker logs -f --tail 150 ${selectedContainerName}`}
                   </div>
                 </div>
-                <Badge className="rounded-md text-[11px]" variant={selectedContainerStatusVariant}>
+                <Badge className="rounded-md text-xs" variant={selectedContainerStatusVariant}>
                   {selectedContainerStatusLabel}
                 </Badge>
               </div>
@@ -148,14 +148,14 @@ export function DashboardRightSidebar({
 
             <div className="overflow-hidden rounded-lg border border-border/70 bg-[#0f1720]">
               <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-                <div className="flex items-center gap-2 text-[11px] text-slate-300">
+                <div className="flex items-center gap-2 text-xs text-slate-300">
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
                   Tail preview
                 </div>
-                <div className="font-mono text-[11px] text-slate-500">{logs.length} lines</div>
+                <div className="font-mono text-xs text-slate-500">{logs.length} lines</div>
               </div>
 
-              <div className="space-y-1.5 p-3 font-mono text-[11px] leading-5 text-slate-200">
+              <div className="space-y-1.5 p-3 font-mono text-xs leading-5 text-slate-200">
                 {logs.length ? (
                   logs.map((line) => (
                     <div className="flex gap-2" key={line.id}>

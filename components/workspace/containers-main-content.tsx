@@ -147,14 +147,11 @@ function InfoRow({
 }) {
   return (
     <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-start gap-3 border-b border-[var(--hairline)] px-3 py-2.5 last:border-b-0 max-[480px]:grid-cols-1 max-[480px]:gap-1">
-      <dt className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+      <dt className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
         {label}
       </dt>
       <dd
-        className={cn(
-          'min-w-0 break-words text-[12px] text-foreground',
-          mono && 'font-mono text-[11px]'
-        )}
+        className={cn('min-w-0 break-words text-body text-foreground', mono && 'font-mono text-xs')}
       >
         {value}
       </dd>
@@ -177,10 +174,10 @@ function ConfigurationField({
     <div className="rounded-[8px] border border-[var(--hairline)] bg-white p-3">
       <div className="mb-2.5 min-h-8">
         <div className="text-xs font-semibold tracking-tight text-foreground">{label}</div>
-        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{description}</p>
+        <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{description}</p>
       </div>
       {children}
-      <div className="mt-2 truncate font-mono text-[10px] text-[var(--quiet)]">
+      <div className="mt-2 truncate font-mono text-2xs text-[var(--quiet)]">
         Saved · {savedValue}
       </div>
     </div>
@@ -197,8 +194,8 @@ function EnvRowEditor({ envVars, onChange }: EnvRowEditorProps) {
     <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
       <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
         <div>
-          <h3 className="text-[12px] font-semibold">Variables</h3>
-          <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+          <h3 className="text-body font-semibold">Variables</h3>
+          <p className="mt-0.5 font-mono text-2xs text-[var(--quiet)]">
             Applied when the container is recreated
           </p>
         </div>
@@ -221,7 +218,7 @@ function EnvRowEditor({ envVars, onChange }: EnvRowEditorProps) {
             >
               <Input
                 aria-label={`Env key ${index + 1}`}
-                className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                className="h-9 rounded-[7px] font-mono text-xs shadow-none"
                 onChange={(event) =>
                   onChange(
                     envVars.map((candidate, candidateIndex) =>
@@ -236,7 +233,7 @@ function EnvRowEditor({ envVars, onChange }: EnvRowEditorProps) {
               />
               <Input
                 aria-label={`Env value ${index + 1}`}
-                className="h-9 rounded-[7px] font-mono text-[11px] shadow-none max-[540px]:col-start-1"
+                className="h-9 rounded-[7px] font-mono text-xs shadow-none max-[540px]:col-start-1"
                 onChange={(event) =>
                   onChange(
                     envVars.map((candidate, candidateIndex) =>
@@ -265,7 +262,7 @@ function EnvRowEditor({ envVars, onChange }: EnvRowEditorProps) {
           ))}
         </div>
       ) : (
-        <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
+        <div className="px-3 py-8 text-center font-mono text-xs text-[var(--quiet)]">
           No environment variables configured.
         </div>
       )}
@@ -407,12 +404,12 @@ export function ContainersMainContent({
           </span>
           <div className="min-w-0">
             <h2
-              className="truncate text-[14px] font-semibold tracking-[-0.015em]"
+              className="truncate text-sm font-semibold tracking-[-0.015em]"
               id="container-manager-title"
             >
               {runtimeEntry.sidebarName}
             </h2>
-            <p className="mt-0.5 truncate font-mono text-[10px] text-[var(--quiet)]">
+            <p className="mt-0.5 truncate font-mono text-2xs text-[var(--quiet)]">
               {runtimeEntry.display.image} · {runtimeEntry.display.id.slice(0, 12)}
             </p>
           </div>
@@ -451,7 +448,7 @@ export function ContainersMainContent({
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                     Current runtime
                   </span>
                   <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
@@ -462,7 +459,7 @@ export function ContainersMainContent({
                   {runtimeState.label}
                 </Badge>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] text-[var(--quiet)]">
+              <div className="mt-2 flex items-center justify-between gap-3 font-mono text-2xs text-[var(--quiet)]">
                 <span>{formatKindLabel(inventoryMeta.kind)}</span>
                 <span>{runtimeEntry.display.uptime || 'No uptime sample'}</span>
               </div>
@@ -502,34 +499,34 @@ export function ContainersMainContent({
             {actionError ? <WorkspaceNotice>{actionError}</WorkspaceNotice> : null}
 
             <section>
-              <h3 className="mb-2 text-[12px] font-semibold">Runtime path</h3>
+              <h3 className="mb-2 text-body font-semibold">Runtime path</h3>
               <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1.5 max-[520px]:grid-cols-1">
                 <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
-                  <span className="grid size-4 place-items-center rounded-full bg-[var(--green-soft)] font-mono text-[10px] font-bold text-[var(--green)]">
+                  <span className="grid size-4 place-items-center rounded-full bg-[var(--green-soft)] font-mono text-2xs font-bold text-[var(--green)]">
                     ✓
                   </span>
-                  <strong className="mt-1.5 block text-[11px]">Image</strong>
-                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                  <strong className="mt-1.5 block text-xs">Image</strong>
+                  <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                     {inspectLoading ? 'loading' : (inspectData?.imageVersion ?? 'unknown')}
                   </span>
                 </div>
                 <span className="text-center text-[var(--quiet)] max-[520px]:rotate-90">→</span>
                 <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
-                  <span className="grid size-4 place-items-center rounded-full bg-[var(--blue-soft)] font-mono text-[10px] font-bold text-[var(--blue)]">
+                  <span className="grid size-4 place-items-center rounded-full bg-[var(--blue-soft)] font-mono text-2xs font-bold text-[var(--blue)]">
                     {runtimeState.variant === 'success' ? '✓' : '·'}
                   </span>
-                  <strong className="mt-1.5 block text-[11px]">Runtime</strong>
-                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                  <strong className="mt-1.5 block text-xs">Runtime</strong>
+                  <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                     {runtimeEntry.runtime?.status ?? runtimeEntry.display.status}
                   </span>
                 </div>
                 <span className="text-center text-[var(--quiet)] max-[520px]:rotate-90">→</span>
                 <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
-                  <span className="grid size-4 place-items-center rounded-full bg-[var(--surface-subtle)] font-mono text-[10px] font-bold text-[var(--quiet)]">
+                  <span className="grid size-4 place-items-center rounded-full bg-[var(--surface-subtle)] font-mono text-2xs font-bold text-[var(--quiet)]">
                     {url ? '✓' : '—'}
                   </span>
-                  <strong className="mt-1.5 block text-[11px]">Route</strong>
-                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                  <strong className="mt-1.5 block text-xs">Route</strong>
+                  <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                     {url ? 'available' : 'internal'}
                   </span>
                 </div>
@@ -538,7 +535,7 @@ export function ContainersMainContent({
 
             <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
               <header className="border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
-                <h3 className="text-[12px] font-semibold">Runtime details</h3>
+                <h3 className="text-body font-semibold">Runtime details</h3>
               </header>
               <dl>
                 <InfoRow label="Container name" value={runtimeEntry.display.name} />
@@ -580,7 +577,7 @@ export function ContainersMainContent({
               </dl>
             </section>
 
-            <p className="px-1 text-[11px] leading-4 text-[var(--quiet)]">{inventoryMeta.note}</p>
+            <p className="px-1 text-xs leading-4 text-[var(--quiet)]">{inventoryMeta.note}</p>
           </div>
         ) : null}
 
@@ -589,7 +586,7 @@ export function ContainersMainContent({
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                     Configuration
                   </span>
                   <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
@@ -613,7 +610,7 @@ export function ContainersMainContent({
               <div className="flex items-center gap-1.5">
                 <Input
                   aria-label="Label"
-                  className="h-9 rounded-[7px] text-[12px] shadow-none"
+                  className="h-9 rounded-[7px] text-body shadow-none"
                   disabled={!inventoryMeta.canEditAlias}
                   onChange={(event) => onAliasDraftChangeAction(event.target.value)}
                   value={aliasDraft}
@@ -631,7 +628,7 @@ export function ContainersMainContent({
             </ConfigurationField>
 
             {inventoryMeta.kind === 'system' ? (
-              <section className="rounded-[8px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] px-3 py-3 text-[11px] leading-5 text-[var(--warning-ink)]">
+              <section className="rounded-[8px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] px-3 py-3 text-xs leading-5 text-[var(--warning-ink)]">
                 Protected system containers can be relabeled and restarted. Runtime configuration
                 stays locked on this page.
               </section>
@@ -644,7 +641,7 @@ export function ContainersMainContent({
                 >
                   <Input
                     aria-label="Container runtime name"
-                    className="h-9 rounded-[7px] text-[12px] shadow-none"
+                    className="h-9 rounded-[7px] text-body shadow-none"
                     disabled={inspectLoading}
                     onChange={(event) => setEditName(event.target.value)}
                     value={editName}
@@ -659,7 +656,7 @@ export function ContainersMainContent({
                   <div className="flex items-center gap-1.5">
                     <Input
                       aria-label="Container image"
-                      className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                      className="h-9 rounded-[7px] font-mono text-xs shadow-none"
                       disabled={inspectLoading}
                       onChange={(event) => {
                         setEditImage(event.target.value);
@@ -685,7 +682,7 @@ export function ContainersMainContent({
 
                         return (
                           <button
-                            className="flex w-full rounded-[5px] px-2 py-1.5 text-left font-mono text-[11px] transition-colors hover:bg-white"
+                            className="flex w-full rounded-[5px] px-2 py-1.5 text-left font-mono text-xs transition-colors hover:bg-white"
                             key={tag}
                             onClick={() => setEditImage(`${baseName}:${tag}`)}
                             type="button"
@@ -706,7 +703,7 @@ export function ContainersMainContent({
                   >
                     <Input
                       aria-label="Container port"
-                      className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                      className="h-9 rounded-[7px] font-mono text-xs shadow-none"
                       inputMode="numeric"
                       onChange={(event) => setEditPort(event.target.value)}
                       placeholder="3000"
@@ -722,7 +719,7 @@ export function ContainersMainContent({
                   >
                     <select
                       aria-label="Container exposure mode"
-                      className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 text-[12px] outline-none focus:border-ring focus:ring-1 focus:ring-ring/70"
+                      className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 text-body outline-none focus:border-ring focus:ring-1 focus:ring-ring/70"
                       onChange={(event) => setEditExposureMode(event.target.value as ExposureMode)}
                       value={editExposureMode}
                     >
@@ -741,7 +738,7 @@ export function ContainersMainContent({
         {activeTab === 'variables' ? (
           <div className="space-y-3">
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-              <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+              <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                 Environment
               </span>
               <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
@@ -749,7 +746,7 @@ export function ContainersMainContent({
                   ? 'Loading variables'
                   : `${inspectEnvVars.length} variable${inspectEnvVars.length === 1 ? '' : 's'}`}
               </h3>
-              <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+              <p className="mt-1 font-mono text-2xs text-[var(--quiet)]">
                 Sensitive values stay masked in the runtime snapshot
               </p>
             </section>
@@ -757,7 +754,7 @@ export function ContainersMainContent({
             {inspectEnvVars.length ? (
               <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
                 <header className="border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
-                  <h3 className="text-[12px] font-semibold">Current snapshot</h3>
+                  <h3 className="text-body font-semibold">Current snapshot</h3>
                 </header>
                 <dl>
                   {inspectEnvVars.map(({ key, value }) => (
@@ -768,7 +765,7 @@ export function ContainersMainContent({
             ) : null}
 
             {inventoryMeta.kind === 'system' ? (
-              <section className="rounded-[8px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] px-3 py-3 text-[11px] leading-5 text-[var(--warning-ink)]">
+              <section className="rounded-[8px] border border-[var(--orange)]/25 bg-[var(--orange-soft)] px-3 py-3 text-xs leading-5 text-[var(--warning-ink)]">
                 Environment editing is locked for protected system containers.
               </section>
             ) : (
@@ -784,7 +781,7 @@ export function ContainersMainContent({
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                     Runtime output
                   </span>
                   <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
@@ -811,15 +808,13 @@ export function ContainersMainContent({
 
             <section className="overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface-subtle)]">
               <header className="flex items-center justify-between border-b border-[var(--hairline)] px-3 py-2.5">
-                <div className="flex items-center gap-2 text-[11px] text-[var(--muted-ink)]">
+                <div className="flex items-center gap-2 text-xs text-[var(--muted-ink)]">
                   <span className="size-2 rounded-full bg-[var(--green)]" />
                   {activeLogView === 'live' ? 'Live tail' : activeLogView}
                 </div>
-                <span className="font-mono text-[10px] text-[var(--quiet)]">
-                  {logs.length} lines
-                </span>
+                <span className="font-mono text-2xs text-[var(--quiet)]">{logs.length} lines</span>
               </header>
-              <div className="min-h-80 space-y-1.5 overflow-x-auto p-3 font-mono text-[11px] leading-5 text-[var(--ink)]">
+              <div className="min-h-80 space-y-1.5 overflow-x-auto p-3 font-mono text-xs leading-5 text-[var(--ink)]">
                 {logs.length ? (
                   logs.map((line) => (
                     <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] gap-2" key={line.id}>
@@ -847,7 +842,7 @@ export function ContainersMainContent({
       {(activeTab === 'settings' || activeTab === 'variables') &&
       inventoryMeta.kind !== 'system' ? (
         <footer className="flex min-h-[54px] shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] bg-white px-4 py-3">
-          <span className="font-mono text-[10px] text-[var(--quiet)]">
+          <span className="font-mono text-2xs text-[var(--quiet)]">
             {recreateError ? (
               <span role="alert" className="text-[var(--red)]">
                 {recreateError}

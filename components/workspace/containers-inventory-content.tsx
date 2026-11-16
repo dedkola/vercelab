@@ -168,10 +168,10 @@ export function ContainersInventoryContent({
             <Layers3 aria-hidden="true" className="size-4" />
           </span>
           <span className="min-w-0">
-            <strong className="block text-[13px] font-semibold" id="create-container-title">
+            <strong className="block text-sm font-semibold" id="create-container-title">
               Create container
             </strong>
-            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+            <span className="mt-0.5 block text-xs text-muted-foreground">
               Launch an image or review a Compose stack before it starts.
             </span>
           </span>
@@ -179,7 +179,7 @@ export function ContainersInventoryContent({
 
         <div className="flex flex-wrap items-center justify-end gap-2 max-[720px]:justify-start">
           <Button
-            className="h-9 rounded-[7px] px-3 text-[12px] shadow-none"
+            className="h-9 rounded-[7px] px-3 text-body shadow-none"
             onClick={onOpenComposeCreateAction}
             type="button"
             variant="secondary"
@@ -187,7 +187,7 @@ export function ContainersInventoryContent({
             Compose stack
           </Button>
           <Button
-            className="h-9 rounded-[7px] px-3 text-[12px] shadow-none"
+            className="h-9 rounded-[7px] px-3 text-body shadow-none"
             onClick={onOpenImageCreateAction}
             type="button"
             variant="primary"
@@ -205,10 +205,10 @@ export function ContainersInventoryContent({
         <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-3 py-2.5 max-[640px]:grid max-[640px]:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex min-w-0 flex-1 items-center gap-3 max-[640px]:contents">
             <div className="min-w-0 shrink-0 max-[640px]:col-span-2">
-              <h2 className="text-[13px] font-semibold" id="container-inventory-title">
+              <h2 className="text-sm font-semibold" id="container-inventory-title">
                 Runtime inventory
               </h2>
-              <p className="mt-1 whitespace-nowrap font-mono text-[10px] text-[var(--quiet)]">
+              <p className="mt-1 whitespace-nowrap font-mono text-2xs text-[var(--quiet)]">
                 {containers.length} visible · {runningContainersCount ?? '—'} running
                 {attentionContainersCount ? ` · ${attentionContainersCount} attention` : ''}
               </p>
@@ -220,7 +220,7 @@ export function ContainersInventoryContent({
               />
               <Input
                 aria-label="Search containers"
-                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 text-[12px] shadow-none"
+                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 text-body shadow-none"
                 onChange={(event) => onSearchQueryChangeAction(event.target.value)}
                 placeholder="Find container, stack, or image"
                 value={searchQuery}
@@ -257,7 +257,7 @@ export function ContainersInventoryContent({
                 {['Container', 'State', 'Stack', 'I/O', 'Route', 'Load'].map((label, index) => (
                   <th
                     className={cn(
-                      'px-3 text-left font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase',
+                      'px-3 text-left font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase',
                       index >= 2 && index <= 3 && 'max-[760px]:hidden',
                       index === 4 && 'max-[960px]:hidden',
                       index === 5 && 'max-[760px]:hidden'
@@ -301,17 +301,17 @@ export function ContainersInventoryContent({
                       <div className="flex min-w-0 items-center gap-2.5">
                         <span
                           className={cn(
-                            'grid size-8 shrink-0 place-items-center rounded-[7px] border font-mono text-[10px] font-bold',
+                            'grid size-8 shrink-0 place-items-center rounded-[7px] border font-mono text-2xs font-bold',
                             CONTAINER_TONES[index % CONTAINER_TONES.length]
                           )}
                         >
                           {getContainerInitials(container.sidebarName)}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-[12px] font-semibold tracking-[-0.01em]">
+                          <span className="block truncate text-body font-semibold tracking-[-0.01em]">
                             {container.sidebarName}
                           </span>
-                          <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                          <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                             {container.display.id.slice(0, 12)}
                           </span>
                         </span>
@@ -320,7 +320,7 @@ export function ContainersInventoryContent({
                     <td className="px-3 py-1.5">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] uppercase',
+                          'inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.04em] uppercase',
                           getStateClassName(state.tone)
                         )}
                       >
@@ -329,25 +329,25 @@ export function ContainersInventoryContent({
                       </span>
                     </td>
                     <td className="px-3 py-1.5 max-[760px]:hidden">
-                      <span className="block truncate font-mono text-[11px] text-foreground">
+                      <span className="block truncate font-mono text-xs text-foreground">
                         {getStackLabel(container)}
                       </span>
-                      <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                      <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                         {getServiceLabel(container)}
                       </span>
                     </td>
                     <td className="px-3 py-1.5 max-[760px]:hidden">
-                      <span className="block whitespace-nowrap font-mono text-[11px] text-[var(--muted-ink)]">
+                      <span className="block whitespace-nowrap font-mono text-xs text-[var(--muted-ink)]">
                         Net {formatBytesPerSecond(container.runtime?.networkTotalBytesPerSecond)}
                       </span>
-                      <span className="mt-0.5 block whitespace-nowrap font-mono text-[10px] text-[var(--quiet)]">
+                      <span className="mt-0.5 block whitespace-nowrap font-mono text-2xs text-[var(--quiet)]">
                         Disk {formatBytesPerSecond(container.runtime?.diskTotalBytesPerSecond)}
                       </span>
                     </td>
                     <td className="px-3 py-1.5 max-[960px]:hidden">
                       {route.href && route.label ? (
                         <a
-                          className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-[var(--blue)] underline-offset-2 hover:underline"
+                          className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
                           href={route.href}
                           onClick={(event) => event.stopPropagation()}
                           rel="noreferrer"
@@ -357,22 +357,20 @@ export function ContainersInventoryContent({
                           <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
                         </a>
                       ) : (
-                        <span className="font-mono text-[11px] text-[var(--quiet)]">
-                          not routed
-                        </span>
+                        <span className="font-mono text-xs text-[var(--quiet)]">not routed</span>
                       )}
                     </td>
                     <td className="px-3 py-1.5 max-[760px]:hidden">
-                      <span className="block whitespace-nowrap font-mono text-[11px] text-[var(--muted-ink)]">
+                      <span className="block whitespace-nowrap font-mono text-xs text-[var(--muted-ink)]">
                         {container.display.cpu || '—'} CPU
                       </span>
-                      <span className="mt-0.5 block whitespace-nowrap font-mono text-[10px] text-[var(--quiet)]">
+                      <span className="mt-0.5 block whitespace-nowrap font-mono text-2xs text-[var(--quiet)]">
                         {container.display.memory || 'No sample'}
                       </span>
                     </td>
                     <td className="px-2 py-1.5 text-right">
                       <Button
-                        className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
+                        className="h-8 rounded-[6px] px-3 text-xs shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
                         onClick={(event) => {
                           event.stopPropagation();
                           onContainerSelectAction(container.display.id);
@@ -390,7 +388,7 @@ export function ContainersInventoryContent({
           </table>
 
           {containers.length === 0 ? (
-            <div className="px-4 py-10 text-center font-mono text-[12px] text-[var(--quiet)]">
+            <div className="px-4 py-10 text-center font-mono text-body text-[var(--quiet)]">
               {totalContainersCount === 0
                 ? 'No containers available. Create a container or check the Docker connection.'
                 : 'No containers match this view.'}
@@ -408,10 +406,10 @@ export function ContainersInventoryContent({
                   <Box aria-hidden="true" className="size-4" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-[15px] font-semibold" id="review-container-title">
+                  <h2 className="text-[0.9375rem] font-semibold" id="review-container-title">
                     Review new container
                   </h2>
-                  <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                  <p className="mt-0.5 font-mono text-2xs text-[var(--quiet)]">
                     {createModeLabel} · validate configuration before start
                   </p>
                 </div>

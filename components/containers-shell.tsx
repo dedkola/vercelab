@@ -732,7 +732,7 @@ export function ContainersShell({
                   type="button"
                 >
                   <span className="truncate font-medium text-foreground">{result.name}</span>
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                  <span className="shrink-0 text-xs text-muted-foreground">
                     {formatCompactCount(result.pullCount)} pulls ·{' '}
                     {formatCompactCount(result.starCount)} stars
                   </span>
@@ -804,7 +804,7 @@ export function ContainersShell({
           />
           <textarea
             aria-label="Compose content"
-            className="min-h-44 w-full rounded-[7px] border border-border bg-card px-3 py-2 font-mono text-[12px] text-foreground outline-none transition focus:border-ring focus:ring-1 focus:ring-ring/70"
+            className="min-h-44 w-full rounded-[7px] border border-border bg-card px-3 py-2 font-mono text-body text-foreground outline-none transition focus:border-ring focus:ring-1 focus:ring-ring/70"
             onChange={(event) => setComposeContent(event.target.value)}
             placeholder="Paste docker compose yaml"
             value={composeContent}

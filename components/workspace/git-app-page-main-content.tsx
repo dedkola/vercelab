@@ -226,17 +226,17 @@ function ConfigurationField({
           <div className="flex items-center gap-2">
             <div className="text-xs font-semibold tracking-tight text-foreground">{label}</div>
             {changed ? (
-              <span className="font-mono text-[11px] font-semibold tracking-[0.05em] text-[var(--orange)] uppercase">
+              <span className="font-mono text-xs font-semibold tracking-[0.05em] text-[var(--orange)] uppercase">
                 Changed
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">{description}</p>
+          <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{description}</p>
         </div>
         {changed ? (
           <Button
             aria-label={`Undo ${label} change`}
-            className="h-6 shrink-0 px-2 text-[12px]"
+            className="h-6 shrink-0 px-2 text-body"
             onClick={onReset}
             size="xs"
             type="button"
@@ -250,7 +250,7 @@ function ConfigurationField({
 
       {children}
 
-      <div className="mt-2 truncate font-mono text-[11px] text-[var(--quiet)]">
+      <div className="mt-2 truncate font-mono text-xs text-[var(--quiet)]">
         Saved · {savedValue}
       </div>
     </div>
@@ -761,12 +761,12 @@ export function GitAppPageMainContent({
           </span>
           <div className="min-w-0">
             <h2
-              className="truncate text-[14px] font-semibold tracking-[-0.015em]"
+              className="truncate text-sm font-semibold tracking-[-0.015em]"
               id="app-manager-title"
             >
               {deployment.appName}
             </h2>
-            <p className="mt-0.5 truncate font-mono text-[10px] text-[var(--quiet)]">
+            <p className="mt-0.5 truncate font-mono text-2xs text-[var(--quiet)]">
               {repositoryDescriptor.fullName} · {deployment.branch ?? 'default'}
             </p>
           </div>
@@ -804,7 +804,7 @@ export function GitAppPageMainContent({
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                     Current deployment
                   </span>
                   <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">{stateSummary}</h3>
@@ -813,7 +813,7 @@ export function GitAppPageMainContent({
                   {deploymentStatusLabel}
                 </Badge>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3 font-mono text-[10px] text-[var(--quiet)]">
+              <div className="mt-2 flex items-center justify-between gap-3 font-mono text-2xs text-[var(--quiet)]">
                 <span>{deployment.id}</span>
                 <span>{new Date(deployment.updatedAt).toLocaleString()}</span>
               </div>
@@ -896,14 +896,14 @@ export function GitAppPageMainContent({
             </section>
 
             <section>
-              <h3 className="mb-2 text-[12px] font-semibold">Deployment path</h3>
+              <h3 className="mb-2 text-body font-semibold">Deployment path</h3>
               <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1.5 max-[640px]:grid-cols-1">
                 <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
-                  <span className="grid size-4 place-items-center rounded-full bg-[var(--green-soft)] font-mono text-[10px] font-bold text-[var(--green)]">
+                  <span className="grid size-4 place-items-center rounded-full bg-[var(--green-soft)] font-mono text-2xs font-bold text-[var(--green)]">
                     ✓
                   </span>
-                  <strong className="mt-1.5 block text-[11px]">Source</strong>
-                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                  <strong className="mt-1.5 block text-xs">Source</strong>
+                  <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                     {deployment.branch ?? 'default'}@
                     {(activeCommit?.shortSha ?? deployment.commitSha?.slice(0, 7)) || 'head'}
                   </span>
@@ -915,7 +915,7 @@ export function GitAppPageMainContent({
                 <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
                   <span
                     className={cn(
-                      'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
+                      'grid size-4 place-items-center rounded-full font-mono text-2xs font-bold',
                       deployment.status === 'deploying'
                         ? 'bg-[var(--blue-soft)] text-[var(--blue)]'
                         : 'bg-[var(--green-soft)] text-[var(--green)]'
@@ -923,8 +923,8 @@ export function GitAppPageMainContent({
                   >
                     {deployment.status === 'deploying' ? '↻' : '✓'}
                   </span>
-                  <strong className="mt-1.5 block text-[11px]">Build</strong>
-                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                  <strong className="mt-1.5 block text-xs">Build</strong>
+                  <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                     {deployment.status === 'deploying'
                       ? 'in progress'
                       : (deployment.composeMode ?? 'auto') + ' ready'}
@@ -937,7 +937,7 @@ export function GitAppPageMainContent({
                 <div className="min-w-0 rounded-[8px] border border-[var(--hairline)] bg-white p-2.5">
                   <span
                     className={cn(
-                      'grid size-4 place-items-center rounded-full font-mono text-[10px] font-bold',
+                      'grid size-4 place-items-center rounded-full font-mono text-2xs font-bold',
                       deploymentHref
                         ? 'bg-[var(--green-soft)] text-[var(--green)]'
                         : 'bg-[var(--surface-subtle)] text-[var(--quiet)]'
@@ -945,8 +945,8 @@ export function GitAppPageMainContent({
                   >
                     {deploymentHref ? '✓' : '·'}
                   </span>
-                  <strong className="mt-1.5 block text-[11px]">Route</strong>
-                  <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                  <strong className="mt-1.5 block text-xs">Route</strong>
+                  <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                     {publicDomainLabel || 'not routed'}
                   </span>
                 </div>
@@ -954,7 +954,7 @@ export function GitAppPageMainContent({
             </section>
 
             <section>
-              <h3 className="mb-2 text-[12px] font-semibold">Runtime</h3>
+              <h3 className="mb-2 text-body font-semibold">Runtime</h3>
               <div className="border-t border-[var(--hairline)]">
                 {[
                   ['Build mode', deployment.composeMode ?? 'auto'],
@@ -976,8 +976,8 @@ export function GitAppPageMainContent({
                     className="flex min-h-[39px] items-center justify-between gap-4 border-b border-[var(--hairline)]"
                     key={label}
                   >
-                    <span className="text-[11px] text-muted-foreground">{label}</span>
-                    <span className="max-w-[65%] truncate font-mono text-[10px] text-foreground">
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <span className="max-w-[65%] truncate font-mono text-2xs text-foreground">
                       {value}
                     </span>
                   </div>
@@ -986,33 +986,33 @@ export function GitAppPageMainContent({
             </section>
 
             <section>
-              <h3 className="mb-2 text-[12px] font-semibold">Recent activity</h3>
+              <h3 className="mb-2 text-body font-semibold">Recent activity</h3>
               <div className="border-t border-[var(--hairline)]">
                 <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
-                  <span className="font-mono text-[10px] text-[var(--quiet)]">Latest</span>
+                  <span className="font-mono text-2xs text-[var(--quiet)]">Latest</span>
                   <span className="mt-0.5 size-1.5 rounded-full bg-[var(--green)]" />
                   <span className="min-w-0">
-                    <strong className="block text-[11px]">Deployment state updated</strong>
-                    <span className="mt-0.5 block break-words font-mono text-[10px] leading-4 text-[var(--quiet)]">
+                    <strong className="block text-xs">Deployment state updated</strong>
+                    <span className="mt-0.5 block break-words font-mono text-2xs leading-4 text-[var(--quiet)]">
                       {deployment.lastOperationSummary ??
                         deploymentStatusLabel + ' · no operation summary'}
                     </span>
                   </span>
                 </div>
                 <div className="grid grid-cols-[3.5rem_0.5rem_1fr] gap-2 border-b border-[var(--hairline)] py-2.5">
-                  <span className="font-mono text-[10px] text-[var(--quiet)]">Output</span>
+                  <span className="font-mono text-2xs text-[var(--quiet)]">Output</span>
                   <span className="mt-0.5 size-1.5 rounded-full bg-[var(--orange)]" />
                   <details className="group min-w-0">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[11px] font-semibold marker:content-none">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold marker:content-none">
                       <span>Last recorded output</span>
-                      <span className="font-mono text-[10px] font-normal text-[var(--quiet)] group-open:hidden">
+                      <span className="font-mono text-2xs font-normal text-[var(--quiet)] group-open:hidden">
                         Show
                       </span>
-                      <span className="hidden font-mono text-[10px] font-normal text-[var(--quiet)] group-open:inline">
+                      <span className="hidden font-mono text-2xs font-normal text-[var(--quiet)] group-open:inline">
                         Hide
                       </span>
                     </summary>
-                    <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-[7px] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-4 break-words text-[var(--quiet)]">
+                    <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-[7px] bg-[var(--surface-subtle)] p-2 font-mono text-2xs leading-4 break-words text-[var(--quiet)]">
                       {deployment.lastOutput ?? 'No output recorded for this deployment.'}
                     </pre>
                   </details>
@@ -1025,11 +1025,11 @@ export function GitAppPageMainContent({
         {activeTab === 'settings' ? (
           <div className="space-y-3">
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-              <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+              <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                 Application settings
               </span>
               <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">Runtime & route</h3>
-              <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+              <p className="mt-1 font-mono text-2xs text-[var(--quiet)]">
                 Saved value → next deployment value
               </p>
             </section>
@@ -1045,7 +1045,7 @@ export function GitAppPageMainContent({
             >
               <Input
                 aria-label="App name"
-                className="h-9 rounded-[7px] text-[12px] shadow-none"
+                className="h-9 rounded-[7px] text-body shadow-none"
                 onChange={(event) => setAppName(event.target.value)}
                 value={appName}
               />
@@ -1061,12 +1061,12 @@ export function GitAppPageMainContent({
               <InputGroup className="h-9 rounded-[7px] shadow-none">
                 <InputGroupInput
                   aria-label="Public URL"
-                  className="px-2.5 text-[12px]"
+                  className="px-2.5 text-body"
                   onChange={(event) => setSubdomain(event.target.value)}
                   value={subdomain}
                 />
                 {baseDomain ? (
-                  <InputGroupSuffix className="font-mono text-[11px] leading-8">
+                  <InputGroupSuffix className="font-mono text-xs leading-8">
                     .{baseDomain}
                   </InputGroupSuffix>
                 ) : null}
@@ -1083,7 +1083,7 @@ export function GitAppPageMainContent({
               >
                 <select
                   aria-label="Exposure"
-                  className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 text-[12px]"
+                  className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 text-body"
                   onChange={(event) => setExposureMode(event.target.value as ExposureMode)}
                   value={exposureMode}
                 >
@@ -1102,7 +1102,7 @@ export function GitAppPageMainContent({
               >
                 <Input
                   aria-label="Internal port"
-                  className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                  className="h-9 rounded-[7px] font-mono text-body shadow-none"
                   inputMode="numeric"
                   onChange={(event) => setPort(event.target.value)}
                   value={port}
@@ -1120,7 +1120,7 @@ export function GitAppPageMainContent({
               >
                 <Input
                   aria-label="Host port"
-                  className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                  className="h-9 rounded-[7px] font-mono text-body shadow-none"
                   inputMode="numeric"
                   onChange={(event) => setHostPort(event.target.value)}
                   placeholder="e.g. 27017"
@@ -1135,8 +1135,8 @@ export function GitAppPageMainContent({
                   <GitBranch aria-hidden="true" className="size-3.5" />
                 </span>
                 <div>
-                  <h3 className="text-[13px] font-semibold">Source and revision</h3>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  <h3 className="text-sm font-semibold">Source and revision</h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     Follow a branch head or pin one commit.
                   </p>
                 </div>
@@ -1154,7 +1154,7 @@ export function GitAppPageMainContent({
                 >
                   <Combobox
                     ariaLabel="Saved branch"
-                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
+                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-body shadow-none"
                     disabled={isSourceLoading}
                     emptyText={branchBrowserError ?? 'No branches available'}
                     onOpenChangeAction={handleBranchComboboxOpen}
@@ -1178,7 +1178,7 @@ export function GitAppPageMainContent({
                 >
                   <Combobox
                     ariaLabel="Saved commit"
-                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-[12px] shadow-none"
+                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 text-body shadow-none"
                     disabled={isSourceLoading || Boolean(branchBrowserError)}
                     emptyText={branchBrowserError ?? 'No commits available'}
                     onValueChangeAction={handleCommitSelect}
@@ -1193,8 +1193,8 @@ export function GitAppPageMainContent({
 
             <section className="flex items-center justify-between gap-4 rounded-[8px] border border-[var(--red)]/20 bg-[var(--red-soft)] p-3">
               <div>
-                <h3 className="text-[12px] font-semibold">Remove deployment</h3>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <h3 className="text-body font-semibold">Remove deployment</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Stop the runtime and remove this app record.
                 </p>
               </div>
@@ -1219,13 +1219,13 @@ export function GitAppPageMainContent({
         {activeTab === 'variables' ? (
           <div className="space-y-3">
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-              <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+              <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                 Environment
               </span>
               <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
                 {envVariableCount} variable{envVariableCount === 1 ? '' : 's'}
               </h3>
-              <p className="mt-1 font-mono text-[10px] text-[var(--quiet)]">
+              <p className="mt-1 font-mono text-2xs text-[var(--quiet)]">
                 Included during the next build
               </p>
             </section>
@@ -1233,8 +1233,8 @@ export function GitAppPageMainContent({
             <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
               <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
                 <div>
-                  <h3 className="text-[12px] font-semibold">Variables</h3>
-                  <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                  <h3 className="text-body font-semibold">Variables</h3>
+                  <p className="mt-0.5 font-mono text-2xs text-[var(--quiet)]">
                     Enable only rows that should be saved
                   </p>
                 </div>
@@ -1263,7 +1263,7 @@ export function GitAppPageMainContent({
                       className="grid grid-cols-[auto_minmax(0,0.75fr)_minmax(0,1.25fr)_auto] items-center gap-2 px-3 py-2.5 max-[640px]:grid-cols-[auto_minmax(0,1fr)_auto]"
                       key={row.id}
                     >
-                      <label className="inline-flex items-center gap-1.5 text-[11px]">
+                      <label className="inline-flex items-center gap-1.5 text-xs">
                         <input
                           checked={row.enabled}
                           onChange={(event) =>
@@ -1281,7 +1281,7 @@ export function GitAppPageMainContent({
                       </label>
                       <Input
                         aria-label="Environment key"
-                        className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                        className="h-9 rounded-[7px] font-mono text-xs shadow-none"
                         onChange={(event) =>
                           setEnvRows((current) =>
                             current.map((candidate) =>
@@ -1296,7 +1296,7 @@ export function GitAppPageMainContent({
                       />
                       <Input
                         aria-label="Environment value"
-                        className="h-9 rounded-[7px] font-mono text-[11px] shadow-none max-[640px]:col-start-2"
+                        className="h-9 rounded-[7px] font-mono text-xs shadow-none max-[640px]:col-start-2"
                         onChange={(event) =>
                           setEnvRows((current) =>
                             current.map((candidate) =>
@@ -1327,7 +1327,7 @@ export function GitAppPageMainContent({
                   ))}
                 </div>
               ) : (
-                <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
+                <div className="px-3 py-8 text-center font-mono text-xs text-[var(--quiet)]">
                   No environment variables configured.
                 </div>
               )}
@@ -1338,13 +1338,13 @@ export function GitAppPageMainContent({
         {activeTab === 'files' ? (
           <div className="space-y-3">
             <section className="rounded-[10px] border border-[var(--hairline)] bg-white p-3.5">
-              <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+              <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                 Workspace files
               </span>
               <h3 className="mt-1 text-lg font-semibold tracking-[-0.035em]">
                 {managedFiles.length} managed file{managedFiles.length === 1 ? '' : 's'}
               </h3>
-              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+              <p className="mt-1 text-xs leading-4 text-muted-foreground">
                 Uploaded to the app workspace root before every build and retained across source
                 pulls.
               </p>
@@ -1358,8 +1358,8 @@ export function GitAppPageMainContent({
                   <FileUp aria-hidden="true" className="size-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-[12px] font-semibold">Upload configuration file</h3>
-                  <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                  <h3 className="text-body font-semibold">Upload configuration file</h3>
+                  <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
                     Use this for files such as <span className="font-mono">.env</span> or{' '}
                     <span className="font-mono">k3s.config</span>. Maximum size 5 MB.
                   </p>
@@ -1367,7 +1367,7 @@ export function GitAppPageMainContent({
               </div>
               <input
                 aria-label="Choose deployment file"
-                className="mt-3 block w-full rounded-[7px] border border-input bg-[var(--surface-subtle)] px-2.5 py-2 text-[11px] file:mr-2 file:rounded-[5px] file:border-0 file:bg-white file:px-2 file:py-1 file:text-[11px] file:font-semibold"
+                className="mt-3 block w-full rounded-[7px] border border-input bg-[var(--surface-subtle)] px-2.5 py-2 text-xs file:mr-2 file:rounded-[5px] file:border-0 file:bg-white file:px-2 file:py-1 file:text-xs file:font-semibold"
                 onChange={(event) => {
                   const selectedFile = event.target.files?.[0] ?? null;
                   setUploadFile(selectedFile);
@@ -1382,13 +1382,13 @@ export function GitAppPageMainContent({
               <div className="mt-2 grid grid-cols-2 gap-2 max-[640px]:grid-cols-1">
                 <div>
                   <label
-                    className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
+                    className="mb-1 block font-mono text-2xs font-semibold text-[var(--quiet)]"
                     htmlFor="deployment-file-name"
                   >
                     Workspace filename
                   </label>
                   <Input
-                    className="h-9 rounded-[7px] font-mono text-[11px] shadow-none"
+                    className="h-9 rounded-[7px] font-mono text-xs shadow-none"
                     disabled={!uploadFile}
                     id="deployment-file-name"
                     onChange={(event) => {
@@ -1401,13 +1401,13 @@ export function GitAppPageMainContent({
                 </div>
                 <div>
                   <label
-                    className="mb-1 block font-mono text-[10px] font-semibold text-[var(--quiet)]"
+                    className="mb-1 block font-mono text-2xs font-semibold text-[var(--quiet)]"
                     htmlFor="deployment-file-access"
                   >
                     File access
                   </label>
                   <select
-                    className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 font-mono text-[11px] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-9 w-full rounded-[7px] border border-input bg-white px-2.5 font-mono text-xs disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!uploadFile}
                     id="deployment-file-access"
                     onChange={(event) =>
@@ -1420,7 +1420,7 @@ export function GitAppPageMainContent({
                   </select>
                 </div>
               </div>
-              <p className="mt-1.5 text-[10px] leading-4 text-[var(--quiet)]">
+              <p className="mt-1.5 text-2xs leading-4 text-[var(--quiet)]">
                 Private is recommended for <span className="font-mono">.env</span>. Use
                 container-readable for bind-mounted configuration files.
               </p>
@@ -1456,8 +1456,8 @@ export function GitAppPageMainContent({
             <section className="overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-white">
               <header className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2.5">
                 <div>
-                  <h3 className="text-[12px] font-semibold">Managed files</h3>
-                  <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                  <h3 className="text-body font-semibold">Managed files</h3>
+                  <p className="mt-0.5 font-mono text-2xs text-[var(--quiet)]">
                     Contents stay hidden · access mode persists across redeploys
                   </p>
                 </div>
@@ -1478,7 +1478,7 @@ export function GitAppPageMainContent({
               </header>
 
               {managedFilesPending === 'loading' && !managedFilesLoaded ? (
-                <div className="flex items-center justify-center gap-2 px-3 py-8 font-mono text-[11px] text-[var(--quiet)]">
+                <div className="flex items-center justify-center gap-2 px-3 py-8 font-mono text-xs text-[var(--quiet)]">
                   <LoaderCircle className="size-3.5 animate-spin" />
                   Loading files…
                 </div>
@@ -1490,17 +1490,17 @@ export function GitAppPageMainContent({
                         <FileText aria-hidden="true" className="size-3.5" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <strong className="block truncate font-mono text-[11px] font-semibold">
+                        <strong className="block truncate font-mono text-xs font-semibold">
                           {file.name}
                         </strong>
-                        <span className="mt-0.5 block font-mono text-[9px] text-[var(--quiet)]">
+                        <span className="mt-0.5 block font-mono text-2xs text-[var(--quiet)]">
                           {formatFileSize(file.size)} · mode {file.mode} ·{' '}
                           {new Date(file.updatedAt).toLocaleString()}
                         </span>
                       </span>
                       <select
                         aria-label={`Access for ${file.name}`}
-                        className="h-8 w-48 rounded-[6px] border border-input bg-white px-2 font-mono text-[10px] disabled:cursor-not-allowed disabled:opacity-50 max-[640px]:order-4 max-[640px]:ml-10 max-[640px]:w-[calc(100%-2.5rem)]"
+                        className="h-8 w-48 rounded-[6px] border border-input bg-white px-2 font-mono text-2xs disabled:cursor-not-allowed disabled:opacity-50 max-[640px]:order-4 max-[640px]:ml-10 max-[640px]:w-[calc(100%-2.5rem)]"
                         disabled={managedFilesPending !== null}
                         onChange={(event) =>
                           void handleFileAccessChange(
@@ -1532,7 +1532,7 @@ export function GitAppPageMainContent({
                   ))}
                 </div>
               ) : (
-                <div className="px-3 py-8 text-center font-mono text-[11px] text-[var(--quiet)]">
+                <div className="px-3 py-8 text-center font-mono text-xs text-[var(--quiet)]">
                   No managed files uploaded.
                 </div>
               )}
@@ -1556,7 +1556,7 @@ export function GitAppPageMainContent({
 
       {activeTab === 'settings' || activeTab === 'variables' ? (
         <footer className="flex min-h-[54px] shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hairline)] bg-white px-4 py-3">
-          <span className="font-mono text-[10px] text-[var(--quiet)]">
+          <span className="font-mono text-2xs text-[var(--quiet)]">
             {changeCount
               ? changeCount + ' pending change' + (changeCount === 1 ? '' : 's')
               : 'All changes saved'}
