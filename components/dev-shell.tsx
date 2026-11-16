@@ -42,8 +42,13 @@ export function DevShell({ initialState }: DevShellProps) {
   const [settingsProjectId, setSettingsProjectId] = useState<string | null>(null);
   const [detailDeploymentId, setDetailDeploymentId] = useState<string | null>(null);
   const [commitPickerProjectId, setCommitPickerProjectId] = useState<string | null>(null);
-  const [deleteDeployment, setDeleteDeployment] = useState<DevDeployment | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<{
+    deployments: DevDeployment[];
+    skipped: number;
+  } | null>(null);
   const [isDeletingDeployment, setIsDeletingDeployment] = useState(false);
+  const [selectedDeploymentIds, setSelectedDeploymentIds] = useState<Set<string>>(() => new Set());
+  const [isBulkActionPending, setIsBulkActionPending] = useState(false);
   const pollInFlightRef = useRef(false);
 
   const refreshState = useCallback(async (showSpinner = false) => {
@@ -161,6 +166,134 @@ export function DevShell({ initialState }: DevShellProps) {
   const detailProject =
     projects.find((project) => project.id === detailDeployment?.projectId) ?? null;
 
+  useEffect(() => {
+    setSelectedDeploymentIds((current) => {
+      if (current.size === 0) {
+        return current;
+      }
+
+      const available = new Set(deployments.map((deployment) => deployment.id));
+      const next = new Set([...current].filter((id) => available.has(id)));
+
+      return next.size === current.size ? current : next;
+    });
+  }, [deployments]);
+
+  useEffect(() => {
+    setSelectedDeploymentIds(new Set());
+  }, [selectedProject?.id]);
+
+  function toggleDeploymentSelection(deploymentId: string) {
+    setSelectedDeploymentIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(deploymentId)) {
+        next.delete(deploymentId);
+      } else {
+        next.add(deploymentId);
+      }
+
+      return next;
+    });
+  }
+
+  function toggleAllDeploymentSelection() {
+    setSelectedDeploymentIds((current) => {
+      const allSelected =
+        selectedProjectDeployments.length > 0 &&
+        selectedProjectDeployments.every((deployment) => current.has(deployment.id));
+
+      return allSelected
+        ? new Set<string>()
+        : new Set(selectedProjectDeployments.map((deployment) => deployment.id));
+    });
+  }
+
+  function splitSelectedDeployments() {
+    const selected = selectedProjectDeployments.filter((deployment) =>
+      selectedDeploymentIds.has(deployment.id)
+    );
+    const eligible = selected.filter(
+      (deployment) => deployment.status !== 'queued' && deployment.status !== 'building'
+    );
+
+    return { eligible, selected, skipped: selected.length - eligible.length };
+  }
+
+  async function redeploySelectedDeployments() {
+    const { eligible, selected, skipped } = splitSelectedDeployments();
+
+    if (eligible.length === 0) {
+      toast.error(
+        selected.length === 0
+          ? 'Select at least one preview to redeploy.'
+          : 'Wait for the selected builds to finish before redeploying.'
+      );
+      return;
+    }
+
+    setIsBulkActionPending(true);
+    let succeeded = 0;
+
+    try {
+      for (const deployment of eligible) {
+        try {
+          const response = await fetch(`/api/dev/deployments/${deployment.id}/actions`, {
+            body: JSON.stringify({ action: 'retry' }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            method: 'POST',
+          });
+          const payload = (await response.json()) as { error?: string };
+
+          if (!response.ok) {
+            throw new Error(payload.error ?? 'Unable to redeploy preview.');
+          }
+
+          succeeded += 1;
+        } catch {
+          // Failures are summarized below so one bad preview does not stop the rest.
+        }
+      }
+    } finally {
+      setIsBulkActionPending(false);
+    }
+
+    const failed = eligible.length - succeeded;
+    const parts = [
+      `Redeployed ${succeeded} preview${succeeded === 1 ? '' : 's'}`,
+      skipped > 0 ? `skipped ${skipped} still building` : null,
+      failed > 0 ? `${failed} failed` : null,
+    ].filter(Boolean);
+
+    if (succeeded === 0) {
+      toast.error(parts.join(' · '));
+    } else if (failed > 0) {
+      toast.warning(parts.join(' · '));
+    } else {
+      toast.success(parts.join(' · '));
+    }
+
+    setSelectedDeploymentIds(new Set());
+    await refreshState(false);
+  }
+
+  function requestDeleteSelectedDeployments() {
+    const { eligible, selected, skipped } = splitSelectedDeployments();
+
+    if (eligible.length === 0) {
+      toast.error(
+        selected.length === 0
+          ? 'Select at least one preview to delete.'
+          : 'Wait for the selected builds to finish before deleting them.'
+      );
+      return;
+    }
+
+    setDeleteTargets({ deployments: eligible, skipped });
+  }
+
   async function runProjectAction(project: DevProject, action: ProjectAction) {
     setPendingActionKey(`project:${action}`);
 
@@ -247,7 +380,7 @@ export function DevShell({ initialState }: DevShellProps) {
         return;
       }
 
-      setDeleteDeployment(deployment);
+      setDeleteTargets({ deployments: [deployment], skipped: 0 });
       return;
     }
 
@@ -283,41 +416,64 @@ export function DevShell({ initialState }: DevShellProps) {
     }
   }
 
-  async function confirmDeleteDeployment() {
-    if (!deleteDeployment) {
+  async function confirmDeleteDeployments() {
+    if (!deleteTargets) {
       return;
     }
 
+    const targets = deleteTargets.deployments;
+
     setIsDeletingDeployment(true);
-    setPendingActionKey(`${deleteDeployment.id}:delete`);
 
     try {
-      const response = await fetch(`/api/dev/deployments/${deleteDeployment.id}/actions`, {
-        body: JSON.stringify({ action: 'delete' }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-      });
-      const payload = (await response.json()) as { error?: string };
+      const deletedIds = new Set<string>();
 
-      if (!response.ok) {
-        throw new Error(payload.error ?? 'Unable to delete preview.');
+      for (const deployment of targets) {
+        try {
+          const response = await fetch(`/api/dev/deployments/${deployment.id}/actions`, {
+            body: JSON.stringify({ action: 'delete' }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            method: 'POST',
+          });
+          const payload = (await response.json()) as { error?: string };
+
+          if (!response.ok) {
+            throw new Error(payload.error ?? 'Unable to delete preview.');
+          }
+
+          deletedIds.add(deployment.id);
+        } catch {
+          // Failures are summarized below so one bad preview does not stop the rest.
+        }
       }
 
-      toast.success(`Deleted preview ${deleteDeployment.shortSha}.`);
+      const failed = targets.length - deletedIds.size;
+      const parts = [
+        `Deleted ${deletedIds.size} preview${deletedIds.size === 1 ? '' : 's'}`,
+        failed > 0 ? `${failed} failed` : null,
+      ].filter(Boolean);
 
-      if (detailDeploymentId === deleteDeployment.id) {
+      if (deletedIds.size === 0) {
+        toast.error(parts.join(' · '));
+      } else if (failed > 0) {
+        toast.warning(parts.join(' · '));
+      } else {
+        toast.success(parts.join(' · '));
+      }
+
+      if (detailDeploymentId && deletedIds.has(detailDeploymentId)) {
         setDetailDeploymentId(null);
       }
 
-      setDeleteDeployment(null);
+      setSelectedDeploymentIds(
+        (current) => new Set([...current].filter((id) => !deletedIds.has(id)))
+      );
+      setDeleteTargets(null);
       await refreshState(false);
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'Unable to delete preview.'));
     } finally {
       setIsDeletingDeployment(false);
-      setPendingActionKey(null);
     }
   }
 
@@ -376,17 +532,24 @@ export function DevShell({ initialState }: DevShellProps) {
             baseDomain={state.baseDomain}
             containerStates={containerStates}
             deployments={selectedProjectDeployments}
+            isBulkActionPending={isBulkActionPending}
             onActionAction={(action, deploymentId) =>
               void runDeploymentAction(action, deploymentId)
             }
+            onClearSelectionAction={() => setSelectedDeploymentIds(new Set())}
+            onDeleteSelectedAction={requestDeleteSelectedDeployments}
             onDeployLatestAction={() => void runProjectAction(selectedProject, 'deploy')}
             onOpenCommitsAction={() => setCommitPickerProjectId(selectedProject.id)}
             onOpenSettingsAction={() => setSettingsProjectId(selectedProject.id)}
+            onRedeploySelectedAction={() => void redeploySelectedDeployments()}
             onSelectDeploymentAction={setDetailDeploymentId}
             onSyncAction={() => void runProjectAction(selectedProject, 'sync')}
+            onToggleAllSelectionAction={toggleAllDeploymentSelection}
+            onToggleDeploymentSelectionAction={toggleDeploymentSelection}
             pendingActionKey={pendingActionKey}
             previewProtocol={state.previewProtocol}
             project={selectedProject}
+            selectedDeploymentIds={selectedDeploymentIds}
           />
         ) : null}
 
@@ -495,23 +658,48 @@ export function DevShell({ initialState }: DevShellProps) {
         />
       ) : null}
 
-      {deleteDeployment ? (
+      {deleteTargets ? (
         <WorkspaceDialog
-          onCloseAction={() => setDeleteDeployment(null)}
-          title={`Delete preview ${deleteDeployment.shortSha}`}
+          onCloseAction={() => setDeleteTargets(null)}
+          title={
+            deleteTargets.deployments.length === 1
+              ? `Delete preview ${deleteTargets.deployments[0]!.shortSha}`
+              : `Delete ${deleteTargets.deployments.length} previews`
+          }
         >
           <div className="px-5 py-4">
             <h2 className="text-[16px] font-semibold tracking-tight">
-              Delete preview {deleteDeployment.shortSha}?
+              {deleteTargets.deployments.length === 1
+                ? `Delete preview ${deleteTargets.deployments[0]!.shortSha}?`
+                : `Delete ${deleteTargets.deployments.length} previews?`}
             </h2>
             <p className="mt-2 text-[11px] leading-5 text-[var(--quiet)]">
-              This removes the preview container, image, workspace, and build log. Other previews
-              and the production deployment are not affected.
+              This removes {deleteTargets.deployments.length === 1 ? 'the preview' : 'each preview'}
+              &apos;s container, image, workspace, and build log. Other previews and the production
+              deployment are not affected.
             </p>
+
+            {deleteTargets.skipped > 0 ? (
+              <p className="mt-2 text-[11px] leading-5 text-[var(--warning-ink)]">
+                {deleteTargets.skipped} selected preview
+                {deleteTargets.skipped === 1 ? ' is' : 's are'} still building and will be skipped.
+              </p>
+            ) : null}
+
+            {deleteTargets.deployments.length > 1 ? (
+              <ul className="mt-3 max-h-32 overflow-auto rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-5 text-[var(--quiet)]">
+                {deleteTargets.deployments.map((deployment) => (
+                  <li className="truncate" key={deployment.id}>
+                    {deployment.shortSha} · {deployment.commitMessage ?? deployment.branch}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
             <div className="mt-4 flex justify-end gap-2">
               <Button
                 disabled={isDeletingDeployment}
-                onClick={() => setDeleteDeployment(null)}
+                onClick={() => setDeleteTargets(null)}
                 type="button"
                 variant="secondary"
               >
@@ -519,14 +707,16 @@ export function DevShell({ initialState }: DevShellProps) {
               </Button>
               <Button
                 disabled={isDeletingDeployment}
-                onClick={() => void confirmDeleteDeployment()}
+                onClick={() => void confirmDeleteDeployments()}
                 type="button"
                 variant="danger"
               >
                 {isDeletingDeployment ? (
                   <SpinnerGap aria-hidden="true" className="size-3.5 animate-spin" />
                 ) : null}
-                Delete preview
+                {deleteTargets.deployments.length === 1
+                  ? 'Delete preview'
+                  : `Delete ${deleteTargets.deployments.length} previews`}
               </Button>
             </div>
           </div>
