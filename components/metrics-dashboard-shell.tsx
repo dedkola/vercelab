@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { MetricsDashboardMainContent } from '@/components/workspace/metrics-dashboard-main-content';
 import { useWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
+import type { ContainerAction } from '@/lib/container-inventory';
 import {
   readStoredContainerAliases,
   subscribeToStoredContainerAliases,
@@ -17,10 +19,22 @@ import {
   METRICS_DASHBOARD_RANGE_OPTIONS,
 } from '@/lib/metrics-dashboard-metrics';
 import { getTimeZoneForDisplayMode } from '@/lib/time-display';
+import type { ContainerListEntry } from '@/lib/workspace-types';
 
 function buildMetricsRequestUrl(searchParams: Record<string, string>) {
   return '/api/metrics?' + new URLSearchParams(searchParams).toString();
 }
+
+// Docker reports the new state a beat after the lifecycle command returns, so refresh a
+// few times instead of once.
+const POST_ACTION_REFRESH_DELAYS_MS = [0, 900, 2400] as const;
+
+const CONTAINER_ACTION_DONE_LABELS: Record<ContainerAction, string> = {
+  remove: 'Removed',
+  restart: 'Restarted',
+  start: 'Started',
+  stop: 'Stopped',
+};
 
 type MetricsDashboardShellProps = Pick<
   MetricsDashboardData,
@@ -34,6 +48,7 @@ export function MetricsDashboardShell({
 }: MetricsDashboardShellProps) {
   const {
     dashboardRange,
+    refreshSnapshot,
     registerResetHandler,
     setDashboardRange,
     sidebarHistory,
@@ -122,6 +137,64 @@ export function MetricsDashboardShell({
       null);
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedRuntimeContainerId = selectedRuntimeContainer?.id ?? null;
+  const [pendingContainerActions, setPendingContainerActions] = useState<
+    Record<string, ContainerAction>
+  >({});
+  const postActionRefreshTimeoutIdsRef = useRef<number[]>([]);
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of postActionRefreshTimeoutIdsRef.current) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  const handleContainerAction = useCallback(
+    async (container: ContainerListEntry, action: ContainerAction) => {
+      const runtimeId = container.runtime?.id;
+      const containerKey = container.display.id;
+
+      if (!runtimeId) {
+        return;
+      }
+
+      setPendingContainerActions((current) => ({ ...current, [containerKey]: action }));
+
+      try {
+        const response = await fetch(`/api/containers/${runtimeId}/actions`, {
+          body: JSON.stringify({ action }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        });
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? 'Container action failed.');
+        }
+
+        toast.success(`${CONTAINER_ACTION_DONE_LABELS[action]} ${container.sidebarName}`);
+
+        for (const timeoutId of postActionRefreshTimeoutIdsRef.current) {
+          window.clearTimeout(timeoutId);
+        }
+
+        postActionRefreshTimeoutIdsRef.current = POST_ACTION_REFRESH_DELAYS_MS.map((delayMs) =>
+          window.setTimeout(() => {
+            void refreshSnapshot().catch(() => undefined);
+          }, delayMs)
+        );
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Container action failed.');
+      } finally {
+        setPendingContainerActions((current) => {
+          const next = { ...current };
+          delete next[containerKey];
+          return next;
+        });
+      }
+    },
+    [refreshSnapshot]
+  );
 
   useEffect(() => {
     const requestedRange = dashboardRange;
@@ -239,9 +312,11 @@ export function MetricsDashboardShell({
         isAllContainerHistoryLoading={isContainerHistoryLoading}
         isAllContainersSelected={isAllContainersSelected}
         onAllContainersSelectAction={() => setSelectedContainerId(ALL_CONTAINERS_ID)}
+        onContainerLifecycleAction={handleContainerAction}
         onContainerSelectAction={setSelectedContainerId}
         onRangeChangeAction={setDashboardRange}
         onSearchQueryChangeAction={setSearchQuery}
+        pendingContainerActions={pendingContainerActions}
         range={dashboardRange}
         rangeOptions={METRICS_DASHBOARD_RANGE_OPTIONS}
         runningContainersCount={sidebarSnapshot?.containers.running ?? null}

@@ -25,6 +25,7 @@ import {
 } from '@/lib/container-preferences';
 import type { GitHubRepository } from '@/lib/github';
 import type { DeploymentSummary } from '@/lib/persistence';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
 import type { ExposureMode } from '@/lib/validation';
 import type { DraftAppState } from '@/lib/workspace-types';
@@ -206,7 +207,7 @@ function formatDeploymentHref(
   deployment: Pick<DeploymentSummary, 'subdomain'>,
   baseDomain?: string
 ) {
-  return `https://${formatDeploymentDomain(deployment, baseDomain)}`;
+  return publicHttpsUrl(formatDeploymentDomain(deployment, baseDomain));
 }
 
 function resolveDeploymentDisplayName(
@@ -576,7 +577,7 @@ export function GitAppPageShell({ baseDomain, initialDeployments }: GitAppPageSh
 
       let toastMessage = 'Deployment created.';
       if (payload.exposureMode === 'http' && payload.domain) {
-        toastMessage = `Deployment queued for https://${payload.domain}`;
+        toastMessage = `Deployment queued for ${publicHttpsUrl(payload.domain)}`;
       } else if (payload.exposureMode === 'tcp' && payload.hostPort) {
         toastMessage = `TCP service queued on port ${payload.hostPort}`;
       } else if (payload.exposureMode === 'host' && payload.hostPort) {

@@ -215,7 +215,6 @@ export function DevDeploymentsContent({
             </Button>
             <Button
               aria-label="Project settings"
-              className="size-8 rounded-[7px] p-0"
               onClick={onOpenSettingsAction}
               size="icon"
               title="Project settings"

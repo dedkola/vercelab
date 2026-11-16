@@ -306,7 +306,7 @@ export function RowActionButton({
 }) {
   return (
     <Button
-      className="group-hover:border-[var(--blue)]/25 group-hover:text-[var(--blue)]"
+      className="group-hover:border-[var(--hairline-strong)]"
       onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
         onClickAction();

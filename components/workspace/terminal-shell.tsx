@@ -339,19 +339,7 @@ export function TerminalShell() {
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-[var(--canvas)]">
       <div className="vercelab-page flex h-full min-h-[420px] flex-col gap-4">
-        <header className="flex min-h-8 shrink-0 flex-wrap items-center justify-between gap-3 px-0.5">
-          <h1 className="vercelab-page-heading">
-            Terminal{' '}
-            <span className="vercelab-page-count">{host?.hostname ?? 'Connecting to host'}</span>
-          </h1>
-          <span
-            className="flex items-center gap-1.5 text-2xs text-[var(--muted-ink)]"
-            role="status"
-          >
-            <StatusDot status={connectionStatus} />
-            {statusLabel[connectionStatus]}
-          </span>
-        </header>
+        <h1 className="sr-only">Terminal</h1>
         {connectionError || connectionStatus === 'disconnected' ? (
           <WorkspaceNotice tone={connectionError ? 'error' : 'warning'}>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -379,10 +367,17 @@ export function TerminalShell() {
           className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-[var(--surface)] shadow-[var(--shadow)]"
         >
           <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--hairline)] px-3 py-2.5">
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <TerminalSquare className="size-4 shrink-0 text-[var(--quiet)]" aria-hidden="true" />
               <span className="truncate font-mono text-xs font-medium">
                 {host ? `${host.username}@${host.hostname}` : 'Host session'}
+              </span>
+              <span
+                className="flex shrink-0 items-center gap-1.5 text-2xs text-[var(--muted-ink)]"
+                role="status"
+              >
+                <StatusDot status={connectionStatus} />
+                {statusLabel[connectionStatus]}
               </span>
             </div>
             <div aria-label="Terminal controls" className="flex shrink-0 items-center gap-1">

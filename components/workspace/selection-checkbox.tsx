@@ -34,7 +34,7 @@ export function SelectionCheckbox({
       aria-label={ariaLabel}
       checked={checked}
       className={cn(
-        'size-3.5 shrink-0 cursor-pointer rounded-[3px] accent-[var(--blue)] disabled:cursor-not-allowed disabled:opacity-40',
+        'size-3.5 shrink-0 cursor-pointer rounded-[3px] accent-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40',
         className
       )}
       disabled={disabled}

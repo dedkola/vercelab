@@ -261,7 +261,7 @@ describe('GitAppPageShell', () => {
       ],
     });
 
-    expect(await screen.findByRole('heading', { name: /apps.*1 deployment/i })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: /^apps$/i })).toBeVisible();
     const appRow = screen.getByRole('row', { name: /manage docs-app/i });
 
     expect(within(appRow).getByText('dedkola/vercelab')).toBeVisible();

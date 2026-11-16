@@ -112,7 +112,8 @@ export function DevProjectSidebar({
         </div>
 
         <Button
-          className="mt-3 h-9 w-full rounded-[7px] text-body"
+          className="mt-3 w-full"
+          size="default"
           variant="primary"
           onClick={onConnectAction}
           type="button"

@@ -37,6 +37,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type { ExposureMode } from '@/lib/validation';
 
 type SelectOption = {
@@ -151,14 +152,7 @@ export function GitAppPageLeftSidebar({
 
   return (
     <div className="vercelab-page space-y-4">
-      <header className="flex min-h-8 flex-wrap items-center justify-between gap-3 px-0.5">
-        <h1 className="vercelab-page-heading">
-          Apps{' '}
-          <span className="vercelab-page-count">
-            {totalAppsCount} deployment{totalAppsCount === 1 ? '' : 's'}
-          </span>
-        </h1>
-      </header>
+      <h1 className="sr-only">Apps</h1>
 
       <section
         aria-labelledby="deploy-new-app-title"
@@ -208,7 +202,8 @@ export function GitAppPageLeftSidebar({
             value={draftApp.branch}
           />
           <Button
-            className="h-9 rounded-[7px] border-[color-mix(in_srgb,var(--orange)_50%,transparent)] bg-transparent px-3 text-body text-[var(--orange)] shadow-none hover:border-[var(--orange)] hover:bg-[color-mix(in_srgb,var(--orange)_8%,transparent)] max-[640px]:col-span-2"
+            className="h-9 max-[640px]:col-span-2"
+            variant="primary"
             disabled={!draftApp.repositoryUrl.trim() || isBranchLoading}
             onClick={onToggleCreateAppAction}
             type="button"
@@ -324,7 +319,7 @@ export function GitAppPageLeftSidebar({
                 </DataTableCell>
                 <DataTableCell className="max-[760px]:hidden">
                   <RouteLink
-                    href={deployment.domain ? `https://${deployment.domain}` : null}
+                    href={deployment.domain ? publicHttpsUrl(deployment.domain) : null}
                     label={deployment.domain || null}
                   />
                 </DataTableCell>
@@ -546,11 +541,7 @@ export function GitAppPageLeftSidebar({
               <Button onClick={onToggleCreateAppAction} type="button" variant="secondary">
                 Cancel
               </Button>
-              <Button
-                className="border-[color-mix(in_srgb,var(--orange)_50%,transparent)] bg-transparent text-[var(--orange)] shadow-none hover:border-[var(--orange)] hover:bg-[color-mix(in_srgb,var(--orange)_8%,transparent)]"
-                disabled={isCreateDisabled}
-                type="submit"
-              >
+              <Button variant="primary" disabled={isCreateDisabled} type="submit">
                 {isCreateAppPending ? 'Deploying…' : 'Deploy app'}
                 {!isCreateAppPending ? <Plus aria-hidden="true" className="size-3.5" /> : null}
               </Button>

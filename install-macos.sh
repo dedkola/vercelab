@@ -44,6 +44,7 @@ DOCKER_CMD=(docker)
 COMPOSE_ARGS=()
 
 ASSUME_YES=false
+LAN_MODE=false
 SKIP_HOST_BUILD=false
 MANIFEST_TMP=""
 
@@ -82,20 +83,31 @@ init_colors() {
 
 print_usage() {
   cat <<'EOF'
-Usage: ./install.sh [--yes] [--help]
+Usage: ./install.sh [--yes] [--lan] [--help]
 
 macOS production install. install.sh calls this script automatically on Darwin.
 
 Options:
   --yes   Accept the proposed configuration without the review prompt.
+  --lan   Expose the stack to other devices on the network instead of only the
+          local machine. Traefik is published on high ports (8080/8443) because
+          Docker Desktop on macOS refuses non-loopback clients on ports below
+          1024. Without this flag only *.localhost URLs work.
   --help  Show this help text.
 
 Environment:
-  VERCELAB_HOST_ROOT          Single storage folder (default: ~/vercelab).
-  VERCELAB_BASE_DOMAIN        Wildcard domain (default: derived from the LAN IPv4 via sslip.io).
-  VERCELAB_ADMIN_HOST         Dashboard host (default: dash.<base domain>).
-  VERCELAB_DOCKER_SOCKET_PATH Docker socket (default: auto-detected).
-  VERCELAB_SKIP_HOST_BUILD=1  Skip the host-side production build smoke test.
+  VERCELAB_HOST_ROOT            Single storage folder (default: ~/vercelab).
+  VERCELAB_BASE_DOMAIN          Wildcard domain (default: localhost; derived from
+                                the LAN IPv4 via sslip.io with --lan).
+  VERCELAB_ADMIN_HOST           Dashboard host (default: dash.<base domain>).
+  VERCELAB_HTTP_PORT            Host port for HTTP (default: 80, --lan: 8080).
+  VERCELAB_HTTPS_PORT           Host port for HTTPS (default: 443, --lan: 8443).
+  VERCELAB_PUBLIC_HTTPS_PORT    Port used in generated URLs (default: none for
+                                localhost, --lan: the HTTPS host port).
+  VERCELAB_PROXY_BIND_ADDRESS   Traefik bind address (default: 127.0.0.1,
+                                --lan: 0.0.0.0).
+  VERCELAB_DOCKER_SOCKET_PATH   Docker socket (default: auto-detected).
+  VERCELAB_SKIP_HOST_BUILD=1    Skip the host-side production build smoke test.
 
 Everything is stored under VERCELAB_HOST_ROOT. The installer records what it
 created in .vercelab-install-manifest so ./uninstall.sh removes only that.
@@ -108,6 +120,9 @@ parse_args() {
     case "$1" in
       --yes|-y)
         ASSUME_YES=true
+        ;;
+      --lan)
+        LAN_MODE=true
         ;;
       --help|-h)
         print_usage
@@ -263,7 +278,53 @@ validate_domain() {
   local value="$1"
   local label="$2"
 
+  # `localhost` is the macOS default base domain: it needs no DNS or /etc/hosts
+  # entries because the resolver maps it (and every *.localhost name) to the
+  # loopback interface.
+  if [[ "$value" == "localhost" || "$value" == *".localhost" ]]; then
+    return 0
+  fi
+
   [[ "$value" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || fail "$label must look like a real domain name."
+}
+
+validate_port() {
+  local value="$1"
+  local label="$2"
+
+  [[ "$value" =~ ^[0-9]{1,5}$ ]] || fail "$label must be a TCP port between 1 and 65535."
+  (( 10#$value >= 1 && 10#$value <= 65535 )) || fail "$label must be a TCP port between 1 and 65535."
+}
+
+# Docker Desktop on macOS resets connections from non-loopback clients to
+# published ports below 1024 (loopback works, so localhost URLs work). The
+# default therefore publishes the standard ports on the loopback interface,
+# while --lan switches to unprivileged ports that other devices can reach.
+resolve_proxy_ports() {
+  if [[ "$LAN_MODE" == true ]]; then
+    VERCELAB_HTTP_PORT="${VERCELAB_HTTP_PORT:-8080}"
+    VERCELAB_HTTPS_PORT="${VERCELAB_HTTPS_PORT:-8443}"
+    VERCELAB_PROXY_BIND_ADDRESS="${VERCELAB_PROXY_BIND_ADDRESS:-0.0.0.0}"
+  else
+    VERCELAB_HTTP_PORT="${VERCELAB_HTTP_PORT:-80}"
+    VERCELAB_HTTPS_PORT="${VERCELAB_HTTPS_PORT:-443}"
+    VERCELAB_PROXY_BIND_ADDRESS="${VERCELAB_PROXY_BIND_ADDRESS:-127.0.0.1}"
+  fi
+
+  validate_port "$VERCELAB_HTTP_PORT" "VERCELAB_HTTP_PORT"
+  validate_port "$VERCELAB_HTTPS_PORT" "VERCELAB_HTTPS_PORT"
+
+  if [[ -z "${VERCELAB_PUBLIC_HTTPS_PORT:-}" && "$VERCELAB_HTTPS_PORT" != "443" ]]; then
+    VERCELAB_PUBLIC_HTTPS_PORT="$VERCELAB_HTTPS_PORT"
+  fi
+
+  VERCELAB_PUBLIC_HTTPS_PORT="${VERCELAB_PUBLIC_HTTPS_PORT:-}"
+  VERCELAB_PUBLIC_PORT_SUFFIX=""
+
+  if [[ -n "$VERCELAB_PUBLIC_HTTPS_PORT" ]]; then
+    validate_port "$VERCELAB_PUBLIC_HTTPS_PORT" "VERCELAB_PUBLIC_HTTPS_PORT"
+    VERCELAB_PUBLIC_PORT_SUFFIX=":${VERCELAB_PUBLIC_HTTPS_PORT}"
+  fi
 }
 
 validate_ipv4() {
@@ -660,8 +721,9 @@ compose_project_name() {
   printf '%s' "${project:-vercelab}"
 }
 
-# Traefik publishes 80 and 443, so a foreign listener makes the stack fail.
-# Refuse up front instead of bootstrapping everything and failing at start.
+# Traefik publishes the configured host ports, so a foreign listener makes the
+# stack fail. Refuse up front instead of bootstrapping everything and failing at
+# start.
 ensure_ports_available() {
   local port=""
   local project=""
@@ -677,7 +739,7 @@ ensure_ports_available() {
 
   project="$(compose_project_name)"
 
-  for port in 80 443; do
+  for port in "$VERCELAB_HTTP_PORT" "$VERCELAB_HTTPS_PORT"; do
     listeners="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NR > 1 { print $1 }' | sort -u | tr '\n' ' ' || true)"
 
     [[ -n "$listeners" ]] || continue
@@ -721,7 +783,7 @@ ensure_ports_available() {
 # ── Configuration ────────────────────────────────────────────────────────────
 gather_configuration() {
   local existing_node_env existing_runtime_host existing_port existing_base_domain existing_admin_host existing_influx_explorer_host existing_influx_explorer_url existing_host_root existing_host_lan_ip existing_data_root existing_dynamic_dir existing_certs_dir existing_proxy_network existing_proxy_entrypoint existing_socket existing_apps_dir existing_logs_dir existing_locks_dir existing_database_provider existing_postgres_url existing_postgres_user existing_postgres_password existing_postgres_db existing_postgres_data_dir existing_influx_url existing_influx_database existing_influx_token existing_influx_retention_days existing_influx_data_dir existing_influx_explorer_data_dir existing_influx_explorer_config_dir existing_influx_explorer_session_secret existing_secret existing_github_token
-  local default_base_domain default_host_lan_ip default_host_root
+  local default_base_domain default_host_lan_ip default_host_root old_default_domain
 
   existing_node_env="$(read_env_value NODE_ENV)"
   existing_runtime_host="$(read_env_value HOSTNAME)"
@@ -758,9 +820,31 @@ gather_configuration() {
   existing_secret="$(read_env_value VERCELAB_ENCRYPTION_SECRET)"
   existing_github_token="$(read_env_value VERCELAB_GITHUB_TOKEN)"
 
-  default_base_domain="$(detect_default_base_domain)"
   default_host_lan_ip="$(detect_primary_ipv4)"
   default_host_root="${existing_host_root:-$HOME/vercelab}"
+
+  # macOS only has two supported exposure modes. The loopback-only mode is the
+  # default because Docker Desktop's privileged-port forwarding cannot serve
+  # other devices; --lan keeps a network-reachable domain on high ports.
+  if [[ "$LAN_MODE" == true ]]; then
+    default_base_domain="$(detect_default_base_domain)"
+
+    if [[ "$existing_base_domain" == "localhost" ]]; then
+      existing_base_domain=""
+    fi
+  else
+    default_base_domain="localhost"
+    old_default_domain=""
+
+    if [[ -n "$default_host_lan_ip" ]]; then
+      old_default_domain="$(build_sslip_domain "$default_host_lan_ip")"
+    fi
+
+    if [[ -n "$old_default_domain" && "$existing_base_domain" == "$old_default_domain" ]]; then
+      log "Migrating ${existing_base_domain} to localhost. Network access needs the --lan flag."
+      existing_base_domain=""
+    fi
+  fi
 
   NODE_ENV="${NODE_ENV:-${existing_node_env:-$DEFAULT_NODE_ENV}}"
   PORT="${PORT:-${existing_port:-$DEFAULT_PORT}}"
@@ -840,7 +924,7 @@ gather_configuration() {
     esac
   fi
 
-  VERCELAB_INFLUXDB_EXPLORER_URL="${VERCELAB_INFLUXDB_EXPLORER_URL:-https://${VERCELAB_INFLUXDB_EXPLORER_HOST}}"
+  VERCELAB_INFLUXDB_EXPLORER_URL="${VERCELAB_INFLUXDB_EXPLORER_URL:-https://${VERCELAB_INFLUXDB_EXPLORER_HOST}${VERCELAB_PUBLIC_PORT_SUFFIX}}"
   VERCELAB_HOST_LAN_IP="${VERCELAB_HOST_LAN_IP:-${existing_host_lan_ip:-$default_host_lan_ip}}"
 
   VERCELAB_PROXY_NETWORK="${VERCELAB_PROXY_NETWORK:-${existing_proxy_network:-vercelab_proxy}}"
@@ -899,6 +983,11 @@ gather_configuration() {
   [[ "$VERCELAB_INFLUXDB_EXPLORER_HOST" == "$VERCELAB_BASE_DOMAIN" || "$VERCELAB_INFLUXDB_EXPLORER_HOST" == *".${VERCELAB_BASE_DOMAIN}" ]] \
     || fail "VERCELAB_INFLUXDB_EXPLORER_HOST must be inside VERCELAB_BASE_DOMAIN."
   [[ "$VERCELAB_DATABASE_PROVIDER" == "postgres" ]] || fail "VERCELAB_DATABASE_PROVIDER must be postgres."
+
+  if [[ "$LAN_MODE" != true && "$VERCELAB_BASE_DOMAIN" != "localhost" ]]; then
+    warn "This install publishes Traefik on ${VERCELAB_PROXY_BIND_ADDRESS} only, so https://${VERCELAB_ADMIN_HOST}${VERCELAB_PUBLIC_PORT_SUFFIX} works on this Mac alone."
+    warn "Use --lan for URLs that other devices can open."
+  fi
 
   if [[ -z "$VERCELAB_ENCRYPTION_SECRET" ]]; then
     VERCELAB_ENCRYPTION_SECRET="$("$OPENSSL_BIN" rand -hex 32)"
@@ -1026,6 +1115,17 @@ VERCELAB_HOST_LAN_IP=$VERCELAB_HOST_LAN_IP
 VERCELAB_PROXY_NETWORK=$VERCELAB_PROXY_NETWORK
 VERCELAB_PROXY_ENTRYPOINT=$VERCELAB_PROXY_ENTRYPOINT
 
+# Traefik host binding. 127.0.0.1 keeps the stack on this Mac (the default).
+# --lan binds 0.0.0.0 on unprivileged ports because Docker Desktop on macOS
+# resets non-loopback clients on ports below 1024.
+VERCELAB_PROXY_BIND_ADDRESS=$VERCELAB_PROXY_BIND_ADDRESS
+VERCELAB_HTTP_PORT=$VERCELAB_HTTP_PORT
+VERCELAB_HTTPS_PORT=$VERCELAB_HTTPS_PORT
+VERCELAB_PUBLIC_HTTPS_PORT=$VERCELAB_PUBLIC_HTTPS_PORT
+# Baked into the client bundle at image build time so generated app URLs
+# include the public HTTPS port (only set in --lan mode).
+NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT=$VERCELAB_PUBLIC_HTTPS_PORT
+
 VERCELAB_HOST_ROOT=$VERCELAB_HOST_ROOT
 VERCELAB_DATA_ROOT=$VERCELAB_DATA_ROOT
 VERCELAB_TRAEFIK_DYNAMIC_DIR=$VERCELAB_TRAEFIK_DYNAMIC_DIR
@@ -1123,6 +1223,41 @@ start_stack() {
     docker compose logs --tail=40 control-plane >&2 2>/dev/null || true
     fail "The stack did not start. Inspect it with: docker compose -f docker-compose.yml -f docker-compose.macos.yml logs"
   fi
+}
+
+# The summary prints URLs, so confirm the stack actually answers on them. The
+# localhost probe also covers --lan mode's hostname, but macOS routes the Mac's
+# own LAN IP over lo0, so reachability from other devices can only be checked
+# there by the user.
+verify_stack_reachability() {
+  local url="https://${VERCELAB_ADMIN_HOST}${VERCELAB_PUBLIC_PORT_SUFFIX}/api/health"
+  local attempt=0
+
+  if ! command_exists curl; then
+    return 0
+  fi
+
+  while (( attempt < 30 )); do
+    if curl -kfsS --max-time 5 "$url" >/dev/null 2>&1; then
+      log "Dashboard is answering at ${url}"
+      return 0
+    fi
+
+    attempt=$(( attempt + 1 ))
+    sleep 2
+  done
+
+  warn "The dashboard did not answer at ${url} after $(( attempt * 2 )) seconds."
+
+  if [[ "$LAN_MODE" == true ]]; then
+    warn "Make sure ports ${VERCELAB_HTTP_PORT}/${VERCELAB_HTTPS_PORT} are free and macOS allows Docker Desktop on the local network, then open the URL from another device."
+  else
+    warn "Check the Traefik port binding with: docker compose -f docker-compose.yml -f docker-compose.macos.yml ps"
+  fi
+
+  warn "Logs: docker compose -f docker-compose.yml -f docker-compose.macos.yml logs traefik control-plane"
+
+  return 1
 }
 
 extract_postgres_url_host() {
@@ -1375,6 +1510,10 @@ print_configuration_review() {
   printf '   VERCELAB_ADMIN_HOST      : %s\n' "$VERCELAB_ADMIN_HOST"
   printf '   VERCELAB_INFLUX_EXPLORER : %s\n' "$VERCELAB_INFLUXDB_EXPLORER_HOST"
   printf '   VERCELAB_HOST_LAN_IP     : %s\n' "$VERCELAB_HOST_LAN_IP"
+  printf '   Exposure mode            : %s\n' "$(macos_mode_label)"
+  printf '   Traefik bind address     : %s\n' "$VERCELAB_PROXY_BIND_ADDRESS"
+  printf '   Traefik host ports       : %s (http) / %s (https)\n' "$VERCELAB_HTTP_PORT" "$VERCELAB_HTTPS_PORT"
+  printf '   URL port suffix          : %s\n' "${VERCELAB_PUBLIC_PORT_SUFFIX:-none}"
   printf '\n'
   printf '%b Storage%b\n' "$C_YELLOW" "$C_RESET"
   printf '   VERCELAB_HOST_ROOT       : %s\n' "$VERCELAB_HOST_ROOT"
@@ -1397,19 +1536,29 @@ print_configuration_review() {
   confirm_configuration
 }
 
+macos_mode_label() {
+  if [[ "$LAN_MODE" == true ]]; then
+    printf '%s' "lan (reachable from other devices)"
+  else
+    printf '%s' "localhost only (this Mac)"
+  fi
+}
+
 print_summary() {
-  local dashboard_url="https://$VERCELAB_ADMIN_HOST"
-  local wildcard_example_url="https://demo.$VERCELAB_BASE_DOMAIN"
+  local dashboard_url="https://${VERCELAB_ADMIN_HOST}${VERCELAB_PUBLIC_PORT_SUFFIX}"
+  local wildcard_example_url="https://demo.${VERCELAB_BASE_DOMAIN}${VERCELAB_PUBLIC_PORT_SUFFIX}"
 
   printf '\n'
   printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
   printf '%b                 Vercelab Setup Complete (macOS)           %b\n' "$C_BOLD" "$C_RESET"
   printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
+  printf ' %bMode%b        : %s\n' "$C_YELLOW" "$C_RESET" "$(macos_mode_label)"
   printf ' %bDashboard%b   : %s\n' "$C_YELLOW" "$C_RESET" "$dashboard_url"
   printf ' %bInflux UI%b   : %s\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_INFLUXDB_EXPLORER_URL"
   printf ' %bHealth API%b  : %s/api/health\n' "$C_YELLOW" "$C_RESET" "$dashboard_url"
   printf ' %bApp Example%b : %s\n' "$C_YELLOW" "$C_RESET" "$wildcard_example_url"
   printf '\n'
+  printf ' %bTraefik%b     : %s -> 80/443 (host ports %s/%s)\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_PROXY_BIND_ADDRESS" "$VERCELAB_HTTP_PORT" "$VERCELAB_HTTPS_PORT"
   printf ' %bStorage%b     : %s\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_HOST_ROOT"
   printf ' %bEnv File%b    : %s\n' "$C_YELLOW" "$C_RESET" "$ENV_FILE"
   printf ' %bTLS Cert%b    : %s/wildcard.crt\n' "$C_YELLOW" "$C_RESET" "$VERCELAB_TRAEFIK_CERTS_DIR"
@@ -1419,7 +1568,15 @@ print_summary() {
   printf '  1) Trust the wildcard certificate (needs your password):\n'
   printf '     sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain %s/wildcard.crt\n' "$VERCELAB_TRAEFIK_CERTS_DIR"
   printf '  2) Open the Dashboard URL above.\n'
-  printf '  3) Remove Vercelab again with ./uninstall.sh (add --purge to delete the storage folder).\n'
+
+  if [[ "$LAN_MODE" == true ]]; then
+    printf '  3) Open the Dashboard URL from another device on the same network.\n'
+  else
+    printf '  3) These URLs resolve to this Mac only (no DNS or /etc/hosts edits needed).\n'
+    printf '     For phones and other devices reinstall with: ./install.sh --lan\n'
+  fi
+
+  printf '  4) Remove Vercelab again with ./uninstall.sh (add --purge to delete the storage folder).\n'
   printf '%b============================================================%b\n' "$C_GREEN" "$C_RESET"
 }
 
@@ -1443,6 +1600,9 @@ main() {
 
   ensure_supported_host
   ensure_repo_layout
+  # Exposure mode decides the ports and bind address, so resolve them before
+  # the port check and the configuration prompts.
+  resolve_proxy_ports
   # Fail before touching dependencies if Traefik cannot bind its ports.
   ensure_ports_available || exit 1
   ensure_homebrew
@@ -1475,6 +1635,8 @@ main() {
   start_stack
   ensure_postgres_credentials
   ensure_influx_bootstrap
+
+  verify_stack_reachability || true
 
   print_summary
 }

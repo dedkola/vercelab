@@ -200,13 +200,7 @@ export function WorkspaceHeader({
                     type="password"
                     value={githubToken}
                   />
-                  <Button
-                    className="border border-[color-mix(in_srgb,var(--blue)_45%,transparent)] bg-transparent text-[var(--blue)] shadow-none hover:bg-[color-mix(in_srgb,var(--blue)_7%,transparent)]"
-                    loading={isSavingGithubToken}
-                    size="sm"
-                    type="submit"
-                    variant="primary"
-                  >
+                  <Button loading={isSavingGithubToken} size="sm" type="submit" variant="outline">
                     Save
                   </Button>
                 </div>

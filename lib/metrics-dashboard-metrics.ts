@@ -8,6 +8,7 @@ import type {
 } from '@/lib/workspace-types';
 import { getContainerTone } from '@/lib/container-tone';
 import { DASHBOARD_RANGE_OPTIONS, type DashboardRange } from '@/lib/metrics-range';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type {
   AllContainersMetricsHistorySeries,
   ContainerMetricsHistoryPoint,
@@ -319,7 +320,9 @@ function buildRuntimeSummary(runtime: ContainerStats) {
     runtime.serviceName ? `service ${runtime.serviceName}` : 'standalone runtime',
   ].filter(Boolean);
 
-  const routeSuffix = runtime.routedHost ? ` Available at https://${runtime.routedHost}.` : '';
+  const routeSuffix = runtime.routedHost
+    ? ` Available at ${publicHttpsUrl(runtime.routedHost)}.`
+    : '';
 
   return `Live runtime view for ${runtime.name}, ${parts.join(' / ')} on the current Docker host.${routeSuffix}`;
 }
@@ -333,9 +336,9 @@ function buildRuntimeEndpoints(runtime: ContainerStats) {
     {
       load: Math.max(8, Math.min(100, Math.round(runtime.cpuPercent))),
       latency: 'HTTPS',
-      name: `https://${runtime.routedHost}`,
+      name: publicHttpsUrl(runtime.routedHost),
       uptime: formatRuntimeHealthLabel(runtime.health),
-      url: `https://${runtime.routedHost}`,
+      url: publicHttpsUrl(runtime.routedHost),
     },
   ] satisfies PreviewContainer['endpoints'];
 }
@@ -490,7 +493,7 @@ function buildDisplayContainer(
     name: runtime.name,
     node: snapshot?.hostIp ?? 'Current host',
     port: runtime.routedHost
-      ? `https://${runtime.routedHost}`
+      ? publicHttpsUrl(runtime.routedHost)
       : (runtime.serviceName ?? 'Internal'),
     region: snapshot?.hostIp ?? 'Current host',
     requestRate: formatBytesPerSecond(runtime.networkTotalBytesPerSecond),
@@ -535,7 +538,7 @@ function buildDisplayContainer(
     timeline: [
       runtime.routedHost
         ? {
-            detail: `HTTPS route active at https://${runtime.routedHost}.`,
+            detail: `HTTPS route active at ${publicHttpsUrl(runtime.routedHost)}.`,
             label: 'Access',
           }
         : null,

@@ -105,6 +105,8 @@ services:
     container_name: vercelab-ui
     build:
       context: .
+      args:
+        NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT: ${NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT:-}
     restart: unless-stopped
     env_file:
       - .env

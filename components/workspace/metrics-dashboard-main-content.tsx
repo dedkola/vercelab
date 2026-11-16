@@ -1,7 +1,16 @@
 'use client';
 
 import { Button, Dialog, Tabs } from '@cloudflare/kumo';
-import { ArrowSquareOut, MagnifyingGlass, X } from '@phosphor-icons/react';
+import {
+  ArrowClockwise,
+  ArrowSquareOut,
+  CaretRight,
+  MagnifyingGlass,
+  Play,
+  SpinnerGap,
+  Stop,
+  X,
+} from '@phosphor-icons/react';
 import {
   DataTable,
   DataTableActionsHead,
@@ -12,7 +21,6 @@ import {
   DataTableRow,
   EntityCell,
   RouteLink,
-  RowActionButton,
   StatusPill,
 } from '@/components/workspace/data-table';
 import type { EChartsCoreOption } from 'echarts';
@@ -22,11 +30,13 @@ import { memo, useMemo, useState } from 'react';
 import { EChartSurface } from '@/components/ui/echart-surface';
 import { Input } from '@/components/ui/input';
 import { SegmentedControl } from '@/components/workspace/segmented-control';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type {
   ContainerListEntry,
   DashboardLogView,
   PreviewContainerStatus,
 } from '@/lib/workspace-types';
+import { getContainerInventoryMeta, type ContainerAction } from '@/lib/container-inventory';
 import type { AllContainersMetricsHistorySeries } from '@/lib/influx-metrics';
 import {
   buildTimedMetricSeries,
@@ -61,9 +71,14 @@ type MetricsDashboardMainContentProps = {
   isAllContainerHistoryLoading?: boolean;
   isAllContainersSelected: boolean;
   onAllContainersSelectAction: () => void;
+  onContainerLifecycleAction?: (
+    container: ContainerListEntry,
+    action: ContainerAction
+  ) => Promise<void> | void;
   onContainerSelectAction: (containerId: string) => void;
   onRangeChangeAction: (range: DashboardRange) => void;
   onSearchQueryChangeAction: (value: string) => void;
+  pendingContainerActions?: Readonly<Record<string, ContainerAction>>;
   range: DashboardRange;
   rangeOptions: ReadonlyArray<{ label: string; value: DashboardRange }>;
   runningContainersCount: number | null;
@@ -476,6 +491,105 @@ function DetailMetric({
   );
 }
 
+const LIFECYCLE_ACTION_META: Record<
+  Exclude<ContainerAction, 'remove'>,
+  { hoverClassName: string; icon: typeof Play; label: string }
+> = {
+  restart: {
+    hoverClassName: 'hover:text-foreground',
+    icon: ArrowClockwise,
+    label: 'Restart',
+  },
+  start: {
+    hoverClassName: 'hover:text-[var(--green)]',
+    icon: Play,
+    label: 'Start',
+  },
+  stop: {
+    hoverClassName: 'hover:text-[var(--red)]',
+    icon: Stop,
+    label: 'Stop',
+  },
+};
+
+// Lifecycle order in the row: start or stop first, restart next to it.
+const ROW_ACTION_ORDER: Array<Exclude<ContainerAction, 'remove'>> = ['start', 'stop', 'restart'];
+
+function getRowLifecycleActions(container: ContainerListEntry) {
+  const available = getContainerInventoryMeta(container).availableActions;
+
+  return ROW_ACTION_ORDER.filter((action) => available.includes(action));
+}
+
+function WorkloadRowActions({
+  container,
+  onAction,
+  onOpenDetails,
+  pendingAction,
+}: {
+  container: ContainerListEntry;
+  onAction?: (container: ContainerListEntry, action: ContainerAction) => Promise<void> | void;
+  onOpenDetails: () => void;
+  pendingAction: ContainerAction | undefined;
+}) {
+  const actions = onAction ? getRowLifecycleActions(container) : [];
+  const isBusy = pendingAction !== undefined;
+
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      {actions.map((action) => {
+        const meta = LIFECYCLE_ACTION_META[action];
+        const Icon = meta.icon;
+        const isPending = pendingAction === action;
+        const label = `${meta.label} ${container.sidebarName}`;
+
+        return (
+          <button
+            aria-label={label}
+            className={cn(
+              'inline-flex size-7 items-center justify-center rounded-[6px] text-[var(--muted-ink)] transition-colors duration-150 hover:bg-[var(--ink)]/[0.05] focus-visible:text-foreground disabled:pointer-events-none disabled:opacity-40',
+              meta.hoverClassName,
+              isPending && 'text-foreground'
+            )}
+            disabled={isBusy}
+            key={action}
+            onClick={(event) => {
+              event.stopPropagation();
+              void onAction?.(container, action);
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+            title={meta.label}
+            type="button"
+          >
+            {isPending ? (
+              <SpinnerGap aria-hidden="true" className="size-3.5 animate-spin" />
+            ) : (
+              <Icon aria-hidden="true" className="size-3.5" weight="bold" />
+            )}
+          </button>
+        );
+      })}
+      {actions.length ? (
+        <span aria-hidden="true" className="mx-1 h-4 w-px bg-[var(--hairline)]" />
+      ) : null}
+      <button
+        aria-label={`Open details for ${container.sidebarName}`}
+        className="inline-flex h-7 items-center gap-0.5 rounded-[6px] pl-2 pr-1 text-2xs font-medium text-[var(--muted-ink)] transition-colors duration-150 hover:bg-[var(--ink)]/[0.05] hover:text-foreground group-hover:text-foreground"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenDetails();
+        }}
+        onKeyDown={(event) => event.stopPropagation()}
+        title="Details"
+        type="button"
+      >
+        Details
+        <CaretRight aria-hidden="true" className="size-3" weight="bold" />
+      </button>
+    </div>
+  );
+}
+
 export function MetricsDashboardMainContent({
   activeContainerId,
   allContainerHistory,
@@ -485,9 +599,11 @@ export function MetricsDashboardMainContent({
   isAllContainerHistoryLoading = false,
   isAllContainersSelected,
   onAllContainersSelectAction,
+  onContainerLifecycleAction,
   onContainerSelectAction,
   onRangeChangeAction,
   onSearchQueryChangeAction,
+  pendingContainerActions = {},
   range,
   rangeOptions,
   runningContainersCount,
@@ -611,14 +727,7 @@ export function MetricsDashboardMainContent({
 
   return (
     <div className="vercelab-page space-y-4">
-      <header className="flex min-h-8 flex-wrap items-center justify-between gap-3 px-0.5">
-        <h1 className="vercelab-page-heading">
-          Overview{' '}
-          <span className="vercelab-page-count">
-            {trackedContainers} workload{trackedContainers === 1 ? '' : 's'}
-          </span>
-        </h1>
-      </header>
+      <h1 className="sr-only">Overview</h1>
 
       <section className="space-y-2" aria-labelledby="system-pulse-title">
         <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">
@@ -732,7 +841,7 @@ export function MetricsDashboardMainContent({
             </div>
             {!isAllContainersSelected ? (
               <Button
-                className="h-9 shrink-0"
+                className="shrink-0"
                 onClick={onAllContainersSelectAction}
                 size="sm"
                 variant="ghost"
@@ -751,7 +860,7 @@ export function MetricsDashboardMainContent({
             <col className="w-[7.5rem] max-[640px]:hidden" />
             <col className="w-[7.5rem] max-[640px]:hidden" />
             <col className="w-[22%] max-[960px]:hidden" />
-            <col className="w-[6.5rem]" />
+            <col className="w-[9.5rem]" />
           </colgroup>
           <DataTableHeaderRow>
             <DataTableHead>Workload</DataTableHead>
@@ -808,16 +917,19 @@ export function MetricsDashboardMainContent({
                     <RouteLink
                       href={
                         container.runtime?.routedHost
-                          ? `https://${container.runtime.routedHost}`
+                          ? publicHttpsUrl(container.runtime.routedHost)
                           : null
                       }
                       label={container.runtime?.routedHost ?? null}
                     />
                   </DataTableCell>
                   <DataTableCell align="right">
-                    <RowActionButton onClickAction={() => openContainerDetail(container)}>
-                      Details
-                    </RowActionButton>
+                    <WorkloadRowActions
+                      container={container}
+                      onAction={onContainerLifecycleAction}
+                      onOpenDetails={() => openContainerDetail(container)}
+                      pendingAction={pendingContainerActions[container.display.id]}
+                    />
                   </DataTableCell>
                 </DataTableRow>
               );
@@ -943,22 +1055,43 @@ export function MetricsDashboardMainContent({
                 <span className="font-mono text-2xs text-[var(--quiet)]">
                   {detailContainer.display.summary}
                 </span>
-                {detailContainer.display.endpoints[0]?.url ? (
-                  <Button
-                    icon={ArrowSquareOut}
-                    onClick={() =>
-                      window.open(
-                        detailContainer.display.endpoints[0]?.url,
-                        '_blank',
-                        'noopener,noreferrer'
-                      )
-                    }
-                    size="sm"
-                    variant="secondary"
-                  >
-                    Open service
-                  </Button>
-                ) : null}
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  {onContainerLifecycleAction
+                    ? getRowLifecycleActions(detailContainer).map((action) => {
+                        const meta = LIFECYCLE_ACTION_META[action];
+                        const pendingAction = pendingContainerActions[detailContainer.display.id];
+
+                        return (
+                          <Button
+                            disabled={pendingAction !== undefined}
+                            icon={pendingAction === action ? SpinnerGap : meta.icon}
+                            key={action}
+                            onClick={() => void onContainerLifecycleAction(detailContainer, action)}
+                            size="sm"
+                            variant={action === 'stop' ? 'secondary-destructive' : 'outline'}
+                          >
+                            {meta.label}
+                          </Button>
+                        );
+                      })
+                    : null}
+                  {detailContainer.display.endpoints[0]?.url ? (
+                    <Button
+                      icon={ArrowSquareOut}
+                      onClick={() =>
+                        window.open(
+                          detailContainer.display.endpoints[0]?.url,
+                          '_blank',
+                          'noopener,noreferrer'
+                        )
+                      }
+                      size="sm"
+                      variant="outline"
+                    >
+                      Open service
+                    </Button>
+                  ) : null}
+                </div>
               </footer>
             </div>
           ) : null}
