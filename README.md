@@ -132,13 +132,13 @@ pnpm run dev
 
 Open `http://localhost:3000`.
 
-For an Ubuntu server install, run a single command:
+For a production install on Ubuntu or macOS, run a single command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
 ```
 
-The one-liner clones the repository to `/home/<username>/vercelab` by default and starts the installer. The installer can derive an `sslip.io` base domain from the server's LAN IP when you do not provide one.
+The one-liner clones the repository to `<home>/vercelab` by default and starts the installer. `install.sh` is the entry point on every platform and hands off to `install-macos.sh` on macOS. The installer can derive an `sslip.io` base domain from the machine's LAN IP when you do not provide one.
 
 ## Local Development
 
@@ -333,9 +333,9 @@ In production, `VERCELAB_TERMINAL_TARGET=host` opens the Ubuntu host shell throu
 
 Local terminal traffic uses `/terminal/ws` on port `3001` (`3101` in the devcontainer). In production, Traefik routes that path through the control-plane HTTPS hostname.
 
-## Ubuntu Server Install
+## Server Install (Ubuntu and macOS)
 
-The production path assumes an Ubuntu host. If you do not provide a custom domain, the installer derives a reachable default base domain from the server's primary LAN IPv4 using `sslip.io`, for example `10-10-0-36.sslip.io`.
+`install.sh` is the single entry point on every supported platform. On Linux it runs the Ubuntu installer below; on macOS it dispatches to `install-macos.sh`. Both paths install everything into Docker, ask for one storage folder, and record what they created in `.vercelab-install-manifest` so `uninstall.sh` can remove exactly that. If you do not provide a custom domain, the installer derives a reachable default base domain from the machine's primary LAN IPv4 using `sslip.io`, for example `10-10-0-36.sslip.io`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
@@ -366,7 +366,7 @@ If you already have the repository cloned, run the installer directly:
 
 Installer settings in the defaults table below can be exported before running the installer. Terminal and host metrics settings use the Compose defaults unless overridden in the environment or runtime `.env`; `NEXT_PUBLIC_*` settings must be supplied to the Next.js build. On later runs, the installer proposes current `.env` values as defaults unless you override them with environment variables.
 
-The installer:
+On Ubuntu, the installer:
 
 - installs Node.js and pnpm on the host
 - installs host packages required by the bootstrap scripts
@@ -381,9 +381,41 @@ The installer:
 
 If you later edit `.env`, rerun `./install.sh` so the stack and wildcard certificate stay aligned with the new domain and paths.
 
+### macOS
+
+macOS uses the same one-liner. `install.sh` detects `Darwin`, checks for Xcode Command Line Tools (git, curl), and re-executes `install-macos.sh`, which:
+
+- verifies Docker Desktop is installed and running, installs and starts it from Homebrew when it is missing, and waits for the daemon, then verifies the Compose plugin (`docker compose version`)
+- installs Homebrew (when missing), Node.js 24, pnpm `11.27.1`, and a Homebrew OpenSSL when the system one cannot create certificates with `-addext`
+- asks once for the storage folder, defaulting to `~/vercelab`, and derives every other path from it
+- generates the wildcard certificate, writes `.env`, and runs `pnpm install --frozen-lockfile` plus the production build smoke test on the host
+- starts the stack with `docker compose -f docker-compose.yml -f docker-compose.macos.yml` and records the install manifest
+
+Overrides work the same way:
+
+```bash
+VERCELAB_HOST_ROOT="$HOME/Sites/vercelab" \
+VERCELAB_BASE_DOMAIN=lab.example.com \
+bash install.sh
+```
+
+macOS differences from the Ubuntu path:
+
+| Topic              | macOS behavior                                                                                                                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage folder     | One prompt, default `~/vercelab`. Data, certs, apps, logs, and locks all live underneath it, like the Linux layout.                                                                                         |
+| Docker access      | Docker Desktop only. No `sudo`, no `docker` group, and the socket is auto-detected (`~/.docker/run/docker.sock`).                                                                                           |
+| Host metrics       | Docker Desktop does not expose the host `/proc`, so the control plane reads container `/proc` and sets `VERCELAB_HOST_PROC_PATH=/proc`.                                                                     |
+| Terminal workspace | `VERCELAB_TERMINAL_TARGET=container` because the host PID namespace is not shared.                                                                                                                          |
+| Explorer storage   | Bind mounting the Explorer SQLite file cannot be chowned to uid `1500`, so macOS uses the named volume `vercelab-influxdb-explorer-data` with a one-shot init service. Config stays a read-only bind mount. |
+| Compose version    | `docker-compose.macos.yml` uses the `!override` tag, so Compose `2.24` or newer is required (Docker Desktop ships it).                                                                                      |
+| Certificate trust  | Opt in per machine with `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/vercelab/traefik/certs/wildcard.crt`.                                                       |
+
+The default macOS layout puts the storage folder and the git checkout in the same place (`~/vercelab`). Reinstalling is safe: the installer reuses the existing `.env` values, and the uninstaller never deletes the checkout.
+
 ## State and Storage
 
-Runtime variables for Ubuntu installs are written to `.env` in the repository root. `install.sh` rewrites that file on each successful run and locks it down with `chmod 600`.
+Runtime variables are written to `.env` in the repository root on both platforms. The installer rewrites that file on each successful run and locks it down with `chmod 600`.
 
 Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/home/<username>/vercelab`. During interactive installs, the wizard proposes the default host root, data root, and managed apps directory so you can change them before `.env` is written:
 
@@ -401,6 +433,23 @@ Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `
 | `/home/<username>/vercelab/traefik/dynamic/tls.yml`       | Traefik TLS dynamic config.                                 |
 | `/home/<username>/vercelab/traefik/certs/wildcard.crt`    | Self-signed wildcard certificate.                           |
 | `/home/<username>/vercelab/traefik/certs/wildcard.key`    | Wildcard certificate private key.                           |
+
+macOS production installs use the same layout, with the storage folder defaulting to `~/vercelab` instead of `/home/<username>/vercelab`:
+
+| Path                                       | Purpose                               |
+| ------------------------------------------ | ------------------------------------- |
+| `~/vercelab/data`                          | Data root.                            |
+| `~/vercelab/data/apps`                     | Cloned deployment repositories.       |
+| `~/vercelab/data/logs`                     | Deployment and preview logs.          |
+| `~/vercelab/data/locks`                    | Deployment lock files.                |
+| `~/vercelab/data/postgres`                 | PostgreSQL data directory.            |
+| `~/vercelab/data/influxdb`                 | InfluxDB 3 Core data directory.       |
+| `~/vercelab/data/influxdb-explorer-config` | Generated Explorer connection config. |
+| `~/vercelab/traefik/dynamic/tls.yml`       | Traefik TLS dynamic config.           |
+| `~/vercelab/traefik/certs/wildcard.crt`    | Self-signed wildcard certificate.     |
+| `~/vercelab/traefik/certs/wildcard.key`    | Wildcard certificate private key.     |
+
+Explorer's SQLite database lives in the `vercelab-influxdb-explorer-data` Docker volume on macOS rather than under `~/vercelab/data/influxdb-explorer`.
 
 Local macOS development stores application and database state under `./data/`:
 
@@ -496,8 +545,11 @@ Important runtime variables:
 | `.devcontainer/docker-compose.yml` | Fully isolated VS Code devcontainer stack.                                      |
 | `scripts/setup-env.sh`             | Interactive `.env.local` generator.                                             |
 | `Dockerfile`                       | Standalone Next.js production image with Git and Docker CLI tooling.            |
-| `install.sh`                       | Ubuntu bootstrapper for Docker, TLS assets, and the control-plane stack.        |
-| `uninstall.sh`                     | Removal script with `--purge`, `--purge-images`, and `--all` cleanup modes.     |
+| `install.sh`                       | Entry point on every platform; runs the Ubuntu install or dispatches to macOS.  |
+| `install-macos.sh`                 | macOS installer: Docker Desktop, Homebrew tools, TLS assets, control plane.     |
+| `docker-compose.macos.yml`         | macOS override for mounts, host metrics, and Explorer volume storage.           |
+| `.vercelab-install-manifest`       | Record of what the installer created, read by `uninstall.sh`; gitignored.       |
+| `uninstall.sh`                     | Manifest-driven removal with `--purge`, `--purge-images`, and `--all` modes.    |
 
 ## Health and Readiness
 
@@ -571,7 +623,11 @@ For a clean reinstall:
 ./install.sh
 ```
 
+On macOS the default storage folder is also the checkout (`~/vercelab`). `--purge` removes the data, certificate, and config folders plus `.env`, keeps the checkout, and the next `./install.sh` recreates the runtime state.
+
 ## Uninstall
+
+`uninstall.sh` removes only what the installer created. It reads `.vercelab-install-manifest` (written by `install.sh` and `install-macos.sh`) and touches nothing else: no Docker, no Homebrew itself, no git, and never the git checkout.
 
 Stop and remove the Vercelab control plane plus all managed deployment containers while keeping generated `.env`, certificates, databases, cloned apps, and Docker volumes:
 
@@ -580,7 +636,7 @@ chmod +x uninstall.sh
 ./uninstall.sh
 ```
 
-Remove generated `.env`, everything under `VERCELAB_HOST_ROOT`, and Docker volumes that belong to Vercelab compose projects:
+Remove the storage folders the installer created (data, Postgres, InfluxDB, Explorer config, apps, logs, locks, certificates) plus the generated `.env` and the manifest itself:
 
 ```bash
 ./uninstall.sh --purge
@@ -592,13 +648,25 @@ Also remove Docker images labeled for Vercelab compose projects:
 ./uninstall.sh --purge --purge-images
 ```
 
-Remove everything above plus host tooling installed by `install.sh` and local repo build artifacts:
+Also remove the host tooling the installer added — Node.js, pnpm, Homebrew formulas it installed, and local `node_modules`/`.next` build artifacts:
 
 ```bash
 ./uninstall.sh --all
 ```
 
-`uninstall.sh` intentionally leaves Docker Engine, the Docker Compose plugin, Node.js, and pnpm installed unless you explicitly pass `--all`.
+On Linux, removing Docker Engine is a separate, explicit opt-in:
+
+```bash
+./uninstall.sh --all --remove-docker
+```
+
+Guarantees:
+
+- Docker is never removed automatically. `--all` deliberately excludes it, and on macOS Docker Desktop is always kept (remove the app manually if you want it gone).
+- Homebrew itself is kept on macOS, even when the installer installed it, because other tools depend on it; the uninstaller prints the official uninstall command instead.
+- Anything that already existed on the machine before the install — Docker, git, curl, Node.js, pnpm, Homebrew formulas — is left alone, because the manifest only records what the install added.
+- Removal targets must be specific absolute paths. `/`, `$HOME`, and any path that contains the git checkout are refused, so the default macOS layout (`~/vercelab` is both checkout and storage folder) cannot delete the repository.
+- Without `--purge`, `.env`, the storage folders, the database, and Docker volumes are kept, and the manifest stays so a later `--purge` still knows what to remove.
 
 ## Operational Notes
 
