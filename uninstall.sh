@@ -66,7 +66,8 @@ init_colors() {
 }
 
 run_privileged() {
-  "${SUDO[@]}" "$@"
+  # bash 3.2 treats an empty array expansion under `set -u` as unbound.
+  ${SUDO[@]+"${SUDO[@]}"} "$@"
 }
 
 # Removes a path, escalating only when the current user cannot write to it.
@@ -388,68 +389,34 @@ collect_ids() {
   fi
 }
 
-collect_projects_from_ids() {
-  local inspect_kind="$1"
+base_compose_project() {
+  local project=""
 
-  shift
+  project="$(read_env_value COMPOSE_PROJECT_NAME)"
 
-  if (( $# == 0 )); then
-    return 0
+  if [[ -z "$project" && -f "$REPO_ROOT/docker-compose.yml" ]]; then
+    project="$(awk '$1 == "name:" { print $2; exit }' "$REPO_ROOT/docker-compose.yml" 2>/dev/null || true)"
   fi
 
-  case "$inspect_kind" in
-    container)
-      "${DOCKER_CMD[@]}" inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$@" 2>/dev/null || true
-      ;;
-    network)
-      "${DOCKER_CMD[@]}" network inspect -f '{{ index .Labels "com.docker.compose.project" }}' "$@" 2>/dev/null || true
-      ;;
-    volume)
-      "${DOCKER_CMD[@]}" volume inspect -f '{{ index .Labels "com.docker.compose.project" }}' "$@" 2>/dev/null || true
-      ;;
-    *)
-      fail "Unknown inspect kind: $inspect_kind"
-      ;;
-  esac
+  printf '%s' "${project:-vercelab}"
 }
 
+# Only projects this checkout owns: the base compose project, plus deployment
+# projects whose containers were created from this checkout. Other Vercelab
+# installations on the same machine (vercelab-dev, another ~/vercelab clone,
+# ...) carry a different working_dir and must never be touched.
 list_vercelab_projects() {
-  local container_ids=()
-  local network_ids=()
-  local volume_ids=()
-  local id=""
+  local base=""
 
-  while IFS= read -r id; do
-    if [[ -n "$id" ]]; then
-      container_ids[${#container_ids[@]}]="$id"
-    fi
-  done < <(docker_ids container --filter label=com.docker.compose.project)
-
-  while IFS= read -r id; do
-    if [[ -n "$id" ]]; then
-      network_ids[${#network_ids[@]}]="$id"
-    fi
-  done < <(docker_ids network --filter label=com.docker.compose.project)
-
-  while IFS= read -r id; do
-    if [[ -n "$id" ]]; then
-      volume_ids[${#volume_ids[@]}]="$id"
-    fi
-  done < <(docker_ids volume --filter label=com.docker.compose.project)
+  base="$(base_compose_project)"
 
   {
-    if (( ${#container_ids[@]} > 0 )); then
-      collect_projects_from_ids container "${container_ids[@]}"
-    fi
+    "${DOCKER_CMD[@]}" ps -a \
+      --filter "label=com.docker.compose.project.working_dir=$REPO_ROOT" \
+      --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null || true
 
-    if (( ${#network_ids[@]} > 0 )); then
-      collect_projects_from_ids network "${network_ids[@]}"
-    fi
-
-    if (( ${#volume_ids[@]} > 0 )); then
-      collect_projects_from_ids volume "${volume_ids[@]}"
-    fi
-  } | awk '/^vercelab($|-)/' | sort -u
+    printf '%s\n' "$base"
+  } | awk 'NF' | sort -u
 }
 
 remove_resources_by_label() {
@@ -551,15 +518,18 @@ remove_docker_resources() {
     return
   fi
 
-  # The base "vercelab" project goes last so deployment projects can still use
-  # the shared networks while they are being removed.
+  local base=""
+  base="$(base_compose_project)"
+
+  # The base project goes last so deployment projects can still use the shared
+  # networks while they are being removed.
   for pass in other base; do
     for project in "${projects[@]}"; do
-      if [[ "$pass" == "other" && "$project" == "vercelab" ]]; then
+      if [[ "$pass" == "other" && "$project" == "$base" ]]; then
         continue
       fi
 
-      if [[ "$pass" == "base" && "$project" != "vercelab" ]]; then
+      if [[ "$pass" == "base" && "$project" != "$base" ]]; then
         continue
       fi
 

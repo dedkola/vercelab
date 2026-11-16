@@ -7,6 +7,9 @@
 # Differences from the Linux stack:
 #   - The host /proc mount is removed (macOS has no /proc). The control plane
 #     falls back to its own container /proc, which Docker Desktop populates.
+#   - The Docker socket is mounted at /var/run/docker.sock for Traefik, which
+#     only speaks to that path, while the control plane keeps the same-path
+#     mount it uses on Linux.
 #   - InfluxDB Explorer keeps its SQLite state in a Docker named volume because
 #     Docker Desktop bind mounts cannot be chowned to the image user (uid 1500).
 #     The generated config stays a read-only bind mount, exactly like Linux.
@@ -16,13 +19,25 @@
 name: vercelab
 
 services:
+  # Traefik connects to unix:///var/run/docker.sock and cannot be pointed at
+  # another path, so the Docker Desktop socket is mounted at that location.
+  traefik:
+    volumes: !override
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
+      - ${VERCELAB_TRAEFIK_DYNAMIC_DIR:-/opt/vercelab/traefik/dynamic}:/etc/traefik/dynamic:ro
+      - ${VERCELAB_TRAEFIK_CERTS_DIR:-/opt/vercelab/traefik/certs}:/etc/traefik/certs:ro
+
   control-plane:
     environment:
       # Read metrics from the container's own /proc instead of a host /proc.
       VERCELAB_HOST_PROC_PATH: ${VERCELAB_HOST_PROC_PATH:-/proc}
     volumes: !override
       - ${VERCELAB_HOST_ROOT:-/opt/vercelab}:${VERCELAB_HOST_ROOT:-/opt/vercelab}
+      # Kept at its host path because app containers bind-mount the same path
+      # on the host, and mirrored at /var/run/docker.sock because the Docker
+      # CLI and client libraries default to it.
       - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}
+      - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock
 
   # Gives the Explorer named volume to uid 1500 before the UI starts. Existing
   # bind-mounted state from an older install is copied once, then ignored.

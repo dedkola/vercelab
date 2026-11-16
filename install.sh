@@ -28,8 +28,6 @@ if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
   _default_install_dir="$(default_vercelab_root)"
   _install_dir="${VERCELAB_INSTALL_DIR:-}"
   _repo_url="${VERCELAB_REPO_URL:-https://github.com/dedkola/vercelab}"
-  _sudo=()
-
   if [[ -z "$_install_dir" ]]; then
     if [[ -t 0 ]]; then
       read -r -p "Install directory [$_default_install_dir]: " _install_dir || true
@@ -40,10 +38,21 @@ if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
   fi
 
   # macOS never needs root for the clone target (it lives in $HOME), and its
-  # install path is handled by install-macos.sh.
+  # install path is handled by install-macos.sh. A helper plus a flag replaces
+  # an array of sudo prefixes because bash 3.2 (macOS /bin/bash) treats an
+  # empty array expansion under `set -u` as an unbound variable.
+  _has_root=false
   if [[ "$(uname -s)" != "Darwin" && ${EUID} -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
-    _sudo=(sudo)
+    _has_root=true
   fi
+
+  _run_root() {
+    if [[ "$_has_root" == true ]]; then
+      sudo "$@"
+    else
+      "$@"
+    fi
+  }
 
   if ! command -v git >/dev/null 2>&1; then
     printf '[vercelab] git not found — installing...\n'
@@ -64,8 +73,8 @@ if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
       command -v git >/dev/null 2>&1 \
         || { printf '[vercelab] ERROR: git is still unavailable. Install git and re-run.\n' >&2; exit 1; }
     else
-      "${_sudo[@]}" apt-get update -q
-      "${_sudo[@]}" apt-get install -y --no-install-recommends git
+      _run_root apt-get update -q
+      _run_root apt-get install -y --no-install-recommends git
     fi
   fi
 
@@ -81,15 +90,29 @@ if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
       || printf '[vercelab] Could not fast-forward update — using existing clone.\n'
   else
     printf '[vercelab] Cloning Vercelab into %s\n' "$_install_dir"
-    "${_sudo[@]}" mkdir -p "$_install_dir"
-    [[ ${EUID} -eq 0 ]] || "${_sudo[@]}" chown "$(id -u):$(id -g)" "$_install_dir"
+    if ! mkdir -p "$_install_dir" 2>/dev/null; then
+      if [[ "$_has_root" != true ]]; then
+        printf '[vercelab] ERROR: cannot create %s.\n' "$_install_dir" >&2
+        printf '[vercelab] Set VERCELAB_INSTALL_DIR to a writable path.\n' >&2
+        exit 1
+      fi
+      _run_root mkdir -p "$_install_dir"
+      [[ ${EUID} -eq 0 ]] || _run_root chown "$(id -u):$(id -g)" "$_install_dir"
+    fi
     git clone "$_repo_url" "$_install_dir"
   fi
 
   # Restore interactive stdin from the controlling terminal when available so
-  # that prompts inside the re-exec'd script behave normally.
-  if [[ -c /dev/tty ]]; then
-    exec bash "$_install_dir/install.sh" "$@" </dev/tty
+  # that prompts inside the re-exec'd script behave normally. /dev/tty exists
+  # even when the process has no controlling terminal (CI, pipes, agents), so
+  # open it once and only then redirect from it.
+  _tty_open=false
+  if [[ -c /dev/tty ]] && { exec 3</dev/tty; } 2>/dev/null; then
+    _tty_open=true
+  fi
+
+  if [[ "$_tty_open" == true ]]; then
+    exec bash "$_install_dir/install.sh" "$@" <&3
   else
     exec bash "$_install_dir/install.sh" "$@"
   fi
