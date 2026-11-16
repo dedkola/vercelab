@@ -3,11 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MetricsDashboardShell } from '@/components/metrics-dashboard-shell';
+import { WorkspaceChromeShell } from '@/components/workspace/workspace-chrome-shell';
+import type { MetricsDashboardData } from '@/lib/metrics-dashboard-data';
 import type { MetricsSnapshot } from '@/lib/system-metrics';
 
 const pushMock = vi.fn();
 const prefetchMock = vi.fn();
 const refreshMock = vi.fn();
+const searchParamsMock = new URLSearchParams();
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
@@ -32,12 +35,33 @@ function getRequestUrl(input: Parameters<typeof fetch>[0]) {
 }
 
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
   useRouter: () => ({
     push: pushMock,
     prefetch: prefetchMock,
     refresh: refreshMock,
   }),
+  useSearchParams: () => searchParamsMock,
 }));
+
+// The dashboard always renders inside the shared workspace chrome, which owns
+// live metrics polling, the selected range, and the header navigation.
+function DashboardHarness({
+  influxExplorerUrl,
+  initialHistory,
+  initialSnapshot,
+  ...dashboardProps
+}: MetricsDashboardData) {
+  return (
+    <WorkspaceChromeShell
+      influxExplorerUrl={influxExplorerUrl}
+      initialHistory={initialHistory}
+      initialSnapshot={initialSnapshot}
+    >
+      <MetricsDashboardShell {...dashboardProps} />
+    </WorkspaceChromeShell>
+  );
+}
 
 vi.mock('@/components/ui/echart-surface', () => ({
   EChartSurface: ({ ariaLabel, className }: { ariaLabel: string; className?: string }) => (
@@ -389,7 +413,7 @@ describe('MetricsDashboardShell', () => {
 
   it('renders the lightweight overview with host telemetry and a workload table', async () => {
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
@@ -434,7 +458,7 @@ describe('MetricsDashboardShell', () => {
     vi.useFakeTimers();
 
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
@@ -464,11 +488,11 @@ describe('MetricsDashboardShell', () => {
     expect(url).not.toContain('allContainers=true');
   });
 
-  it('fetches live and heavy history payloads separately when the user changes range', async () => {
+  it('fetches heavy history for the new window when the user changes range', async () => {
     const user = userEvent.setup();
 
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
@@ -491,21 +515,6 @@ describe('MetricsDashboardShell', () => {
 
           return (
             url.includes('/api/metrics?') &&
-            url.includes('mode=current') &&
-            !url.includes('range=') &&
-            !url.includes('allContainers=true')
-          );
-        })
-      ).toBe(true)
-    );
-
-    await waitFor(() =>
-      expect(
-        fetchSpy.mock.calls.some(([input]) => {
-          const url = getRequestUrl(input);
-
-          return (
-            url.includes('/api/metrics?') &&
             url.includes('allContainers=true') &&
             url.includes('range=24h') &&
             !url.includes('mode=current')
@@ -517,7 +526,7 @@ describe('MetricsDashboardShell', () => {
 
   it('loads heavy container history on mount when SSR did not provide it', async () => {
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={[]}
         initialDashboardRange="15m"
@@ -551,7 +560,7 @@ describe('MetricsDashboardShell', () => {
     const user = userEvent.setup();
 
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
@@ -587,7 +596,7 @@ describe('MetricsDashboardShell', () => {
     );
 
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
@@ -606,7 +615,7 @@ describe('MetricsDashboardShell', () => {
 
   it('updates workload aliases live when alias storage changes after mount', async () => {
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={payload.allContainerHistory}
         initialDashboardRange="15m"
@@ -776,7 +785,7 @@ describe('MetricsDashboardShell', () => {
     fetchSpy.mockImplementation(async () => jsonResponse(labelPayload));
 
     render(
-      <MetricsDashboardShell
+      <DashboardHarness
         influxExplorerUrl={null}
         initialAllContainerHistory={labelPayload.allContainerHistory}
         initialDashboardRange="15m"

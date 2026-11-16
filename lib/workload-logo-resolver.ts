@@ -17,7 +17,7 @@ const MAX_CACHE_ENTRIES = 200;
 
 const workloadLogoCache = new Map<string, { expiresAt: number; value: WorkloadLogo | null }>();
 
-export type WorkloadLogoSource =
+type WorkloadLogoSource =
   'deployment' | 'dev-deployment' | 'local-workspace' | 'official' | 'repository';
 
 export type WorkloadLogo = {

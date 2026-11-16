@@ -16,13 +16,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'border-[var(--hairline)] bg-white text-foreground shadow-[0_1px_1px_rgb(16_24_40/0.04)] hover:border-[var(--hairline-strong)] hover:bg-[var(--surface-subtle)] active:bg-[var(--muted)]',
+          'border-[var(--hairline)] bg-transparent text-foreground shadow-none hover:border-[var(--hairline-strong)] hover:bg-[var(--surface-subtle)] active:bg-[var(--muted)]',
         primary:
-          'border-[color-mix(in_srgb,var(--blue)_88%,black)] bg-[var(--blue)] text-white shadow-[0_1px_1px_rgb(16_24_40/0.08),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-[color-mix(in_srgb,var(--blue)_90%,black)] active:bg-[color-mix(in_srgb,var(--blue)_82%,black)]',
+          'border-[color-mix(in_srgb,var(--blue)_45%,transparent)] bg-transparent text-[var(--blue)] shadow-none hover:border-[var(--blue)] hover:bg-[color-mix(in_srgb,var(--blue)_7%,transparent)] active:bg-[color-mix(in_srgb,var(--blue)_12%,transparent)]',
         secondary:
-          'border-[var(--hairline)] bg-white text-foreground shadow-[0_1px_1px_rgb(16_24_40/0.04)] hover:border-[var(--hairline-strong)] hover:bg-[var(--surface-subtle)] active:bg-[var(--muted)]',
+          'border-[var(--hairline)] bg-transparent text-foreground shadow-none hover:border-[var(--hairline-strong)] hover:bg-[var(--surface-subtle)] active:bg-[var(--muted)]',
         danger:
-          'border-[color-mix(in_srgb,var(--red)_88%,black)] bg-[var(--red)] text-white shadow-[0_1px_1px_rgb(16_24_40/0.08),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-[color-mix(in_srgb,var(--red)_90%,black)] active:bg-[color-mix(in_srgb,var(--red)_82%,black)]',
+          'border-[color-mix(in_srgb,var(--red)_45%,transparent)] bg-transparent text-[var(--red)] shadow-none hover:border-[var(--red)] hover:bg-[color-mix(in_srgb,var(--red)_7%,transparent)] active:bg-[color-mix(in_srgb,var(--red)_12%,transparent)]',
         ghost:
           'border-transparent bg-transparent text-[var(--muted-ink)] shadow-none hover:bg-[var(--muted)] hover:text-foreground active:bg-[color-mix(in_srgb,var(--muted)_80%,black_4%)]',
       },

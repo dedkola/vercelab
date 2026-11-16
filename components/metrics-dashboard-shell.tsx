@@ -1,105 +1,65 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
 import { MetricsDashboardMainContent } from '@/components/workspace/metrics-dashboard-main-content';
-import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
-import { WorkspaceHeader } from '@/components/workspace/workspace-header';
-import type { WorkspaceView } from '@/components/workspace-shell';
+import { useWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
 import {
   readStoredContainerAliases,
   subscribeToStoredContainerAliases,
 } from '@/lib/container-preferences';
+import type { AllContainersMetricsHistorySeries } from '@/lib/influx-metrics';
 import type { MetricsDashboardData } from '@/lib/metrics-dashboard-data';
-import type { DashboardRange } from '@/lib/metrics-range';
 import {
   ALL_CONTAINERS_ID,
   buildContainerListEntries,
   buildSystemMetricPanels,
-  formatClock,
   METRICS_DASHBOARD_RANGE_OPTIONS,
 } from '@/lib/metrics-dashboard-metrics';
-import type { AllContainersMetricsHistorySeries, MetricsHistoryPoint } from '@/lib/influx-metrics';
-import type { MetricsSnapshot } from '@/lib/system-metrics';
-import {
-  DEFAULT_TIME_DISPLAY_MODE,
-  getTimeZoneForDisplayMode,
-  readStoredTimeDisplayMode,
-  type TimeDisplayMode,
-  writeStoredTimeDisplayMode,
-} from '@/lib/time-display';
-import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
+import { getTimeZoneForDisplayMode } from '@/lib/time-display';
 
-function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>) {
-  const params = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(searchParams)) {
-    if (typeof value === 'string') {
-      params.set(key, value);
-    }
-  }
-
-  return '/api/metrics?' + params.toString();
+function buildMetricsRequestUrl(searchParams: Record<string, string>) {
+  return '/api/metrics?' + new URLSearchParams(searchParams).toString();
 }
 
-type MetricsDashboardShellProps = MetricsDashboardData & {
-  embedded?: boolean;
-};
+type MetricsDashboardShellProps = Pick<
+  MetricsDashboardData,
+  'initialAllContainerHistory' | 'initialDashboardRange' | 'initialDeployments'
+>;
 
 export function MetricsDashboardShell({
-  embedded = false,
-  influxExplorerUrl,
   initialAllContainerHistory = [],
   initialDashboardRange = '15m',
   initialDeployments = [],
-  initialHistory = [],
-  initialSnapshot = null,
 }: MetricsDashboardShellProps) {
-  const router = useRouter();
-  const sharedChrome = useOptionalWorkspaceChrome();
-  const isEmbedded = embedded && sharedChrome !== null;
-  const [dashboardRange, setDashboardRange] = useState<DashboardRange>(initialDashboardRange);
+  const {
+    dashboardRange,
+    registerResetHandler,
+    setDashboardRange,
+    sidebarHistory,
+    sidebarSnapshot,
+    timeDisplayMode,
+  } = useWorkspaceChrome();
   const [selectedContainerId, setSelectedContainerId] = useState(ALL_CONTAINERS_ID);
   const [searchQuery, setSearchQuery] = useState('');
-  const [standaloneTimeDisplayMode, setStandaloneTimeDisplayMode] =
-    useState<TimeDisplayMode>(DEFAULT_TIME_DISPLAY_MODE);
-  const [sidebarSnapshot, setSidebarSnapshot] = useState<MetricsSnapshot | null>(initialSnapshot);
-  const [sidebarHistory, setSidebarHistory] = useState<MetricsHistoryPoint[]>(initialHistory);
   const [allContainerHistory, setAllContainerHistory] = useState<
     AllContainersMetricsHistorySeries[]
   >(initialAllContainerHistory);
   const [aliases, setAliases] = useState<Record<string, string>>({});
   const [containerHistoryError, setContainerHistoryError] = useState<string | null>(null);
   const [isContainerHistoryLoading, setIsContainerHistoryLoading] = useState(
-    initialSnapshot !== null && initialAllContainerHistory.length === 0
+    initialAllContainerHistory.length === 0
   );
   const hasMountedContainerHistoryRef = useRef(false);
   const containerHistoryInFlightRef = useRef(false);
   const loadedContainerHistoryRangeRef = useRef<string | null>(
     initialAllContainerHistory.length ? initialDashboardRange : null
   );
-  const effectiveDashboardRange = isEmbedded ? sharedChrome.dashboardRange : dashboardRange;
-  const setEffectiveDashboardRange = isEmbedded
-    ? sharedChrome.setDashboardRange
-    : setDashboardRange;
-  const effectiveSidebarSnapshot = isEmbedded ? sharedChrome.sidebarSnapshot : sidebarSnapshot;
-  const effectiveSidebarHistory = isEmbedded ? sharedChrome.sidebarHistory : sidebarHistory;
-  const effectiveTimeDisplayMode = isEmbedded
-    ? sharedChrome.timeDisplayMode
-    : standaloneTimeDisplayMode;
-  const graphTimeZone = getTimeZoneForDisplayMode(effectiveTimeDisplayMode);
+  const graphTimeZone = getTimeZoneForDisplayMode(timeDisplayMode);
   const systemPanels = useMemo(
-    () => buildSystemMetricPanels(effectiveSidebarSnapshot, effectiveSidebarHistory, graphTimeZone),
-    [effectiveSidebarHistory, effectiveSidebarSnapshot, graphTimeZone]
+    () => buildSystemMetricPanels(sidebarSnapshot, sidebarHistory, graphTimeZone),
+    [sidebarHistory, sidebarSnapshot, graphTimeZone]
   );
-
-  useEffect(() => {
-    if (!isEmbedded) {
-      setStandaloneTimeDisplayMode(readStoredTimeDisplayMode());
-    }
-  }, [isEmbedded]);
 
   useEffect(() => {
     setAliases(readStoredContainerAliases());
@@ -110,7 +70,7 @@ export function MetricsDashboardShell({
   const workspaceContainers = useMemo(
     () =>
       buildContainerListEntries(
-        effectiveSidebarSnapshot,
+        sidebarSnapshot,
         allContainerHistory,
         initialDeployments,
         graphTimeZone
@@ -131,8 +91,9 @@ export function MetricsDashboardShell({
           sidebarName: alias,
         };
       }),
-    [aliases, allContainerHistory, effectiveSidebarSnapshot, graphTimeZone, initialDeployments]
+    [aliases, allContainerHistory, sidebarSnapshot, graphTimeZone, initialDeployments]
   );
+
   const filteredContainers = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -163,41 +124,7 @@ export function MetricsDashboardShell({
   const selectedRuntimeContainerId = selectedRuntimeContainer?.id ?? null;
 
   useEffect(() => {
-    if (isEmbedded) {
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const nextUrl = new URL(window.location.href);
-
-    if (dashboardRange === '15m') {
-      nextUrl.searchParams.delete('range');
-    } else {
-      nextUrl.searchParams.set('range', dashboardRange);
-    }
-
-    const nextHref = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
-    const currentHref = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-
-    if (nextHref !== currentHref) {
-      window.history.replaceState(window.history.state, '', nextHref);
-    }
-  }, [dashboardRange, isEmbedded]);
-
-  useLiveMetricsPolling({
-    enabled: !isEmbedded,
-    initialSnapshot,
-    initialHistory,
-    refreshKey: dashboardRange,
-    onSnapshot: setSidebarSnapshot,
-    onHistory: setSidebarHistory,
-  });
-
-  useEffect(() => {
-    const requestedRange = effectiveDashboardRange;
+    const requestedRange = dashboardRange;
     const hasHistoryForRange = loadedContainerHistoryRangeRef.current === requestedRange;
 
     if (hasHistoryForRange) {
@@ -253,20 +180,10 @@ export function MetricsDashboardShell({
 
         const payload = (await response.json()) as {
           allContainerHistory?: AllContainersMetricsHistorySeries[];
-          history?: MetricsHistoryPoint[];
-          snapshot?: MetricsSnapshot | null;
         };
 
         if (!active) {
           return;
-        }
-
-        if (!isEmbedded && payload.snapshot && !sidebarSnapshot) {
-          setSidebarSnapshot(payload.snapshot);
-        }
-
-        if (!isEmbedded && Array.isArray(payload.history) && sidebarHistory.length === 0) {
-          setSidebarHistory(payload.history);
         }
 
         if (Array.isArray(payload.allContainerHistory)) {
@@ -299,43 +216,19 @@ export function MetricsDashboardShell({
       abortController.abort();
       containerHistoryInFlightRef.current = false;
     };
-  }, [
-    allContainerHistory.length,
-    effectiveDashboardRange,
-    isEmbedded,
-    sidebarHistory.length,
-    sidebarSnapshot,
-  ]);
+  }, [allContainerHistory.length, dashboardRange]);
 
-  const handleLocalResetLayout = useCallback(() => {
+  const handleResetLayout = useCallback(() => {
     setSearchQuery('');
     setSelectedContainerId(ALL_CONTAINERS_ID);
   }, []);
 
-  useEffect(() => {
-    if (!isEmbedded) {
-      return;
-    }
-
-    return sharedChrome.registerResetHandler(handleLocalResetLayout);
-  }, [handleLocalResetLayout, isEmbedded, sharedChrome]);
-
-  const handleResetLayout = useCallback(() => {
-    handleLocalResetLayout();
-  }, [handleLocalResetLayout]);
-
-  const handleViewChange = useCallback(
-    (view: WorkspaceView) => {
-      const pathname =
-        view === 'dashboard' ? '/' : view === 'git-app-page' ? '/git-app-page' : `/${view}`;
-      const search = effectiveDashboardRange === '15m' ? '' : `?range=${effectiveDashboardRange}`;
-
-      router.push(`${pathname}${search}`);
-    },
-    [effectiveDashboardRange, router]
+  useEffect(
+    () => registerResetHandler(handleResetLayout),
+    [handleResetLayout, registerResetHandler]
   );
 
-  const dashboardPanels = (
+  return (
     <main className="min-w-0 flex-1 overflow-auto bg-[var(--canvas)]">
       <MetricsDashboardMainContent
         activeContainerId={activeContainerId}
@@ -347,59 +240,17 @@ export function MetricsDashboardShell({
         isAllContainersSelected={isAllContainersSelected}
         onAllContainersSelectAction={() => setSelectedContainerId(ALL_CONTAINERS_ID)}
         onContainerSelectAction={setSelectedContainerId}
-        onRangeChangeAction={setEffectiveDashboardRange}
+        onRangeChangeAction={setDashboardRange}
         onSearchQueryChangeAction={setSearchQuery}
-        range={effectiveDashboardRange}
+        range={dashboardRange}
         rangeOptions={METRICS_DASHBOARD_RANGE_OPTIONS}
-        runningContainersCount={effectiveSidebarSnapshot?.containers.running ?? null}
+        runningContainersCount={sidebarSnapshot?.containers.running ?? null}
         searchQuery={searchQuery}
         selectedContainerId={isAllContainersSelected ? null : selectedRuntimeContainerId}
-        snapshot={effectiveSidebarSnapshot}
+        snapshot={sidebarSnapshot}
         systemPanels={systemPanels}
         timeZone={graphTimeZone}
       />
     </main>
-  );
-
-  if (isEmbedded) {
-    return dashboardPanels;
-  }
-
-  return (
-    <section aria-label="Workspace shell" className="flex h-dvh flex-col bg-background">
-      <WorkspaceHeader
-        activeView="dashboard"
-        influxExplorerUrl={influxExplorerUrl}
-        onInfluxExplorerOpenAction={() => {
-          if (influxExplorerUrl) {
-            window.open(influxExplorerUrl, '_blank', 'noopener,noreferrer');
-          }
-        }}
-        onResetLayoutAction={handleResetLayout}
-        onTimeDisplayModeChangeAction={(mode) => {
-          setStandaloneTimeDisplayMode(mode);
-          writeStoredTimeDisplayMode(mode);
-        }}
-        onViewChangeAction={handleViewChange}
-        statusLabel={effectiveSidebarSnapshot ? 'Host online' : 'Connecting'}
-        timeDisplayMode={effectiveTimeDisplayMode}
-        updatedAtLabel={
-          effectiveSidebarSnapshot
-            ? formatClock(effectiveSidebarSnapshot.timestamp, graphTimeZone)
-            : 'Waiting for metrics'
-        }
-      />
-
-      <div className="flex min-w-0 flex-1 overflow-hidden">{dashboardPanels}</div>
-
-      <WorkspaceFooter
-        activeViewLabel="Dashboard"
-        updatedAtLabel={
-          effectiveSidebarSnapshot
-            ? formatClock(effectiveSidebarSnapshot.timestamp, graphTimeZone)
-            : 'Waiting for metrics'
-        }
-      />
-    </section>
   );
 }

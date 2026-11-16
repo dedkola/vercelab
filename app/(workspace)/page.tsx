@@ -22,5 +22,5 @@ export default async function Home({ searchParams }: HomeProps) {
     includeMetricsSnapshot: false,
   });
 
-  return <MetricsDashboardShell {...pageData} embedded />;
+  return <MetricsDashboardShell {...pageData} />;
 }

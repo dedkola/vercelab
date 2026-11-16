@@ -6,8 +6,8 @@
 
 [![GitHub package version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=for-the-badge&color=111827)](https://github.com/dedkola/vercelab)
 [![Node.js](https://img.shields.io/badge/Node.js-24_LTS-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16.3.6-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.3.0-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.5-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.3.1-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-11.27.1-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
 
@@ -43,7 +43,7 @@ Vercelab turns an Ubuntu box or local Docker host into a compact deployment work
 - [Metrics Dashboard](#metrics-dashboard)
 - [Containers Workspace](#containers-workspace)
 - [Terminal Workspace](#terminal-workspace)
-- [Ubuntu Server Install](#ubuntu-server-install)
+- [Server Install (Ubuntu and macOS)](#server-install-ubuntu-and-macos)
 - [State and Storage](#state-and-storage)
 - [Configuration](#configuration)
 - [Runtime Files](#runtime-files)
@@ -85,17 +85,17 @@ flowchart LR
 
 ## Stack
 
-| Layer           | Technology                                                                                    |
-| --------------- | --------------------------------------------------------------------------------------------- |
-| Web app         | Next.js 16 App Router, React 19, TypeScript                                                   |
-| UI              | Cloudflare Kumo, Tailwind CSS 4, shadcn-style components, Radix UI, Phosphor and Lucide icons |
-| Charts          | ECharts via the local dashboard components                                                    |
-| Terminal        | xterm.js, node-pty, WebSocket transport                                                       |
-| Persistence     | PostgreSQL for control-plane state                                                            |
-| Metrics         | InfluxDB 3 Core plus InfluxDB Explorer                                                        |
-| Runtime         | Docker, Docker Compose, Traefik                                                               |
-| Validation      | Zod, TypeScript, ESLint, Vitest                                                               |
-| Package manager | pnpm 11                                                                                       |
+| Layer           | Technology                                                                         |
+| --------------- | ---------------------------------------------------------------------------------- |
+| Web app         | Next.js 16 App Router, React 19, TypeScript                                        |
+| UI              | Cloudflare Kumo, Tailwind CSS 4, shadcn-style components, Radix UI, Phosphor icons |
+| Charts          | ECharts via the local dashboard components                                         |
+| Terminal        | xterm.js, node-pty, WebSocket transport                                            |
+| Persistence     | PostgreSQL for control-plane state                                                 |
+| Metrics         | InfluxDB 3 Core plus InfluxDB Explorer                                             |
+| Runtime         | Docker, Docker Compose, Traefik                                                    |
+| Validation      | Zod, TypeScript, ESLint, Vitest                                                    |
+| Package manager | pnpm 11                                                                            |
 
 ## Interactive Preview
 
@@ -177,6 +177,12 @@ Stop local infrastructure:
 ```bash
 pnpm run dev:infra:down
 ```
+
+The local Traefik binds port `80`, so stop a production Vercelab stack on the same machine (`docker compose down` in its install folder) before running `pnpm run dev:infra`.
+
+To open `pnpm dev` from another device on your LAN, keep `VERCELAB_HOST_LAN_IP` in `.env.local`; `next.config.ts` adds it to Next.js `allowedDevOrigins`.
+
+If the dev server reports a missing module for a route that no longer exists, delete the stale Turbopack cache with `rm -rf .next/dev` and restart `pnpm run dev`.
 
 ### Option B: VS Code Devcontainer
 
@@ -483,28 +489,30 @@ InfluxDB Explorer 1.9.0 runs as a non-root user. Local development and the devco
 
 Important runtime variables:
 
-| Variable                        | Purpose                                                                                |
-| ------------------------------- | -------------------------------------------------------------------------------------- |
-| `VERCELAB_BASE_DOMAIN`          | Wildcard domain for deployed apps, such as `myhomelan.com`.                            |
-| `VERCELAB_ADMIN_HOST`           | Full hostname for the control plane, such as `vercelab.myhomelan.com`.                 |
-| `VERCELAB_HOST_ROOT`            | Shared absolute host path mounted into the app container at the same path.             |
-| `VERCELAB_APPS_DIR`             | Managed clone and generated compose directory.                                         |
-| `VERCELAB_LOGS_DIR`             | Deployment log directory.                                                              |
-| `VERCELAB_LOCKS_DIR`            | Deployment lock directory.                                                             |
-| `VERCELAB_POSTGRES_DATA_DIR`    | PostgreSQL data directory.                                                             |
-| `VERCELAB_INFLUXDB_DATA_DIR`    | InfluxDB data directory.                                                               |
-| `VERCELAB_DOCKER_SOCKET_PATH`   | Docker socket passed through to Traefik and the control plane.                         |
-| `VERCELAB_PROXY_NETWORK`        | Shared Docker network used by Traefik and deployed apps.                               |
-| `VERCELAB_ENCRYPTION_SECRET`    | Secret used to encrypt stored GitHub tokens.                                           |
-| `VERCELAB_GITHUB_TOKEN`         | Optional workspace GitHub token for repository browsing.                               |
-| `VERCELAB_DEV_POLL_INTERVAL_MS` | Optional Dev page GitHub polling interval in milliseconds; defaults to 60000.          |
-| `VERCELAB_DEV_BUILD_TIMEOUT_MS` | Optional maximum preview Docker build duration in milliseconds; defaults to 1800000.   |
-| `VERCELAB_HOST_PROC_PATH`       | Host metrics mount inside the app container; defaults to `/host/proc`.                 |
-| `VERCELAB_TERMINAL_TARGET`      | `host` for the production host shell, or `container` for the container shell.          |
-| `VERCELAB_HOST_TERMINAL_IMAGE`  | Optional helper image for host terminal access; defaults to the control-plane image.   |
-| `VERCELAB_TERMINAL_WS_PORT`     | Terminal WebSocket server port; defaults to `3001`.                                    |
-| `NEXT_PUBLIC_TERMINAL_WS_PORT`  | Browser terminal port for localhost; set to `3101` in the devcontainer.                |
-| `NEXT_PUBLIC_TERMINAL_WS_URL`   | Optional full browser WebSocket URL overriding automatic routing; set before building. |
+| Variable                              | Purpose                                                                                   |
+| ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `VERCELAB_BASE_DOMAIN`                | Wildcard domain for deployed apps, such as `myhomelan.com`.                               |
+| `VERCELAB_ADMIN_HOST`                 | Full hostname for the control plane, such as `vercelab.myhomelan.com`.                    |
+| `VERCELAB_HOST_ROOT`                  | Shared absolute host path mounted into the app container at the same path.                |
+| `VERCELAB_APPS_DIR`                   | Managed clone and generated compose directory.                                            |
+| `VERCELAB_LOGS_DIR`                   | Deployment log directory.                                                                 |
+| `VERCELAB_LOCKS_DIR`                  | Deployment lock directory.                                                                |
+| `VERCELAB_POSTGRES_DATA_DIR`          | PostgreSQL data directory.                                                                |
+| `VERCELAB_INFLUXDB_DATA_DIR`          | InfluxDB data directory.                                                                  |
+| `VERCELAB_DOCKER_SOCKET_PATH`         | Docker socket passed through to Traefik and the control plane.                            |
+| `VERCELAB_PROXY_NETWORK`              | Shared Docker network used by Traefik and deployed apps.                                  |
+| `VERCELAB_ENCRYPTION_SECRET`          | Secret used to encrypt stored GitHub tokens.                                              |
+| `VERCELAB_GITHUB_TOKEN`               | Optional workspace GitHub token for repository browsing.                                  |
+| `VERCELAB_DEV_POLL_INTERVAL_MS`       | Optional Dev page GitHub polling interval in milliseconds; defaults to 60000.             |
+| `VERCELAB_DEV_BUILD_TIMEOUT_MS`       | Optional maximum preview Docker build duration in milliseconds; defaults to 1800000.      |
+| `VERCELAB_METRICS_SAMPLE_INTERVAL_MS` | Optional host metrics sampling interval in milliseconds; defaults to 10000, minimum 5000. |
+| `VERCELAB_HOST_LAN_IP`                | Host LAN IPv4 shown in the dashboard; in local development also allowed as a dev origin.  |
+| `VERCELAB_HOST_PROC_PATH`             | Host metrics mount inside the app container; defaults to `/host/proc`.                    |
+| `VERCELAB_TERMINAL_TARGET`            | `host` for the production host shell, or `container` for the container shell.             |
+| `VERCELAB_HOST_TERMINAL_IMAGE`        | Optional helper image for host terminal access; defaults to the control-plane image.      |
+| `VERCELAB_TERMINAL_WS_PORT`           | Terminal WebSocket server port; defaults to `3001`.                                       |
+| `NEXT_PUBLIC_TERMINAL_WS_PORT`        | Browser terminal port for localhost; set to `3101` in the devcontainer.                   |
+| `NEXT_PUBLIC_TERMINAL_WS_URL`         | Optional full browser WebSocket URL overriding automatic routing; set before building.    |
 
 <details>
 <summary>Default runtime variables written by the installer</summary>
@@ -723,7 +731,9 @@ The installer writes the wildcard certificate to `VERCELAB_TRAEFIK_CERTS_DIR/wil
 
 ## Development Notes
 
-This repository includes project instructions for GitHub Copilot and Next.js/Tailwind contributors under `.github/`. Dependabot is configured for weekly npm dependency updates.
+`.github/workflows/ci.yml` runs lint, typecheck, unused-code, formatting, test, and build checks on every pull request and on pushes to `main`. Dependabot opens weekly npm and GitHub Actions update pull requests, and `.github/workflows/dependabot-auto-merge.yml` enables auto-merge for non-major updates; mark the CI `Lint, test, and build` check as required in the `main` branch protection rules so those merges wait for it to pass. Pushing a `v*` tag that matches `package.json` runs `.github/workflows/release.yml` to publish a GitHub release.
+
+Shared workspace types live in `lib/workspace-types.ts`. Every page under `app/(workspace)` renders inside `WorkspaceChromeShell`, which owns the header, live metrics polling, the selected time range, and the GitHub repository list; page shells read that state through `useWorkspaceChrome()`.
 
 Before opening a pull request, run:
 

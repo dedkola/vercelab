@@ -192,7 +192,7 @@ export function DevDeploymentsContent({
               Sync now
             </Button>
             <Button
-              className="border-[var(--blue)] bg-[var(--blue)] text-white shadow-none hover:bg-[#0d55bc]"
+              variant="primary"
               disabled={isProjectPending}
               onClick={onDeployLatestAction}
               type="button"

@@ -26,7 +26,7 @@ import type {
   ContainerListEntry,
   DashboardLogView,
   PreviewContainerStatus,
-} from '@/components/workspace-shell';
+} from '@/lib/workspace-types';
 import type { AllContainersMetricsHistorySeries } from '@/lib/influx-metrics';
 import {
   buildTimedMetricSeries,

@@ -11,7 +11,7 @@ import {
   X,
 } from '@phosphor-icons/react';
 
-import type { DraftAppState, RepositoryState } from '@/components/workspace-shell';
+import type { DraftAppState, RepositoryState } from '@/lib/workspace-types';
 import {
   CellStack,
   DataTable,
@@ -208,7 +208,7 @@ export function GitAppPageLeftSidebar({
             value={draftApp.branch}
           />
           <Button
-            className="h-9 rounded-[7px] border-[var(--orange)] bg-[var(--orange)] px-3 text-body text-white shadow-none hover:bg-[#dc6f13] max-[640px]:col-span-2"
+            className="h-9 rounded-[7px] border-[color-mix(in_srgb,var(--orange)_50%,transparent)] bg-transparent px-3 text-body text-[var(--orange)] shadow-none hover:border-[var(--orange)] hover:bg-[color-mix(in_srgb,var(--orange)_8%,transparent)] max-[640px]:col-span-2"
             disabled={!draftApp.repositoryUrl.trim() || isBranchLoading}
             onClick={onToggleCreateAppAction}
             type="button"
@@ -547,7 +547,7 @@ export function GitAppPageLeftSidebar({
                 Cancel
               </Button>
               <Button
-                className="border-[var(--orange)] bg-[var(--orange)] text-white shadow-none hover:bg-[#dc6f13]"
+                className="border-[color-mix(in_srgb,var(--orange)_50%,transparent)] bg-transparent text-[var(--orange)] shadow-none hover:border-[var(--orange)] hover:bg-[color-mix(in_srgb,var(--orange)_8%,transparent)]"
                 disabled={isCreateDisabled}
                 type="submit"
               >

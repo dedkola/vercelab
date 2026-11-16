@@ -20,7 +20,7 @@ import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { ContainerListEntry, DashboardLogView, LogLine } from '@/components/workspace-shell';
+import type { ContainerListEntry, DashboardLogView, LogLine } from '@/lib/workspace-types';
 import type { ContainerAction, ContainerInventoryMeta } from '@/lib/container-inventory';
 import type { ContainerInspectData } from '@/lib/container-inspect';
 import type { RecreateChanges } from '@/lib/container-recreate';

@@ -138,10 +138,6 @@ export const OFFICIAL_WORKLOAD_LOGOS = {
 
 export type OfficialWorkloadLogoSlug = keyof typeof OFFICIAL_WORKLOAD_LOGOS;
 
-export function isOfficialWorkloadLogoSlug(value: string): value is OfficialWorkloadLogoSlug {
-  return Object.hasOwn(OFFICIAL_WORKLOAD_LOGOS, value);
-}
-
 export function renderOfficialWorkloadLogoSvg(slug: OfficialWorkloadLogoSlug) {
   const logo = OFFICIAL_WORKLOAD_LOGOS[slug];
 

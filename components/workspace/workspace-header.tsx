@@ -8,7 +8,7 @@ import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { VercelabBrandMark } from '@/components/workspace/vercelab-brand-mark';
 import { toast } from 'sonner';
 
-import type { WorkspaceView } from '@/components/workspace-shell';
+import type { WorkspaceView } from '@/lib/workspace-types';
 import type { GitHubRepository } from '@/lib/github';
 import { getLocalTimeZoneLabel, type TimeDisplayMode } from '@/lib/time-display';
 
@@ -200,7 +200,13 @@ export function WorkspaceHeader({
                     type="password"
                     value={githubToken}
                   />
-                  <Button loading={isSavingGithubToken} size="sm" type="submit" variant="primary">
+                  <Button
+                    className="border border-[color-mix(in_srgb,var(--blue)_45%,transparent)] bg-transparent text-[var(--blue)] shadow-none hover:bg-[color-mix(in_srgb,var(--blue)_7%,transparent)]"
+                    loading={isSavingGithubToken}
+                    size="sm"
+                    type="submit"
+                    variant="primary"
+                  >
                     Save
                   </Button>
                 </div>

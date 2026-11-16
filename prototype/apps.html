@@ -7,7 +7,10 @@
       name="description"
       content="A focused Apps inventory and management prototype for Vercelab."
     />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><rect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%23f48120%22/><path d=%22M4 4h5v5H4zM8 8h4v4H8z%22 fill=%22white%22/></svg>" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><rect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%23f48120%22/><path d=%22M4 4h5v5H4zM8 8h4v4H8z%22 fill=%22white%22/></svg>"
+    />
     <title>Vercelab Apps prototype</title>
     <style>
       :root {
@@ -57,7 +60,7 @@
           ui-sans-serif,
           -apple-system,
           BlinkMacSystemFont,
-          "Segoe UI",
+          'Segoe UI',
           sans-serif;
         font-size: 13px;
         -webkit-font-smoothing: antialiased;
@@ -75,7 +78,7 @@
       }
 
       button,
-      [role="button"] {
+      [role='button'] {
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -200,7 +203,7 @@
         height: 10px;
         border: 1.5px solid var(--ink);
         border-radius: 2px;
-        content: "";
+        content: '';
       }
 
       .brand-mark::before {
@@ -236,18 +239,18 @@
         color: var(--ink);
       }
 
-      .nav-button[aria-current="page"] {
+      .nav-button[aria-current='page'] {
         color: var(--ink);
       }
 
-      .nav-button[aria-current="page"]::after {
+      .nav-button[aria-current='page']::after {
         position: absolute;
         right: 0;
         bottom: -1px;
         left: 0;
         height: 2px;
         background: var(--orange);
-        content: "";
+        content: '';
       }
 
       .top-actions {
@@ -369,7 +372,7 @@
         left: 0;
         width: 3px;
         background: var(--orange);
-        content: "";
+        content: '';
       }
 
       .deploy-copy {
@@ -582,7 +585,7 @@
         font-weight: 560;
       }
 
-      .segment-button[aria-pressed="true"] {
+      .segment-button[aria-pressed='true'] {
         background: var(--surface);
         color: var(--ink);
         box-shadow: 0 1px 2px rgb(16 24 40 / 0.08);
@@ -627,7 +630,7 @@
         background: #f8fafc;
       }
 
-      tbody tr[data-state="deploying"] {
+      tbody tr[data-state='deploying'] {
         background: color-mix(in srgb, var(--blue-soft) 42%, white);
       }
 
@@ -820,7 +823,7 @@
         transition: opacity 180ms ease;
       }
 
-      .backdrop[data-open="true"] {
+      .backdrop[data-open='true'] {
         opacity: 1;
         pointer-events: auto;
       }
@@ -844,7 +847,7 @@
           visibility 210ms;
       }
 
-      .drawer[data-open="true"] {
+      .drawer[data-open='true'] {
         transform: translateX(0);
         visibility: visible;
       }
@@ -895,18 +898,18 @@
         font-weight: 600;
       }
 
-      .drawer-tab[aria-selected="true"] {
+      .drawer-tab[aria-selected='true'] {
         color: var(--ink);
       }
 
-      .drawer-tab[aria-selected="true"]::after {
+      .drawer-tab[aria-selected='true']::after {
         position: absolute;
         right: 0;
         bottom: -1px;
         left: 0;
         height: 2px;
         background: var(--orange);
-        content: "";
+        content: '';
       }
 
       .drawer-body {
@@ -984,7 +987,7 @@
         left: 14%;
         height: 1px;
         background: var(--hairline-strong);
-        content: "";
+        content: '';
       }
 
       .pipeline-node {
@@ -1213,7 +1216,7 @@
         transition: opacity 160ms ease;
       }
 
-      .dialog-backdrop[data-open="true"] {
+      .dialog-backdrop[data-open='true'] {
         opacity: 1;
         pointer-events: auto;
       }
@@ -1230,7 +1233,7 @@
         transition: transform 160ms ease;
       }
 
-      .dialog-backdrop[data-open="true"] .modal {
+      .dialog-backdrop[data-open='true'] .modal {
         transform: translateY(0) scale(1);
       }
 
@@ -1310,7 +1313,7 @@
           transform 160ms ease;
       }
 
-      .toast[data-open="true"] {
+      .toast[data-open='true'] {
         opacity: 1;
         transform: translateY(0);
       }
@@ -1530,10 +1533,18 @@
           </nav>
 
           <div class="top-actions">
-            <span class="host-status"><span class="status-dot"></span><span>Host online</span></span>
+            <span class="host-status"
+              ><span class="status-dot"></span><span>Host online</span></span
+            >
             <time class="header-time" id="clock">20:56:41 EEST</time>
-            <button class="icon-button" data-action="activity" aria-label="Open deployment activity">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18v-5m5 5V7m5 11v-8m5 8V4" /></svg>
+            <button
+              class="icon-button"
+              data-action="activity"
+              aria-label="Open deployment activity"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 18v-5m5 5V7m5 11v-8m5 8V4" />
+              </svg>
             </button>
           </div>
         </div>
@@ -1552,7 +1563,9 @@
             </span>
             <span>
               <strong class="deploy-title" id="deploy-title">Deploy new app</strong>
-              <span class="deploy-subtitle">Choose a repository and branch. Review before creation.</span>
+              <span class="deploy-subtitle"
+                >Choose a repository and branch. Review before creation.</span
+              >
             </span>
           </div>
           <div class="deploy-fields">
@@ -1580,21 +1593,36 @@
               <div class="toolbar-left">
                 <span class="app-count" id="app-count">4 apps · 2 running · 1 deploying</span>
                 <label class="search-field">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m16 16 4 4" />
+                  </svg>
                   <span class="visually-hidden">Find app</span>
-                  <input class="search-input" id="app-search" type="search" placeholder="Find app or route…" autocomplete="off" />
+                  <input
+                    class="search-input"
+                    id="app-search"
+                    type="search"
+                    placeholder="Find app or route…"
+                    autocomplete="off"
+                  />
                 </label>
               </div>
               <div class="segmented" aria-label="Filter applications">
                 <button class="segment-button" data-filter="all" aria-pressed="true">All</button>
-                <button class="segment-button" data-filter="running" aria-pressed="false">Running</button>
-                <button class="segment-button" data-filter="attention" aria-pressed="false">Attention</button>
+                <button class="segment-button" data-filter="running" aria-pressed="false">
+                  Running
+                </button>
+                <button class="segment-button" data-filter="attention" aria-pressed="false">
+                  Attention
+                </button>
               </div>
             </div>
 
             <div class="table-wrap">
               <table>
-                <caption class="visually-hidden">Git-backed applications and deployment state</caption>
+                <caption class="visually-hidden">
+                  Git-backed applications and deployment state
+                </caption>
                 <colgroup>
                   <col class="col-app" style="width: 27%" />
                   <col class="col-state" style="width: 11%" />
@@ -1612,12 +1640,16 @@
                     <th class="col-route" scope="col">Route</th>
                     <th class="col-containers" scope="col">Runtime</th>
                     <th class="col-updated" scope="col">Updated</th>
-                    <th class="col-actions" scope="col"><span class="visually-hidden">Actions</span></th>
+                    <th class="col-actions" scope="col">
+                      <span class="visually-hidden">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody id="app-rows"></tbody>
               </table>
-              <div class="empty-state" id="empty-state" hidden>No applications match this view.</div>
+              <div class="empty-state" id="empty-state" hidden>
+                No applications match this view.
+              </div>
             </div>
           </div>
         </section>
@@ -1631,8 +1663,22 @@
       </footer>
     </div>
 
-    <button class="backdrop" id="drawer-backdrop" data-action="close-drawer" aria-label="Close app manager" aria-hidden="true" tabindex="-1"></button>
-    <aside class="drawer" id="app-drawer" data-open="false" aria-hidden="true" aria-labelledby="drawer-title" inert>
+    <button
+      class="backdrop"
+      id="drawer-backdrop"
+      data-action="close-drawer"
+      aria-label="Close app manager"
+      aria-hidden="true"
+      tabindex="-1"
+    ></button>
+    <aside
+      class="drawer"
+      id="app-drawer"
+      data-open="false"
+      aria-hidden="true"
+      aria-labelledby="drawer-title"
+      inert
+    >
       <div class="drawer-header">
         <div class="drawer-app">
           <span class="app-glyph orange" id="drawer-glyph">TK</span>
@@ -1646,19 +1692,36 @@
         </button>
       </div>
       <div class="drawer-tabs" role="tablist" aria-label="Application management">
-        <button class="drawer-tab" role="tab" data-tab="overview" aria-selected="true">Overview</button>
-        <button class="drawer-tab" role="tab" data-tab="settings" aria-selected="false">Settings</button>
-        <button class="drawer-tab" role="tab" data-tab="variables" aria-selected="false">Variables</button>
+        <button class="drawer-tab" role="tab" data-tab="overview" aria-selected="true">
+          Overview
+        </button>
+        <button class="drawer-tab" role="tab" data-tab="settings" aria-selected="false">
+          Settings
+        </button>
+        <button class="drawer-tab" role="tab" data-tab="variables" aria-selected="false">
+          Variables
+        </button>
         <button class="drawer-tab" role="tab" data-tab="logs" aria-selected="false">Logs</button>
       </div>
       <div class="drawer-body" id="drawer-body"></div>
     </aside>
 
-    <div class="dialog-backdrop" id="deploy-dialog" data-open="false" role="presentation" aria-hidden="true" inert>
+    <div
+      class="dialog-backdrop"
+      id="deploy-dialog"
+      data-open="false"
+      role="presentation"
+      aria-hidden="true"
+      inert
+    >
       <section class="modal" role="dialog" aria-modal="true" aria-labelledby="deploy-dialog-title">
         <div class="modal-header">
           <h2 class="modal-title" id="deploy-dialog-title">Review new deployment</h2>
-          <button class="icon-button" data-action="close-deploy" aria-label="Close deployment review">
+          <button
+            class="icon-button"
+            data-action="close-deploy"
+            aria-label="Close deployment review"
+          >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>
         </div>
@@ -1690,9 +1753,17 @@
             </div>
           </div>
           <div class="deploy-preview" aria-label="Deployment plan">
-            <div class="preview-cell"><span class="eyebrow">Source</span><span class="preview-value" id="preview-source">main</span></div>
-            <div class="preview-cell"><span class="eyebrow">Build</span><span class="preview-value">Dockerfile</span></div>
-            <div class="preview-cell"><span class="eyebrow">Runtime</span><span class="preview-value" id="preview-runtime">port 3000</span></div>
+            <div class="preview-cell">
+              <span class="eyebrow">Source</span
+              ><span class="preview-value" id="preview-source">main</span>
+            </div>
+            <div class="preview-cell">
+              <span class="eyebrow">Build</span><span class="preview-value">Dockerfile</span>
+            </div>
+            <div class="preview-cell">
+              <span class="eyebrow">Runtime</span
+              ><span class="preview-value" id="preview-runtime">port 3000</span>
+            </div>
           </div>
         </div>
         <div class="modal-actions">
@@ -1702,116 +1773,123 @@
       </section>
     </div>
 
-    <div class="toast" id="toast" role="status"><span class="status-dot" style="color: #63c98d"></span><span id="toast-copy">Prototype action</span></div>
+    <div class="toast" id="toast" role="status">
+      <span class="status-dot" style="color: #63c98d"></span
+      ><span id="toast-copy">Prototype action</span>
+    </div>
 
     <script>
       const apps = [
         {
-          id: "tk-doc",
-          name: "tk-doc",
-          initials: "TK",
-          color: "orange",
-          state: "running",
-          repo: "dedkola/tk-doc",
-          branch: "main",
-          commit: "844f899",
-          route: "tk-doc.myhomelan.com",
-          runtime: "2 containers",
-          updated: "4 min ago",
-          image: "ghcr.io/dedkola/tk-doc:844f899",
-          port: "3000",
-          deployId: "dep_4hj2b0",
+          id: 'tk-doc',
+          name: 'tk-doc',
+          initials: 'TK',
+          color: 'orange',
+          state: 'running',
+          repo: 'dedkola/tk-doc',
+          branch: 'main',
+          commit: '844f899',
+          route: 'tk-doc.myhomelan.com',
+          runtime: '2 containers',
+          updated: '4 min ago',
+          image: 'ghcr.io/dedkola/tk-doc:844f899',
+          port: '3000',
+          deployId: 'dep_4hj2b0',
         },
         {
-          id: "tk-docs-template",
-          name: "tk-docs-template",
-          initials: "TT",
-          color: "blue",
-          state: "running",
-          repo: "dedkola/tk-docs-template",
-          branch: "main",
-          commit: "91c8b6a",
-          route: "tk-docs-template.myhomelan.com",
-          runtime: "1 container",
-          updated: "18 min ago",
-          image: "ghcr.io/dedkola/tk-docs-template:91c8b6a",
-          port: "3000",
-          deployId: "dep_9cw4k1",
+          id: 'tk-docs-template',
+          name: 'tk-docs-template',
+          initials: 'TT',
+          color: 'blue',
+          state: 'running',
+          repo: 'dedkola/tk-docs-template',
+          branch: 'main',
+          commit: '91c8b6a',
+          route: 'tk-docs-template.myhomelan.com',
+          runtime: '1 container',
+          updated: '18 min ago',
+          image: 'ghcr.io/dedkola/tk-docs-template:91c8b6a',
+          port: '3000',
+          deployId: 'dep_9cw4k1',
         },
         {
-          id: "vercelab-ui",
-          name: "vercelab-ui",
-          initials: "VL",
-          color: "purple",
-          state: "deploying",
-          repo: "dedkola/vercelab",
-          branch: "dev/ui",
-          commit: "ac6e326",
-          route: "vercelab.myhomelan.com",
-          runtime: "building",
-          updated: "now",
-          image: "ghcr.io/dedkola/vercelab:ac6e326",
-          port: "3000",
-          deployId: "dep_7mk3q8",
+          id: 'vercelab-ui',
+          name: 'vercelab-ui',
+          initials: 'VL',
+          color: 'purple',
+          state: 'deploying',
+          repo: 'dedkola/vercelab',
+          branch: 'dev/ui',
+          commit: 'ac6e326',
+          route: 'vercelab.myhomelan.com',
+          runtime: 'building',
+          updated: 'now',
+          image: 'ghcr.io/dedkola/vercelab:ac6e326',
+          port: '3000',
+          deployId: 'dep_7mk3q8',
         },
         {
-          id: "bladevault",
-          name: "bladevault",
-          initials: "BV",
-          color: "green",
-          state: "stopped",
-          repo: "dedkola/bladevault",
-          branch: "main",
-          commit: "8b5e09d",
-          route: "not routed",
-          runtime: "0 containers",
-          updated: "2 days ago",
-          image: "ghcr.io/dedkola/bladevault:8b5e09d",
-          port: "5173",
-          deployId: "dep_2pf1x3",
+          id: 'bladevault',
+          name: 'bladevault',
+          initials: 'BV',
+          color: 'green',
+          state: 'stopped',
+          repo: 'dedkola/bladevault',
+          branch: 'main',
+          commit: '8b5e09d',
+          route: 'not routed',
+          runtime: '0 containers',
+          updated: '2 days ago',
+          image: 'ghcr.io/dedkola/bladevault:8b5e09d',
+          port: '5173',
+          deployId: 'dep_2pf1x3',
         },
       ];
 
       const icons = {
         more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></svg>',
         open: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M10 14 19 5" /><path d="M19 13v6H5V5h6" /></svg>',
-        refresh: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5" /><path d="M18.5 15a7 7 0 1 1-.5-7l2 4" /></svg>',
+        refresh:
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5" /><path d="M18.5 15a7 7 0 1 1-.5-7l2 4" /></svg>',
       };
 
-      let activeFilter = "all";
+      let activeFilter = 'all';
       let selectedApp = null;
-      let selectedTab = "overview";
+      let selectedTab = 'overview';
       let lastFocusedElement = null;
       let toastTimer = null;
 
       function escapeHtml(value) {
         return String(value)
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
       }
 
       function visibleApps() {
-        const query = document.querySelector("#app-search").value.trim().toLowerCase();
+        const query = document.querySelector('#app-search').value.trim().toLowerCase();
         return apps.filter((app) => {
-          const matchesQuery = [app.name, app.repo, app.route, app.branch].some((value) => value.toLowerCase().includes(query));
+          const matchesQuery = [app.name, app.repo, app.route, app.branch].some((value) =>
+            value.toLowerCase().includes(query)
+          );
           const matchesFilter =
-            activeFilter === "all" ||
-            (activeFilter === "running" && app.state === "running") ||
-            (activeFilter === "attention" && app.state !== "running");
+            activeFilter === 'all' ||
+            (activeFilter === 'running' && app.state === 'running') ||
+            (activeFilter === 'attention' && app.state !== 'running');
           return matchesQuery && matchesFilter;
         });
       }
 
       function renderRows() {
         const rows = visibleApps();
-        const running = rows.filter((app) => app.state === "running").length;
-        const deploying = rows.filter((app) => app.state === "deploying").length;
-        document.querySelector("#app-count").textContent = `${rows.length} ${rows.length === 1 ? "app" : "apps"} · ${running} running${deploying ? ` · ${deploying} deploying` : ""}`;
-        document.querySelector("#empty-state").hidden = rows.length > 0;
-        document.querySelector("#app-rows").innerHTML = rows
+        const running = rows.filter((app) => app.state === 'running').length;
+        const deploying = rows.filter((app) => app.state === 'deploying').length;
+        document.querySelector('#app-count').textContent =
+          `${rows.length} ${rows.length === 1 ? 'app' : 'apps'} · ${running} running${deploying ? ` · ${deploying} deploying` : ''}`;
+        document.querySelector('#empty-state').hidden = rows.length > 0;
+        document.querySelector('#app-rows').innerHTML = rows
           .map(
             (app) => `
               <tr data-app="${escapeHtml(app.id)}" data-state="${escapeHtml(app.state)}" tabindex="0" aria-label="Manage ${escapeHtml(app.name)}">
@@ -1827,20 +1905,20 @@
                 <td class="col-containers"><span class="mono">${escapeHtml(app.runtime)}</span></td>
                 <td class="col-updated"><span class="mono">${escapeHtml(app.updated)}</span></td>
                 <td class="col-actions"><div class="table-actions"><button class="manage-button" data-manage="${escapeHtml(app.id)}">Manage</button><button class="table-action" data-more="${escapeHtml(app.id)}" aria-label="More ${escapeHtml(app.name)} actions">${icons.more}</button></div></td>
-              </tr>`,
+              </tr>`
           )
-          .join("");
+          .join('');
       }
 
       function stateLabel(app) {
-        if (app.state === "running") return "Healthy";
-        if (app.state === "deploying") return "Building image";
-        if (app.state === "stopped") return "Stopped by operator";
-        return "Needs attention";
+        if (app.state === 'running') return 'Healthy';
+        if (app.state === 'deploying') return 'Building image';
+        if (app.state === 'stopped') return 'Stopped by operator';
+        return 'Needs attention';
       }
 
       function overviewPanel(app) {
-        const isRunning = app.state === "running";
+        const isRunning = app.state === 'running';
         return `
           <section class="summary-block">
             <div class="summary-top"><div><span class="eyebrow">Current deployment</span><h3 class="summary-value">${escapeHtml(stateLabel(app))}</h3></div><span class="state ${escapeHtml(app.state)}"><span class="status-dot"></span>${escapeHtml(app.state)}</span></div>
@@ -1849,7 +1927,7 @@
               <button class="button blue" data-prototype-action="open">${icons.open} Open route</button>
               <button class="button" data-prototype-action="redeploy">${icons.refresh} Redeploy</button>
               <button class="button" data-tab-link="logs">View logs</button>
-              <button class="button ${isRunning ? "danger" : ""}" data-prototype-action="${isRunning ? "stop" : "start"}">${isRunning ? "Stop" : "Start"}</button>
+              <button class="button ${isRunning ? 'danger' : ''}" data-prototype-action="${isRunning ? 'stop' : 'start'}">${isRunning ? 'Stop' : 'Start'}</button>
             </div>
           </section>
 
@@ -1857,8 +1935,8 @@
             <h3 class="drawer-section-title">Deployment path</h3>
             <div class="pipeline">
               <div class="pipeline-node"><span class="pipeline-mark">✓</span><span class="pipeline-name">Source</span><span class="pipeline-detail">${escapeHtml(app.branch)}@${escapeHtml(app.commit)}</span></div>
-              <div class="pipeline-node"><span class="pipeline-mark ${app.state === "deploying" ? "blue" : ""}">${app.state === "deploying" ? "↻" : "✓"}</span><span class="pipeline-name">Build</span><span class="pipeline-detail">${app.state === "deploying" ? "in progress" : "image ready"}</span></div>
-              <div class="pipeline-node"><span class="pipeline-mark ${app.state === "deploying" ? "blue" : ""}">${app.state === "deploying" ? "·" : "✓"}</span><span class="pipeline-name">Route</span><span class="pipeline-detail">${escapeHtml(app.route)}</span></div>
+              <div class="pipeline-node"><span class="pipeline-mark ${app.state === 'deploying' ? 'blue' : ''}">${app.state === 'deploying' ? '↻' : '✓'}</span><span class="pipeline-name">Build</span><span class="pipeline-detail">${app.state === 'deploying' ? 'in progress' : 'image ready'}</span></div>
+              <div class="pipeline-node"><span class="pipeline-mark ${app.state === 'deploying' ? 'blue' : ''}">${app.state === 'deploying' ? '·' : '✓'}</span><span class="pipeline-name">Route</span><span class="pipeline-detail">${escapeHtml(app.route)}</span></div>
             </div>
           </section>
 
@@ -1894,7 +1972,7 @@
               <label class="field-label">Branch<input class="field-input" value="${escapeHtml(app.branch)}" /></label>
               <label class="field-label">Internal port<input class="field-input" value="${escapeHtml(app.port)}" inputmode="numeric" /></label>
             </div>
-            <label class="field-label">Public route<input class="field-input" value="${escapeHtml(app.route === "not routed" ? "" : app.route)}" /><span class="field-help">TLS and reverse proxy configuration are managed automatically.</span></label>
+            <label class="field-label">Public route<input class="field-input" value="${escapeHtml(app.route === 'not routed' ? '' : app.route)}" /><span class="field-help">TLS and reverse proxy configuration are managed automatically.</span></label>
             <div class="button-row"><button class="button primary" data-prototype-action="save">Save changes</button><button class="button" data-prototype-action="discard">Discard</button></div>
           </section>
           <section class="drawer-section"><h3 class="drawer-section-title">Danger zone</h3><div class="detail-list"><div class="detail-row"><span><span class="detail-label" style="display:block;color:var(--ink)">Delete application</span><span class="field-help">Remove the deployment and route.</span></span><button class="button small danger" data-prototype-action="delete">Delete</button></div></div></section>`;
@@ -1919,13 +1997,14 @@
 
       function renderDrawer() {
         if (!selectedApp) return;
-        document.querySelector("#drawer-title").textContent = selectedApp.name;
-        document.querySelector("#drawer-subtitle").textContent = `${selectedApp.repo} · ${selectedApp.branch}`;
-        const glyph = document.querySelector("#drawer-glyph");
+        document.querySelector('#drawer-title').textContent = selectedApp.name;
+        document.querySelector('#drawer-subtitle').textContent =
+          `${selectedApp.repo} · ${selectedApp.branch}`;
+        const glyph = document.querySelector('#drawer-glyph');
         glyph.className = `app-glyph ${selectedApp.color}`;
         glyph.textContent = selectedApp.initials;
-        document.querySelectorAll(".drawer-tab").forEach((tab) => {
-          tab.setAttribute("aria-selected", String(tab.dataset.tab === selectedTab));
+        document.querySelectorAll('.drawer-tab').forEach((tab) => {
+          tab.setAttribute('aria-selected', String(tab.dataset.tab === selectedTab));
         });
         const panels = {
           overview: overviewPanel,
@@ -1933,147 +2012,153 @@
           variables: variablesPanel,
           logs: logsPanel,
         };
-        document.querySelector("#drawer-body").innerHTML = panels[selectedTab](selectedApp);
+        document.querySelector('#drawer-body').innerHTML = panels[selectedTab](selectedApp);
       }
 
-      function openDrawer(app, sourceElement, tab = "overview") {
+      function openDrawer(app, sourceElement, tab = 'overview') {
         selectedApp = app;
         selectedTab = tab;
         lastFocusedElement = sourceElement || document.activeElement;
         renderDrawer();
-        const drawer = document.querySelector("#app-drawer");
+        const drawer = document.querySelector('#app-drawer');
         drawer.inert = false;
-        drawer.dataset.open = "true";
-        drawer.setAttribute("aria-hidden", "false");
-        document.querySelector("#drawer-backdrop").dataset.open = "true";
-        document.querySelector("#drawer-backdrop").setAttribute("aria-hidden", "false");
+        drawer.dataset.open = 'true';
+        drawer.setAttribute('aria-hidden', 'false');
+        document.querySelector('#drawer-backdrop').dataset.open = 'true';
+        document.querySelector('#drawer-backdrop').setAttribute('aria-hidden', 'false');
         document.querySelector('[data-action="close-drawer"]').focus();
       }
 
       function closeDrawer() {
-        const drawer = document.querySelector("#app-drawer");
-        drawer.dataset.open = "false";
-        drawer.setAttribute("aria-hidden", "true");
+        const drawer = document.querySelector('#app-drawer');
+        drawer.dataset.open = 'false';
+        drawer.setAttribute('aria-hidden', 'true');
         drawer.inert = true;
-        document.querySelector("#drawer-backdrop").dataset.open = "false";
-        document.querySelector("#drawer-backdrop").setAttribute("aria-hidden", "true");
+        document.querySelector('#drawer-backdrop').dataset.open = 'false';
+        document.querySelector('#drawer-backdrop').setAttribute('aria-hidden', 'true');
         lastFocusedElement?.focus?.();
       }
 
       function openDeployDialog(sourceElement) {
         lastFocusedElement = sourceElement || document.activeElement;
-        const repository = document.querySelector("#quick-repository").value;
-        const branch = document.querySelector("#quick-branch").value || "main";
-        const name = repository.split("/").pop();
-        document.querySelector("#deploy-name").value = name;
-        document.querySelector("#deploy-repository").value = repository;
-        document.querySelector("#deploy-branch").value = branch;
-        document.querySelector("#deploy-route").value = `${name}.myhomelan.com`;
-        document.querySelector("#preview-source").textContent = branch;
-        const dialog = document.querySelector("#deploy-dialog");
+        const repository = document.querySelector('#quick-repository').value;
+        const branch = document.querySelector('#quick-branch').value || 'main';
+        const name = repository.split('/').pop();
+        document.querySelector('#deploy-name').value = name;
+        document.querySelector('#deploy-repository').value = repository;
+        document.querySelector('#deploy-branch').value = branch;
+        document.querySelector('#deploy-route').value = `${name}.myhomelan.com`;
+        document.querySelector('#preview-source').textContent = branch;
+        const dialog = document.querySelector('#deploy-dialog');
         dialog.inert = false;
-        dialog.dataset.open = "true";
-        dialog.setAttribute("aria-hidden", "false");
-        setTimeout(() => document.querySelector("#deploy-name").focus(), 0);
+        dialog.dataset.open = 'true';
+        dialog.setAttribute('aria-hidden', 'false');
+        setTimeout(() => document.querySelector('#deploy-name').focus(), 0);
       }
 
       function closeDeployDialog() {
-        const dialog = document.querySelector("#deploy-dialog");
-        dialog.dataset.open = "false";
-        dialog.setAttribute("aria-hidden", "true");
+        const dialog = document.querySelector('#deploy-dialog');
+        dialog.dataset.open = 'false';
+        dialog.setAttribute('aria-hidden', 'true');
         dialog.inert = true;
         lastFocusedElement?.focus?.();
       }
 
       function showToast(message) {
         clearTimeout(toastTimer);
-        document.querySelector("#toast-copy").textContent = message;
-        const toast = document.querySelector("#toast");
-        toast.dataset.open = "true";
-        toastTimer = setTimeout(() => (toast.dataset.open = "false"), 2400);
+        document.querySelector('#toast-copy').textContent = message;
+        const toast = document.querySelector('#toast');
+        toast.dataset.open = 'true';
+        toastTimer = setTimeout(() => (toast.dataset.open = 'false'), 2400);
       }
 
-      document.addEventListener("click", (event) => {
-        const action = event.target.closest("[data-action]");
+      document.addEventListener('click', (event) => {
+        const action = event.target.closest('[data-action]');
         if (action) {
           const name = action.dataset.action;
-          if (name === "review-deploy") openDeployDialog(action);
-          if (name === "close-deploy") closeDeployDialog();
-          if (name === "prototype-deploy") {
+          if (name === 'review-deploy') openDeployDialog(action);
+          if (name === 'close-deploy') closeDeployDialog();
+          if (name === 'prototype-deploy') {
             closeDeployDialog();
-            showToast("Prototype only — deployment plan looks ready");
+            showToast('Prototype only — deployment plan looks ready');
           }
-          if (name === "close-drawer") closeDrawer();
-          if (name === "activity") openDrawer(apps[2], action, "logs");
+          if (name === 'close-drawer') closeDrawer();
+          if (name === 'activity') openDrawer(apps[2], action, 'logs');
         }
 
-        const filter = event.target.closest("[data-filter]");
+        const filter = event.target.closest('[data-filter]');
         if (filter) {
           activeFilter = filter.dataset.filter;
-          document.querySelectorAll("[data-filter]").forEach((button) => button.setAttribute("aria-pressed", String(button === filter)));
+          document
+            .querySelectorAll('[data-filter]')
+            .forEach((button) => button.setAttribute('aria-pressed', String(button === filter)));
           renderRows();
         }
 
-        const manage = event.target.closest("[data-manage]");
+        const manage = event.target.closest('[data-manage]');
         if (manage) {
           event.stopPropagation();
           const app = apps.find((candidate) => candidate.id === manage.dataset.manage);
           if (app) openDrawer(app, manage);
         }
 
-        const more = event.target.closest("[data-more]");
+        const more = event.target.closest('[data-more]');
         if (more) {
           event.stopPropagation();
           const app = apps.find((candidate) => candidate.id === more.dataset.more);
           if (app) openDrawer(app, more);
         }
 
-        const row = event.target.closest("tr[data-app]");
-        if (row && !event.target.closest("a, button")) {
+        const row = event.target.closest('tr[data-app]');
+        if (row && !event.target.closest('a, button')) {
           const app = apps.find((candidate) => candidate.id === row.dataset.app);
           if (app) openDrawer(app, row);
         }
 
-        const tab = event.target.closest("[data-tab]");
+        const tab = event.target.closest('[data-tab]');
         if (tab) {
           selectedTab = tab.dataset.tab;
           renderDrawer();
         }
 
-        const tabLink = event.target.closest("[data-tab-link]");
+        const tabLink = event.target.closest('[data-tab-link]');
         if (tabLink) {
           selectedTab = tabLink.dataset.tabLink;
           renderDrawer();
         }
 
-        const prototypeAction = event.target.closest("[data-prototype-action]");
-        if (prototypeAction) showToast(`${prototypeAction.textContent.trim()} is interactive in the production build`);
+        const prototypeAction = event.target.closest('[data-prototype-action]');
+        if (prototypeAction)
+          showToast(`${prototypeAction.textContent.trim()} is interactive in the production build`);
 
-        if (event.target.closest("[data-prototype-link]")) {
+        if (event.target.closest('[data-prototype-link]')) {
           event.preventDefault();
-          showToast("Route opening is disabled in this prototype");
+          showToast('Route opening is disabled in this prototype');
         }
 
-        if (event.target.closest("[data-nav]")) showToast("Navigation is disabled in this standalone prototype");
+        if (event.target.closest('[data-nav]'))
+          showToast('Navigation is disabled in this standalone prototype');
 
-        if (event.target === document.querySelector("#deploy-dialog")) closeDeployDialog();
+        if (event.target === document.querySelector('#deploy-dialog')) closeDeployDialog();
       });
 
-      document.querySelector("#app-search").addEventListener("input", renderRows);
+      document.querySelector('#app-search').addEventListener('input', renderRows);
 
-      document.querySelectorAll("#deploy-branch, #deploy-port").forEach((input) => {
-        input.addEventListener("input", () => {
-          document.querySelector("#preview-source").textContent = document.querySelector("#deploy-branch").value || "—";
-          document.querySelector("#preview-runtime").textContent = `port ${document.querySelector("#deploy-port").value || "—"}`;
+      document.querySelectorAll('#deploy-branch, #deploy-port').forEach((input) => {
+        input.addEventListener('input', () => {
+          document.querySelector('#preview-source').textContent =
+            document.querySelector('#deploy-branch').value || '—';
+          document.querySelector('#preview-runtime').textContent =
+            `port ${document.querySelector('#deploy-port').value || '—'}`;
         });
       });
 
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          if (document.querySelector("#deploy-dialog").dataset.open === "true") closeDeployDialog();
-          else if (document.querySelector("#app-drawer").dataset.open === "true") closeDrawer();
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (document.querySelector('#deploy-dialog').dataset.open === 'true') closeDeployDialog();
+          else if (document.querySelector('#app-drawer').dataset.open === 'true') closeDrawer();
         }
-        if ((event.key === "Enter" || event.key === " ") && event.target.matches("tr[data-app]")) {
+        if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('tr[data-app]')) {
           event.preventDefault();
           const app = apps.find((candidate) => candidate.id === event.target.dataset.app);
           if (app) openDrawer(app, event.target);
@@ -2081,12 +2166,12 @@
       });
 
       function updateClock() {
-        document.querySelector("#clock").textContent = new Intl.DateTimeFormat("en-GB", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
+        document.querySelector('#clock').textContent = new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
           hour12: false,
-          timeZoneName: "short",
+          timeZoneName: 'short',
         }).format(new Date());
       }
 

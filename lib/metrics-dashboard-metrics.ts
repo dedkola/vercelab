@@ -5,7 +5,7 @@ import type {
   MetricCard,
   PreviewContainer,
   PreviewContainerStatus,
-} from '@/components/workspace-shell';
+} from '@/lib/workspace-types';
 import { getContainerTone } from '@/lib/container-tone';
 import { DASHBOARD_RANGE_OPTIONS, type DashboardRange } from '@/lib/metrics-range';
 import type {
@@ -764,7 +764,6 @@ export function buildContainerListEntries(
         deploymentStatus: descriptor.deploymentStatus,
         display: buildDisplayContainer(descriptor.runtime, descriptor.history, snapshot, timeZone),
         dotClassName: getStatusDotClassName(getPreviewStatus(descriptor.runtime)),
-        preview: null,
         runtime: descriptor.runtime,
         sidebarName: descriptor.label,
         sidebarSecondaryLabel:
@@ -838,7 +837,6 @@ export function buildContainerListEntries(
       deploymentStatus: descriptor.deploymentStatus,
       display,
       dotClassName: getStatusDotClassName(display.status),
-      preview: null,
       runtime: null,
       sidebarName: descriptor.label,
       sidebarSecondaryLabel: 'history only',
