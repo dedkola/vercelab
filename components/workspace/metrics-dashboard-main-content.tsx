@@ -727,14 +727,7 @@ export function MetricsDashboardMainContent({
 
   return (
     <div className="vercelab-page space-y-4">
-      <header className="flex min-h-8 flex-wrap items-center justify-between gap-3 px-0.5">
-        <h1 className="vercelab-page-heading">
-          Overview{' '}
-          <span className="vercelab-page-count">
-            {trackedContainers} workload{trackedContainers === 1 ? '' : 's'}
-          </span>
-        </h1>
-      </header>
+      <h1 className="sr-only">Overview</h1>
 
       <section className="space-y-2" aria-labelledby="system-pulse-title">
         <div className="flex flex-wrap items-center justify-between gap-3 px-0.5">

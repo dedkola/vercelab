@@ -139,14 +139,7 @@ export function ContainersInventoryContent({
 
   return (
     <div className="vercelab-page space-y-4">
-      <header className="flex min-h-8 flex-wrap items-center justify-between gap-3 px-0.5">
-        <h1 className="vercelab-page-heading">
-          Containers{' '}
-          <span className="vercelab-page-count">
-            {totalContainersCount} runtime{totalContainersCount === 1 ? '' : 's'}
-          </span>
-        </h1>
-      </header>
+      <h1 className="sr-only">Containers</h1>
 
       <section
         aria-labelledby="create-container-title"
