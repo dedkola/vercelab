@@ -44,6 +44,8 @@ type WorkspaceChromeContextValue = {
   dashboardRange: DashboardRange;
   loadRepositories: () => Promise<void>;
   metricsError: string | null;
+  /** Fetch a fresh live snapshot now, outside the regular polling cadence. */
+  refreshSnapshot: () => Promise<void>;
   registerResetHandler: (handler: ResetHandler) => () => void;
   repositoryState: SharedRepositoryState;
   setDashboardRange: (range: DashboardRange) => void;
@@ -268,6 +270,20 @@ export function WorkspaceChromeShell({
     }
   }, [activeView, dashboardRange, router]);
 
+  const refreshSnapshot = useCallback(async () => {
+    const response = await fetch('/api/metrics?mode=current', { cache: 'no-store' });
+
+    if (!response.ok) {
+      throw new Error(`Metrics request failed with ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as { snapshot?: MetricsSnapshot | null };
+
+    if (payload.snapshot) {
+      setSidebarSnapshot(payload.snapshot);
+    }
+  }, []);
+
   useLiveMetricsPolling({
     enabled: true,
     initialSnapshot,
@@ -293,6 +309,7 @@ export function WorkspaceChromeShell({
       dashboardRange,
       loadRepositories,
       metricsError,
+      refreshSnapshot,
       registerResetHandler,
       repositoryState,
       setDashboardRange,
@@ -304,6 +321,7 @@ export function WorkspaceChromeShell({
       dashboardRange,
       loadRepositories,
       metricsError,
+      refreshSnapshot,
       registerResetHandler,
       repositoryState,
       setDashboardRange,

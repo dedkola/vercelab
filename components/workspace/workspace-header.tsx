@@ -200,7 +200,7 @@ export function WorkspaceHeader({
                     type="password"
                     value={githubToken}
                   />
-                  <Button loading={isSavingGithubToken} size="sm" type="submit" variant="primary">
+                  <Button loading={isSavingGithubToken} size="sm" type="submit" variant="outline">
                     Save
                   </Button>
                 </div>

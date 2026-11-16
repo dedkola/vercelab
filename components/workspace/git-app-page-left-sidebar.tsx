@@ -219,7 +219,8 @@ export function GitAppPageLeftSidebar({
             value={draftApp.branch}
           />
           <Button
-            className="h-9 rounded-[7px] border-[var(--orange)] bg-[var(--orange)] px-3 text-body text-white shadow-none hover:bg-[#dc6f13] max-[640px]:col-span-2"
+            className="h-9 max-[640px]:col-span-2"
+            variant="primary"
             disabled={!draftApp.repositoryUrl.trim() || isBranchLoading}
             onClick={onToggleCreateAppAction}
             type="button"
@@ -398,7 +399,7 @@ export function GitAppPageLeftSidebar({
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <Button
-                      className="h-8 rounded-[6px] px-3 text-xs shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
+                      className="group-hover:border-[var(--hairline-strong)]"
                       onClick={(event) => {
                         event.stopPropagation();
                         onSelectAppAction(deployment.id);

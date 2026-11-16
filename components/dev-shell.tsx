@@ -613,11 +613,7 @@ export function DevShell({ initialState }: DevShellProps) {
 
               {state.githubTokenConfigured ? (
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Button
-                    className="border-[var(--blue)] bg-[var(--blue)] text-white shadow-none hover:bg-[#0d55bc]"
-                    onClick={() => setIsConnectOpen(true)}
-                    type="button"
-                  >
+                  <Button variant="primary" onClick={() => setIsConnectOpen(true)} type="button">
                     <RocketLaunch aria-hidden="true" className="size-3.5" />
                     Connect repository
                   </Button>

@@ -2,12 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
 import { MetricsDashboardMainContent } from '@/components/workspace/metrics-dashboard-main-content';
 import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
 import { WorkspaceHeader } from '@/components/workspace/workspace-header';
-import type { WorkspaceView } from '@/components/workspace-shell';
+import type { ContainerListEntry, WorkspaceView } from '@/components/workspace-shell';
+import type { ContainerAction } from '@/lib/container-inventory';
 import {
   readStoredContainerAliases,
   subscribeToStoredContainerAliases,
@@ -43,6 +45,17 @@ function buildMetricsRequestUrl(searchParams: Record<string, string | undefined>
 
   return '/api/metrics?' + params.toString();
 }
+
+// Docker reports the new state a beat after the lifecycle command returns, so refresh a
+// few times instead of once.
+const POST_ACTION_REFRESH_DELAYS_MS = [0, 900, 2400] as const;
+
+const CONTAINER_ACTION_DONE_LABELS: Record<ContainerAction, string> = {
+  remove: 'Removed',
+  restart: 'Restarted',
+  start: 'Started',
+  stop: 'Stopped',
+};
 
 type MetricsDashboardShellProps = MetricsDashboardData & {
   embedded?: boolean;
@@ -161,6 +174,85 @@ export function MetricsDashboardShell({
       null);
   const selectedRuntimeContainer = selectedEntry?.runtime ?? null;
   const selectedRuntimeContainerId = selectedRuntimeContainer?.id ?? null;
+  const [pendingContainerActions, setPendingContainerActions] = useState<
+    Record<string, ContainerAction>
+  >({});
+  const postActionRefreshTimeoutIdsRef = useRef<number[]>([]);
+  const sharedRefreshSnapshot = sharedChrome?.refreshSnapshot;
+
+  const refreshSnapshotNow = useCallback(async () => {
+    if (isEmbedded && sharedRefreshSnapshot) {
+      await sharedRefreshSnapshot();
+      return;
+    }
+
+    const response = await fetch('/api/metrics?mode=current', { cache: 'no-store' });
+
+    if (!response.ok) {
+      throw new Error(`Metrics request failed with ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as { snapshot?: MetricsSnapshot | null };
+
+    if (payload.snapshot) {
+      setSidebarSnapshot(payload.snapshot);
+    }
+  }, [isEmbedded, sharedRefreshSnapshot]);
+
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of postActionRefreshTimeoutIdsRef.current) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  const handleContainerAction = useCallback(
+    async (container: ContainerListEntry, action: ContainerAction) => {
+      const runtimeId = container.runtime?.id;
+      const containerKey = container.display.id;
+
+      if (!runtimeId) {
+        return;
+      }
+
+      setPendingContainerActions((current) => ({ ...current, [containerKey]: action }));
+
+      try {
+        const response = await fetch(`/api/containers/${runtimeId}/actions`, {
+          body: JSON.stringify({ action }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        });
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? 'Container action failed.');
+        }
+
+        toast.success(`${CONTAINER_ACTION_DONE_LABELS[action]} ${container.sidebarName}`);
+
+        for (const timeoutId of postActionRefreshTimeoutIdsRef.current) {
+          window.clearTimeout(timeoutId);
+        }
+
+        postActionRefreshTimeoutIdsRef.current = POST_ACTION_REFRESH_DELAYS_MS.map((delayMs) =>
+          window.setTimeout(() => {
+            void refreshSnapshotNow().catch(() => undefined);
+          }, delayMs)
+        );
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Container action failed.');
+      } finally {
+        setPendingContainerActions((current) => {
+          const next = { ...current };
+          delete next[containerKey];
+          return next;
+        });
+      }
+    },
+    [refreshSnapshotNow]
+  );
 
   useEffect(() => {
     if (isEmbedded) {
@@ -346,9 +438,11 @@ export function MetricsDashboardShell({
         isAllContainerHistoryLoading={isContainerHistoryLoading}
         isAllContainersSelected={isAllContainersSelected}
         onAllContainersSelectAction={() => setSelectedContainerId(ALL_CONTAINERS_ID)}
+        onContainerLifecycleAction={handleContainerAction}
         onContainerSelectAction={setSelectedContainerId}
         onRangeChangeAction={setEffectiveDashboardRange}
         onSearchQueryChangeAction={setSearchQuery}
+        pendingContainerActions={pendingContainerActions}
         range={effectiveDashboardRange}
         rangeOptions={METRICS_DASHBOARD_RANGE_OPTIONS}
         runningContainersCount={effectiveSidebarSnapshot?.containers.running ?? null}
