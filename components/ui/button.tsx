@@ -5,25 +5,33 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 rounded-[7px] border text-xs font-medium transition-[color,background-color,border-color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  [
+    'inline-flex shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-[7px] border font-medium tracking-[-0.005em]',
+    'transition-[color,background-color,border-color,box-shadow] duration-150 ease-out',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)]/35 focus-visible:ring-offset-1 focus-visible:ring-offset-white',
+    'disabled:pointer-events-none disabled:opacity-50',
+    '[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-3.5',
+  ].join(' '),
   {
     variants: {
       variant: {
-        default: 'border-border bg-card text-foreground shadow-none hover:bg-muted',
+        default:
+          'border-[var(--hairline)] bg-white text-foreground shadow-[0_1px_1px_rgb(16_24_40/0.04)] hover:border-[var(--hairline-strong)] hover:bg-[var(--surface-subtle)] active:bg-[var(--muted)]',
         primary:
-          'border-[var(--blue)] bg-[var(--blue)] text-white shadow-none hover:border-[#0d55bc] hover:bg-[#0d55bc]',
-        secondary: 'border-border bg-secondary text-foreground shadow-none hover:bg-muted',
+          'border-[color-mix(in_srgb,var(--blue)_88%,black)] bg-[var(--blue)] text-white shadow-[0_1px_1px_rgb(16_24_40/0.08),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-[color-mix(in_srgb,var(--blue)_90%,black)] active:bg-[color-mix(in_srgb,var(--blue)_82%,black)]',
+        secondary:
+          'border-[var(--hairline)] bg-white text-foreground shadow-[0_1px_1px_rgb(16_24_40/0.04)] hover:border-[var(--hairline-strong)] hover:bg-[var(--surface-subtle)] active:bg-[var(--muted)]',
         danger:
-          'border-destructive/20 bg-destructive text-destructive-foreground shadow-none hover:bg-destructive/90',
+          'border-[color-mix(in_srgb,var(--red)_88%,black)] bg-[var(--red)] text-white shadow-[0_1px_1px_rgb(16_24_40/0.08),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-[color-mix(in_srgb,var(--red)_90%,black)] active:bg-[color-mix(in_srgb,var(--red)_82%,black)]',
         ghost:
-          'border-transparent bg-transparent text-muted-foreground shadow-none hover:bg-muted hover:text-foreground',
+          'border-transparent bg-transparent text-[var(--muted-ink)] shadow-none hover:bg-[var(--muted)] hover:text-foreground active:bg-[color-mix(in_srgb,var(--muted)_80%,black_4%)]',
       },
       size: {
-        default: 'h-9 px-3 py-2',
+        default: 'h-9 px-3.5 text-body',
         sm: 'h-8 px-3 text-xs',
         xs: 'h-7 rounded-[6px] px-2.5 text-xs',
-        lg: 'h-11 px-6',
-        icon: 'h-9 w-9',
+        lg: 'h-10 px-5 text-sm',
+        icon: 'size-9 p-0',
       },
     },
     defaultVariants: {
