@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowSquareOut,
-  GitCommit,
+  CheckCircle,
   MagnifyingGlass,
   RocketLaunch,
   SpinnerGap,
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatDevDateTime, formatDevRelativeTime } from '@/lib/dev-format';
 import type { DevProject, DevProjectCommits } from '@/lib/dev-types';
+import { cn } from '@/lib/utils';
 
 type DevCommitPickerDialogProps = {
   onCloseAction: () => void;
@@ -243,14 +244,16 @@ export function DevCommitPickerDialog({
             ) : null}
           </div>
         </div>
-        <button
+        <Button
           aria-label="Close commit picker"
-          className="shrink-0 text-[var(--quiet)] hover:text-foreground"
+          className="-mr-1.5 -mt-0.5"
           onClick={onCloseAction}
+          size="icon"
           type="button"
+          variant="ghost"
         >
-          ×
-        </button>
+          <X aria-hidden="true" className="size-4" />
+        </Button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -338,26 +341,27 @@ export function DevCommitPickerDialog({
 
         {filteredCommits.length ? (
           <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-[8px] border border-[var(--hairline)]">
-            {filteredCommits.map((commit) => (
-              <div
-                className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
-                key={commit.sha}
-              >
-                <div className="flex min-w-0 items-start gap-2.5">
+            {filteredCommits.map((commit) => {
+              const isSelected = selectedShas.includes(commit.sha);
+
+              return (
+                <div
+                  className={cn(
+                    'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 transition-colors duration-150',
+                    isSelected ? 'bg-[var(--ink)]/[0.035]' : 'hover:bg-[var(--ink)]/[0.02]'
+                  )}
+                  key={commit.sha}
+                >
                   <SelectionCheckbox
                     ariaLabel={`Select commit ${commit.shortSha}`}
-                    checked={selectedShas.includes(commit.sha)}
-                    className="mt-[9px]"
+                    checked={isSelected}
                     disabled={isBusy || commit.deployed}
                     onChange={() => toggleCommit(commit.sha)}
                     title={commit.deployed ? 'Already deployed' : undefined}
                   />
-                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[6px] bg-[var(--surface-subtle)] text-[var(--quiet)]">
-                    <GitCommit aria-hidden="true" className="size-3.5" />
-                  </span>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-2xs text-[var(--blue)]">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="shrink-0 font-mono text-2xs text-[var(--muted-ink)]">
                         {commit.shortSha}
                       </span>
                       <span
@@ -366,9 +370,8 @@ export function DevCommitPickerDialog({
                       >
                         {commit.message}
                       </span>
-                      {commit.deployed ? <Badge variant="success">Deployed</Badge> : null}
                     </div>
-                    <p className="mt-0.5 text-2xs text-[var(--quiet)]">
+                    <p className="mt-0.5 truncate text-2xs text-[var(--quiet)]">
                       {commit.authorName ?? 'Unknown author'} ·{' '}
                       <span title={formatDevDateTime(commit.committedAt)}>
                         {formatDevRelativeTime(commit.committedAt)}
@@ -377,7 +380,7 @@ export function DevCommitPickerDialog({
                         <>
                           {' · '}
                           <a
-                            className="hover:text-[var(--blue)] hover:underline"
+                            className="hover:text-foreground hover:underline"
                             href={commit.url}
                             rel="noopener noreferrer"
                             target="_blank"
@@ -388,21 +391,31 @@ export function DevCommitPickerDialog({
                       ) : null}
                     </p>
                   </div>
-                </div>
 
-                <Button
-                  disabled={pendingSha !== null || commit.deployed}
-                  onClick={() => void handleDeploy(commit.sha)}
-                  type="button"
-                  variant="secondary"
-                >
-                  {pendingSha === commit.sha ? (
-                    <SpinnerGap aria-hidden="true" className="size-3.5 animate-spin" />
-                  ) : null}
-                  {commit.deployed ? 'Deployed' : 'Deploy'}
-                </Button>
-              </div>
-            ))}
+                  {commit.deployed ? (
+                    <span className="inline-flex h-6 items-center gap-1 px-2 text-2xs font-medium text-[var(--green)]">
+                      <CheckCircle aria-hidden="true" className="size-3.5" weight="fill" />
+                      Deployed
+                    </span>
+                  ) : (
+                    <Button
+                      aria-label={`Deploy commit ${commit.shortSha}`}
+                      disabled={pendingSha !== null}
+                      onClick={() => void handleDeploy(commit.sha)}
+                      size="xs"
+                      type="button"
+                    >
+                      {pendingSha === commit.sha ? (
+                        <SpinnerGap aria-hidden="true" className="size-3 animate-spin" />
+                      ) : (
+                        <RocketLaunch aria-hidden="true" className="size-3" />
+                      )}
+                      Deploy
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : null}
       </div>

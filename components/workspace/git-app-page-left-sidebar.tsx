@@ -209,7 +209,8 @@ export function GitAppPageLeftSidebar({
             value={draftApp.branch}
           />
           <Button
-            className="h-9 rounded-[7px] border-[var(--orange)] bg-[var(--orange)] px-3 text-body text-white shadow-none hover:bg-[#dc6f13] max-[640px]:col-span-2"
+            className="h-9 max-[640px]:col-span-2"
+            variant="primary"
             disabled={!draftApp.repositoryUrl.trim() || isBranchLoading}
             onClick={onToggleCreateAppAction}
             type="button"
@@ -547,11 +548,7 @@ export function GitAppPageLeftSidebar({
               <Button onClick={onToggleCreateAppAction} type="button" variant="secondary">
                 Cancel
               </Button>
-              <Button
-                className="border-[var(--orange)] bg-[var(--orange)] text-white shadow-none hover:bg-[#dc6f13]"
-                disabled={isCreateDisabled}
-                type="submit"
-              >
+              <Button variant="primary" disabled={isCreateDisabled} type="submit">
                 {isCreateAppPending ? 'Deploying…' : 'Deploy app'}
                 {!isCreateAppPending ? <Plus aria-hidden="true" className="size-3.5" /> : null}
               </Button>

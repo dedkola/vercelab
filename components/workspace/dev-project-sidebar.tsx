@@ -112,7 +112,9 @@ export function DevProjectSidebar({
         </div>
 
         <Button
-          className="mt-3 h-9 w-full rounded-[7px] border-[var(--blue)] bg-[var(--blue)] text-body text-white shadow-none hover:bg-[#0d55bc]"
+          className="mt-3 w-full"
+          size="default"
+          variant="primary"
           onClick={onConnectAction}
           type="button"
         >

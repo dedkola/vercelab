@@ -167,20 +167,10 @@ export function ContainersInventoryContent({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 max-[720px]:justify-start">
-          <Button
-            className="h-9 rounded-[7px] px-3 text-body shadow-none"
-            onClick={onOpenComposeCreateAction}
-            type="button"
-            variant="secondary"
-          >
+          <Button onClick={onOpenComposeCreateAction} type="button" variant="secondary">
             Compose stack
           </Button>
-          <Button
-            className="h-9 rounded-[7px] px-3 text-body shadow-none"
-            onClick={onOpenImageCreateAction}
-            type="button"
-            variant="primary"
-          >
+          <Button onClick={onOpenImageCreateAction} type="button" variant="primary">
             Review image
             <ChevronRight aria-hidden="true" className="size-3.5" />
           </Button>

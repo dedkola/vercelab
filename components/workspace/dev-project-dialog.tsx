@@ -857,11 +857,7 @@ export function DevProjectDialog({
             <Button onClick={onCloseAction} type="button" variant="secondary">
               Cancel
             </Button>
-            <Button
-              className="border-[var(--blue)] bg-[var(--blue)] text-white shadow-none hover:bg-[#0d55bc]"
-              disabled={isSubmitDisabled}
-              type="submit"
-            >
+            <Button variant="primary" disabled={isSubmitDisabled} type="submit">
               {isSaving ? (
                 <SpinnerGap aria-hidden="true" className="size-3.5 animate-spin" />
               ) : null}
