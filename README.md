@@ -315,6 +315,17 @@ The metrics dashboard is the home route (`/`). It displays:
 
 The shell polls `/api/metrics` on a live interval and merges server-side snapshots with historical series. Missing or unavailable provider samples remain explicit instead of being replaced with demo values.
 
+### Workload logos
+
+The workload table resolves an icon per container automatically through `/api/workloads/<container-id>/logo`. Resolution order:
+
+1. the repository of the Vercelab-managed dev preview or deployment that owns the container, using the project build context;
+2. a bundled brand mark for known official images (PostgreSQL, InfluxDB, Traefik, Redis, RabbitMQ, Grafana, Prometheus, ClickHouse, MinIO, MongoDB, MySQL, MariaDB, NGINX, Caddy, Keycloak, Kafka, Elasticsearch/OpenSearch, Portainer, Docker, Node.js, Next.js, Alpine, and more);
+3. the committed logo of a compose project's working directory;
+4. the repository referenced by the image's `org.opencontainers.image.source` label.
+
+Custom apps should commit a logo to their repository. The resolver looks for, in order, `app/icon.{svg,png,ico}` (default Next.js icon convention), `public/{logo,favicon,icon}.*`, `src/app/icon.*`, plus `static/`, `assets/`, and `src/images/` variants at the build-context root. When nothing is found the table keeps its plain workload glyph. Repository lookups are cached in-process for five minutes and can use the configured GitHub token for private repositories.
+
 ## Containers Workspace
 
 The containers workspace (`/containers`) shows all containers visible to the host Docker daemon, not just Vercelab-managed apps. Features:
