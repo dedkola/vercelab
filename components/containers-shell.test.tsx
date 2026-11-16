@@ -169,7 +169,7 @@ describe('ContainersShell', () => {
       />
     );
 
-    expect(screen.getByRole('heading', { name: /containers 1 runtime/i })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /^containers$/i })).toBeVisible();
     await user.click(screen.getByRole('row', { name: /manage vercelab ui/i }));
 
     await waitFor(() => {
