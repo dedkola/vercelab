@@ -173,20 +173,20 @@ const ContainerListItem = memo(function ContainerListItem({
             </span>
             <span
               className={cn(
-                'shrink-0 text-[10px] font-semibold uppercase tracking-wide',
+                'shrink-0 text-2xs font-semibold uppercase tracking-wide',
                 getStatusTextClassName(statusVariant)
               )}
             >
               {statusLabel}
             </span>
           </span>
-          <span className="block truncate text-[11px] text-muted-foreground">{metaLabel}</span>
+          <span className="block truncate text-xs text-muted-foreground">{metaLabel}</span>
           <span className="mt-1 flex min-w-0 items-center gap-1">
-            <span className="truncate rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <span className="truncate rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               {loadLabel}
             </span>
             {isRouted ? (
-              <span className="truncate rounded-md border border-sky-200/70 bg-sky-50/80 px-1.5 py-0.5 text-[11px] font-medium text-sky-700">
+              <span className="truncate rounded-md border border-sky-200/70 bg-sky-50/80 px-1.5 py-0.5 text-xs font-medium text-sky-700">
                 routed
               </span>
             ) : null}
@@ -243,11 +243,11 @@ export function DashboardLeftSidebar({
             </div>
             <div className="flex flex-wrap items-center justify-end gap-1.5">
               {runningContainersCount !== null ? (
-                <Badge className="h-5 rounded-md border-emerald-200/80 bg-emerald-50/90 px-1.5 text-[11px] text-emerald-700">
+                <Badge className="h-5 rounded-md border-emerald-200/80 bg-emerald-50/90 px-1.5 text-xs text-emerald-700">
                   {runningContainersCount} running
                 </Badge>
               ) : null}
-              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-[11px] text-foreground">
+              <Badge className="h-5 rounded-md border-border/60 bg-background px-1.5 text-xs text-foreground">
                 {visibleCount} visible
               </Badge>
               {onAddContainerAction ? (
@@ -323,11 +323,11 @@ export function DashboardLeftSidebar({
                     <span className="block truncate text-xs font-semibold tracking-tight text-foreground">
                       All containers
                     </span>
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-xs text-muted-foreground">
                       Fleet overview
                     </span>
                   </span>
-                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background px-1.5 text-[11px] font-semibold text-foreground">
+                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background px-1.5 text-xs font-semibold text-foreground">
                     {containers.length}
                   </span>
                 </div>

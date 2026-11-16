@@ -14,7 +14,7 @@ export function WorkspaceNotice({
   return (
     <div
       className={cn(
-        'min-w-0 rounded-[7px] border px-3 py-2.5 text-[11px] leading-5 [overflow-wrap:anywhere]',
+        'min-w-0 rounded-[7px] border px-3 py-2.5 text-xs leading-5 [overflow-wrap:anywhere]',
         tone === 'error' && 'border-[var(--red)]/20 bg-[var(--red-soft)] text-[var(--red)]',
         tone === 'warning' &&
           'border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--warning-ink)]',

@@ -204,10 +204,10 @@ export function DevCommitPickerDialog({
       <header className="flex items-start justify-between gap-4 border-b border-[var(--hairline)] px-5 py-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-[16px] font-semibold tracking-tight">Deploy a commit</h2>
+            <h2 className="text-base font-semibold tracking-tight">Deploy a commit</h2>
             <Badge variant="secondary">{project.branch}</Badge>
           </div>
-          <p className="mt-1 text-[11px] leading-5 text-[var(--quiet)]">
+          <p className="mt-1 text-xs leading-5 text-[var(--quiet)]">
             Recent commits from {project.repositoryOwner}/{project.repositoryName}. Deploying an
             older commit creates a new isolated preview; existing previews stay online. Select
             several to queue them one at a time, oldest first.
@@ -220,7 +220,7 @@ export function DevCommitPickerDialog({
               />
               <Input
                 aria-label="Search commits"
-                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 pr-8 text-[12px] shadow-none"
+                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 pr-8 text-body shadow-none"
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search commits by message, author, or SHA"
                 value={searchQuery}
@@ -237,7 +237,7 @@ export function DevCommitPickerDialog({
               ) : null}
             </div>
             {normalizedQuery ? (
-              <span className="shrink-0 font-mono text-[10px] text-[var(--quiet)]">
+              <span className="shrink-0 font-mono text-2xs text-[var(--quiet)]">
                 {filteredCommits.length} of {commits.length}
               </span>
             ) : null}
@@ -257,21 +257,21 @@ export function DevCommitPickerDialog({
         {error ? <WorkspaceNotice>{error}</WorkspaceNotice> : null}
 
         {isLoading ? (
-          <div className="flex items-center gap-2 py-8 text-[11px] text-[var(--quiet)]">
+          <div className="flex items-center gap-2 py-8 text-xs text-[var(--quiet)]">
             <SpinnerGap aria-hidden="true" className="size-4 animate-spin" />
             Loading commits from GitHub…
           </div>
         ) : null}
 
         {!isLoading && !error && payload?.commits.length === 0 ? (
-          <div className="py-8 text-center text-[11px] text-[var(--quiet)]">
+          <div className="py-8 text-center text-xs text-[var(--quiet)]">
             No commits were returned for this branch.
           </div>
         ) : null}
 
         {!isLoading && !error && commits.length > 0 && filteredCommits.length === 0 ? (
           <div className="rounded-[8px] border border-dashed border-[var(--hairline)] px-3 py-8 text-center">
-            <p className="text-[11px] text-[var(--quiet)]">
+            <p className="text-xs text-[var(--quiet)]">
               No commits match &ldquo;{searchQuery.trim()}&rdquo;.
             </p>
             <Button
@@ -288,7 +288,7 @@ export function DevCommitPickerDialog({
 
         {selectedCount > 0 || (commits.length > 0 && selectableShas.length > 0) ? (
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-[var(--quiet)]">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--quiet)]">
               <SelectionCheckbox
                 ariaLabel="Select all commits"
                 checked={allVisibleSelected}
@@ -300,10 +300,10 @@ export function DevCommitPickerDialog({
             </label>
             {selectedCount > 0 ? (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold">
+                <span className="text-xs font-semibold">
                   {selectedCount} commit{selectedCount === 1 ? '' : 's'} selected
                 </span>
-                <span className="hidden text-[10px] text-[var(--quiet)] sm:inline">
+                <span className="hidden text-2xs text-[var(--quiet)] sm:inline">
                   · queued one at a time, oldest first
                 </span>
                 <Button
@@ -357,18 +357,18 @@ export function DevCommitPickerDialog({
                   </span>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[10px] text-[var(--blue)]">
+                      <span className="font-mono text-2xs text-[var(--blue)]">
                         {commit.shortSha}
                       </span>
                       <span
-                        className="min-w-0 truncate text-[12px] font-medium"
+                        className="min-w-0 truncate text-body font-medium"
                         title={commit.message}
                       >
                         {commit.message}
                       </span>
                       {commit.deployed ? <Badge variant="success">Deployed</Badge> : null}
                     </div>
-                    <p className="mt-0.5 text-[10px] text-[var(--quiet)]">
+                    <p className="mt-0.5 text-2xs text-[var(--quiet)]">
                       {commit.authorName ?? 'Unknown author'} ·{' '}
                       <span title={formatDevDateTime(commit.committedAt)}>
                         {formatDevRelativeTime(commit.committedAt)}

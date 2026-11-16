@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Button } from '@/components/ui/button';
+import { scaledFontSize } from '@/lib/typography';
 import { cn } from '@/lib/utils';
 
 type TerminalHost = {
@@ -41,8 +42,8 @@ type TerminalMessage =
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
-const FONT_SIZES = [11, 12, 13, 14, 15, 16] as const;
-const DEFAULT_FONT_SIZE = 13;
+const FONT_SIZES = [11, 12, 13, 14, 15, 16, 17, 18] as const;
+const DEFAULT_FONT_SIZE = 14;
 
 // Keep the terminal palette aligned with the workspace's light surfaces.
 const TERMINAL_THEME = {
@@ -133,6 +134,7 @@ export function TerminalShell() {
   const [host, setHost] = useState<TerminalHost | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
+  const fontSizePx = scaledFontSize(fontSize);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const terminalElementRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -248,7 +250,7 @@ export function TerminalShell() {
       cursorBlink: true,
       cursorStyle: 'block',
       fontFamily: `${getComputedStyle(document.documentElement).getPropertyValue('--font-geist-mono')}, ui-monospace, SFMono-Regular, Menlo, monospace`,
-      fontSize,
+      fontSize: fontSizePx,
       lineHeight: 1.2,
       letterSpacing: 0,
       scrollback: 10000,
@@ -306,10 +308,10 @@ export function TerminalShell() {
   useEffect(() => {
     const terminal = terminalRef.current;
     if (!terminal) return;
-    terminal.options.fontSize = fontSize;
+    terminal.options.fontSize = fontSizePx;
     sendResize();
     terminal.focus();
-  }, [fontSize, sendResize]);
+  }, [fontSizePx, sendResize]);
 
   async function handleCopySelection() {
     const selection = terminalRef.current?.getSelection();
@@ -343,7 +345,7 @@ export function TerminalShell() {
             <span className="vercelab-page-count">{host?.hostname ?? 'Connecting to host'}</span>
           </h1>
           <span
-            className="flex items-center gap-1.5 text-[10px] text-[var(--muted-ink)]"
+            className="flex items-center gap-1.5 text-2xs text-[var(--muted-ink)]"
             role="status"
           >
             <StatusDot status={connectionStatus} />
@@ -379,7 +381,7 @@ export function TerminalShell() {
           <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--hairline)] px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-2">
               <TerminalSquare className="size-4 shrink-0 text-[var(--quiet)]" aria-hidden="true" />
-              <span className="truncate font-mono text-[11px] font-medium">
+              <span className="truncate font-mono text-xs font-medium">
                 {host ? `${host.username}@${host.hostname}` : 'Host session'}
               </span>
             </div>
@@ -399,7 +401,7 @@ export function TerminalShell() {
                 >
                   <Minus className="size-3" aria-hidden="true" />
                 </Button>
-                <span className="w-6 text-center font-mono text-[10px] text-[var(--muted-ink)]">
+                <span className="w-6 text-center font-mono text-2xs text-[var(--muted-ink)]">
                   {fontSize}
                 </span>
                 <Button
@@ -456,7 +458,7 @@ export function TerminalShell() {
             className="min-h-0 flex-1 overflow-hidden bg-[var(--surface-subtle)] p-3"
             ref={terminalElementRef}
           />
-          <footer className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-t border-[var(--hairline)] px-3 py-2 font-mono text-[9px] text-[var(--quiet)] [overflow-wrap:anywhere]">
+          <footer className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-t border-[var(--hairline)] px-3 py-2 font-mono text-2xs text-[var(--quiet)] [overflow-wrap:anywhere]">
             <span>
               OS{' '}
               <span className="text-[var(--muted-ink)]">{host?.osName ?? 'Waiting for host'}</span>

@@ -318,7 +318,7 @@ export function WorkspaceChromeShell({
       <section aria-label="Workspace shell" className="flex h-dvh flex-col bg-[var(--canvas)]">
         <a
           href="#workspace-content"
-          className="sr-only z-[80] rounded-[7px] bg-[var(--surface)] p-3 text-[12px] text-[var(--blue)] focus:not-sr-only focus:absolute focus:left-3 focus:top-3"
+          className="sr-only z-[80] rounded-[7px] bg-[var(--surface)] p-3 text-body text-[var(--blue)] focus:not-sr-only focus:absolute focus:left-3 focus:top-3"
         >
           Skip to content
         </a>

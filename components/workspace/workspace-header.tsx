@@ -105,10 +105,10 @@ export function WorkspaceHeader({
 
   return (
     <header className="vercelab-topbar shrink-0 border-b border-[var(--hairline)] bg-[rgb(255_255_255_/_0.94)] backdrop-blur-xl">
-      <div className="mx-auto grid min-h-11 w-full max-w-[1680px] grid-cols-[minmax(12rem,1fr)_auto_minmax(12rem,1fr)] items-center gap-4 px-6 max-[960px]:grid-cols-[1fr_auto] max-[760px]:px-3">
+      <div className="mx-auto grid min-h-11 w-full max-w-[105rem] grid-cols-[minmax(12rem,1fr)_auto_minmax(12rem,1fr)] items-center gap-4 px-6 max-[960px]:grid-cols-[1fr_auto] max-[760px]:px-3">
         <div className="flex min-w-0 items-center gap-2.5 whitespace-nowrap" aria-label="Vercelab">
           <VercelabBrandMark />
-          <span className="text-[11px] font-semibold tracking-[0.08em]">VERCELAB / LOCAL</span>
+          <span className="text-xs font-semibold tracking-[0.08em]">VERCELAB / LOCAL</span>
         </div>
 
         <nav
@@ -130,7 +130,7 @@ export function WorkspaceHeader({
           <span
             title={statusLabel}
             className={cn(
-              'flex items-center gap-1.5 text-[9px] font-semibold tracking-[0.04em] uppercase max-[760px]:[&>span:last-child]:hidden',
+              'flex items-center gap-1.5 text-2xs font-semibold tracking-[0.04em] uppercase max-[760px]:[&>span:last-child]:hidden',
               statusTone === 'success'
                 ? 'text-[var(--green)]'
                 : statusTone === 'warning'
@@ -141,7 +141,7 @@ export function WorkspaceHeader({
             <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
             <span>{statusLabel}</span>
           </span>
-          <time className="max-w-28 truncate font-mono text-[9px] text-[var(--quiet)] max-[760px]:hidden">
+          <time className="max-w-28 truncate font-mono text-2xs text-[var(--quiet)] max-[760px]:hidden">
             {updatedAtLabel}
           </time>
 
@@ -181,7 +181,7 @@ export function WorkspaceHeader({
               <form className="p-3" onSubmit={handleSaveGithubToken}>
                 <div>
                   <div className="text-sm font-semibold">GitHub access</div>
-                  <div className="mt-1 font-mono text-[9px] text-[var(--quiet)]">
+                  <div className="mt-1 font-mono text-2xs text-[var(--quiet)]">
                     Stored server-side in .env
                   </div>
                 </div>
@@ -216,7 +216,7 @@ export function WorkspaceHeader({
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <div className="text-sm font-semibold">Graph time</div>
-                      <div className="mt-1 max-w-40 truncate font-mono text-[9px] text-[var(--quiet)]">
+                      <div className="mt-1 max-w-40 truncate font-mono text-2xs text-[var(--quiet)]">
                         {timeDisplayMode === 'local' ? localTimeZoneLabel : 'Universal time'}
                       </div>
                     </div>
@@ -240,7 +240,7 @@ export function WorkspaceHeader({
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-sm font-semibold">Layout</div>
-                    <div className="mt-1 font-mono text-[9px] text-[var(--quiet)]">
+                    <div className="mt-1 font-mono text-2xs text-[var(--quiet)]">
                       Reset page-specific panels
                     </div>
                   </div>

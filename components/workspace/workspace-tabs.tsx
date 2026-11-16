@@ -26,7 +26,7 @@ export function WorkspaceTabs<T extends string>({
           aria-controls={`${id}-panel`}
           aria-selected={value === tab.value}
           className={cn(
-            'relative shrink-0 text-[11px] font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5',
+            'relative shrink-0 text-xs font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5',
             value === tab.value
               ? 'text-foreground after:bg-[var(--blue)]'
               : 'text-[var(--quiet)] hover:text-foreground'

@@ -224,7 +224,7 @@ export function GitLogPanel({
         <div className="sticky top-0 z-10 border-b border-border/70 bg-[var(--surface)] px-3 py-3 ">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <CardTitle className="truncate text-[12px]">Deployment logs</CardTitle>
+              <CardTitle className="truncate text-body">Deployment logs</CardTitle>
               <div className="text-xs text-muted-foreground">
                 {deployment ? deployment.appName : emptyState.title}
               </div>
@@ -269,10 +269,10 @@ export function GitLogPanel({
               <div className="min-w-0 w-full rounded-[8px] border border-border bg-[var(--surface-subtle)] px-3 py-3">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="break-words text-[12px] font-semibold text-foreground">
+                    <div className="break-words text-body font-semibold text-foreground">
                       {deployment.appName}
                     </div>
-                    <div className="break-all font-mono text-[10px] text-muted-foreground">
+                    <div className="break-all font-mono text-2xs text-muted-foreground">
                       {activeLogCommand}
                     </div>
                   </div>
@@ -290,12 +290,12 @@ export function GitLogPanel({
                     <span className="h-2 w-2 rounded-full bg-[var(--green)]" />
                     {activeLogLabel}
                   </div>
-                  <div className="font-mono text-[11px] text-[var(--quiet)]">
+                  <div className="font-mono text-xs text-[var(--quiet)]">
                     {logState.isLoading ? 'Loading...' : `${logLineCount} lines`}
                   </div>
                 </div>
 
-                <div className="max-h-[52vh] min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 font-mono text-[11px] leading-5 text-[var(--ink)]">
+                <div className="max-h-[52vh] min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 font-mono text-xs leading-5 text-[var(--ink)]">
                   {logState.isLoading ? (
                     <div className="text-[var(--quiet)]">Loading logs...</div>
                   ) : (
@@ -309,7 +309,7 @@ export function GitLogPanel({
           ) : (
             <div className="flex min-w-0 flex-col space-y-3">
               <div className="w-full rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-3">
-                <div className="break-words text-[12px] font-semibold text-foreground">
+                <div className="break-words text-body font-semibold text-foreground">
                   {emptyState.title}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
@@ -323,9 +323,9 @@ export function GitLogPanel({
                     <span className="h-2 w-2 rounded-full bg-[var(--quiet)]" />
                     Tail preview
                   </div>
-                  <div className="font-mono text-[11px] text-[var(--quiet)]">Idle</div>
+                  <div className="font-mono text-xs text-[var(--quiet)]">Idle</div>
                 </div>
-                <div className="px-3 py-3 font-mono text-[12px] leading-5 text-[var(--quiet)]">
+                <div className="px-3 py-3 font-mono text-body leading-5 text-[var(--quiet)]">
                   {emptyState.description}
                 </div>
               </div>

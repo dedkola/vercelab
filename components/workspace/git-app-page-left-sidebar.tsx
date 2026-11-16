@@ -180,10 +180,10 @@ export function GitAppPageLeftSidebar({
             <PackagePlus aria-hidden="true" className="size-4" />
           </span>
           <span className="min-w-0">
-            <strong className="block text-[13px] font-semibold" id="deploy-new-app-title">
+            <strong className="block text-sm font-semibold" id="deploy-new-app-title">
               Deploy new app
             </strong>
-            <span className="mt-0.5 block text-[11px] text-muted-foreground">
+            <span className="mt-0.5 block text-xs text-muted-foreground">
               Choose a repository and branch. Review before creation.
             </span>
           </span>
@@ -192,7 +192,7 @@ export function GitAppPageLeftSidebar({
         <div className="grid min-w-0 grid-cols-[minmax(190px,1fr)_minmax(120px,0.55fr)_auto] items-center gap-2 max-[640px]:grid-cols-[minmax(0,1fr)_6.5rem]">
           <Combobox
             ariaLabel="Repository"
-            buttonClassName="h-9 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-2.5 text-[12px] shadow-none"
+            buttonClassName="h-9 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-2.5 text-body shadow-none"
             disabled={repositoryState.isLoading}
             emptyText={repositoryState.error ?? 'No repositories found'}
             onValueChangeAction={onRepositorySelectAction}
@@ -203,7 +203,7 @@ export function GitAppPageLeftSidebar({
           />
           <Combobox
             ariaLabel="Branch"
-            buttonClassName="h-9 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-2.5 text-[12px] shadow-none"
+            buttonClassName="h-9 rounded-[7px] border border-border bg-[var(--surface-subtle)] px-2.5 text-body shadow-none"
             disabled={!selectedRepositoryValue || isBranchLoading || branchOptions.length === 0}
             emptyText={
               selectedRepositoryValue
@@ -219,7 +219,7 @@ export function GitAppPageLeftSidebar({
             value={draftApp.branch}
           />
           <Button
-            className="h-9 rounded-[7px] border-[var(--orange)] bg-[var(--orange)] px-3 text-[12px] text-white shadow-none hover:bg-[#dc6f13] max-[640px]:col-span-2"
+            className="h-9 rounded-[7px] border-[var(--orange)] bg-[var(--orange)] px-3 text-body text-white shadow-none hover:bg-[#dc6f13] max-[640px]:col-span-2"
             disabled={!draftApp.repositoryUrl.trim() || isBranchLoading}
             onClick={onToggleCreateAppAction}
             type="button"
@@ -245,10 +245,10 @@ export function GitAppPageLeftSidebar({
         <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-[var(--hairline)] px-3 py-2.5 max-[640px]:grid max-[640px]:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex min-w-0 flex-1 items-center gap-3 max-[640px]:contents">
             <div className="min-w-0 shrink-0 max-[640px]:col-span-2">
-              <h2 className="text-[13px] font-semibold" id="applications-title">
+              <h2 className="text-sm font-semibold" id="applications-title">
                 Applications
               </h2>
-              <p className="mt-1 whitespace-nowrap font-mono text-[10px] text-[var(--quiet)]">
+              <p className="mt-1 whitespace-nowrap font-mono text-2xs text-[var(--quiet)]">
                 {appItems.length} visible · {liveAppsCount} running
                 {deployingAppsCount ? ` · ${deployingAppsCount} deploying` : ''}
               </p>
@@ -260,7 +260,7 @@ export function GitAppPageLeftSidebar({
               />
               <Input
                 aria-label="Search apps"
-                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 text-[12px] shadow-none"
+                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 text-body shadow-none"
                 onChange={(event) => onAppSearchQueryChangeAction(event.target.value)}
                 placeholder="Find app or route"
                 value={appSearchQuery}
@@ -297,7 +297,7 @@ export function GitAppPageLeftSidebar({
                 {['App', 'State', 'Source', 'Route', 'Runtime', 'Updated'].map((label, index) => (
                   <th
                     className={cn(
-                      'px-3 text-left font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase',
+                      'px-3 text-left font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase',
                       index >= 2 && index <= 4 && 'max-[760px]:hidden',
                       index === 5 && 'max-[960px]:hidden'
                     )}
@@ -335,17 +335,17 @@ export function GitAppPageLeftSidebar({
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span
                         className={cn(
-                          'grid size-8 shrink-0 place-items-center rounded-[7px] border font-mono text-[10px] font-bold',
+                          'grid size-8 shrink-0 place-items-center rounded-[7px] border font-mono text-2xs font-bold',
                           APP_TONES[index % APP_TONES.length]
                         )}
                       >
                         {getAppInitials(deployment.appName)}
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate text-[12px] font-semibold tracking-[-0.01em]">
+                        <span className="block truncate text-body font-semibold tracking-[-0.01em]">
                           {deployment.appName}
                         </span>
-                        <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                        <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                           {deployment.id}
                         </span>
                       </span>
@@ -354,7 +354,7 @@ export function GitAppPageLeftSidebar({
                   <td className="px-3 py-1.5">
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] uppercase',
+                        'inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.04em] uppercase',
                         getStatusClassName(deployment.statusVariant)
                       )}
                     >
@@ -363,17 +363,17 @@ export function GitAppPageLeftSidebar({
                     </span>
                   </td>
                   <td className="px-3 py-1.5 max-[760px]:hidden">
-                    <span className="block truncate font-mono text-[11px] text-foreground">
+                    <span className="block truncate font-mono text-xs text-foreground">
                       {deployment.repositoryName}
                     </span>
-                    <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--quiet)]">
+                    <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
                       {deployment.branchLabel}@{deployment.revisionLabel}
                     </span>
                   </td>
                   <td className="px-3 py-1.5 max-[760px]:hidden">
                     {deployment.domain ? (
                       <a
-                        className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-[var(--blue)] underline-offset-2 hover:underline"
+                        className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
                         href={`https://${deployment.domain}`}
                         onClick={(event) => event.stopPropagation()}
                         rel="noreferrer"
@@ -383,22 +383,22 @@ export function GitAppPageLeftSidebar({
                         <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
                       </a>
                     ) : (
-                      <span className="font-mono text-[11px] text-[var(--quiet)]">not routed</span>
+                      <span className="font-mono text-xs text-[var(--quiet)]">not routed</span>
                     )}
                   </td>
                   <td className="px-3 py-1.5 max-[760px]:hidden">
-                    <span className="font-mono text-[11px] text-[var(--muted-ink)]">
+                    <span className="font-mono text-xs text-[var(--muted-ink)]">
                       {getRuntimeLabel(deployment)}
                     </span>
                   </td>
                   <td className="px-3 py-1.5 max-[960px]:hidden">
-                    <span className="font-mono text-[11px] text-[var(--muted-ink)]">
+                    <span className="font-mono text-xs text-[var(--muted-ink)]">
                       {deployment.relativeUpdatedAt}
                     </span>
                   </td>
                   <td className="px-2 py-1.5 text-right">
                     <Button
-                      className="h-8 rounded-[6px] px-3 text-[11px] shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
+                      className="h-8 rounded-[6px] px-3 text-xs shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
                       onClick={(event) => {
                         event.stopPropagation();
                         onSelectAppAction(deployment.id);
@@ -415,7 +415,7 @@ export function GitAppPageLeftSidebar({
           </table>
 
           {appItems.length === 0 ? (
-            <div className="px-4 py-10 text-center font-mono text-[12px] text-[var(--quiet)]">
+            <div className="px-4 py-10 text-center font-mono text-body text-[var(--quiet)]">
               {totalAppsCount === 0
                 ? 'No apps deployed yet. Choose a repository above to get started.'
                 : 'No applications match this view.'}
@@ -433,10 +433,10 @@ export function GitAppPageLeftSidebar({
                   <PackagePlus aria-hidden="true" className="size-4" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-[15px] font-semibold" id="review-deployment-title">
+                  <h2 className="text-[0.9375rem] font-semibold" id="review-deployment-title">
                     Review new deployment
                   </h2>
-                  <p className="mt-0.5 font-mono text-[10px] text-[var(--quiet)]">
+                  <p className="mt-0.5 font-mono text-2xs text-[var(--quiet)]">
                     Git source → build → runtime
                   </p>
                 </div>
@@ -457,21 +457,19 @@ export function GitAppPageLeftSidebar({
             <div className="grid gap-3 p-4">
               <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-medium text-muted-foreground">App name</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">App name</Label>
                   <Input
                     aria-label="App name"
-                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                    className="h-9 rounded-[7px] font-mono text-body shadow-none"
                     onChange={(event) => onDraftChangeAction('appName', event.target.value)}
                     value={draftApp.appName}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-medium text-muted-foreground">
-                    Internal port
-                  </Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Internal port</Label>
                   <Input
                     aria-label="Internal port"
-                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                    className="h-9 rounded-[7px] font-mono text-body shadow-none"
                     inputMode="numeric"
                     onChange={(event) => onDraftChangeAction('port', event.target.value)}
                     value={draftApp.port}
@@ -480,10 +478,10 @@ export function GitAppPageLeftSidebar({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-medium text-muted-foreground">Repository</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Repository</Label>
                 <Combobox
                   ariaLabel="Deployment repository"
-                  buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 font-mono text-[12px] shadow-none"
+                  buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 font-mono text-body shadow-none"
                   disabled={repositoryState.isLoading}
                   emptyText={repositoryState.error ?? 'No repositories found'}
                   onValueChangeAction={onRepositorySelectAction}
@@ -493,7 +491,7 @@ export function GitAppPageLeftSidebar({
                   value={selectedRepositoryValue}
                 />
                 {selectedRepositorySummary ? (
-                  <p className="font-mono text-[10px] text-[var(--quiet)]">
+                  <p className="font-mono text-2xs text-[var(--quiet)]">
                     {selectedRepositorySummary}
                   </p>
                 ) : null}
@@ -501,10 +499,10 @@ export function GitAppPageLeftSidebar({
 
               <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-medium text-muted-foreground">Branch</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Branch</Label>
                   <Combobox
                     ariaLabel="Deployment branch"
-                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 font-mono text-[12px] shadow-none"
+                    buttonClassName="h-9 rounded-[7px] border border-border bg-white px-2.5 font-mono text-body shadow-none"
                     disabled={
                       !selectedRepositoryValue || isBranchLoading || branchOptions.length === 0
                     }
@@ -516,14 +514,14 @@ export function GitAppPageLeftSidebar({
                     value={draftApp.branch}
                   />
                   {branchHelperText ? (
-                    <p className="font-mono text-[10px] text-[var(--quiet)]">{branchHelperText}</p>
+                    <p className="font-mono text-2xs text-[var(--quiet)]">{branchHelperText}</p>
                   ) : null}
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-medium text-muted-foreground">Exposure</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Exposure</Label>
                   <select
                     aria-label="Exposure"
-                    className="h-9 w-full rounded-[7px] border border-input bg-white px-3 text-[12px]"
+                    className="h-9 w-full rounded-[7px] border border-input bg-white px-3 text-body"
                     onChange={(event) => onDraftChangeAction('exposureMode', event.target.value)}
                     value={draftApp.exposureMode}
                   >
@@ -537,18 +535,16 @@ export function GitAppPageLeftSidebar({
 
               {draftApp.exposureMode === 'http' ? (
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-medium text-muted-foreground">
-                    Public route
-                  </Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Public route</Label>
                   <InputGroup className="h-9 rounded-[7px] shadow-none">
                     <InputGroupInput
                       aria-label="Public route"
-                      className="font-mono text-[12px]"
+                      className="font-mono text-body"
                       onChange={(event) => onDraftChangeAction('subdomain', event.target.value)}
                       value={draftApp.subdomain}
                     />
                     {baseDomain ? (
-                      <InputGroupSuffix className="font-mono text-[11px] leading-9">
+                      <InputGroupSuffix className="font-mono text-xs leading-9">
                         .{baseDomain}
                       </InputGroupSuffix>
                     ) : null}
@@ -558,10 +554,10 @@ export function GitAppPageLeftSidebar({
 
               {needsHostPort ? (
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-medium text-muted-foreground">Host port</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Host port</Label>
                   <Input
                     aria-label="Host port"
-                    className="h-9 rounded-[7px] font-mono text-[12px] shadow-none"
+                    className="h-9 rounded-[7px] font-mono text-body shadow-none"
                     inputMode="numeric"
                     onChange={(event) => onDraftChangeAction('hostPort', event.target.value)}
                     placeholder="e.g. 27017"
@@ -581,34 +577,34 @@ export function GitAppPageLeftSidebar({
               ) : null}
 
               {!repositoryState.tokenConfigured && repositoryState.hasLoaded ? (
-                <div className="rounded-[7px] border border-border bg-[var(--surface-subtle)] px-3 py-2 text-[12px] text-muted-foreground">
+                <div className="rounded-[7px] border border-border bg-[var(--surface-subtle)] px-3 py-2 text-body text-muted-foreground">
                   Configure a GitHub token to browse private repositories.
                 </div>
               ) : null}
 
               <div className="mt-1 grid grid-cols-3 gap-2 border-t border-[var(--hairline)] pt-4 max-[560px]:grid-cols-1">
                 <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2.5">
-                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                     Source
                   </span>
-                  <span className="mt-1 flex items-center gap-1.5 truncate font-mono text-[11px] font-semibold">
+                  <span className="mt-1 flex items-center gap-1.5 truncate font-mono text-xs font-semibold">
                     <GitBranch aria-hidden="true" className="size-3 text-[var(--orange)]" />
                     {draftApp.branch || 'default'}
                   </span>
                 </div>
                 <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2.5">
-                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                     Build
                   </span>
-                  <span className="mt-1 block truncate font-mono text-[11px] font-semibold">
+                  <span className="mt-1 block truncate font-mono text-xs font-semibold">
                     Auto-detect
                   </span>
                 </div>
                 <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2.5">
-                  <span className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
+                  <span className="font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
                     Runtime
                   </span>
-                  <span className="mt-1 block truncate font-mono text-[11px] font-semibold">
+                  <span className="mt-1 block truncate font-mono text-xs font-semibold">
                     port {draftApp.port || '—'}
                   </span>
                 </div>

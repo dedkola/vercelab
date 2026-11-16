@@ -345,7 +345,7 @@ function FocusedMetricChartCard({ chart }: { chart: FocusedMetricChart }) {
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
         <div className="text-2xl font-semibold tracking-tight text-foreground">{chart.value}</div>
-        <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+        <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
           {chart.legends.map((legend) => (
             <div
               className="rounded-full border border-border/60 bg-background/82 px-2.5 py-1"
@@ -415,25 +415,25 @@ export function DashboardMainContent({
 
           <div className="flex flex-wrap gap-2 lg:max-w-2xl lg:justify-end">
             <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
-              <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+              <span className="mr-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 Runtime
               </span>
               <span className="font-semibold text-foreground">{runtimePillLabel}</span>
             </div>
             <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
-              <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+              <span className="mr-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 {selectedRuntimeContainer ? 'Health' : 'Node'}
               </span>
               <span className="font-semibold text-foreground">{healthOrNodeLabel}</span>
             </div>
             <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
-              <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+              <span className="mr-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 {selectedRuntimeContainer ? 'Project' : 'Region'}
               </span>
               <span className="font-semibold text-foreground">{projectOrRegionLabel}</span>
             </div>
             <div className="min-w-34 rounded-full border border-border/60 bg-background/82 px-3 py-2 text-sm shadow-[0_18px_42px_-34px_rgba(15,23,42,0.22)]">
-              <span className="mr-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+              <span className="mr-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 {selectedRuntimeContainer ? 'Service' : 'Exposed port'}
               </span>
               <span className="font-semibold text-foreground">{serviceOrPortLabel}</span>
@@ -513,7 +513,7 @@ export function DashboardMainContent({
                     points={chart.trendPoints}
                     tone={getFocusedMetricTone(chart.variant)}
                   />
-                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
                     {chart.legends.map((legend) => (
                       <div key={legend.label}>
                         {legend.label} {legend.value}
