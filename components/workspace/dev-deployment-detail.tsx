@@ -330,12 +330,12 @@ export function DevDeploymentDetail({
                 <ActionButton
                   action="retry"
                   deployment={deployment}
-                  label="Rebuild preview"
+                  label="Redeploy preview"
                   onActionAction={onActionAction}
                   pendingActionKey={pendingActionKey}
                 >
                   <ArrowCounterClockwise aria-hidden="true" className="size-3.5" />
-                  Rebuild
+                  Redeploy
                 </ActionButton>
               </>
             ) : null}
@@ -344,12 +344,12 @@ export function DevDeploymentDetail({
               <ActionButton
                 action="retry"
                 deployment={deployment}
-                label="Retry preview build"
+                label="Redeploy preview after failure"
                 onActionAction={onActionAction}
                 pendingActionKey={pendingActionKey}
               >
                 <ArrowCounterClockwise aria-hidden="true" className="size-3.5" />
-                Retry build
+                Redeploy
               </ActionButton>
             ) : null}
 

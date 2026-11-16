@@ -14,10 +14,12 @@ import {
   Stop,
   TerminalWindow,
   Trash,
+  X,
 } from '@phosphor-icons/react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SelectionCheckbox } from '@/components/workspace/selection-checkbox';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import {
   formatDevDateTime,
@@ -27,7 +29,7 @@ import {
   getDevStatusLabel,
   getDevStatusVariant,
 } from '@/lib/dev-format';
-import { getDevDeploymentPreviewUrl } from '@/lib/dev-preview';
+import { getDevDeploymentPreviewUrl, selectStaleDeployments } from '@/lib/dev-preview';
 import type { DevContainerState, DevDeployment, DevProject } from '@/lib/dev-types';
 import type { DevDeploymentAction } from '@/lib/dev-validation';
 import { cn } from '@/lib/utils';
@@ -36,23 +38,37 @@ type DevDeploymentsContentProps = {
   baseDomain: string;
   containerStates: Record<string, DevContainerState>;
   deployments: DevDeployment[];
+  isBulkActionPending: boolean;
+  isDeletingDeployment: boolean;
   onActionAction: (action: DevDeploymentAction, deploymentId: string) => void;
+  onClearSelectionAction: () => void;
+  onDeleteOldAction: () => void;
+  onDeleteSelectedAction: () => void;
   onDeployLatestAction: () => void;
   onOpenCommitsAction: () => void;
   onOpenSettingsAction: () => void;
+  onRedeploySelectedAction: () => void;
   onSelectDeploymentAction: (deploymentId: string) => void;
   onSyncAction: () => void;
+  onToggleAllSelectionAction: () => void;
+  onToggleDeploymentSelectionAction: (deploymentId: string) => void;
   pendingActionKey: string | null;
   previewProtocol: 'http' | 'https';
   project: DevProject;
+  selectedDeploymentIds: ReadonlySet<string>;
 };
 
 function getPendingKey(deploymentId: string, action: DevDeploymentAction) {
   return `${deploymentId}:${action}`;
 }
 
+function isDeploymentBuilding(deployment: DevDeployment) {
+  return deployment.status === 'queued' || deployment.status === 'building';
+}
+
 function ActionButton({
   action,
+  danger = false,
   deployment,
   icon,
   label,
@@ -60,6 +76,7 @@ function ActionButton({
   pendingActionKey,
 }: {
   action: DevDeploymentAction;
+  danger?: boolean;
   deployment: DevDeployment;
   icon: React.ReactNode;
   label: string;
@@ -71,7 +88,7 @@ function ActionButton({
   return (
     <Button
       aria-label={label}
-      className="size-7 rounded-[6px] p-0"
+      className={cn('size-7 rounded-[6px] p-0', danger && 'hover:text-destructive')}
       disabled={pendingActionKey !== null && pendingActionKey.startsWith(`${deployment.id}:`)}
       onClick={() => onClickAction(action, deployment.id)}
       size="icon"
@@ -88,22 +105,37 @@ export function DevDeploymentsContent({
   baseDomain,
   containerStates,
   deployments,
+  isBulkActionPending,
+  isDeletingDeployment,
   onActionAction,
+  onClearSelectionAction,
+  onDeleteOldAction,
+  onDeleteSelectedAction,
   onDeployLatestAction,
   onOpenCommitsAction,
   onOpenSettingsAction,
+  onRedeploySelectedAction,
   onSelectDeploymentAction,
   onSyncAction,
+  onToggleAllSelectionAction,
+  onToggleDeploymentSelectionAction,
   pendingActionKey,
   previewProtocol,
   project,
+  selectedDeploymentIds,
 }: DevDeploymentsContentProps) {
   const runningCount = deployments.filter((deployment) => deployment.status === 'running').length;
-  const buildingCount = deployments.filter(
-    (deployment) => deployment.status === 'queued' || deployment.status === 'building'
-  ).length;
+  const buildingCount = deployments.filter(isDeploymentBuilding).length;
   const failedCount = deployments.filter((deployment) => deployment.status === 'failed').length;
   const isProjectPending = pendingActionKey?.startsWith('project:') ?? false;
+  const selectedDeployments = deployments.filter((deployment) =>
+    selectedDeploymentIds.has(deployment.id)
+  );
+  const selectedCount = selectedDeployments.length;
+  const selectedBuildingCount = selectedDeployments.filter(isDeploymentBuilding).length;
+  const allSelected = deployments.length > 0 && selectedCount === deployments.length;
+  const someSelected = selectedCount > 0 && !allSelected;
+  const staleDeployments = selectStaleDeployments(deployments, project.branch);
 
   return (
     <div className="vercelab-page space-y-4">
@@ -223,7 +255,7 @@ export function DevDeploymentsContent({
 
       <section
         aria-labelledby="dev-deployments-title"
-        className="overflow-hidden rounded-[10px] border border-[var(--hairline)] bg-white shadow-[var(--shadow)]"
+        className="overflow-clip rounded-[10px] border border-[var(--hairline)] bg-white shadow-[var(--shadow)]"
       >
         <header className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-[var(--hairline)] px-3 py-2.5">
           <div>
@@ -234,14 +266,32 @@ export function DevDeploymentsContent({
               Every commit gets its own container and URL.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-[var(--quiet)]">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] text-[var(--quiet)]">
             {buildingCount > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <SpinnerGap aria-hidden="true" className="size-3 animate-spin" />
                 {buildingCount} building
               </span>
             ) : null}
-            <span>Keep every preview or set a retention limit in settings.</span>
+            <span className="hidden sm:inline">
+              Keep every preview or set a retention limit in settings.
+            </span>
+            <Button
+              className="hover:text-destructive"
+              disabled={
+                isBulkActionPending ||
+                isDeletingDeployment ||
+                staleDeployments.deletable.length === 0
+              }
+              onClick={onDeleteOldAction}
+              size="xs"
+              title="Delete every preview except the latest release on the project branch"
+              type="button"
+              variant="secondary"
+            >
+              <Trash aria-hidden="true" className="size-3" />
+              Delete old
+            </Button>
           </div>
         </header>
 
@@ -262,7 +312,69 @@ export function DevDeploymentsContent({
           </div>
         ) : (
           <div>
-            <div className="hidden grid-cols-[minmax(0,1fr)_9rem_12rem_8.5rem] gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--quiet)] lg:grid">
+            {selectedCount > 0 ? (
+              <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-blue-200 bg-[var(--blue-soft)] px-3 py-2 shadow-[0_1px_0_var(--hairline)]">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Button
+                    aria-label="Clear selection"
+                    className="size-6 rounded-[5px] p-0"
+                    onClick={onClearSelectionAction}
+                    size="icon"
+                    title="Clear selection"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <X aria-hidden="true" className="size-3.5" />
+                  </Button>
+                  <span className="text-[11px] font-semibold">
+                    {selectedCount} preview{selectedCount === 1 ? '' : 's'} selected
+                  </span>
+                  {selectedBuildingCount > 0 ? (
+                    <span className="truncate text-[10px] text-[var(--quiet)]">
+                      · {selectedBuildingCount} still building will be skipped
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    disabled={isBulkActionPending || selectedCount === selectedBuildingCount}
+                    onClick={onRedeploySelectedAction}
+                    size="xs"
+                    type="button"
+                    variant="secondary"
+                  >
+                    {isBulkActionPending ? (
+                      <SpinnerGap aria-hidden="true" className="size-3 animate-spin" />
+                    ) : (
+                      <ArrowCounterClockwise aria-hidden="true" className="size-3" />
+                    )}
+                    Redeploy
+                  </Button>
+                  <Button
+                    disabled={isBulkActionPending || selectedCount === selectedBuildingCount}
+                    onClick={onDeleteSelectedAction}
+                    size="xs"
+                    type="button"
+                    variant="danger"
+                  >
+                    {isBulkActionPending ? (
+                      <SpinnerGap aria-hidden="true" className="size-3 animate-spin" />
+                    ) : (
+                      <Trash aria-hidden="true" className="size-3" />
+                    )}
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="hidden grid-cols-[1.25rem_minmax(0,1fr)_9rem_12rem_8.5rem] items-center gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--quiet)] lg:grid">
+              <SelectionCheckbox
+                ariaLabel="Select all previews"
+                checked={allSelected}
+                indeterminate={someSelected}
+                onChange={onToggleAllSelectionAction}
+              />
               <span>Commit</span>
               <span>Status</span>
               <span>Preview URL</span>
@@ -277,17 +389,30 @@ export function DevDeploymentsContent({
                   baseDomain,
                   previewProtocol
                 );
-                const isBuilding =
-                  deployment.status === 'queued' || deployment.status === 'building';
+                const isBuilding = isDeploymentBuilding(deployment);
                 const isRunning = deployment.status === 'running';
                 const isStopped = deployment.status === 'stopped';
                 const isFailed = deployment.status === 'failed';
+                const isSelected = selectedDeploymentIds.has(deployment.id);
 
                 return (
                   <div
-                    className="grid grid-cols-1 gap-2 px-3 py-3 transition-colors hover:bg-[color-mix(in_srgb,var(--surface-subtle)_55%,white)] lg:grid-cols-[minmax(0,1fr)_9rem_12rem_8.5rem] lg:items-center lg:gap-3"
+                    className={cn(
+                      'grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-2 gap-y-2 px-3 py-3 transition-colors lg:grid-cols-[1.25rem_minmax(0,1fr)_9rem_12rem_8.5rem] lg:items-center lg:gap-3',
+                      isSelected
+                        ? 'bg-[color-mix(in_srgb,var(--blue-soft)_60%,white)]'
+                        : 'hover:bg-[color-mix(in_srgb,var(--surface-subtle)_55%,white)]'
+                    )}
                     key={deployment.id}
                   >
+                    <div className="flex items-center pt-1 lg:pt-0">
+                      <SelectionCheckbox
+                        ariaLabel={`Select preview ${deployment.shortSha}`}
+                        checked={isSelected}
+                        onChange={() => onToggleDeploymentSelectionAction(deployment.id)}
+                      />
+                    </div>
+
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-2">
                         <Button
@@ -346,7 +471,7 @@ export function DevDeploymentsContent({
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="col-span-2 flex flex-wrap items-center gap-2 lg:col-span-1">
                       <Badge variant={getDevStatusVariant(deployment.status)}>
                         {isBuilding ? (
                           <SpinnerGap aria-hidden="true" className="mr-1 size-2.5 animate-spin" />
@@ -374,7 +499,7 @@ export function DevDeploymentsContent({
                       </span>
                     </div>
 
-                    <div className="min-w-0">
+                    <div className="col-span-2 min-w-0 lg:col-span-1">
                       <a
                         className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[10px] text-[var(--blue)] hover:underline"
                         href={previewUrl}
@@ -387,7 +512,7 @@ export function DevDeploymentsContent({
                       </a>
                     </div>
 
-                    <div className="flex items-center gap-0.5 lg:justify-end">
+                    <div className="col-span-2 flex items-center gap-0.5 lg:col-span-1 lg:justify-end">
                       <Button
                         aria-label={`Open preview for ${deployment.shortSha}`}
                         className="size-7 rounded-[6px] p-0"
@@ -434,46 +559,40 @@ export function DevDeploymentsContent({
                       ) : null}
 
                       {isStopped ? (
-                        <>
-                          <ActionButton
-                            action="start"
-                            deployment={deployment}
-                            icon={<Play aria-hidden="true" className="size-3.5" />}
-                            label="Start preview"
-                            onClickAction={onActionAction}
-                            pendingActionKey={pendingActionKey}
-                          />
-                          <ActionButton
-                            action="retry"
-                            deployment={deployment}
-                            icon={<ArrowCounterClockwise aria-hidden="true" className="size-3.5" />}
-                            label="Rebuild preview"
-                            onClickAction={onActionAction}
-                            pendingActionKey={pendingActionKey}
-                          />
-                        </>
-                      ) : null}
-
-                      {isFailed ? (
                         <ActionButton
-                          action="retry"
+                          action="start"
                           deployment={deployment}
-                          icon={<ArrowCounterClockwise aria-hidden="true" className="size-3.5" />}
-                          label="Retry preview build"
+                          icon={<Play aria-hidden="true" className="size-3.5" />}
+                          label="Start preview"
                           onClickAction={onActionAction}
                           pendingActionKey={pendingActionKey}
                         />
                       ) : null}
 
                       {!isBuilding ? (
-                        <ActionButton
-                          action="delete"
-                          deployment={deployment}
-                          icon={<Trash aria-hidden="true" className="size-3.5" />}
-                          label="Delete preview"
-                          onClickAction={onActionAction}
-                          pendingActionKey={pendingActionKey}
-                        />
+                        <>
+                          <ActionButton
+                            action="retry"
+                            deployment={deployment}
+                            icon={<ArrowCounterClockwise aria-hidden="true" className="size-3.5" />}
+                            label={
+                              isFailed
+                                ? 'Redeploy preview after failure'
+                                : 'Redeploy preview from this commit'
+                            }
+                            onClickAction={onActionAction}
+                            pendingActionKey={pendingActionKey}
+                          />
+                          <ActionButton
+                            action="delete"
+                            danger
+                            deployment={deployment}
+                            icon={<Trash aria-hidden="true" className="size-3.5" />}
+                            label="Delete preview"
+                            onClickAction={onActionAction}
+                            pendingActionKey={pendingActionKey}
+                          />
+                        </>
                       ) : null}
                     </div>
                   </div>

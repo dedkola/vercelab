@@ -149,6 +149,22 @@ export function selectRetentionCandidates(deployments: DevDeployment[], retentio
   return removable.slice(0, Math.max(0, excess));
 }
 
+export function selectStaleDeployments(deployments: DevDeployment[], releaseBranch: string) {
+  const latestRelease = deployments
+    .filter((deployment) => deployment.branch === releaseBranch)
+    .reduce<DevDeployment | null>(
+      (latest, deployment) =>
+        !latest || deployment.createdAt.localeCompare(latest.createdAt) > 0 ? deployment : latest,
+      null
+    );
+  const stale = deployments.filter((deployment) => deployment.id !== latestRelease?.id);
+  const deletable = stale.filter(
+    (deployment) => deployment.status !== 'queued' && deployment.status !== 'building'
+  );
+
+  return { deletable, latestRelease, skipped: stale.length - deletable.length };
+}
+
 export function parseDevKeyValueLines(rawValue: string | null | undefined): DevKeyValueEntry[] {
   if (!rawValue) {
     return [];
