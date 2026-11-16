@@ -14,6 +14,7 @@ import {
   buildTraefikTcpLabels,
   toContainerSlug,
 } from '@/lib/container-routing';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type { ExposureMode } from '@/lib/validation';
 
 type CatalogImage = {
@@ -425,7 +426,7 @@ export async function createContainerFromImage(input: CreateFromImageInput) {
       domain: routedHost,
       exposureMode: mode,
       image,
-      url: `https://${routedHost}`,
+      url: publicHttpsUrl(routedHost),
     };
   }
 
@@ -629,6 +630,6 @@ export async function createContainerFromCompose(input: CreateFromComposeInput) 
     overridePath,
     services,
     stackName,
-    urls: routedHosts.map((host) => `https://${host}`),
+    urls: routedHosts.map((host) => publicHttpsUrl(host)),
   };
 }

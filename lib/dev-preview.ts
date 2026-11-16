@@ -1,4 +1,5 @@
 import { getProxyProtocol, toContainerSlug } from '@/lib/container-routing';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type { GitHubCommit } from '@/lib/github';
 import type { DevContainerStatus, DevDeployment } from '@/lib/dev-types';
 
@@ -54,7 +55,9 @@ export function buildPreviewUrl({
   protocol: 'http' | 'https';
   subdomain: string;
 }) {
-  return `${protocol}://${subdomain}.${baseDomain}`;
+  const host = `${subdomain}.${baseDomain}`;
+
+  return protocol === 'https' ? publicHttpsUrl(host) : `${protocol}://${host}`;
 }
 
 export function buildDevContainerName(appSlug: string, shortSha: string) {

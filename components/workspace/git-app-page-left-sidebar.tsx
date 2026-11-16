@@ -37,6 +37,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type { ExposureMode } from '@/lib/validation';
 
 type SelectOption = {
@@ -324,7 +325,7 @@ export function GitAppPageLeftSidebar({
                 </DataTableCell>
                 <DataTableCell className="max-[760px]:hidden">
                   <RouteLink
-                    href={deployment.domain ? `https://${deployment.domain}` : null}
+                    href={deployment.domain ? publicHttpsUrl(deployment.domain) : null}
                     label={deployment.domain || null}
                   />
                 </DataTableCell>

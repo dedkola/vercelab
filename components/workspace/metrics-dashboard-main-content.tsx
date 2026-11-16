@@ -22,6 +22,7 @@ import { memo, useMemo, useState } from 'react';
 import { EChartSurface } from '@/components/ui/echart-surface';
 import { Input } from '@/components/ui/input';
 import { SegmentedControl } from '@/components/workspace/segmented-control';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type {
   ContainerListEntry,
   DashboardLogView,
@@ -808,7 +809,7 @@ export function MetricsDashboardMainContent({
                     <RouteLink
                       href={
                         container.runtime?.routedHost
-                          ? `https://${container.runtime.routedHost}`
+                          ? publicHttpsUrl(container.runtime.routedHost)
                           : null
                       }
                       label={container.runtime?.routedHost ?? null}

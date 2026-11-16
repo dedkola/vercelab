@@ -15,6 +15,12 @@
 #     The generated config stays a read-only bind mount, exactly like Linux.
 #
 # Requires Docker Compose >= 2.24 for the `!override` tag.
+#
+# Ports follow the macOS exposure mode chosen by install-macos.sh:
+#   default   127.0.0.1:80/443   URLs are https://<name>.localhost (this Mac).
+#   --lan     0.0.0.0:8080/8443  URLs include :8443 and work from other devices.
+# Docker Desktop on macOS resets connections from non-loopback clients to
+# published ports below 1024, which is why the LAN mode cannot use 80/443.
 # ──────────────────────────────────────────────────────────────────────────────
 name: vercelab
 
@@ -22,6 +28,9 @@ services:
   # Traefik connects to unix:///var/run/docker.sock and cannot be pointed at
   # another path, so the Docker Desktop socket is mounted at that location.
   traefik:
+    ports: !override
+      - ${VERCELAB_PROXY_BIND_ADDRESS:-127.0.0.1}:${VERCELAB_HTTP_PORT:-80}:80
+      - ${VERCELAB_PROXY_BIND_ADDRESS:-127.0.0.1}:${VERCELAB_HTTPS_PORT:-443}:443
     volumes: !override
       - ${VERCELAB_DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro
       - ${VERCELAB_TRAEFIK_DYNAMIC_DIR:-/opt/vercelab/traefik/dynamic}:/etc/traefik/dynamic:ro
