@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
@@ -20,6 +19,7 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SelectionCheckbox } from '@/components/workspace/selection-checkbox';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import {
   formatDevDateTime,
@@ -64,37 +64,6 @@ function getPendingKey(deploymentId: string, action: DevDeploymentAction) {
 
 function isDeploymentBuilding(deployment: DevDeployment) {
   return deployment.status === 'queued' || deployment.status === 'building';
-}
-
-function SelectionCheckbox({
-  ariaLabel,
-  checked,
-  indeterminate = false,
-  onChange,
-}: {
-  ariaLabel: string;
-  checked: boolean;
-  indeterminate?: boolean;
-  onChange: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.indeterminate = indeterminate;
-    }
-  }, [indeterminate]);
-
-  return (
-    <input
-      aria-label={ariaLabel}
-      checked={checked}
-      className="size-3.5 shrink-0 cursor-pointer rounded-[3px] accent-[var(--blue)]"
-      onChange={onChange}
-      ref={inputRef}
-      type="checkbox"
-    />
-  );
 }
 
 function ActionButton({

@@ -6,6 +6,7 @@ import {
   reconcileDevDeploymentContainerStates,
 } from '@/lib/dev-engine';
 import {
+  acquireDevBuildLock,
   claimNextQueuedDevDeployment,
   getDevProjectById,
   listDevProjects,
@@ -70,7 +71,7 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message.trim().length > 0 ? error.message : fallback;
 }
 
-async function processDevQueue() {
+export async function processDevQueue() {
   const state = getWorkerState();
 
   if (state.queueInFlight) {
@@ -78,8 +79,15 @@ async function processDevQueue() {
   }
 
   state.queueInFlight = true;
+  let buildLock: Awaited<ReturnType<typeof acquireDevBuildLock>> = null;
 
   try {
+    buildLock = await acquireDevBuildLock();
+
+    if (!buildLock) {
+      return;
+    }
+
     while (true) {
       const deployment = await claimNextQueuedDevDeployment();
 
@@ -103,6 +111,7 @@ async function processDevQueue() {
   } catch (error) {
     console.error(`[dev] Queue worker failed: ${getErrorMessage(error, 'Unknown queue error.')}`);
   } finally {
+    await buildLock?.release().catch(() => undefined);
     state.queueInFlight = false;
   }
 }

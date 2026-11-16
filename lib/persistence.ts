@@ -430,6 +430,47 @@ async function queryRows<T>(
 
 export { queryRows };
 
+type AdvisoryLock = {
+  release: () => Promise<void>;
+};
+
+/**
+ * Session-scoped PostgreSQL advisory lock. The connection stays checked out of the
+ * pool for as long as the lock is held, and PostgreSQL drops the lock automatically
+ * when the connection closes, so a crashed worker cannot strand it.
+ */
+async function tryAcquireAdvisoryLock(key: number): Promise<AdvisoryLock | null> {
+  await initDatabase();
+  const client = await getPool().connect();
+
+  try {
+    const result = await client.query<{ locked: boolean }>(
+      'SELECT pg_try_advisory_lock($1::bigint) AS locked',
+      [key]
+    );
+
+    if (!result.rows[0]?.locked) {
+      client.release();
+      return null;
+    }
+
+    return {
+      release: async () => {
+        try {
+          await client.query('SELECT pg_advisory_unlock($1::bigint)', [key]);
+        } finally {
+          client.release();
+        }
+      },
+    };
+  } catch (error) {
+    client.release();
+    throw error;
+  }
+}
+
+export { tryAcquireAdvisoryLock };
+
 async function withTransaction<T>(task: (client: PoolClient) => Promise<T>) {
   await initDatabase();
   const client = await getPool().connect();

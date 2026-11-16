@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { decryptSecret } from '@/lib/crypto';
-import { queryRows } from '@/lib/persistence';
+import { queryRows, tryAcquireAdvisoryLock } from '@/lib/persistence';
 import type {
   DevDeployment,
   DevDeploymentStatus,
@@ -538,6 +538,17 @@ export async function updateDevDeploymentRecord(deploymentId: string, update: De
 
 export async function deleteDevDeploymentRecord(deploymentId: string) {
   await queryRows('DELETE FROM dev_deployments WHERE id = $1', [deploymentId]);
+}
+
+const DEV_BUILD_LOCK_KEY = 715_221_409;
+
+/**
+ * Only one preview build may run at a time. The lock is held for the whole build
+ * queue drain so a second worker process (or a restarted one) waits instead of
+ * competing for CPU and Docker capacity.
+ */
+export function acquireDevBuildLock() {
+  return tryAcquireAdvisoryLock(DEV_BUILD_LOCK_KEY);
 }
 
 export async function claimNextQueuedDevDeployment(): Promise<DevDeployment | null> {

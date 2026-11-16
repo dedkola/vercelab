@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -62,9 +62,19 @@ const payload: DevProjectCommits = {
   deployedShas: ['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'],
 };
 
-function renderDialog() {
+function renderDialog({
+  onCloseAction = vi.fn(),
+  onDeployAction = vi.fn(async () => undefined),
+}: {
+  onCloseAction?: () => void;
+  onDeployAction?: (commitSha: string) => Promise<void>;
+} = {}) {
   return render(
-    <DevCommitPickerDialog onCloseAction={vi.fn()} onDeployAction={vi.fn()} project={project} />
+    <DevCommitPickerDialog
+      onCloseAction={onCloseAction}
+      onDeployAction={onDeployAction}
+      project={project}
+    />
   );
 }
 
@@ -115,5 +125,73 @@ describe('DevCommitPickerDialog search', () => {
 
     await user.click(screen.getByRole('button', { name: 'Clear search' }));
     expect(screen.getByText('Fix arrow key navigation')).toBeInTheDocument();
+  });
+});
+
+describe('DevCommitPickerDialog multi-deploy', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(payload))
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('deploys selected commits one at a time, oldest first', async () => {
+    const user = userEvent.setup();
+    const onDeployAction = vi.fn(async () => undefined);
+    const onCloseAction = vi.fn();
+    renderDialog({ onCloseAction, onDeployAction });
+
+    await screen.findByText('Search bar in the commit picker (#546)');
+    await user.click(screen.getByRole('checkbox', { name: 'Select commit bbbbbb2' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select commit cccccc3' }));
+
+    expect(screen.getByText('2 commits selected')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Deploy 2 commits/ }));
+
+    await waitFor(() => expect(onDeployAction).toHaveBeenCalledTimes(2));
+    expect(onDeployAction.mock.calls).toEqual([
+      ['ccccccccccccccccccccccccccccccccccccccc3'],
+      ['bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb2'],
+    ]);
+    await waitFor(() => expect(onCloseAction).toHaveBeenCalled());
+  });
+
+  it('select all skips commits that are already deployed', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await screen.findByText('Search bar in the commit picker (#546)');
+    expect(screen.getByRole('checkbox', { name: 'Select commit aaaaaa1' })).toBeDisabled();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select all commits' }));
+    expect(screen.getByText('2 commits selected')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select all commits' }));
+    expect(screen.queryByText('2 commits selected')).not.toBeInTheDocument();
+  });
+
+  it('keeps the dialog open and the failed commits selected when a deploy fails', async () => {
+    const user = userEvent.setup();
+    const onDeployAction = vi
+      .fn<(commitSha: string) => Promise<void>>()
+      .mockRejectedValueOnce(new Error('Build engine unavailable'))
+      .mockResolvedValue(undefined);
+    const onCloseAction = vi.fn();
+    renderDialog({ onCloseAction, onDeployAction });
+
+    await screen.findByText('Search bar in the commit picker (#546)');
+    await user.click(screen.getByRole('checkbox', { name: 'Select commit bbbbbb2' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select commit cccccc3' }));
+    await user.click(screen.getByRole('button', { name: /Deploy 2 commits/ }));
+
+    await waitFor(() => expect(onDeployAction).toHaveBeenCalledTimes(2));
+    expect(onCloseAction).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: 'Select commit cccccc3' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Select commit bbbbbb2' })).not.toBeChecked();
   });
 });
