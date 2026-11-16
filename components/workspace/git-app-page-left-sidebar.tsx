@@ -297,6 +297,7 @@ export function GitAppPageLeftSidebar({
                   <EntityCell
                     avatar={
                       <InitialsAvatar
+                        iconUrls={[`/api/deployments/${encodeURIComponent(deployment.id)}/icon`]}
                         initials={getInitials(deployment.appName)}
                         toneIndex={index}
                       />

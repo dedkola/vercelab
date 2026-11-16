@@ -2,6 +2,7 @@ import {
   DEPLOYMENT_ICON_CANDIDATES,
   MAX_DEPLOYMENT_ICON_BYTES,
   getDeploymentIconContentType,
+  pickLooseIconPath,
 } from '@/lib/deployment-icon';
 
 const GITHUB_HOSTS = new Set(['github.com', 'www.github.com']);
@@ -109,8 +110,7 @@ export function parseRepositoryReference(repositoryUrl: string): RepositoryRefer
   return null;
 }
 
-export function buildRepositoryIconCandidates(directory?: string | null): string[] {
-  const candidates = [...DEPLOYMENT_ICON_CANDIDATES];
+function normalizeDirectory(directory?: string | null): string | null {
   const normalizedDirectory = (directory ?? '')
     .trim()
     .replace(/^\.?\//, '')
@@ -121,10 +121,39 @@ export function buildRepositoryIconCandidates(directory?: string | null): string
     normalizedDirectory === '.' ||
     !sanitizeSegments(normalizedDirectory.split('/'))
   ) {
+    return null;
+  }
+
+  return normalizedDirectory;
+}
+
+export function buildRepositoryIconCandidates(directory?: string | null): string[] {
+  const candidates = [...DEPLOYMENT_ICON_CANDIDATES];
+  const normalizedDirectory = normalizeDirectory(directory);
+
+  if (!normalizedDirectory) {
     return candidates;
   }
 
   return [...candidates.map((candidate) => `${normalizedDirectory}/${candidate}`), ...candidates];
+}
+
+function pickLooseRepositoryIconPath(blobPaths: readonly string[], directory?: string | null) {
+  const prefix = normalizeDirectory(directory);
+
+  if (prefix) {
+    const nestedIconPath = pickLooseIconPath(
+      blobPaths
+        .filter((blobPath) => blobPath.startsWith(`${prefix}/`))
+        .map((blobPath) => blobPath.slice(prefix.length + 1))
+    );
+
+    if (nestedIconPath) {
+      return `${prefix}/${nestedIconPath}`;
+    }
+  }
+
+  return pickLooseIconPath(blobPaths);
 }
 
 function encodePath(filePath: string) {
@@ -180,9 +209,11 @@ async function fetchGitHubRepositoryIcon(
     }
   }
 
-  const iconPath = candidates
-    .map((candidate) => blobsByLowercasePath.get(candidate.toLowerCase()))
-    .find((candidate): candidate is string => Boolean(candidate));
+  const iconPath =
+    candidates
+      .map((candidate) => blobsByLowercasePath.get(candidate.toLowerCase()))
+      .find((candidate): candidate is string => Boolean(candidate)) ??
+    pickLooseRepositoryIconPath([...blobsByLowercasePath.values()], options.directory);
 
   if (!iconPath) {
     return null;

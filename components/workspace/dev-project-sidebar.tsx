@@ -6,6 +6,7 @@ import { GitBranch, MagnifyingGlass, Plus, SpinnerGap, WarningCircle } from '@ph
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { getInitials, InitialsAvatar } from '@/components/workspace/data-table';
 import { getDevStatusLabel, getDevStatusVariant, formatDevRelativeTime } from '@/lib/dev-format';
 import type { DevDeployment, DevProject } from '@/lib/dev-types';
 import { cn } from '@/lib/utils';
@@ -165,7 +166,13 @@ export function DevProjectSidebar({
                   type="button"
                 >
                   <div className="flex min-w-0 items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <InitialsAvatar
+                      className="mt-0.5"
+                      iconUrls={[`/api/dev/projects/${encodeURIComponent(project.id)}/icon`]}
+                      initials={getInitials(project.appName)}
+                      toneIndex={0}
+                    />
+                    <div className="min-w-0 flex-1">
                       <div className="truncate text-body font-semibold tracking-tight">
                         {project.appName}
                       </div>

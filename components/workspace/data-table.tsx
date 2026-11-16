@@ -6,6 +6,8 @@ import type {
   MouseEvent as ReactMouseEvent,
   ReactNode,
 } from 'react';
+import { useState } from 'react';
+import Image from 'next/image';
 import { ArrowUpRight } from '@phosphor-icons/react';
 
 import { Button } from '@/components/ui/button';
@@ -217,16 +219,53 @@ const AVATAR_TONES = [
   'border-[var(--green)]/15 bg-[var(--green-soft)] text-[var(--green)]',
 ] as const;
 
-export function InitialsAvatar({ initials, toneIndex }: { initials: string; toneIndex: number }) {
+/**
+ * Square entity avatar. Tries each `iconUrls` entry in order (e.g. an icon detected in the
+ * app's repository) and falls back to coloured initials when none of them load.
+ */
+export function InitialsAvatar({
+  className,
+  fallback,
+  iconUrls,
+  initials,
+  toneIndex,
+}: {
+  className?: string;
+  /** Rendered instead of the initials while no icon is available. */
+  fallback?: ReactNode;
+  iconUrls?: readonly (string | null | undefined)[];
+  initials?: string;
+  toneIndex: number;
+}) {
+  const [failedIconUrls, setFailedIconUrls] = useState<readonly string[]>([]);
+  const iconUrl = iconUrls?.find((url) => url && !failedIconUrls.includes(url)) || null;
+
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'grid size-8 shrink-0 place-items-center rounded-[8px] border text-2xs font-semibold tracking-[0.02em]',
-        AVATAR_TONES[toneIndex % AVATAR_TONES.length]
+        'relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-[8px] border text-2xs font-semibold tracking-[0.02em]',
+        AVATAR_TONES[toneIndex % AVATAR_TONES.length],
+        className
       )}
     >
-      {initials}
+      {fallback ?? initials}
+      {iconUrl ? (
+        <Image
+          alt=""
+          className="absolute inset-0 size-full bg-white object-contain p-1"
+          height={36}
+          key={iconUrl}
+          onError={() =>
+            setFailedIconUrls((failedUrls) =>
+              failedUrls.includes(iconUrl) ? failedUrls : [...failedUrls, iconUrl]
+            )
+          }
+          src={iconUrl}
+          unoptimized
+          width={36}
+        />
+      ) : null}
     </span>
   );
 }
