@@ -12,6 +12,7 @@ import {
   parseDevContainerStatus,
   parseDevKeyValueLines,
   selectRetentionCandidates,
+  selectStaleDeployments,
   toDevKeyValueMap,
 } from '@/lib/dev-preview';
 import type { DevDeployment } from '@/lib/dev-types';
@@ -178,6 +179,53 @@ describe('dev preview helpers', () => {
       'closed',
       'a',
     ]);
+  });
+
+  it('keeps the newest release while selecting every other settled preview', () => {
+    const deployments = [
+      createDeployment({
+        id: 'old-main',
+        branch: 'main',
+        createdAt: '2026-11-07T08:00:00.000Z',
+        status: 'stopped',
+      }),
+      createDeployment({
+        id: 'latest-main',
+        branch: 'main',
+        createdAt: '2026-11-07T12:00:00.000Z',
+      }),
+      createDeployment({
+        id: 'pr-preview',
+        branch: 'feature/cleanup',
+        createdAt: '2026-11-07T13:00:00.000Z',
+        pullRequestNumber: 21,
+      }),
+      createDeployment({
+        id: 'building-pr',
+        branch: 'feature/cleanup',
+        createdAt: '2026-11-07T14:00:00.000Z',
+        status: 'building',
+      }),
+    ];
+
+    const result = selectStaleDeployments(deployments, 'main');
+
+    expect(result.latestRelease?.id).toBe('latest-main');
+    expect(result.deletable.map((deployment) => deployment.id)).toEqual(['old-main', 'pr-preview']);
+    expect(result.skipped).toBe(1);
+  });
+
+  it('selects every preview when the project branch has no release yet', () => {
+    const deployments = [
+      createDeployment({ id: 'pr-one', branch: 'feature/one', status: 'stopped' }),
+      createDeployment({ id: 'pr-two', branch: 'feature/two', status: 'failed' }),
+    ];
+
+    const result = selectStaleDeployments(deployments, 'main');
+
+    expect(result.latestRelease).toBeNull();
+    expect(result.deletable.map((deployment) => deployment.id)).toEqual(['pr-one', 'pr-two']);
+    expect(result.skipped).toBe(0);
   });
 
   it('parses KEY=VALUE blocks, preserves equals signs, and rejects duplicates', () => {

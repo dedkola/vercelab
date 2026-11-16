@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ArrowSquareOut, GitCommit, SpinnerGap } from '@phosphor-icons/react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowSquareOut, GitCommit, MagnifyingGlass, SpinnerGap, X } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { formatDevDateTime, formatDevRelativeTime } from '@/lib/dev-format';
 import type { DevProject, DevProjectCommits } from '@/lib/dev-types';
 
@@ -26,6 +27,21 @@ export function DevCommitPickerDialog({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingSha, setPendingSha] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const commits = useMemo(() => payload?.commits ?? [], [payload]);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredCommits = useMemo(
+    () =>
+      normalizedQuery
+        ? commits.filter((commit) =>
+            [commit.message, commit.authorName ?? '', commit.shortSha, commit.sha].some((value) =>
+              value.toLowerCase().includes(normalizedQuery)
+            )
+          )
+        : commits,
+    [commits, normalizedQuery]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +102,7 @@ export function DevCommitPickerDialog({
       title={`Deploy a commit from ${project.branch}`}
     >
       <header className="flex items-start justify-between gap-4 border-b border-[var(--hairline)] px-5 py-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-[16px] font-semibold tracking-tight">Deploy a commit</h2>
             <Badge variant="secondary">{project.branch}</Badge>
@@ -95,10 +111,40 @@ export function DevCommitPickerDialog({
             Recent commits from {project.repositoryOwner}/{project.repositoryName}. Deploying an
             older commit creates a new isolated preview; existing previews stay online.
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <MagnifyingGlass
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--quiet)]"
+              />
+              <Input
+                aria-label="Search commits"
+                className="h-9 rounded-[7px] bg-[var(--surface-subtle)] pl-8 pr-8 text-[12px] shadow-none"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search commits by message, author, or SHA"
+                value={searchQuery}
+              />
+              {searchQuery ? (
+                <button
+                  aria-label="Clear commit search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[4px] p-0.5 text-[var(--quiet)] hover:text-foreground"
+                  onClick={() => setSearchQuery('')}
+                  type="button"
+                >
+                  <X aria-hidden="true" className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
+            {normalizedQuery ? (
+              <span className="shrink-0 font-mono text-[10px] text-[var(--quiet)]">
+                {filteredCommits.length} of {commits.length}
+              </span>
+            ) : null}
+          </div>
         </div>
         <button
           aria-label="Close commit picker"
-          className="text-[var(--quiet)] hover:text-foreground"
+          className="shrink-0 text-[var(--quiet)] hover:text-foreground"
           onClick={onCloseAction}
           type="button"
         >
@@ -122,9 +168,26 @@ export function DevCommitPickerDialog({
           </div>
         ) : null}
 
-        {payload?.commits.length ? (
+        {!isLoading && !error && commits.length > 0 && filteredCommits.length === 0 ? (
+          <div className="rounded-[8px] border border-dashed border-[var(--hairline)] px-3 py-8 text-center">
+            <p className="text-[11px] text-[var(--quiet)]">
+              No commits match &ldquo;{searchQuery.trim()}&rdquo;.
+            </p>
+            <Button
+              className="mt-2"
+              onClick={() => setSearchQuery('')}
+              size="xs"
+              type="button"
+              variant="ghost"
+            >
+              Clear search
+            </Button>
+          </div>
+        ) : null}
+
+        {filteredCommits.length ? (
           <div className="divide-y divide-[var(--hairline)] overflow-hidden rounded-[8px] border border-[var(--hairline)]">
-            {payload.commits.map((commit) => (
+            {filteredCommits.map((commit) => (
               <div
                 className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
                 key={commit.sha}

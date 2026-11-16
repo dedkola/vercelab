@@ -83,8 +83,10 @@ function renderContent(
     containerStates: {},
     deployments,
     isBulkActionPending: false,
+    isDeletingDeployment: false,
     onActionAction: vi.fn(),
     onClearSelectionAction: vi.fn(),
+    onDeleteOldAction: vi.fn(),
     onDeleteSelectedAction: vi.fn(),
     onDeployLatestAction: vi.fn(),
     onOpenCommitsAction: vi.fn(),
@@ -164,5 +166,20 @@ describe('DevDeploymentsContent selection', () => {
     expect(screen.getByText(/1 still building will be skipped/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Redeploy' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
+  });
+
+  it('offers delete old when older previews exist next to the latest release', async () => {
+    const user = userEvent.setup();
+    const { props } = renderContent();
+
+    await user.click(screen.getByRole('button', { name: 'Delete old' }));
+
+    expect(props.onDeleteOldAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables delete old when only the latest release remains', () => {
+    renderContent({ deployments: [runningDeployment] });
+
+    expect(screen.getByRole('button', { name: 'Delete old' })).toBeDisabled();
   });
 });

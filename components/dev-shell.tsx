@@ -12,6 +12,7 @@ import { DevProjectSidebar } from '@/components/workspace/dev-project-sidebar';
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Button } from '@/components/ui/button';
+import { selectStaleDeployments } from '@/lib/dev-preview';
 import type { DevDeployment, DevProject, DevState } from '@/lib/dev-types';
 import type { DevDeploymentAction } from '@/lib/dev-validation';
 
@@ -44,6 +45,7 @@ export function DevShell({ initialState }: DevShellProps) {
   const [commitPickerProjectId, setCommitPickerProjectId] = useState<string | null>(null);
   const [deleteTargets, setDeleteTargets] = useState<{
     deployments: DevDeployment[];
+    latestRelease: DevDeployment | null;
     skipped: number;
   } | null>(null);
   const [isDeletingDeployment, setIsDeletingDeployment] = useState(false);
@@ -291,7 +293,29 @@ export function DevShell({ initialState }: DevShellProps) {
       return;
     }
 
-    setDeleteTargets({ deployments: eligible, skipped });
+    setDeleteTargets({ deployments: eligible, latestRelease: null, skipped });
+  }
+
+  function requestDeleteOldDeployments() {
+    if (!selectedProject) {
+      return;
+    }
+
+    const { deletable, latestRelease, skipped } = selectStaleDeployments(
+      selectedProjectDeployments,
+      selectedProject.branch
+    );
+
+    if (deletable.length === 0) {
+      toast.error(
+        skipped > 0
+          ? 'Wait for the current preview builds to finish before deleting old previews.'
+          : 'Only the latest release is left, so there is nothing to delete.'
+      );
+      return;
+    }
+
+    setDeleteTargets({ deployments: deletable, latestRelease, skipped });
   }
 
   async function runProjectAction(project: DevProject, action: ProjectAction) {
@@ -380,7 +404,7 @@ export function DevShell({ initialState }: DevShellProps) {
         return;
       }
 
-      setDeleteTargets({ deployments: [deployment], skipped: 0 });
+      setDeleteTargets({ deployments: [deployment], latestRelease: null, skipped: 0 });
       return;
     }
 
@@ -533,10 +557,12 @@ export function DevShell({ initialState }: DevShellProps) {
             containerStates={containerStates}
             deployments={selectedProjectDeployments}
             isBulkActionPending={isBulkActionPending}
+            isDeletingDeployment={isDeletingDeployment}
             onActionAction={(action, deploymentId) =>
               void runDeploymentAction(action, deploymentId)
             }
             onClearSelectionAction={() => setSelectedDeploymentIds(new Set())}
+            onDeleteOldAction={requestDeleteOldDeployments}
             onDeleteSelectedAction={requestDeleteSelectedDeployments}
             onDeployLatestAction={() => void runProjectAction(selectedProject, 'deploy')}
             onOpenCommitsAction={() => setCommitPickerProjectId(selectedProject.id)}
@@ -658,70 +684,80 @@ export function DevShell({ initialState }: DevShellProps) {
         />
       ) : null}
 
-      {deleteTargets ? (
-        <WorkspaceDialog
-          onCloseAction={() => setDeleteTargets(null)}
-          title={
-            deleteTargets.deployments.length === 1
-              ? `Delete preview ${deleteTargets.deployments[0]!.shortSha}`
-              : `Delete ${deleteTargets.deployments.length} previews`
-          }
-        >
-          <div className="px-5 py-4">
-            <h2 className="text-[16px] font-semibold tracking-tight">
-              {deleteTargets.deployments.length === 1
+      {deleteTargets
+        ? (() => {
+            const targetCount = deleteTargets.deployments.length;
+            const release = deleteTargets.latestRelease;
+            const heading = release
+              ? `Delete ${targetCount} old preview${targetCount === 1 ? '' : 's'}?`
+              : targetCount === 1
                 ? `Delete preview ${deleteTargets.deployments[0]!.shortSha}?`
-                : `Delete ${deleteTargets.deployments.length} previews?`}
-            </h2>
-            <p className="mt-2 text-[11px] leading-5 text-[var(--quiet)]">
-              This removes {deleteTargets.deployments.length === 1 ? 'the preview' : 'each preview'}
-              &apos;s container, image, workspace, and build log. Other previews and the production
-              deployment are not affected.
-            </p>
+                : `Delete ${targetCount} previews?`;
 
-            {deleteTargets.skipped > 0 ? (
-              <p className="mt-2 text-[11px] leading-5 text-[var(--warning-ink)]">
-                {deleteTargets.skipped} selected preview
-                {deleteTargets.skipped === 1 ? ' is' : 's are'} still building and will be skipped.
-              </p>
-            ) : null}
+            return (
+              <WorkspaceDialog onCloseAction={() => setDeleteTargets(null)} title={heading}>
+                <div className="px-5 py-4">
+                  <h2 className="text-[16px] font-semibold tracking-tight">{heading}</h2>
+                  <p className="mt-2 text-[11px] leading-5 text-[var(--quiet)]">
+                    {release ? (
+                      <>
+                        This keeps the latest <span className="font-mono">{release.branch}</span>{' '}
+                        release <span className="font-mono">{release.shortSha}</span> and removes
+                        every other preview&apos;s container, image, workspace, and build log.
+                      </>
+                    ) : (
+                      <>
+                        This removes {targetCount === 1 ? 'the preview' : 'each preview'}&apos;s
+                        container, image, workspace, and build log. Other previews and the
+                        production deployment are not affected.
+                      </>
+                    )}
+                  </p>
 
-            {deleteTargets.deployments.length > 1 ? (
-              <ul className="mt-3 max-h-32 overflow-auto rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-5 text-[var(--quiet)]">
-                {deleteTargets.deployments.map((deployment) => (
-                  <li className="truncate" key={deployment.id}>
-                    {deployment.shortSha} · {deployment.commitMessage ?? deployment.branch}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+                  {deleteTargets.skipped > 0 ? (
+                    <p className="mt-2 text-[11px] leading-5 text-[var(--warning-ink)]">
+                      {deleteTargets.skipped} {release ? '' : 'selected '}preview
+                      {deleteTargets.skipped === 1 ? ' is' : 's are'} still building and will be
+                      skipped.
+                    </p>
+                  ) : null}
 
-            <div className="mt-4 flex justify-end gap-2">
-              <Button
-                disabled={isDeletingDeployment}
-                onClick={() => setDeleteTargets(null)}
-                type="button"
-                variant="secondary"
-              >
-                Cancel
-              </Button>
-              <Button
-                disabled={isDeletingDeployment}
-                onClick={() => void confirmDeleteDeployments()}
-                type="button"
-                variant="danger"
-              >
-                {isDeletingDeployment ? (
-                  <SpinnerGap aria-hidden="true" className="size-3.5 animate-spin" />
-                ) : null}
-                {deleteTargets.deployments.length === 1
-                  ? 'Delete preview'
-                  : `Delete ${deleteTargets.deployments.length} previews`}
-              </Button>
-            </div>
-          </div>
-        </WorkspaceDialog>
-      ) : null}
+                  {targetCount > 1 ? (
+                    <ul className="mt-3 max-h-32 overflow-auto rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] p-2 font-mono text-[10px] leading-5 text-[var(--quiet)]">
+                      {deleteTargets.deployments.map((deployment) => (
+                        <li className="truncate" key={deployment.id}>
+                          {deployment.shortSha} · {deployment.commitMessage ?? deployment.branch}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                      disabled={isDeletingDeployment}
+                      onClick={() => setDeleteTargets(null)}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={isDeletingDeployment}
+                      onClick={() => void confirmDeleteDeployments()}
+                      type="button"
+                      variant="danger"
+                    >
+                      {isDeletingDeployment ? (
+                        <SpinnerGap aria-hidden="true" className="size-3.5 animate-spin" />
+                      ) : null}
+                      {targetCount === 1 ? 'Delete preview' : `Delete ${targetCount} previews`}
+                    </Button>
+                  </div>
+                </div>
+              </WorkspaceDialog>
+            );
+          })()
+        : null}
     </div>
   );
 }

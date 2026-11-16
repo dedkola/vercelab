@@ -29,7 +29,7 @@ import {
   getDevStatusLabel,
   getDevStatusVariant,
 } from '@/lib/dev-format';
-import { getDevDeploymentPreviewUrl } from '@/lib/dev-preview';
+import { getDevDeploymentPreviewUrl, selectStaleDeployments } from '@/lib/dev-preview';
 import type { DevContainerState, DevDeployment, DevProject } from '@/lib/dev-types';
 import type { DevDeploymentAction } from '@/lib/dev-validation';
 import { cn } from '@/lib/utils';
@@ -39,8 +39,10 @@ type DevDeploymentsContentProps = {
   containerStates: Record<string, DevContainerState>;
   deployments: DevDeployment[];
   isBulkActionPending: boolean;
+  isDeletingDeployment: boolean;
   onActionAction: (action: DevDeploymentAction, deploymentId: string) => void;
   onClearSelectionAction: () => void;
+  onDeleteOldAction: () => void;
   onDeleteSelectedAction: () => void;
   onDeployLatestAction: () => void;
   onOpenCommitsAction: () => void;
@@ -135,8 +137,10 @@ export function DevDeploymentsContent({
   containerStates,
   deployments,
   isBulkActionPending,
+  isDeletingDeployment,
   onActionAction,
   onClearSelectionAction,
+  onDeleteOldAction,
   onDeleteSelectedAction,
   onDeployLatestAction,
   onOpenCommitsAction,
@@ -162,6 +166,7 @@ export function DevDeploymentsContent({
   const selectedBuildingCount = selectedDeployments.filter(isDeploymentBuilding).length;
   const allSelected = deployments.length > 0 && selectedCount === deployments.length;
   const someSelected = selectedCount > 0 && !allSelected;
+  const staleDeployments = selectStaleDeployments(deployments, project.branch);
 
   return (
     <div className="vercelab-page space-y-4">
@@ -292,14 +297,32 @@ export function DevDeploymentsContent({
               Every commit gets its own container and URL.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-[var(--quiet)]">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-[10px] text-[var(--quiet)]">
             {buildingCount > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <SpinnerGap aria-hidden="true" className="size-3 animate-spin" />
                 {buildingCount} building
               </span>
             ) : null}
-            <span>Keep every preview or set a retention limit in settings.</span>
+            <span className="hidden sm:inline">
+              Keep every preview or set a retention limit in settings.
+            </span>
+            <Button
+              className="hover:text-destructive"
+              disabled={
+                isBulkActionPending ||
+                isDeletingDeployment ||
+                staleDeployments.deletable.length === 0
+              }
+              onClick={onDeleteOldAction}
+              size="xs"
+              title="Delete every preview except the latest release on the project branch"
+              type="button"
+              variant="secondary"
+            >
+              <Trash aria-hidden="true" className="size-3" />
+              Delete old
+            </Button>
           </div>
         </header>
 
