@@ -1,7 +1,20 @@
 'use client';
 
-import { Button, Dialog, Table, Tabs } from '@cloudflare/kumo';
+import { Button, Dialog, Tabs } from '@cloudflare/kumo';
 import { ArrowSquareOut, MagnifyingGlass, X } from '@phosphor-icons/react';
+import {
+  DataTable,
+  DataTableActionsHead,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableHeaderRow,
+  DataTableRow,
+  EntityCell,
+  RouteLink,
+  RowActionButton,
+  StatusPill,
+} from '@/components/workspace/data-table';
 import type { EChartsCoreOption } from 'echarts';
 import Image from 'next/image';
 import { memo, useMemo, useState } from 'react';
@@ -266,7 +279,7 @@ function WorkloadIcon({
   const iconUrl = iconUrls.find((url) => !failedIconUrls.includes(url)) ?? null;
 
   return (
-    <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-[7px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-2xs font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
+    <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-[8px] border border-[var(--hairline)] bg-[var(--surface-subtle)] font-mono text-2xs font-bold text-[var(--muted-ink)] uppercase transition-colors group-hover:border-[var(--hairline-strong)] group-hover:bg-white">
       {getWorkloadGlyph(container)}
       {iconUrl ? (
         <Image
@@ -286,17 +299,6 @@ function WorkloadIcon({
       ) : null}
     </span>
   );
-}
-
-function getWorkloadStateClassName(variant: ReturnType<typeof getStatusBadge>['variant']) {
-  switch (variant) {
-    case 'success':
-      return 'text-[var(--green)]';
-    case 'warning':
-      return 'text-[var(--orange)]';
-    default:
-      return 'text-[var(--quiet)]';
-  }
 }
 
 function EmptyChartState({ compact, message }: { compact?: boolean; message: string }) {
@@ -741,141 +743,90 @@ export function MetricsDashboardMainContent({
           </div>
         </header>
 
-        <div className="overflow-x-auto">
-          <Table
-            className="[&_th]:text-2xs max-[960px]:[&_tr>:nth-child(6)]:hidden max-[640px]:[&_tr>:nth-child(4)]:hidden max-[640px]:[&_tr>:nth-child(5)]:hidden"
-            layout="fixed"
-          >
-            <colgroup>
-              <col className="w-auto" />
-              <col className="w-[6rem]" />
-              <col className="w-[4.5rem]" />
-              <col className="w-[12%] max-[640px]:hidden" />
-              <col className="w-[13%] max-[640px]:hidden" />
-              <col className="w-[23%] max-[960px]:hidden" />
-              <col className="w-[5.75rem]" />
-            </colgroup>
-            <Table.Header className="bg-[var(--surface-subtle)]" variant="compact">
-              <Table.Row>
-                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  Workload
-                </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  State
-                </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  CPU
-                </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  Memory
-                </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  Network
-                </Table.Head>
-                <Table.Head className="h-9 px-3 font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase">
-                  Endpoint
-                </Table.Head>
-                <Table.Head className="h-9 px-2">
-                  <span className="sr-only">Actions</span>
-                </Table.Head>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {containers.map((container) => {
-                const status = getStatusBadge(container.display.status, container.deploymentStatus);
-                const deployment = container.runtime?.projectName
-                  ? (deploymentsByProjectName.get(container.runtime.projectName) ?? null)
-                  : null;
+        <DataTable caption="Workloads with live resource usage">
+          <colgroup>
+            <col className="w-auto" />
+            <col className="w-[8.5rem] max-[640px]:w-[7.5rem]" />
+            <col className="w-[5.5rem]" />
+            <col className="w-[7.5rem] max-[640px]:hidden" />
+            <col className="w-[7.5rem] max-[640px]:hidden" />
+            <col className="w-[22%] max-[960px]:hidden" />
+            <col className="w-[6.5rem]" />
+          </colgroup>
+          <DataTableHeaderRow>
+            <DataTableHead>Workload</DataTableHead>
+            <DataTableHead>State</DataTableHead>
+            <DataTableHead align="right">CPU</DataTableHead>
+            <DataTableHead align="right" className="max-[640px]:hidden">
+              Memory
+            </DataTableHead>
+            <DataTableHead align="right" className="max-[640px]:hidden">
+              Network
+            </DataTableHead>
+            <DataTableHead className="max-[960px]:hidden">Endpoint</DataTableHead>
+            <DataTableActionsHead />
+          </DataTableHeaderRow>
+          <tbody>
+            {containers.map((container) => {
+              const status = getStatusBadge(container.display.status, container.deploymentStatus);
+              const deployment = container.runtime?.projectName
+                ? (deploymentsByProjectName.get(container.runtime.projectName) ?? null)
+                : null;
 
-                return (
-                  <Table.Row
-                    className="group h-[58px] cursor-pointer outline-none transition-colors duration-150 hover:bg-[#f8fafc] focus-visible:ring-2 focus-visible:ring-[var(--blue)] focus-visible:ring-inset"
-                    key={container.display.id}
-                    onClick={() => openContainerDetail(container)}
-                    onKeyDown={(event) => {
-                      if (event.target !== event.currentTarget) return;
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        openContainerDetail(container);
-                      }
-                    }}
-                    tabIndex={0}
-                    variant={activeContainerId === container.display.id ? 'selected' : 'default'}
+              return (
+                <DataTableRow
+                  key={container.display.id}
+                  onSelectAction={() => openContainerDetail(container)}
+                  selected={activeContainerId === container.display.id}
+                >
+                  <DataTableCell>
+                    <EntityCell
+                      avatar={<WorkloadIcon container={container} deployment={deployment} />}
+                      name={container.sidebarName}
+                      subtitle={container.sidebarSecondaryLabel || container.display.image}
+                    />
+                  </DataTableCell>
+                  <DataTableCell>
+                    <StatusPill label={status.label} tone={status.variant} />
+                  </DataTableCell>
+                  <DataTableCell align="right" className="font-mono text-xs text-foreground">
+                    {container.display.cpu || '—'}
+                  </DataTableCell>
+                  <DataTableCell
+                    align="right"
+                    className="font-mono text-xs text-[var(--muted-ink)] max-[640px]:hidden"
                   >
-                    <Table.Cell className="px-3 py-1.5">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <WorkloadIcon container={container} deployment={deployment} />
-                        <span className="min-w-0">
-                          <span className="block truncate text-body font-semibold tracking-[-0.01em]">
-                            {container.sidebarName}
-                          </span>
-                          <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
-                            {container.sidebarSecondaryLabel || container.display.image}
-                          </span>
-                        </span>
-                      </div>
-                    </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5">
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.04em] uppercase',
-                          getWorkloadStateClassName(status.variant)
-                        )}
-                      >
-                        <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-                        {status.label}
-                      </span>
-                    </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5 font-mono text-xs text-[var(--muted-ink)] tabular-nums">
-                      {container.display.cpu || '--'}
-                    </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5 font-mono text-xs text-[var(--muted-ink)] tabular-nums">
-                      {container.display.memory || '--'}
-                    </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5 font-mono text-xs text-[var(--muted-ink)] tabular-nums">
-                      {container.display.requestRate || '--'}
-                    </Table.Cell>
-                    <Table.Cell className="px-3 py-1.5">
-                      {container.runtime?.routedHost ? (
-                        <a
-                          className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
-                          href={`https://${container.runtime.routedHost}`}
-                          onClick={(event) => event.stopPropagation()}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <span className="truncate">{container.runtime.routedHost}</span>
-                          <ArrowSquareOut className="size-3 shrink-0" aria-hidden="true" />
-                        </a>
-                      ) : (
-                        <span className="font-mono text-xs text-[var(--quiet)]">not routed</span>
-                      )}
-                    </Table.Cell>
-                    <Table.Cell className="px-2 py-1.5 text-right">
-                      <Button
-                        className="h-8 rounded-[6px] px-3 text-xs shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openContainerDetail(container);
-                        }}
-                        size="sm"
-                        type="button"
-                        variant="secondary"
-                      >
-                        Details
-                      </Button>
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })}
-            </Table.Body>
-          </Table>
-          {containers.length === 0 ? (
-            <div className="border-t border-[var(--hairline)] px-4 py-10 text-center font-mono text-body text-[var(--quiet)]">
-              No workloads match this search.
-            </div>
-          ) : null}
-        </div>
+                    {container.display.memory || '—'}
+                  </DataTableCell>
+                  <DataTableCell
+                    align="right"
+                    className="font-mono text-xs text-[var(--muted-ink)] max-[640px]:hidden"
+                  >
+                    {container.display.requestRate || '—'}
+                  </DataTableCell>
+                  <DataTableCell className="max-[960px]:hidden">
+                    <RouteLink
+                      href={
+                        container.runtime?.routedHost
+                          ? `https://${container.runtime.routedHost}`
+                          : null
+                      }
+                      label={container.runtime?.routedHost ?? null}
+                    />
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActionButton onClickAction={() => openContainerDetail(container)}>
+                      Details
+                    </RowActionButton>
+                  </DataTableCell>
+                </DataTableRow>
+              );
+            })}
+          </tbody>
+        </DataTable>
+        {containers.length === 0 ? (
+          <DataTableEmpty>No workloads match this search.</DataTableEmpty>
+        ) : null}
       </section>
 
       <Dialog.Root open={isDetailOpen} onOpenChange={setIsDetailOpen}>

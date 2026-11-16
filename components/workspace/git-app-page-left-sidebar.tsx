@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import type { FormEvent } from 'react';
 import {
-  ArrowUpRight,
   CaretRight as ChevronRight,
   GitBranch,
   Package as PackagePlus,
@@ -13,6 +12,23 @@ import {
 } from '@phosphor-icons/react';
 
 import type { DraftAppState, RepositoryState } from '@/components/workspace-shell';
+import {
+  CellStack,
+  DataTable,
+  DataTableActionsHead,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableHeaderRow,
+  DataTableRow,
+  EntityCell,
+  getInitials,
+  InitialsAvatar,
+  RouteLink,
+  RowActionButton,
+  StatusPill,
+  type StatusTone,
+} from '@/components/workspace/data-table';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { SegmentedControl } from '@/components/workspace/segmented-control';
@@ -21,7 +37,6 @@ import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 import type { ExposureMode } from '@/lib/validation';
 
 type SelectOption = {
@@ -76,37 +91,11 @@ type GitAppPageLeftSidebarProps = {
   totalAppsCount: number;
 };
 
-const APP_TONES = [
-  'border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]',
-  'border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]',
-  'border-[var(--purple)]/20 bg-[var(--purple-soft)] text-[var(--purple)]',
-  'border-[var(--green)]/20 bg-[var(--green-soft)] text-[var(--green)]',
-];
-
-function getStatusClassName(statusVariant: GitAppPageListItem['statusVariant']) {
-  switch (statusVariant) {
-    case 'success':
-      return 'text-[var(--green)]';
-    case 'warning':
-      return 'text-[var(--orange)]';
-    default:
-      return 'text-[var(--quiet)]';
-  }
-}
-
-function getAppInitials(appName: string) {
-  const words = appName.split(/[-_\s]+/).filter(Boolean);
-
-  if (words.length > 1) {
-    return words
-      .slice(0, 2)
-      .map((word) => word[0])
-      .join('')
-      .toUpperCase();
-  }
-
-  return appName.slice(0, 2).toUpperCase();
-}
+const STATUS_TONE: Record<GitAppPageListItem['statusVariant'], StatusTone> = {
+  success: 'success',
+  warning: 'warning',
+  default: 'neutral',
+};
 
 function getRuntimeLabel(deployment: GitAppPageListItem) {
   if (
@@ -280,148 +269,90 @@ export function GitAppPageLeftSidebar({
           />
         </header>
 
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse">
-            <caption className="sr-only">Git-backed applications and deployment state</caption>
-            <colgroup>
-              <col className="w-auto" />
-              <col className="w-[7rem] max-[760px]:w-[6.5rem]" />
-              <col className="w-[18%] max-[760px]:hidden" />
-              <col className="w-[20%] max-[760px]:hidden" />
-              <col className="w-[12%] max-[760px]:hidden" />
-              <col className="w-[8%] max-[960px]:hidden" />
-              <col className="w-[5.75rem] max-[760px]:w-[5.25rem]" />
-            </colgroup>
-            <thead className="bg-[var(--surface-subtle)]">
-              <tr className="h-9 border-b border-[var(--hairline)]">
-                {['App', 'State', 'Source', 'Route', 'Runtime', 'Updated'].map((label, index) => (
-                  <th
-                    className={cn(
-                      'px-3 text-left font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase',
-                      index >= 2 && index <= 4 && 'max-[760px]:hidden',
-                      index === 5 && 'max-[960px]:hidden'
-                    )}
-                    key={label}
-                    scope="col"
-                  >
-                    {label}
-                  </th>
-                ))}
-                <th scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {appItems.map((deployment, index) => (
-                <tr
-                  aria-label={`Manage ${deployment.appName}`}
-                  className={cn(
-                    'group h-[58px] cursor-pointer border-b border-[var(--hairline)] outline-none transition-colors last:border-b-0 hover:bg-[#f8fafc] focus-visible:ring-2 focus-visible:ring-[var(--blue)] focus-visible:ring-inset',
-                    deployment.isActive && 'bg-[color-mix(in_srgb,var(--blue-soft)_34%,white)]'
-                  )}
-                  key={deployment.id}
-                  onClick={() => onSelectAppAction(deployment.id)}
-                  onKeyDown={(event) => {
-                    if (event.target !== event.currentTarget) return;
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      onSelectAppAction(deployment.id);
+        <DataTable caption="Git-backed applications and deployment state">
+          <colgroup>
+            <col className="w-auto" />
+            <col className="w-[8.5rem] max-[760px]:w-[7.5rem]" />
+            <col className="w-[18%] max-[760px]:hidden" />
+            <col className="w-[20%] max-[760px]:hidden" />
+            <col className="w-[9rem] max-[760px]:hidden" />
+            <col className="w-[7rem] max-[960px]:hidden" />
+            <col className="w-[6.5rem]" />
+          </colgroup>
+          <DataTableHeaderRow>
+            <DataTableHead>App</DataTableHead>
+            <DataTableHead>State</DataTableHead>
+            <DataTableHead className="max-[760px]:hidden">Source</DataTableHead>
+            <DataTableHead className="max-[760px]:hidden">Route</DataTableHead>
+            <DataTableHead className="max-[760px]:hidden">Runtime</DataTableHead>
+            <DataTableHead align="right" className="max-[960px]:hidden">
+              Updated
+            </DataTableHead>
+            <DataTableActionsHead />
+          </DataTableHeaderRow>
+          <tbody>
+            {appItems.map((deployment, index) => (
+              <DataTableRow
+                key={deployment.id}
+                label={`Manage ${deployment.appName}`}
+                onSelectAction={() => onSelectAppAction(deployment.id)}
+                selected={deployment.isActive}
+              >
+                <DataTableCell>
+                  <EntityCell
+                    avatar={
+                      <InitialsAvatar
+                        initials={getInitials(deployment.appName)}
+                        toneIndex={index}
+                      />
                     }
-                  }}
-                  tabIndex={0}
-                >
-                  <td className="px-3 py-1.5">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <span
-                        className={cn(
-                          'grid size-8 shrink-0 place-items-center rounded-[7px] border font-mono text-2xs font-bold',
-                          APP_TONES[index % APP_TONES.length]
-                        )}
-                      >
-                        {getAppInitials(deployment.appName)}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-body font-semibold tracking-[-0.01em]">
-                          {deployment.appName}
-                        </span>
-                        <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
-                          {deployment.id}
-                        </span>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-1.5">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.04em] uppercase',
-                        getStatusClassName(deployment.statusVariant)
-                      )}
-                    >
-                      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-                      {deployment.statusLabel}
-                    </span>
-                  </td>
-                  <td className="px-3 py-1.5 max-[760px]:hidden">
-                    <span className="block truncate font-mono text-xs text-foreground">
-                      {deployment.repositoryName}
-                    </span>
-                    <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
-                      {deployment.branchLabel}@{deployment.revisionLabel}
-                    </span>
-                  </td>
-                  <td className="px-3 py-1.5 max-[760px]:hidden">
-                    {deployment.domain ? (
-                      <a
-                        className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
-                        href={`https://${deployment.domain}`}
-                        onClick={(event) => event.stopPropagation()}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        <span className="truncate">{deployment.domain}</span>
-                        <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
-                      </a>
-                    ) : (
-                      <span className="font-mono text-xs text-[var(--quiet)]">not routed</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-1.5 max-[760px]:hidden">
-                    <span className="font-mono text-xs text-[var(--muted-ink)]">
-                      {getRuntimeLabel(deployment)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-1.5 max-[960px]:hidden">
-                    <span className="font-mono text-xs text-[var(--muted-ink)]">
-                      {deployment.relativeUpdatedAt}
-                    </span>
-                  </td>
-                  <td className="px-2 py-1.5 text-right">
-                    <Button
-                      className="h-8 rounded-[6px] px-3 text-xs shadow-none group-hover:border-[var(--blue)]/20 group-hover:bg-[var(--blue-soft)] group-hover:text-[var(--blue)]"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onSelectAppAction(deployment.id);
-                      }}
-                      type="button"
-                      variant="secondary"
-                    >
-                      Manage
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    name={deployment.appName}
+                    subtitle={deployment.id}
+                  />
+                </DataTableCell>
+                <DataTableCell>
+                  <StatusPill
+                    label={deployment.statusLabel}
+                    tone={STATUS_TONE[deployment.statusVariant]}
+                  />
+                </DataTableCell>
+                <DataTableCell className="max-[760px]:hidden">
+                  <CellStack
+                    primary={deployment.repositoryName}
+                    secondary={`${deployment.branchLabel}@${deployment.revisionLabel}`}
+                  />
+                </DataTableCell>
+                <DataTableCell className="max-[760px]:hidden">
+                  <RouteLink
+                    href={deployment.domain ? `https://${deployment.domain}` : null}
+                    label={deployment.domain || null}
+                  />
+                </DataTableCell>
+                <DataTableCell className="max-[760px]:hidden">
+                  <CellStack primary={getRuntimeLabel(deployment)} />
+                </DataTableCell>
+                <DataTableCell align="right" className="max-[960px]:hidden">
+                  <span className="text-xs whitespace-nowrap text-[var(--muted-ink)]">
+                    {deployment.relativeUpdatedAt}
+                  </span>
+                </DataTableCell>
+                <DataTableCell align="right">
+                  <RowActionButton onClickAction={() => onSelectAppAction(deployment.id)}>
+                    Manage
+                  </RowActionButton>
+                </DataTableCell>
+              </DataTableRow>
+            ))}
+          </tbody>
+        </DataTable>
 
-          {appItems.length === 0 ? (
-            <div className="px-4 py-10 text-center font-mono text-body text-[var(--quiet)]">
-              {totalAppsCount === 0
-                ? 'No apps deployed yet. Choose a repository above to get started.'
-                : 'No applications match this view.'}
-            </div>
-          ) : null}
-        </div>
+        {appItems.length === 0 ? (
+          <DataTableEmpty>
+            {totalAppsCount === 0
+              ? 'No apps deployed yet. Choose a repository above to get started.'
+              : 'No applications match this view.'}
+          </DataTableEmpty>
+        ) : null}
       </section>
 
       {isCreateAppExpanded ? (
