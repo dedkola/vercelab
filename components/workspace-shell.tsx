@@ -58,6 +58,7 @@ import type {
 } from '@/lib/influx-metrics';
 import { buildSystemMetricPanels } from '@/lib/metrics-dashboard-metrics';
 import { DASHBOARD_RANGE_OPTIONS, type DashboardRange } from '@/lib/metrics-range';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type { DeploymentSummary } from '@/lib/persistence';
 import type { ContainerStats, MetricsSnapshot } from '@/lib/system-metrics';
 import type { ExposureMode } from '@/lib/validation';
@@ -829,7 +830,7 @@ function buildRuntimeSummary(runtime: ContainerStats) {
     runtime.serviceName ? `service ${runtime.serviceName}` : 'standalone runtime',
   ].filter(Boolean);
 
-  const routeSuffix = runtime.routedHost ? ` Available at https://${runtime.routedHost}.` : '';
+  const routeSuffix = runtime.routedHost ? ` Available at ${publicHttpsUrl(runtime.routedHost)}.` : '';
 
   return `Live runtime view for ${runtime.name}, ${parts.join(' / ')} on the current Docker host.${routeSuffix}`;
 }
@@ -843,9 +844,9 @@ function buildRuntimeEndpoints(runtime: ContainerStats): Endpoint[] {
     {
       load: Math.max(8, Math.min(100, Math.round(runtime.cpuPercent))),
       latency: 'HTTPS',
-      name: `https://${runtime.routedHost}`,
+      name: publicHttpsUrl(runtime.routedHost),
       uptime: formatRuntimeHealthLabel(runtime.health),
-      url: `https://${runtime.routedHost}`,
+      url: publicHttpsUrl(runtime.routedHost),
     },
   ];
 }
@@ -1238,7 +1239,7 @@ function buildRuntimeTimeline(runtime: ContainerStats, snapshot: MetricsSnapshot
     runtime.routedHost
       ? {
           label: 'Access',
-          detail: `HTTPS route active at https://${runtime.routedHost}.`,
+          detail: `HTTPS route active at ${publicHttpsUrl(runtime.routedHost)}.`,
         }
       : null,
     {
@@ -1307,7 +1308,7 @@ function buildDisplayContainer(
     status: getRuntimePreviewStatus(runtime),
     summary: preview?.summary ?? base.summary,
     uptime: snapshot ? `Updated ${formatClock(snapshot.timestamp)}` : base.uptime,
-    port: runtime.routedHost ? `https://${runtime.routedHost}` : base.port,
+    port: runtime.routedHost ? publicHttpsUrl(runtime.routedHost) : base.port,
     cpu: formatPercent(runtime.cpuPercent, 1),
     memory: formatBytes(runtime.memoryBytes),
     region: snapshot?.hostIp ?? base.region,
@@ -1721,7 +1722,7 @@ function formatDeploymentHref(
   deployment: Pick<DeploymentSummary, 'subdomain'>,
   baseDomain?: string
 ) {
-  return `https://${formatDeploymentDomain(deployment, baseDomain)}`;
+  return publicHttpsUrl(formatDeploymentDomain(deployment, baseDomain));
 }
 
 function resolveDeploymentDisplayName(
@@ -2774,7 +2775,7 @@ export function WorkspaceShell({
 
       let toastMessage = 'Deployment created.';
       if (payload.exposureMode === 'http' && payload.domain) {
-        toastMessage = `Deployment queued for https://${payload.domain}`;
+        toastMessage = `Deployment queued for ${publicHttpsUrl(payload.domain)}`;
       } else if (payload.exposureMode === 'tcp' && payload.hostPort) {
         toastMessage = `TCP service queued on port ${payload.hostPort}`;
       } else if (payload.exposureMode === 'host' && payload.hostPort) {

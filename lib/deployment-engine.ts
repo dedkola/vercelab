@@ -28,6 +28,7 @@ import {
   type StoredDeployment,
 } from '@/lib/persistence';
 import { buildTraefikTcpLabels } from '@/lib/container-routing';
+import { publicHttpsUrl } from '@/lib/public-url';
 import { createDeploymentSchema, updateDeploymentSettingsSchema } from '@/lib/validation';
 
 type CommandOptions = {
@@ -807,7 +808,7 @@ async function executeLifecycleOperation(
           : operationType === 'remove'
             ? `Removed ${deployment.appName}.`
             : deployment.exposureMode === 'http' || !deployment.exposureMode
-              ? `Deployment is live at https://${getDefaultDomain(deployment.subdomain)}.`
+              ? `Deployment is live at ${publicHttpsUrl(getDefaultDomain(deployment.subdomain))}.`
               : deployment.exposureMode === 'tcp'
                 ? `TCP service deployed on port ${deployment.hostPort ?? deployment.port}.`
                 : deployment.exposureMode === 'host'

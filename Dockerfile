@@ -43,6 +43,11 @@ WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Public HTTPS port for generated app URLs (e.g. 8443 in macOS LAN mode).
+# NEXT_PUBLIC_* values are inlined by Next at build time.
+ARG NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT=
+ENV NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT=${NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT}
+
 # Keep pnpm consistent
 RUN npm install -g corepack@${COREPACK_VERSION} \
  && corepack enable \

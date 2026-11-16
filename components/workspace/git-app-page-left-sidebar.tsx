@@ -21,6 +21,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { InputGroup, InputGroupInput, InputGroupSuffix } from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
+import { publicHttpsUrl } from '@/lib/public-url';
 import { cn } from '@/lib/utils';
 import type { ExposureMode } from '@/lib/validation';
 
@@ -374,7 +375,7 @@ export function GitAppPageLeftSidebar({
                     {deployment.domain ? (
                       <a
                         className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
-                        href={`https://${deployment.domain}`}
+                        href={publicHttpsUrl(deployment.domain)}
                         onClick={(event) => event.stopPropagation()}
                         rel="noreferrer"
                         target="_blank"

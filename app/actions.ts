@@ -7,6 +7,7 @@ import {
   stopDeploymentById,
   updateDeploymentSettingsById,
 } from '@/lib/deployment-engine';
+import { publicHttpsUrl } from '@/lib/public-url';
 
 export type DeploymentActionResult = {
   message: string;
@@ -50,7 +51,7 @@ export async function redeployDeploymentAction(
     const result = await redeployDeploymentById(deploymentId);
     const message =
       result.exposureMode === 'http'
-        ? `Redeployed ${result.appName} to https://${result.domain}`
+        ? `Redeployed ${result.appName} to ${publicHttpsUrl(result.domain)}`
         : `Redeployed ${result.appName}.`;
     return createActionResult('success', message);
   } catch (error) {
@@ -67,7 +68,7 @@ export async function fetchDeploymentFromGitAction(
     const result = await fetchDeploymentFromGitById(deploymentId);
     const message =
       result.exposureMode === 'http'
-        ? `Fetched latest changes for ${result.appName} at https://${result.domain}`
+        ? `Fetched latest changes for ${result.appName} at ${publicHttpsUrl(result.domain)}`
         : `Fetched latest changes for ${result.appName}.`;
     return createActionResult('success', message);
   } catch (error) {
@@ -113,7 +114,7 @@ export async function updateDeploymentAction(formData: FormData): Promise<Deploy
 
     let message: string;
     if (result.exposureMode === 'http' && result.domain) {
-      message = `Updated ${result.appName}. Deployment live at https://${result.domain}`;
+      message = `Updated ${result.appName}. Deployment live at ${publicHttpsUrl(result.domain)}`;
     } else if (result.exposureMode === 'tcp' && result.hostPort) {
       message = `Updated ${result.appName}. TCP service on port ${result.hostPort}`;
     } else if (result.exposureMode === 'host' && result.hostPort) {

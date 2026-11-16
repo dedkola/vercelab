@@ -9,6 +9,7 @@ import { memo, useMemo, useState } from 'react';
 import { EChartSurface } from '@/components/ui/echart-surface';
 import { Input } from '@/components/ui/input';
 import { SegmentedControl } from '@/components/workspace/segmented-control';
+import { publicHttpsUrl } from '@/lib/public-url';
 import type {
   ContainerListEntry,
   DashboardLogView,
@@ -839,7 +840,7 @@ export function MetricsDashboardMainContent({
                       {container.runtime?.routedHost ? (
                         <a
                           className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
-                          href={`https://${container.runtime.routedHost}`}
+                          href={publicHttpsUrl(container.runtime.routedHost)}
                           onClick={(event) => event.stopPropagation()}
                           rel="noreferrer"
                           target="_blank"
