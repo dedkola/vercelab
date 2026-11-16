@@ -5,7 +5,7 @@ import type {
   MetricCard,
   PreviewContainer,
   PreviewContainerStatus,
-} from '@/components/workspace-shell';
+} from '@/lib/workspace-types';
 import { getContainerTone } from '@/lib/container-tone';
 import { DASHBOARD_RANGE_OPTIONS, type DashboardRange } from '@/lib/metrics-range';
 import { publicHttpsUrl } from '@/lib/public-url';
@@ -320,7 +320,9 @@ function buildRuntimeSummary(runtime: ContainerStats) {
     runtime.serviceName ? `service ${runtime.serviceName}` : 'standalone runtime',
   ].filter(Boolean);
 
-  const routeSuffix = runtime.routedHost ? ` Available at ${publicHttpsUrl(runtime.routedHost)}.` : '';
+  const routeSuffix = runtime.routedHost
+    ? ` Available at ${publicHttpsUrl(runtime.routedHost)}.`
+    : '';
 
   return `Live runtime view for ${runtime.name}, ${parts.join(' / ')} on the current Docker host.${routeSuffix}`;
 }
@@ -765,7 +767,6 @@ export function buildContainerListEntries(
         deploymentStatus: descriptor.deploymentStatus,
         display: buildDisplayContainer(descriptor.runtime, descriptor.history, snapshot, timeZone),
         dotClassName: getStatusDotClassName(getPreviewStatus(descriptor.runtime)),
-        preview: null,
         runtime: descriptor.runtime,
         sidebarName: descriptor.label,
         sidebarSecondaryLabel:
@@ -839,7 +840,6 @@ export function buildContainerListEntries(
       deploymentStatus: descriptor.deploymentStatus,
       display,
       dotClassName: getStatusDotClassName(display.status),
-      preview: null,
       runtime: null,
       sidebarName: descriptor.label,
       sidebarSecondaryLabel: 'history only',

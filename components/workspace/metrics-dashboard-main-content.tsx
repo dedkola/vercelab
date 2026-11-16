@@ -35,7 +35,7 @@ import type {
   ContainerListEntry,
   DashboardLogView,
   PreviewContainerStatus,
-} from '@/components/workspace-shell';
+} from '@/lib/workspace-types';
 import { getContainerInventoryMeta, type ContainerAction } from '@/lib/container-inventory';
 import type { AllContainersMetricsHistorySeries } from '@/lib/influx-metrics';
 import {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ContainerListEntry } from '@/components/workspace-shell';
+import type { ContainerListEntry } from '@/lib/workspace-types';
 import { getContainerInventoryMeta, isSystemContainer } from '@/lib/container-inventory';
 
 function createEntry(overrides?: Partial<ContainerListEntry>): ContainerListEntry {
@@ -36,7 +36,6 @@ function createEntry(overrides?: Partial<ContainerListEntry>): ContainerListEntr
       volumes: [],
     },
     dotClassName: 'bg-emerald-500',
-    preview: null,
     runtime: {
       cpuPercent: 14,
       diskReadBytesPerSecond: 0,

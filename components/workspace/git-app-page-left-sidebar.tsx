@@ -11,7 +11,7 @@ import {
   X,
 } from '@phosphor-icons/react';
 
-import type { DraftAppState, RepositoryState } from '@/components/workspace-shell';
+import type { DraftAppState, RepositoryState } from '@/lib/workspace-types';
 import {
   CellStack,
   DataTable,

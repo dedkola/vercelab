@@ -1,4 +1,4 @@
-import type { ContainerListEntry } from '@/components/workspace-shell';
+import type { ContainerListEntry } from '@/lib/workspace-types';
 import type { ContainerStats } from '@/lib/system-metrics';
 
 export type ContainerAction = 'remove' | 'restart' | 'start' | 'stop';

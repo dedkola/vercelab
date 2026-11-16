@@ -12,7 +12,6 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { WorkspaceView } from '@/components/workspace-shell';
 import { WorkspaceFooter } from '@/components/workspace/workspace-footer';
 import { WorkspaceHeader } from '@/components/workspace/workspace-header';
 import type { GitHubRepository } from '@/lib/github';
@@ -29,16 +28,9 @@ import {
 } from '@/lib/time-display';
 import { useLiveMetricsPolling } from '@/lib/use-live-metrics-polling';
 import type { WorkspaceChromeData } from '@/lib/workspace-chrome-data';
+import type { RepositoryState, WorkspaceView } from '@/lib/workspace-types';
 
 type ResetHandler = () => void;
-
-type SharedRepositoryState = {
-  error: string | null;
-  hasLoaded: boolean;
-  isLoading: boolean;
-  repositories: GitHubRepository[];
-  tokenConfigured: boolean;
-};
 
 type WorkspaceChromeContextValue = {
   dashboardRange: DashboardRange;
@@ -47,7 +39,7 @@ type WorkspaceChromeContextValue = {
   /** Fetch a fresh live snapshot now, outside the regular polling cadence. */
   refreshSnapshot: () => Promise<void>;
   registerResetHandler: (handler: ResetHandler) => () => void;
-  repositoryState: SharedRepositoryState;
+  repositoryState: RepositoryState;
   setDashboardRange: (range: DashboardRange) => void;
   sidebarHistory: MetricsHistoryPoint[];
   sidebarSnapshot: MetricsSnapshot | null;
@@ -90,6 +82,16 @@ export function useOptionalWorkspaceChrome() {
   return useContext(WorkspaceChromeContext);
 }
 
+export function useWorkspaceChrome() {
+  const value = useContext(WorkspaceChromeContext);
+
+  if (!value) {
+    throw new Error('useWorkspaceChrome must be used inside WorkspaceChromeShell.');
+  }
+
+  return value;
+}
+
 export function WorkspaceChromeShell({
   children,
   influxExplorerUrl,
@@ -109,7 +111,7 @@ export function WorkspaceChromeShell({
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [timeDisplayMode, setTimeDisplayMode] =
     useState<TimeDisplayMode>(DEFAULT_TIME_DISPLAY_MODE);
-  const [repositoryState, setRepositoryState] = useState<SharedRepositoryState>({
+  const [repositoryState, setRepositoryState] = useState<RepositoryState>({
     error: null,
     hasLoaded: false,
     isLoading: false,

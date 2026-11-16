@@ -8,7 +8,7 @@ import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { VercelabBrandMark } from '@/components/workspace/vercelab-brand-mark';
 import { toast } from 'sonner';
 
-import type { WorkspaceView } from '@/components/workspace-shell';
+import type { WorkspaceView } from '@/lib/workspace-types';
 import type { GitHubRepository } from '@/lib/github';
 import { getLocalTimeZoneLabel, type TimeDisplayMode } from '@/lib/time-display';
 

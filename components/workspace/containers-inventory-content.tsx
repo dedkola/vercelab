@@ -30,7 +30,7 @@ import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { ContainerListEntry } from '@/components/workspace-shell';
+import type { ContainerListEntry } from '@/lib/workspace-types';
 
 export type ContainerStatusFilter = 'all' | 'running' | 'attention';
 

@@ -12,7 +12,7 @@ import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useOptionalWorkspaceChrome } from '@/components/workspace/workspace-chrome-shell';
-import type { ContainerListEntry, DashboardLogView, LogLine } from '@/components/workspace-shell';
+import type { ContainerListEntry, DashboardLogView, LogLine } from '@/lib/workspace-types';
 import {
   readStoredContainerAliases,
   subscribeToStoredContainerAliases,
