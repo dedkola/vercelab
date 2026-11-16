@@ -29,6 +29,8 @@
 *.crt
 *.key
 /data/
+# macOS install writes Traefik config and certificates next to the checkout
+/traefik/
 
 # debug
 npm-debug.log*

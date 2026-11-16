@@ -152,12 +152,14 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=${VERCELAB_PROXY_NETWORK:-vercelab_proxy}
-      - 'traefik.http.routers.vercelab.rule=Host(`${VERCELAB_ADMIN_HOST}`)'
+      # localhost/127.0.0.1 keep the dashboard reachable when the LAN domain
+      # cannot be used, e.g. on a laptop without DNS for the configured host.
+      - 'traefik.http.routers.vercelab.rule=Host(`${VERCELAB_ADMIN_HOST}`) || Host(`localhost`) || Host(`127.0.0.1`)'
       - traefik.http.routers.vercelab.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
       - traefik.http.routers.vercelab.tls=true
       - traefik.http.routers.vercelab.service=vercelab
       - traefik.http.services.vercelab.loadbalancer.server.port=${PORT:-3000}
-      - 'traefik.http.routers.vercelab-terminal.rule=Host(`${VERCELAB_ADMIN_HOST}`) && PathPrefix(`/terminal/ws`)'
+      - 'traefik.http.routers.vercelab-terminal.rule=(Host(`${VERCELAB_ADMIN_HOST}`) || Host(`localhost`) || Host(`127.0.0.1`)) && PathPrefix(`/terminal/ws`)'
       - traefik.http.routers.vercelab-terminal.entrypoints=${VERCELAB_PROXY_ENTRYPOINT:-websecure}
       - traefik.http.routers.vercelab-terminal.tls=true
       - traefik.http.routers.vercelab-terminal.priority=100
