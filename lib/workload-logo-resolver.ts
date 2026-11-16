@@ -82,7 +82,7 @@ async function resolveDevDeploymentIcon(deploymentId: string): Promise<WorkloadL
   return await readRepositoryIcon(project.repositoryUrl, project.buildContext, 'dev-deployment');
 }
 
-async function resolveDevProjectIcon(projectId: string): Promise<WorkloadLogo | null> {
+export async function resolveDevProjectIcon(projectId: string): Promise<WorkloadLogo | null> {
   const project = await getDevProjectById(projectId);
 
   return await readRepositoryIcon(project.repositoryUrl, project.buildContext, 'dev-deployment');

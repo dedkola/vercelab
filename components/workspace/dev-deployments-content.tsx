@@ -19,6 +19,7 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { InitialsAvatar } from '@/components/workspace/data-table';
 import { SelectionCheckbox } from '@/components/workspace/selection-checkbox';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
 import {
@@ -142,9 +143,12 @@ export function DevDeploymentsContent({
       <section className="relative overflow-hidden rounded-[10px] border border-blue-200 bg-white px-4 py-3 shadow-[var(--shadow)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--blue)] max-[760px]:px-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-[var(--blue-soft)] text-[var(--blue)]">
-              <RocketLaunch aria-hidden="true" className="size-4" />
-            </span>
+            <InitialsAvatar
+              className="size-9"
+              fallback={<RocketLaunch aria-hidden="true" className="size-4" />}
+              iconUrls={[`/api/dev/projects/${encodeURIComponent(project.id)}/icon`]}
+              toneIndex={0}
+            />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-[0.9375rem] font-semibold tracking-tight">{project.appName}</h2>

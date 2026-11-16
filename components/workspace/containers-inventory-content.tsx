@@ -251,6 +251,11 @@ export function ContainersInventoryContent({
                     <EntityCell
                       avatar={
                         <InitialsAvatar
+                          iconUrls={
+                            container.runtime?.id
+                              ? [`/api/workloads/${encodeURIComponent(container.runtime.id)}/logo`]
+                              : undefined
+                          }
                           initials={getInitials(container.sidebarName)}
                           toneIndex={index}
                         />
