@@ -5,6 +5,7 @@ import { ChartLineUp, GearSix } from '@phosphor-icons/react';
 import { useState, type FormEvent } from 'react';
 import { cn } from '@/lib/utils';
 import { WorkspaceNotice } from '@/components/workspace/workspace-notice';
+import { VercelabBrandMark } from '@/components/workspace/vercelab-brand-mark';
 import { toast } from 'sonner';
 
 import type { WorkspaceView } from '@/components/workspace-shell';
@@ -106,7 +107,7 @@ export function WorkspaceHeader({
     <header className="vercelab-topbar shrink-0 border-b border-[var(--hairline)] bg-[rgb(255_255_255_/_0.94)] backdrop-blur-xl">
       <div className="mx-auto grid min-h-11 w-full max-w-[1680px] grid-cols-[minmax(12rem,1fr)_auto_minmax(12rem,1fr)] items-center gap-4 px-6 max-[960px]:grid-cols-[1fr_auto] max-[760px]:px-3">
         <div className="flex min-w-0 items-center gap-2.5 whitespace-nowrap" aria-label="Vercelab">
-          <span className="vercelab-brand-mark" aria-hidden="true" />
+          <VercelabBrandMark />
           <span className="text-[11px] font-semibold tracking-[0.08em]">VERCELAB / LOCAL</span>
         </div>
 
