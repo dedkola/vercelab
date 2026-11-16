@@ -2,73 +2,51 @@
 
 <div align="center">
 
-**A self-hosted deployment control plane for homelabs, built on Next.js, Docker, Traefik, PostgreSQL, and InfluxDB.**
+**Self-hosted deployment control plane for homelabs.**
+Deploy GitHub projects with Docker, route them through Traefik, and watch your host from one dashboard.
 
-[![GitHub package version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=for-the-badge&color=111827)](https://github.com/dedkola/vercelab)
-[![Node.js](https://img.shields.io/badge/Node.js-24_LTS-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16.4.5-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.3.1-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-11.27.1-F69220?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=flat-square&color=111827)](https://github.com/dedkola/vercelab)
+[![Node.js](https://img.shields.io/badge/Node.js-24-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-11-F69220?style=flat-square&logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![CI](https://github.com/dedkola/vercelab/actions/workflows/ci.yml/badge.svg)](https://github.com/dedkola/vercelab/actions/workflows/ci.yml)
 
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-state-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![InfluxDB](https://img.shields.io/badge/InfluxDB-metrics-22ADF6?style=for-the-badge&logo=influxdb&logoColor=white)](https://www.influxdata.com/)
-[![Traefik](https://img.shields.io/badge/Traefik-edge-24A1C1?style=for-the-badge&logo=traefikproxy&logoColor=white)](https://traefik.io/traefik/)
-[![Vitest](https://img.shields.io/badge/Vitest-tested-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
-
-[![Last commit](https://img.shields.io/github/last-commit/dedkola/vercelab?style=flat-square&color=0f766e)](https://github.com/dedkola/vercelab/commits/main)
-[![Repo size](https://img.shields.io/github/repo-size/dedkola/vercelab?style=flat-square&color=334155)](https://github.com/dedkola/vercelab)
-[![Issues](https://img.shields.io/github/issues/dedkola/vercelab?style=flat-square&color=7c3aed)](https://github.com/dedkola/vercelab/issues)
-[![Pull requests](https://img.shields.io/github/issues-pr/dedkola/vercelab?style=flat-square&color=2563eb)](https://github.com/dedkola/vercelab/pulls)
-[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C?style=flat-square&logo=dependabot&logoColor=white)](https://github.com/dedkola/vercelab/blob/main/.github/dependabot.yml)
+![Vercelab metrics dashboard](public/screenshots/vercelab-dashboard-overview.png)
 
 </div>
 
-Vercelab turns an Ubuntu box or local Docker host into a compact deployment workspace for Dockerized GitHub projects. From one responsive interface, you can deploy repositories, inspect workloads, follow logs, operate containers, and monitor live host telemetry. Vercelab stores control-plane state in PostgreSQL, writes metrics to InfluxDB 3 Core, encrypts GitHub tokens at rest, and publishes apps behind Traefik with wildcard self-signed HTTPS.
+Vercelab turns an Ubuntu server or a Mac with Docker into a compact deployment workspace for Dockerized GitHub projects. From one interface you can deploy repositories, build a preview for every commit, operate any container on the host, open a shell, and follow live host telemetry.
+
+Control-plane state lives in PostgreSQL, metrics go to InfluxDB 3 Core, GitHub tokens are encrypted at rest, and every app is published behind Traefik with a wildcard self-signed certificate.
 
 ## Contents
 
-- [Highlights](#highlights)
-- [Architecture](#architecture)
-- [Stack](#stack)
-- [Interactive Preview](#interactive-preview)
-- [Screenshots](#screenshots)
-- [Quick Start](#quick-start)
-- [Local Development](#local-development)
-- [Commands](#commands)
-- [Deployment Flow](#deployment-flow)
-- [Deployment Files](#deployment-files)
-- [Dev Preview Deployments](#dev-preview-deployments)
-- [Metrics Dashboard](#metrics-dashboard)
-- [Containers Workspace](#containers-workspace)
-- [Terminal Workspace](#terminal-workspace)
-- [Server Install (Ubuntu and macOS)](#server-install-ubuntu-and-macos)
-- [State and Storage](#state-and-storage)
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Using Vercelab](#using-vercelab)
+- [Installation](#installation)
+- [Operations](#operations)
 - [Configuration](#configuration)
-- [Runtime Files](#runtime-files)
-- [Health and Readiness](#health-and-readiness)
-- [Recreate the UI Container](#recreate-the-ui-container)
-- [Reinstall](#reinstall)
-- [Uninstall](#uninstall)
-- [Operational Notes](#operational-notes)
-- [Development Notes](#development-notes)
+- [Local development](#local-development)
+- [Project layout](#project-layout)
+- [Security](#security)
 
-## Highlights
+## Features
 
-| Capability           | What it does                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| GitHub deployments   | Browse repositories, select branches, clone source, and deploy root `Dockerfile` or compose projects.        |
-| Self-hosted routing  | Places managed apps on a shared Docker network and exposes them through Traefik host rules.                  |
-| Metrics dashboard    | Combines System Pulse, two focused telemetry charts, and a searchable workload inventory with live history.  |
-| Containers workspace | Full container inventory with inspect, logs, recreation, and catalog-based creation for all host containers. |
-| Deployment files     | Upload supporting files, manage private or container-readable access, and preserve them across redeploys.    |
-| Dev previews         | Build every commit on a monitored branch into its own Docker container with a unique Traefik URL.            |
-| Terminal workspace   | Interactive terminal with host access in production and container access in the devcontainer.                |
-| Safe runtime state   | Stores repositories, deployments, and operations in PostgreSQL with encrypted GitHub tokens.                 |
-| Ubuntu bootstrap     | Installs host prerequisites, pins Docker Engine 28.x, creates TLS assets, and starts the stack.              |
+| Area           | What you get                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Overview**   | System Pulse header, compute and throughput charts, a searchable workload table, and per-container history.   |
+| **Apps**       | Pick a GitHub repository and branch, deploy a root `Dockerfile` or Compose project, and manage it afterwards. |
+| **Dev**        | Build every commit on a monitored branch, plus every open pull request, into its own preview URL.             |
+| **Containers** | Inventory of every container on the host with inspect, logs, lifecycle actions, recreation, and creation.     |
+| **Terminal**   | Interactive shell on the host in production, or inside the container during development.                      |
+| **Routing**    | Apps join a shared Docker network and are exposed through Traefik host rules on your wildcard domain.         |
+| **Installers** | One command on Ubuntu or macOS, with a manifest-driven uninstaller that removes only what it created.         |
 
-## Architecture
+### Architecture
 
 ```mermaid
 flowchart LR
@@ -76,52 +54,34 @@ flowchart LR
   ui --> pg["PostgreSQL"]
   ui --> influx["InfluxDB 3 Core"]
   ui --> docker["Host Docker daemon"]
-  ui --> gh["GitHub API / Git clone"]
+  ui --> gh["GitHub API / git clone"]
   docker --> app["Managed app containers"]
   app --> traefik["Traefik"]
   traefik --> lan["LAN / wildcard domain"]
   influx --> explorer["InfluxDB Explorer"]
 ```
 
-## Stack
+| Layer    | Technology                                                                         |
+| -------- | ---------------------------------------------------------------------------------- |
+| Web app  | Next.js 16 App Router, React 19, TypeScript                                        |
+| UI       | Cloudflare Kumo, Tailwind CSS 4, shadcn-style components, Radix UI, Phosphor icons |
+| Charts   | ECharts                                                                            |
+| Terminal | xterm.js, node-pty, WebSocket                                                      |
+| Data     | PostgreSQL (state), InfluxDB 3 Core and InfluxDB Explorer (metrics)                |
+| Runtime  | Docker, Docker Compose, Traefik                                                    |
+| Quality  | Zod, ESLint, Prettier, knip, Vitest                                                |
 
-| Layer           | Technology                                                                         |
-| --------------- | ---------------------------------------------------------------------------------- |
-| Web app         | Next.js 16 App Router, React 19, TypeScript                                        |
-| UI              | Cloudflare Kumo, Tailwind CSS 4, shadcn-style components, Radix UI, Phosphor icons |
-| Charts          | ECharts via the local dashboard components                                         |
-| Terminal        | xterm.js, node-pty, WebSocket transport                                            |
-| Persistence     | PostgreSQL for control-plane state                                                 |
-| Metrics         | InfluxDB 3 Core plus InfluxDB Explorer                                             |
-| Runtime         | Docker, Docker Compose, Traefik                                                    |
-| Validation      | Zod, TypeScript, ESLint, Vitest                                                    |
-| Package manager | pnpm 11                                                                            |
+## Quick start
 
-## Interactive Preview
+**Install on a server** (Ubuntu or macOS):
 
-The repository root includes a dependency-free promotional page that uses the interactive Vercelab workspace as its background. The install card stays centered over the interface and opens an accessible dialog with the Ubuntu bootstrap command.
+```bash
+curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
+```
 
-Open `index.html` directly in a browser, or serve the repository root with any static file server. The embedded workspace preview lives in `prototype/index.html` and mirrors the production dashboard's compact visual system.
+The script clones the repository to `~/vercelab`, runs an interactive setup wizard, and starts the stack. See [Installation](#installation) for options.
 
-## Screenshots
-
-Reference captures from a live Vercelab deployment. For the latest dashboard layout and interactions, use the root `index.html` preview.
-
-### Metrics dashboard
-
-![Vercelab metrics dashboard](public/screenshots/vercelab-dashboard-overview.png)
-
-### Container runtime
-
-![Vercelab container runtime view](public/screenshots/vercelab-containers.png)
-
-### Git deployments
-
-![Vercelab Git deployment view](public/screenshots/vercelab-git-deployments.png)
-
-## Quick Start
-
-For local development on macOS, use Node.js 24, pnpm 11.27.1, and Docker with the Compose plugin. Run infrastructure in Docker and the Next.js app on the host:
+**Run it locally for development** (Node.js 24, pnpm 11.27.1, Docker with Compose):
 
 ```bash
 pnpm install --frozen-lockfile
@@ -130,638 +90,411 @@ pnpm run dev:infra
 pnpm run dev
 ```
 
-Open `http://localhost:3000`.
+Then open `http://localhost:3000`. See [Local development](#local-development) for details.
 
-For a production install on Ubuntu or macOS, run a single command:
+## Using Vercelab
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
-```
+Add a GitHub personal access token from the settings popover in the header first. It is encrypted with `VERCELAB_ENCRYPTION_SECRET` and used to list repositories, branches, and commits.
 
-The one-liner clones the repository to `<home>/vercelab` by default and starts the installer. `install.sh` is the entry point on every platform and hands off to `install-macos.sh` on macOS. The installer can derive an `sslip.io` base domain from the machine's LAN IP when you do not provide one.
+### Overview (`/`)
 
-## Local Development
+- **System Pulse**: host state, one-minute load, memory, running workloads, and current traffic.
+- **Compute load** (CPU and memory) and **Throughput** (network in/out and disk) charts.
+- **Workloads**: every container with runtime type, status, CPU, memory, network, endpoint, and start/stop/restart actions. Select a row for per-container CPU, memory, network, and disk history.
+- A shared time range (1 min to 90 days, default 15 min) applies to all InfluxDB history queries.
 
-Two development modes are supported. They are isolated and can run at the same time without port or network conflicts.
+Missing samples stay visible as gaps; the dashboard never fills them with demo data.
 
-### Option A: Host macOS
+**Workload logos** are resolved per container through `/api/workloads/<id>/logo`, in this order:
 
-Infrastructure runs in Docker. The Next.js app runs directly through `pnpm dev`. No system paths are touched because local data lives under `./data/` in the repository root.
+1. The repository of the Vercelab deployment or dev preview that owns the container.
+2. A bundled mark for well-known images (PostgreSQL, InfluxDB, Traefik, Redis, Grafana, NGINX, Node.js, and more).
+3. A logo committed in the Compose project's working directory.
+4. The repository in the image's `org.opencontainers.image.source` label.
 
-Generate `.env.local`:
+To give your own app a logo, commit `app/icon.{svg,png,ico}` or `public/{logo,favicon,icon}.*` (also `src/app/`, `static/`, `assets/`, and `src/images/`) at the build-context root. Lookups are cached for five minutes.
 
-```bash
-pnpm run setup-env
-```
+### Apps (`/git-app-page`)
 
-The setup script auto-detects your Mac's LAN IP and Docker socket path, generates a random encryption secret, and backs up any existing `.env.local` before writing a new file.
+1. Choose a repository and branch, then **Review deploy**.
+2. Vercelab clones the repository into the managed apps directory.
+3. It detects `Dockerfile`, `docker-compose.yml`, `docker-compose.yaml`, `compose.yml`, or `compose.yaml` at the repository root.
+4. It writes a Vercelab-managed Compose override with Traefik labels and the shared proxy network.
+5. It runs Docker Compose, captures the operation log, and records the deployment in PostgreSQL.
 
-Start infrastructure:
+Multi-service Compose projects need a `serviceName`; single-service projects are detected automatically. For Dockerfile projects, the multiline `KEY=VALUE` environment is passed both as runtime variables and as build args.
 
-```bash
-pnpm run dev:infra
-```
+**Deployment files.** The app manager's **Files** tab uploads supporting files such as `.env` or `k3s.config` (5 MB each). Files are stored under `.vercelab-files/<deploymentId>` in the apps directory and copied into the workspace after every clone or pull, so they survive redeploys.
 
-The command passes `--env-file .env.local` to Docker Compose when that file exists, so Postgres initializes with the same `VERCELAB_POSTGRES_*` credentials the app uses. If you reset the password in `.env.local` but keep `./data/postgres`, the existing cluster keeps its original password; run `rm -rf ./data/postgres` to start over, or reconcile the role manually.
+- **Private** (`0600`) is the default for `.env` and `.env.*`.
+- **Container-readable** (`0644`) is the default for everything else.
 
-| Service           | URL                       |
-| ----------------- | ------------------------- |
-| App               | `http://localhost:3000`   |
-| Postgres          | `localhost:5432`          |
-| InfluxDB API      | `http://localhost:8181`   |
-| InfluxDB Explorer | `http://influx.localhost` |
-| Traefik dashboard | `http://localhost:8088`   |
+Redeploy after changing files or permissions to recreate the containers.
 
-Stop local infrastructure:
+### Dev previews (`/dev`)
 
-```bash
-pnpm run dev:infra:down
-```
+The Dev workspace builds commits into their own image and container. Previews are fully separate from Apps deployments and never touch them.
 
-The local Traefik binds port `80`, so stop a production Vercelab stack on the same machine (`docker compose down` in its install folder) before running `pnpm run dev:infra`.
+1. Select **Connect repository**.
+2. Choose the repository, branch, preview prefix, Dockerfile path, build context, container port, environment, and optional build args.
+3. Enable automatic previews, and optionally **Auto-deploy open pull requests**.
+4. Push a commit. Vercelab picks it up within 60 seconds by polling, or immediately through an optional signed webhook.
 
-To open `pnpm dev` from another device on your LAN, keep `VERCELAB_HOST_LAN_IP` in `.env.local`; `next.config.ts` adds it to Next.js `allowedDevOrigins`.
-
-If the dev server reports a missing module for a route that no longer exists, delete the stale Turbopack cache with `rm -rf .next/dev` and restart `pnpm run dev`.
-
-### Option B: VS Code Devcontainer
-
-The devcontainer runs Postgres, InfluxDB, Explorer, and the Node environment inside Docker. Open the repository in VS Code and choose **Reopen in Container**, or run **Dev Containers: Reopen in Container** from the command palette. Dependencies are installed automatically, and the post-start script bootstraps the InfluxDB token and Explorer connection.
-
-In the container terminal, start the app:
-
-```bash
-pnpm run dev
-```
-
-Open `http://localhost:3100`. VS Code forwards the app on port `3100` and terminal WebSocket on port `3101`. Terminal sessions run inside the devcontainer at `/workspaces/vercelab`.
-
-| Resource           | Host macOS stack          | Devcontainer                |
-| ------------------ | ------------------------- | --------------------------- |
-| App                | `http://localhost:3000`   | `http://localhost:3100`     |
-| Terminal WebSocket | `localhost:3001`          | `localhost:3101`            |
-| Docker network     | `vercelab_dev_proxy`      | `vercelab_devcontainer_net` |
-| Postgres host port | `localhost:5432`          | not exposed                 |
-| InfluxDB host port | `localhost:8181`          | not exposed                 |
-| InfluxDB Explorer  | `http://influx.localhost` | `http://localhost:8888`     |
-| Traefik            | `:80`, dashboard `:8088`  | none                        |
-
-## Commands
-
-| Command                   | Purpose                                                |
-| ------------------------- | ------------------------------------------------------ |
-| `pnpm run setup-env`      | Generate a local `.env.local` file.                    |
-| `pnpm run dev:infra`      | Start local Postgres, InfluxDB, Explorer, and Traefik. |
-| `pnpm run dev:infra:down` | Stop the local infrastructure stack.                   |
-| `pnpm run dev`            | Start Next.js and the terminal WebSocket server.       |
-| `pnpm run build`          | Build the production app.                              |
-| `pnpm run start`          | Start the built app and terminal WebSocket server.     |
-| `pnpm run lint`           | Run ESLint.                                            |
-| `pnpm run typecheck`      | Check types and unused local code.                     |
-| `pnpm run check:unused`   | Find unused files, exports, and dependencies.          |
-| `pnpm run test`           | Run Vitest in watch mode.                              |
-| `pnpm run test:run`       | Run Vitest once.                                       |
-| `pnpm run format`         | Format repository files with Prettier.                 |
-| `pnpm run format:check`   | Check formatting without changing files.               |
-
-## Deployment Flow
-
-1. Store or provide a GitHub personal access token.
-2. Select a repository and branch from the Git workspace.
-3. Vercelab clones the repository into the managed app directory.
-4. It detects one of `Dockerfile`, `docker-compose.yml`, `docker-compose.yaml`, `compose.yml`, or `compose.yaml` at the repository root.
-5. It generates Vercelab-managed compose overrides, injects Traefik labels, and joins the shared proxy network.
-6. It runs Docker Compose, captures operation logs, and updates deployment state in PostgreSQL.
-
-Compose repositories with multiple services must provide `serviceName`. Single-service compose projects are auto-detected. Dockerfile deployments receive both runtime environment variables and Docker build args from the multiline `KEY=VALUE` payload.
-
-## Deployment Files
-
-The deployment manager in the Git workspace (`/git-app-page`) includes a **Files** tab for uploading supporting files such as `.env` or `k3s.config`. Each upload is limited to 5 MB. You can list files, change their access, and delete them.
-
-- **Private** files use mode `0600`; this is the default for `.env` and `.env.*`.
-- **Container-readable** files use mode `0644`; this is the default for other files.
-
-Files are stored under `.vercelab-files/<deploymentId>` in the managed apps directory and reapplied to the deployment workspace after clone or pull, before Compose detection. They survive redeploys. File names must stay within the workspace, and Vercelab-generated Compose file names are reserved. Redeploy after changing files or permissions to recreate the containers.
-
-## Dev Preview Deployments
-
-The **Dev** workspace (`/dev`) builds every commit on a monitored GitHub branch into its own Docker image and container. Preview deployments are completely separate from production deployments and never replace or modify them.
-
-Workflow:
-
-1. Add the GitHub token in the Vercelab settings popover if it is not already configured.
-2. Open **Dev** and select **Connect repository**.
-3. Choose the repository, branch, preview URL prefix, Dockerfile path, build context, container port, runtime environment, and optional build arguments.
-4. Enable automatic previews and optionally build the current HEAD immediately. Enable **Auto-deploy open pull requests** to keep a preview for every open pull request as well.
-5. Push a commit to the monitored branch. Vercelab detects it by polling every 60 seconds, or instantly through an optional signed GitHub webhook.
-6. Open the generated URL from the Dev page. Every previous preview remains available.
-
-Preview URLs use the existing base domain and Traefik configuration:
+Each preview gets its own URL:
 
 ```text
-<preview-prefix>-<short-commit-sha>.<VERCELAB_BASE_DOMAIN>
+<preview-prefix>-<short-sha>.<VERCELAB_BASE_DOMAIN>     e.g. https://blade-a1b2c3d.home.com
 ```
 
-For example, with a `blade` preview prefix and `home.com` as the base domain:
+`VERCELAB_PROXY_ENTRYPOINT=web` produces `http://` URLs (local development); `websecure` produces HTTPS URLs.
 
-| Commit       | Preview URL                      |
-| ------------ | -------------------------------- |
-| `a1b2c3d...` | `https://blade-a1b2c3d.home.com` |
-| `e4f5g6h...` | `https://blade-e4f5g6h.home.com` |
+Each preview records its commit, author, build status, container status, build log, container log, and URL, and can be opened, stopped, started, restarted, retried, or deleted. Deleting a preview removes its container, image, workspace, and build log.
 
-The URL scheme follows `VERCELAB_PROXY_ENTRYPOINT`: `web` produces `http://` URLs for local development, while `websecure` produces HTTPS URLs and TLS-enabled Traefik routers.
+<details>
+<summary>Pull request previews, commit detection, and retention</summary>
 
-Each preview records its commit SHA, message, author, commit date, build status, Docker container status, build log, container log, and preview URL. The Dev page supports opening, stopping, starting, restarting, retrying, and deleting individual previews. Deleting a preview removes its container, image, workspace, and build log only.
+**Pull request previews.** With **Auto-deploy open pull requests** enabled, each poll and each **Sync now**:
 
-Preview builds use a root or subdirectory Dockerfile with a configurable build context. Compose-only repositories are not supported for previews yet; production deployments still support both Dockerfile and compose projects.
+- builds every open pull request whose head commit has not been built, and rebuilds on new commits;
+- restarts a stopped preview while its pull request is still open;
+- stops the preview once the pull request closes.
 
-### Pull request previews
+Builds fetch `refs/pull/<number>/head`, so pull requests from forks work as long as the token can read the base repository. Pull request previews show a `PR #<number>` badge linking back to GitHub.
 
-Enable **Auto-deploy open pull requests** on a Dev project and the worker keeps a local Docker preview for every open pull request in that repository. Each poll and each **Sync now**:
+**Commit detection.**
 
-- queues a build for every open pull request whose head commit has not been built yet, and rebuilds when the pull request receives new commits;
-- restarts a pull request preview that was stopped while the pull request is still open;
-- stops the preview once its pull request is closed.
+- **Polling** is on by default and works on private or LAN-only hosts.
+- **Webhook** is optional. Each project has a payload URL and an encrypted secret. In GitHub, add a webhook for the `push` event with `application/json`; Vercelab verifies `X-Hub-Signature-256`. Polling stays on as a fallback.
+- **Manual**: `Sync now`, `Deploy latest`, and `Deploy commit` for recent commits.
 
-Pull request builds clone the monitored branch and then fetch `refs/pull/<number>/head`, so pull requests from forks work as long as the configured GitHub token can read the base repository. Builds, containers, preview URLs, logs, and lifecycle actions are identical to branch previews; the Dev list and preview drawer show a `PR #<number>` badge that links back to GitHub. Projects can enable pull request previews with or without branch auto-deploy.
+**Lifecycle and storage.**
 
-### Commit detection
+- Images are tagged `vercelab-dev-<prefix>:<full-sha>`; containers are named `vercelab-dev-<prefix>-<short-sha>`, use `unless-stopped`, and publish no host ports.
+- Builds run one at a time from a PostgreSQL-backed queue. A restart marks interrupted builds as failed and resumes queued ones.
+- Retention is per project: `0` keeps every preview; a positive value removes the oldest settled previews after each successful build. Running pull request previews are exempt.
+- Build workspaces are temporary (`VERCELAB_APPS_DIR/dev`); logs live in `VERCELAB_LOGS_DIR/dev`; state lives in the `dev_projects` and `dev_deployments` tables.
+- Previews use a root or subdirectory Dockerfile. Compose-only repositories are not supported for previews yet.
 
-- **Polling** is enabled by default and works on private or LAN-only hosts. The worker checks each auto-deploy project every 60 seconds and queues new commits it has not seen before.
-- **Webhook** is optional. Each project has a payload URL and encrypted secret in its settings. In GitHub, add a webhook using the `push` event and `application/json`; Vercelab verifies `X-Hub-Signature-256` before queueing a build. Polling stays active as a fallback.
-- **Manual actions** include `Sync now`, `Deploy latest`, and `Deploy commit` for recent branch commits.
+</details>
 
-### Preview lifecycle and storage
+### Containers (`/containers`)
 
-Preview images are tagged `vercelab-dev-<prefix>:<full-sha>` and containers are named `vercelab-dev-<prefix>-<short-sha>`. Containers use `unless-stopped` and join the shared proxy network without publishing host ports.
+Every container visible to the host Docker daemon, not only Vercelab-managed ones:
 
-- Builds run through a persistent PostgreSQL-backed queue, one at a time.
-- A control-plane restart marks interrupted builds as failed; queued builds resume automatically.
-- Retention is configured per project. `0` keeps every preview forever, while a positive value removes the oldest settled previews after each successful build. Running pull request previews are exempt so an open pull request keeps its preview; previews for closed pull requests are stopped first and then age out normally.
-- Preview workspaces are temporary and removed after each build. Images, containers, and logs remain until the preview is deleted or retention removes it.
-- Managed state lives in `dev_projects` and `dev_deployments` in PostgreSQL. Logs live under `VERCELAB_LOGS_DIR/dev`, and temporary clones live under `VERCELAB_APPS_DIR/dev`.
+- live inventory with status and resource usage;
+- inspect panel with full Docker metadata and a live log tail;
+- recreate (pull the latest image and restart with the same configuration);
+- create from a catalog, with registry tag browsing and `traefik`, `host`, or `none` exposure.
 
-Optional tuning:
+### Terminal (`/terminal`)
 
-| Variable                        | Default   | Purpose                                         |
-| ------------------------------- | --------- | ----------------------------------------------- |
-| `VERCELAB_DEV_POLL_INTERVAL_MS` | `60000`   | GitHub polling cadence per auto-deploy project. |
-| `VERCELAB_DEV_BUILD_TIMEOUT_MS` | `1800000` | Maximum duration for a preview Docker build.    |
+An interactive shell with resize, clickable links, copy and paste, and adjustable font size. `pnpm dev` and `pnpm start` launch its WebSocket server next to Next.js.
 
-## Metrics Dashboard
+| `VERCELAB_TERMINAL_TARGET` | Shell                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| `host`                     | Ubuntu host shell through a short-lived privileged Docker helper using `nsenter`. |
+| `container`                | Shell inside the container (macOS installs and the devcontainer).                 |
+| unset, Next.js on macOS    | Your local shell.                                                                 |
 
-The metrics dashboard is the home route (`/`). It displays:
+Locally the WebSocket listens on port `3001` (`3101` in the devcontainer); in production Traefik routes `/terminal/ws` through the dashboard hostname.
 
-- a compact **System Pulse** header for host state, one-minute load, memory, running workloads, and current traffic
-- two focused host telemetry surfaces: **Compute load** for CPU and memory, and **Throughput** for network ingress, network egress, and disk activity
-- a searchable workload table with runtime type, status, CPU, memory, network, and endpoint information
-- contextual workload details with per-container CPU, memory, network, and disk history
-- a shared time-range selector (1 min, 5 min, 15 min, 1 h, 24 h, 7 d, 30 d, 90 d; default 15 min) that applies to InfluxDB history queries
+## Installation
 
-The shell polls `/api/metrics` on a live interval and merges server-side snapshots with historical series. Missing or unavailable provider samples remain explicit instead of being replaced with demo values.
-
-### Workload logos
-
-The workload table resolves an icon per container automatically through `/api/workloads/<container-id>/logo`. Resolution order:
-
-1. the repository of the Vercelab-managed dev preview or deployment that owns the container, using the project build context;
-2. a bundled brand mark for known official images (PostgreSQL, InfluxDB, Traefik, Redis, RabbitMQ, Grafana, Prometheus, ClickHouse, MinIO, MongoDB, MySQL, MariaDB, NGINX, Caddy, Keycloak, Kafka, Elasticsearch/OpenSearch, Portainer, Docker, Node.js, Next.js, Alpine, and more);
-3. the committed logo of a compose project's working directory;
-4. the repository referenced by the image's `org.opencontainers.image.source` label.
-
-Custom apps should commit a logo to their repository. The resolver looks for, in order, `app/icon.{svg,png,ico}` (default Next.js icon convention), `public/{logo,favicon,icon}.*`, `src/app/icon.*`, plus `static/`, `assets/`, and `src/images/` variants at the build-context root. When nothing is found the table keeps its plain workload glyph. Repository lookups are cached in-process for five minutes and can use the configured GitHub token for private repositories.
-
-## Containers Workspace
-
-The containers workspace (`/containers`) shows all containers visible to the host Docker daemon, not just Vercelab-managed apps. Features:
-
-- live container inventory with status indicators and resource usage
-- per-container inspect panel with full Docker metadata
-- per-container log tail with live streaming
-- container recreation (pull latest image and restart with the same config)
-- catalog-based container creation with registry tag browsing and port exposure mode selection (`traefik`, `host`, `none`)
-
-## Terminal Workspace
-
-The terminal workspace (`/terminal`) provides an interactive shell with resize support, clickable links, copy/paste controls, and adjustable font size. `pnpm dev` and `pnpm start` launch the WebSocket server alongside Next.js.
-
-In production, `VERCELAB_TERMINAL_TARGET=host` opens the Ubuntu host shell through a short-lived privileged Docker helper using `nsenter`. In the devcontainer, `VERCELAB_TERMINAL_TARGET=container` runs the shell inside the development container. When Next.js runs directly on macOS, sessions use the local shell.
-
-Local terminal traffic uses `/terminal/ws` on port `3001` (`3101` in the devcontainer). In production, Traefik routes that path through the control-plane HTTPS hostname.
-
-## Server Install (Ubuntu and macOS)
-
-`install.sh` is the single entry point on every supported platform. On Linux it runs the Ubuntu installer below; on macOS it dispatches to `install-macos.sh`. Both paths install everything into Docker, ask for one storage folder, and record what they created in `.vercelab-install-manifest` so `uninstall.sh` can remove exactly that. If you do not provide a custom domain, the Linux installer derives a reachable default base domain from the machine's primary LAN IPv4 using `sslip.io`, for example `10-10-0-36.sslip.io`. On macOS the default base domain is `localhost`, because Docker Desktop cannot publish ports below 1024 to other machines.
+`install.sh` is the single entry point. On Linux it installs directly; on macOS it hands off to `install-macos.sh`. Both ask for one storage folder, write `.env`, generate a wildcard certificate, start the stack, and record what they created in `.vercelab-install-manifest` for `uninstall.sh`.
 
 ```bash
+# Default: clone to ~/vercelab and run the wizard
 curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh | bash
-```
 
-The one-liner proposes `/home/<username>/vercelab` as the clone location and then runs the installer from there. Interactive prompts are restored from `/dev/tty` so the setup wizard works normally.
-
-To override the domain and encryption secret, prefix the installer command with environment variables. This still runs the interactive wizard when a terminal is available:
-
-```bash
+# Custom domain and secret (the wizard still runs when a terminal is available)
 VERCELAB_BASE_DOMAIN=lab.example.com \
 VERCELAB_ADMIN_HOST=vercelab.lab.example.com \
 VERCELAB_ENCRYPTION_SECRET="$(openssl rand -hex 32)" \
 bash <(curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh)
-```
 
-To clone to a different location, set `VERCELAB_INSTALL_DIR`:
-
-```bash
+# Clone somewhere else
 VERCELAB_INSTALL_DIR=/srv/vercelab bash <(curl -fsSL https://raw.githubusercontent.com/dedkola/vercelab/main/install.sh)
-```
 
-If you already have the repository cloned, run the installer directly:
-
-```bash
+# Already cloned
 ./install.sh
 ```
 
-Installer settings in the defaults table below can be exported before running the installer. Terminal and host metrics settings use the Compose defaults unless overridden in the environment or runtime `.env`; `NEXT_PUBLIC_*` settings must be supplied to the Next.js build. On later runs, the installer proposes current `.env` values as defaults unless you override them with environment variables.
+Any variable from the [installer defaults](#configuration) can be exported before running. On later runs the wizard proposes the current `.env` values.
 
-On Ubuntu, the installer:
+### Ubuntu
 
-- installs Node.js and pnpm on the host
-- installs host packages required by the bootstrap scripts
-- installs and pins Docker Engine `28.x` plus the Compose and Buildx plugins
-- runs `pnpm install --frozen-lockfile`, then performs the production build in a clean temporary source copy so runtime data directories are never traced
-- creates a shared host root under `/home/<username>/vercelab` by default
-- auto-generates a reachable default base domain when one is not provided
-- generates a wildcard self-signed certificate for the base domain
-- writes the runtime `.env` file, including derived paths and runtime settings
-- verifies the bundled PostgreSQL credentials after startup and reconciles them with `.env`, so reruns against an existing data directory cannot leave the control plane locked out
-- builds and starts the root Docker and Traefik stack
+The installer:
 
-If you later edit `.env`, rerun `./install.sh` so the stack and wildcard certificate stay aligned with the new domain and paths.
+- installs Node.js, pnpm, and the host packages the bootstrap scripts need;
+- installs and pins Docker Engine `28.x` with the Compose and Buildx plugins;
+- runs `pnpm install --frozen-lockfile` and builds in a clean temporary copy, so runtime data is never traced into the build;
+- creates the storage root (default `/home/<username>/vercelab`);
+- derives a reachable base domain from the primary LAN IPv4 when none is given, such as `10-10-0-36.sslip.io`;
+- generates the wildcard certificate and writes `.env`;
+- starts the stack, then verifies the PostgreSQL credentials and reconciles them with `.env`.
 
 ### macOS
 
-macOS uses the same one-liner. `install.sh` detects `Darwin`, checks for Xcode Command Line Tools (git, curl), and re-executes `install-macos.sh`, which:
+`install.sh` checks for the Xcode Command Line Tools and runs `install-macos.sh`, which:
 
-- verifies Docker Desktop is installed and running, installs and starts it from Homebrew when it is missing, and waits for the daemon, then verifies the Compose plugin (`docker compose version`)
-- installs Homebrew (when missing), Node.js 24, pnpm `11.27.1`, and a Homebrew OpenSSL when the system one cannot create certificates with `-addext`
-- asks once for the storage folder, defaulting to `~/vercelab`, and derives every other path from it
-- generates the wildcard certificate, writes `.env`, and runs `pnpm install --frozen-lockfile` plus the production build smoke test on the host
-- starts the stack with `docker compose -f docker-compose.yml -f docker-compose.macos.yml` and records the install manifest
-- writes `COMPOSE_FILE=docker-compose.yml:docker-compose.macos.yml` into `.env`, so plain `docker compose ps`, `logs`, or `up -d` in the install folder address the same containers the installer created
+- installs and starts Docker Desktop from Homebrew if needed, and checks the Compose plugin;
+- installs Homebrew (if missing), Node.js 24, pnpm `11.27.1`, and a Homebrew OpenSSL when the system one lacks `-addext`;
+- asks once for the storage folder (default `~/vercelab`, which is also the checkout);
+- generates the certificate, writes `.env`, installs dependencies, and runs the production build smoke test;
+- starts the stack with `docker-compose.yml` plus `docker-compose.macos.yml`, and writes `COMPOSE_FILE` into `.env` so plain `docker compose ps`/`logs`/`up -d` target the same containers.
 
-Traefik routes by hostname. The default macOS install binds Traefik to loopback (`127.0.0.1`) on ports 80/443 and uses `localhost` as the base domain, so the dashboard answers on `https://dash.localhost`, the Explorer on `https://influx.localhost`, and every deployed app on `https://<app>.localhost`. macOS resolves `*.localhost` natively, so no `/etc/hosts` or DNS setup is required.
+**Default: loopback only.** Traefik binds `127.0.0.1:80` and `:443` and the base domain is `localhost`, so the dashboard is `https://dash.localhost`, the Explorer is `https://influx.localhost`, and apps are `https://<app>.localhost`. macOS resolves `*.localhost` on its own.
 
-Docker Desktop for macOS never serves published ports below 1024 to other machines: the container is healthy and Traefik listens, but connections from the LAN are reset. That is a Docker Desktop networking limit, not a Traefik, certificate, or DNS problem, and it is why the default install is loopback-only. To reach the stack from a phone or another computer, install with `--lan`, which binds `0.0.0.0`, derives the sslip.io base domain from the LAN IP, and moves Traefik to high ports 8080/8443:
+**LAN mode.** Docker Desktop resets connections from other machines on published ports below 1024, so reaching the stack from another device needs high ports:
 
 ```bash
 ./install.sh --lan
 # Dashboard   : https://dash.192-168-0-155.sslip.io:8443
 # Influx UI   : https://influx.192-168-0-155.sslip.io:8443
-# App Example : https://myapp.192-168-0-155.sslip.io:8443
+# App example : https://myapp.192-168-0-155.sslip.io:8443
 ```
 
-LAN mode records the public HTTPS port in `NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT` and passes it to the Next.js build, so dashboard links and generated app URLs include `:8443`. Both modes finish with a reachability probe against `/api/health` and print a warning when the control plane is not answering on the printed URL.
-
-Ports and binding can be pinned explicitly with `VERCELAB_PROXY_BIND_ADDRESS`, `VERCELAB_HTTP_PORT`, `VERCELAB_HTTPS_PORT`, and `VERCELAB_PUBLIC_HTTPS_PORT`; `VERCELAB_HTTP_PORT`/`VERCELAB_HTTPS_PORT` drive the published Traefik ports, and `VERCELAB_PUBLIC_HTTPS_PORT` only changes the URLs the UI prints.
-
-Overrides work the same way:
-
-```bash
-VERCELAB_HOST_ROOT="$HOME/Sites/vercelab" \
-VERCELAB_BASE_DOMAIN=lab.example.com \
-bash install.sh
-```
-
-macOS differences from the Ubuntu path:
-
-| Topic              | macOS behavior                                                                                                                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Storage folder     | One prompt, default `~/vercelab`. Data, certs, apps, logs, and locks all live underneath it, like the Linux layout.                                                                                                                               |
-| Docker access      | Docker Desktop only. No `sudo`, no `docker` group, and the socket is auto-detected (`~/.docker/run/docker.sock`).                                                                                                                                 |
-| Host metrics       | Docker Desktop does not expose the host `/proc`, so the control plane reads container `/proc` and sets `VERCELAB_HOST_PROC_PATH=/proc`.                                                                                                           |
-| Terminal workspace | `VERCELAB_TERMINAL_TARGET=container` because the host PID namespace is not shared.                                                                                                                                                                |
-| Explorer storage   | Bind mounting the Explorer SQLite file cannot be chowned to uid `1500`, so macOS uses the named volume `vercelab-influxdb-explorer-data` with a one-shot init service. Config stays a read-only bind mount.                                       |
-| Compose version    | `docker-compose.macos.yml` uses the `!override` tag, so Compose `2.24` or newer is required (Docker Desktop ships it).                                                                                                                            |
-| Network exposure   | Loopback-only by default: Traefik publishes `127.0.0.1:80` and `127.0.0.1:443` and the base domain is `localhost`. `--lan` publishes `0.0.0.0:8080` and `0.0.0.0:8443` with an sslip.io base domain.                                              |
-| Low ports          | Under Docker Desktop, published ports below 1024 reject clients other than the host itself, so `--lan` always uses high ports and appends the port to generated URLs.                                                                             |
-| Certificate trust  | Opt in per machine with `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/vercelab/traefik/certs/wildcard.crt`. The certificate covers the configured base domain, including `localhost` and `*.localhost`. |
-
-The default macOS layout puts the storage folder and the git checkout in the same place (`~/vercelab`). Reinstalling is safe: the installer reuses the existing `.env` values, and the uninstaller never deletes the checkout.
-
-## State and Storage
-
-Runtime variables are written to `.env` in the repository root on both platforms. The installer rewrites that file on each successful run and locks it down with `chmod 600`.
-
-Production storage defaults live under `VERCELAB_HOST_ROOT`, which defaults to `/home/<username>/vercelab`. During interactive installs, the wizard proposes the default host root, data root, and managed apps directory so you can change them before `.env` is written:
-
-| Path                                                      | Purpose                                                     |
-| --------------------------------------------------------- | ----------------------------------------------------------- |
-| `/home/<username>/vercelab/data/apps`                     | Cloned deployment repositories and generated compose files. |
-| `/home/<username>/vercelab/data/apps/dev`                 | Temporary preview build workspaces.                         |
-| `/home/<username>/vercelab/data/logs`                     | Deployment logs.                                            |
-| `/home/<username>/vercelab/data/logs/dev`                 | Preview build logs.                                         |
-| `/home/<username>/vercelab/data/locks`                    | Deployment lock files.                                      |
-| `/home/<username>/vercelab/data/postgres`                 | PostgreSQL data directory.                                  |
-| `/home/<username>/vercelab/data/influxdb`                 | InfluxDB 3 Core data directory.                             |
-| `/home/<username>/vercelab/data/influxdb-explorer`        | InfluxDB Explorer SQLite data.                              |
-| `/home/<username>/vercelab/data/influxdb-explorer-config` | Generated Explorer connection config.                       |
-| `/home/<username>/vercelab/traefik/dynamic/tls.yml`       | Traefik TLS dynamic config.                                 |
-| `/home/<username>/vercelab/traefik/certs/wildcard.crt`    | Self-signed wildcard certificate.                           |
-| `/home/<username>/vercelab/traefik/certs/wildcard.key`    | Wildcard certificate private key.                           |
-
-macOS production installs use the same layout, with the storage folder defaulting to `~/vercelab` instead of `/home/<username>/vercelab`:
-
-| Path                                       | Purpose                               |
-| ------------------------------------------ | ------------------------------------- |
-| `~/vercelab/data`                          | Data root.                            |
-| `~/vercelab/data/apps`                     | Cloned deployment repositories.       |
-| `~/vercelab/data/logs`                     | Deployment and preview logs.          |
-| `~/vercelab/data/locks`                    | Deployment lock files.                |
-| `~/vercelab/data/postgres`                 | PostgreSQL data directory.            |
-| `~/vercelab/data/influxdb`                 | InfluxDB 3 Core data directory.       |
-| `~/vercelab/data/influxdb-explorer-config` | Generated Explorer connection config. |
-| `~/vercelab/traefik/dynamic/tls.yml`       | Traefik TLS dynamic config.           |
-| `~/vercelab/traefik/certs/wildcard.crt`    | Self-signed wildcard certificate.     |
-| `~/vercelab/traefik/certs/wildcard.key`    | Wildcard certificate private key.     |
-
-Explorer's SQLite database lives in the `vercelab-influxdb-explorer-data` Docker volume on macOS rather than under `~/vercelab/data/influxdb-explorer`.
-
-Local macOS development stores application and database state under `./data/`:
-
-- `./data/postgres`
-- `./data/influxdb`
-- `./data/traefik/dynamic`
-- `./data/traefik/certs`
-- `./data/apps`
-- `./data/apps/dev`
-- `./data/logs`
-- `./data/logs/dev`
-- `./data/locks`
-
-InfluxDB Explorer 1.9.0 runs as a non-root user. Local development and the devcontainer therefore keep its SQLite database and active config in Docker named volumes; `./data/influxdb-explorer` and `./data/influxdb-explorer-config` are retained as migration/config sources. The first start copies existing Explorer state before assigning the volume to the container user.
-
-## Configuration
-
-Important runtime variables:
-
-| Variable                              | Purpose                                                                                   |
-| ------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `VERCELAB_BASE_DOMAIN`                | Wildcard domain for deployed apps, such as `myhomelan.com`.                               |
-| `VERCELAB_ADMIN_HOST`                 | Full hostname for the control plane, such as `vercelab.myhomelan.com`.                    |
-| `VERCELAB_HOST_ROOT`                  | Shared absolute host path mounted into the app container at the same path.                |
-| `VERCELAB_APPS_DIR`                   | Managed clone and generated compose directory.                                            |
-| `VERCELAB_LOGS_DIR`                   | Deployment log directory.                                                                 |
-| `VERCELAB_LOCKS_DIR`                  | Deployment lock directory.                                                                |
-| `VERCELAB_POSTGRES_DATA_DIR`          | PostgreSQL data directory.                                                                |
-| `VERCELAB_INFLUXDB_DATA_DIR`          | InfluxDB data directory.                                                                  |
-| `VERCELAB_DOCKER_SOCKET_PATH`         | Docker socket passed through to Traefik and the control plane.                            |
-| `VERCELAB_PROXY_NETWORK`              | Shared Docker network used by Traefik and deployed apps.                                  |
-| `VERCELAB_ENCRYPTION_SECRET`          | Secret used to encrypt stored GitHub tokens.                                              |
-| `VERCELAB_GITHUB_TOKEN`               | Optional workspace GitHub token for repository browsing.                                  |
-| `VERCELAB_DEV_POLL_INTERVAL_MS`       | Optional Dev page GitHub polling interval in milliseconds; defaults to 60000.             |
-| `VERCELAB_DEV_BUILD_TIMEOUT_MS`       | Optional maximum preview Docker build duration in milliseconds; defaults to 1800000.      |
-| `VERCELAB_METRICS_SAMPLE_INTERVAL_MS` | Optional host metrics sampling interval in milliseconds; defaults to 10000, minimum 5000. |
-| `VERCELAB_HOST_LAN_IP`                | Host LAN IPv4 shown in the dashboard; in local development also allowed as a dev origin.  |
-| `VERCELAB_HOST_PROC_PATH`             | Host metrics mount inside the app container; defaults to `/host/proc`.                    |
-| `VERCELAB_TERMINAL_TARGET`            | `host` for the production host shell, or `container` for the container shell.             |
-| `VERCELAB_HOST_TERMINAL_IMAGE`        | Optional helper image for host terminal access; defaults to the control-plane image.      |
-| `VERCELAB_TERMINAL_WS_PORT`           | Terminal WebSocket server port; defaults to `3001`.                                       |
-| `NEXT_PUBLIC_TERMINAL_WS_PORT`        | Browser terminal port for localhost; set to `3101` in the devcontainer.                   |
-| `NEXT_PUBLIC_TERMINAL_WS_URL`         | Optional full browser WebSocket URL overriding automatic routing; set before building.    |
+`--lan` binds `0.0.0.0:8080`/`:8443`, derives an sslip.io domain from the LAN IP, and bakes the port into the build as `NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT` so every printed URL includes `:8443`. Both modes finish by probing `/api/health` and warn if the dashboard does not answer.
 
 <details>
-<summary>Default runtime variables written by the installer</summary>
+<summary>Other macOS differences</summary>
 
-| Variable                                    | Default                                                        | Notes                                                                                                  |
-| ------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`                                  | `production`                                                   | Runtime mode for the control plane container.                                                          |
-| `HOSTNAME`                                  | `0.0.0.0`                                                      | Bind address inside the container.                                                                     |
-| `PORT`                                      | `3000`                                                         | Internal port Traefik forwards to.                                                                     |
-| `VERCELAB_BASE_DOMAIN`                      | `localhost` on macOS, on Linux auto-derived as `<ip>.sslip.io` | Base wildcard domain for deployed apps.                                                                |
-| `VERCELAB_ADMIN_HOST`                       | `dash.${VERCELAB_BASE_DOMAIN}`                                 | Control plane hostname.                                                                                |
-| `VERCELAB_PROXY_BIND_ADDRESS`               | `127.0.0.1` (`0.0.0.0` with `--lan`)                           | Host interface Traefik publishes on.                                                                   |
-| `VERCELAB_HTTP_PORT`                        | `80` (`8080` with `--lan`), Linux `80`                         | Host port mapped to Traefik's HTTP entrypoint.                                                         |
-| `VERCELAB_HTTPS_PORT`                       | `443` (`8443` with `--lan`), Linux `443`                       | Host port mapped to Traefik's HTTPS entrypoint.                                                        |
-| `VERCELAB_PUBLIC_HTTPS_PORT`                | empty, else `${VERCELAB_HTTPS_PORT}` when it is not 443        | Port appended to URLs the UI prints; baked into the build as `NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT`. |
-| `VERCELAB_HOST_LAN_IP`                      | auto-derived from host primary LAN IPv4                        | Host LAN IPv4 shown in the dashboard and used to tag host metrics.                                     |
-| `VERCELAB_PROXY_NETWORK`                    | `vercelab_proxy`                                               | Shared Docker network for Traefik and managed apps.                                                    |
-| `VERCELAB_PROXY_ENTRYPOINT`                 | `websecure`                                                    | Traefik HTTPS entrypoint.                                                                              |
-| `VERCELAB_HOST_ROOT`                        | `/home/<username>/vercelab`                                    | Shared host path mounted into the control-plane container at the same absolute path.                   |
-| `VERCELAB_DATA_ROOT`                        | `${VERCELAB_HOST_ROOT}/data`                                   | Parent directory for apps, logs, locks, and databases.                                                 |
-| `VERCELAB_TRAEFIK_DYNAMIC_DIR`              | `${VERCELAB_HOST_ROOT}/traefik/dynamic`                        | Generated Traefik dynamic config location.                                                             |
-| `VERCELAB_TRAEFIK_CERTS_DIR`                | `${VERCELAB_HOST_ROOT}/traefik/certs`                          | Wildcard certificate and key.                                                                          |
-| `VERCELAB_APPS_DIR`                         | `${VERCELAB_DATA_ROOT}/apps`                                   | Cloned app repositories.                                                                               |
-| `VERCELAB_LOGS_DIR`                         | `${VERCELAB_DATA_ROOT}/logs`                                   | Deployment logs.                                                                                       |
-| `VERCELAB_LOCKS_DIR`                        | `${VERCELAB_DATA_ROOT}/locks`                                  | Deployment lock files.                                                                                 |
-| `VERCELAB_POSTGRES_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/postgres`                               | PostgreSQL data directory.                                                                             |
-| `VERCELAB_INFLUXDB_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/influxdb`                               | InfluxDB 3 Core data directory.                                                                        |
-| `VERCELAB_INFLUXDB_EXPLORER_DATA_DIR`       | `${VERCELAB_DATA_ROOT}/influxdb-explorer`                      | InfluxDB Explorer SQLite data directory.                                                               |
-| `VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR`     | `${VERCELAB_DATA_ROOT}/influxdb-explorer-config`               | Generated Explorer connection config directory.                                                        |
-| `VERCELAB_DOCKER_SOCKET_PATH`               | `/var/run/docker.sock`                                         | Host Docker socket passed into Traefik and the control plane.                                          |
-| `VERCELAB_DATABASE_PROVIDER`                | `postgres`                                                     | PostgreSQL is required in this stack.                                                                  |
-| `VERCELAB_POSTGRES_URL`                     | `postgres://vercelab:...@vercelab-postgres:5432/vercelab`      | Control-plane relational database connection URL.                                                      |
-| `VERCELAB_POSTGRES_USER`                    | `vercelab`                                                     | Postgres container username.                                                                           |
-| `VERCELAB_POSTGRES_PASSWORD`                | generated by installer                                         | Postgres container password.                                                                           |
-| `VERCELAB_POSTGRES_DB`                      | `vercelab`                                                     | Postgres database name.                                                                                |
-| `VERCELAB_INFLUXDB_URL`                     | `http://influxdb:8181`                                         | InfluxDB 3 Core write endpoint.                                                                        |
-| `VERCELAB_INFLUXDB_DATABASE`                | `vercelab_metrics`                                             | InfluxDB database for metrics.                                                                         |
-| `VERCELAB_INFLUXDB_EXPLORER_HOST`           | `influx.${VERCELAB_BASE_DOMAIN}`                               | Public Explorer hostname routed through Traefik.                                                       |
-| `VERCELAB_INFLUXDB_EXPLORER_URL`            | `https://${VERCELAB_INFLUXDB_EXPLORER_HOST}`                   | Canonical Explorer URL surfaced in the UI.                                                             |
-| `VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET` | generated by installer                                         | Explorer session key for persistent sessions.                                                          |
-| `VERCELAB_INFLUXDB_TOKEN`                   | generated by installer when empty                              | InfluxDB API token used for authenticated write/query access.                                          |
-| `VERCELAB_INFLUXDB_RETENTION_DAYS`          | `90`                                                           | Desired metrics retention period.                                                                      |
-| `VERCELAB_ENCRYPTION_SECRET`                | generated 64-hex-character secret when unset                   | Used to encrypt stored GitHub tokens.                                                                  |
+| Topic             | macOS behavior                                                                                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker access     | Docker Desktop only: no `sudo`, no `docker` group, socket auto-detected at `~/.docker/run/docker.sock`.                                                              |
+| Host metrics      | Docker Desktop hides the host `/proc`, so the control plane reads container `/proc` (`VERCELAB_HOST_PROC_PATH=/proc`).                                               |
+| Terminal          | `VERCELAB_TERMINAL_TARGET=container`, because the host PID namespace is not shared.                                                                                  |
+| Explorer storage  | The SQLite file cannot be chowned to uid `1500` on a bind mount, so it lives in the `vercelab-influxdb-explorer-data` volume with a one-shot init service.           |
+| Compose version   | `docker-compose.macos.yml` uses `!override`, which needs Compose `2.24` or newer.                                                                                    |
+| Ports             | Pin with `VERCELAB_PROXY_BIND_ADDRESS`, `VERCELAB_HTTP_PORT`, `VERCELAB_HTTPS_PORT`; `VERCELAB_PUBLIC_HTTPS_PORT` only changes printed URLs.                         |
+| Certificate trust | `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/vercelab/traefik/certs/wildcard.crt` (covers `localhost` and `*.localhost`). |
 
 </details>
 
-## Runtime Files
+### Storage layout
 
-| File                               | Role                                                                            |
-| ---------------------------------- | ------------------------------------------------------------------------------- |
-| `.env.example`                     | Template for the production stack.                                              |
-| `.env.local`                       | Local macOS dev environment generated by `pnpm run setup-env`; gitignored.      |
-| `.env`                             | Generated production runtime configuration written by `install.sh`; gitignored. |
-| `docker-compose.yml`               | Production stack: Traefik, Postgres, InfluxDB, Explorer, and control plane.     |
-| `docker-compose.dev.yml`           | Local macOS infrastructure stack without the control-plane container.           |
-| `.devcontainer/docker-compose.yml` | Fully isolated VS Code devcontainer stack.                                      |
-| `scripts/setup-env.sh`             | Interactive `.env.local` generator.                                             |
-| `Dockerfile`                       | Standalone Next.js production image with Git and Docker CLI tooling.            |
-| `install.sh`                       | Entry point on every platform; runs the Ubuntu install or dispatches to macOS.  |
-| `install-macos.sh`                 | macOS installer: Docker Desktop, Homebrew tools, TLS assets, control plane.     |
-| `docker-compose.macos.yml`         | macOS override for mounts, host metrics, and Explorer volume storage.           |
-| `.vercelab-install-manifest`       | Record of what the installer created, read by `uninstall.sh`; gitignored.       |
-| `uninstall.sh`                     | Manifest-driven removal with `--purge`, `--purge-images`, and `--all` modes.    |
+Everything lives under `VERCELAB_HOST_ROOT` (`/home/<username>/vercelab` on Linux, `~/vercelab` on macOS). `.env` is written to the repository root with `chmod 600`.
 
-## Health and Readiness
+| Path under the root                | Contents                                               |
+| ---------------------------------- | ------------------------------------------------------ |
+| `data/apps`                        | Cloned repositories and generated Compose files        |
+| `data/apps/dev`                    | Temporary preview build workspaces                     |
+| `data/logs`, `data/logs/dev`       | Deployment and preview logs                            |
+| `data/locks`                       | Deployment lock files                                  |
+| `data/postgres`                    | PostgreSQL data                                        |
+| `data/influxdb`                    | InfluxDB 3 Core data                                   |
+| `data/influxdb-explorer`           | Explorer SQLite data (Linux; a Docker volume on macOS) |
+| `data/influxdb-explorer-config`    | Generated Explorer connection config                   |
+| `traefik/dynamic/tls.yml`          | Traefik TLS config                                     |
+| `traefik/certs/wildcard.{crt,key}` | Self-signed wildcard certificate and key               |
 
-`/api/health` reports platform checks and a separate database health result. In production, blocking platform checks cover:
+## Operations
 
-- the Docker socket exists
-- the Docker daemon is reachable
-- the Docker Compose and Buildx plugins are installed
-- managed directories are writable
-- `VERCELAB_HOST_ROOT` aligns with all managed paths
-- the host metrics mount is available
-- a PostgreSQL connection URL is configured
-- the encryption secret is not the default placeholder
+### Core containers
 
-The route returns HTTP `503` when a blocking platform check fails, and `200` otherwise. A placeholder base domain is reported as a warning. Database connectivity is reported separately and does not determine the HTTP status. The Compose control-plane healthcheck probes `/` for liveness rather than `/api/health`.
-
-## Recreate the UI Container
-
-The Vercelab UI runs as the `control-plane` service in `docker-compose.yml`, with container name `vercelab-ui`.
-
-Core stack container names:
-
-- `vercelab-ui`
-- `vercelab-influxdb`
-- `vercelab-influxdb-explorer`
-- `vercelab-postgres`
-
-Rebuild and recreate only the UI container:
-
-```bash
-docker compose up -d --build --no-deps control-plane
-```
-
-or
-
-```bash
-docker compose build --no-cache control-plane
-docker compose up -d --force-recreate --no-deps control-plane
-```
-
-Force a recreate without rebuilding:
-
-```bash
-docker compose up -d --force-recreate --no-deps control-plane
-```
-
-Useful checks:
+The stack runs `vercelab-ui` (the `control-plane` Compose service), `vercelab-postgres`, `vercelab-influxdb`, `vercelab-influxdb-explorer`, and Traefik.
 
 ```bash
 docker compose ps
 docker compose logs -f control-plane
-docker logs -f vercelab-ui
 ```
 
-If you changed `.env`, domains, certificates, or host paths, rerun `./install.sh` instead so generated runtime config and TLS assets stay aligned.
-
-## Reinstall
-
-For an in-place reinstall, keep current data and rerun:
+### Update or rebuild
 
 ```bash
-./install.sh
+git pull
+./install.sh                                        # recommended: rebuilds and keeps config aligned
+
+docker compose up -d --build --no-deps control-plane       # rebuild only the UI
+docker compose up -d --force-recreate --no-deps control-plane  # recreate without rebuilding
 ```
 
-Use that path after editing `.env`, changing the domain, changing storage paths, or pulling a newer version of Vercelab. The installer rebuilds the stack, refreshes the generated `.env`, reconciles the PostgreSQL role password with that file, and regenerates the wildcard certificate when the base domain changes.
+Rerun `./install.sh` after editing `.env`, changing the domain or storage paths, or pulling a new version. It rebuilds the stack, refreshes `.env`, reconciles the PostgreSQL password, and regenerates the certificate when the domain changes.
 
-For a clean reinstall:
+### Health
 
-```bash
-./uninstall.sh --purge
-./install.sh
-```
+`/api/health` returns `503` when a blocking check fails and `200` otherwise. Blocking checks in production: Docker socket present, daemon reachable, Compose and Buildx installed, managed directories writable, `VERCELAB_HOST_ROOT` covering every managed path, host metrics mount present, PostgreSQL URL configured, and a non-default encryption secret. A placeholder base domain is a warning, and database connectivity is reported separately. The Compose healthcheck probes `/` for liveness.
 
-On macOS the default storage folder is also the checkout (`~/vercelab`). `--purge` removes the data, certificate, and config folders plus `.env`, keeps the checkout, and the next `./install.sh` recreates the runtime state.
+### Uninstall
 
-## Uninstall
+`uninstall.sh` reads `.vercelab-install-manifest` and removes only what the installer created. It never removes the git checkout.
 
-`uninstall.sh` removes only what the installer created. It reads `.vercelab-install-manifest` (written by `install.sh` and `install-macos.sh`) and touches nothing else: no Docker, no Homebrew itself, no git, and never the git checkout.
+| Command                                 | Removes                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `./uninstall.sh`                        | The control plane and managed app containers. Keeps `.env`, data, certificates, volumes.   |
+| `./uninstall.sh --purge`                | Also the storage folders, `.env`, and the manifest.                                        |
+| `./uninstall.sh --purge --purge-images` | Also Docker images labeled for Vercelab Compose projects.                                  |
+| `./uninstall.sh --all`                  | Also host tooling the installer added (Node.js, pnpm, Homebrew formulas, build artifacts). |
+| `./uninstall.sh --all --remove-docker`  | Linux only: also Docker Engine.                                                            |
 
-Stop and remove the Vercelab control plane plus all managed deployment containers while keeping generated `.env`, certificates, databases, cloned apps, and Docker volumes:
+Docker is never removed implicitly, Docker Desktop and Homebrew are always kept on macOS, anything that existed before the install is left alone, and `/`, `$HOME`, or any path containing the checkout is refused. For a clean reinstall run `./uninstall.sh --purge` and then `./install.sh`.
 
-```bash
-chmod +x uninstall.sh
-./uninstall.sh
-```
+### Troubleshooting
 
-Remove the storage folders the installer created (data, Postgres, InfluxDB, Explorer config, apps, logs, locks, certificates) plus the generated `.env` and the manifest itself:
-
-```bash
-./uninstall.sh --purge
-```
-
-Also remove Docker images labeled for Vercelab compose projects:
-
-```bash
-./uninstall.sh --purge --purge-images
-```
-
-Also remove the host tooling the installer added — Node.js, pnpm, Homebrew formulas it installed, and local `node_modules`/`.next` build artifacts:
-
-```bash
-./uninstall.sh --all
-```
-
-On Linux, removing Docker Engine is a separate, explicit opt-in:
-
-```bash
-./uninstall.sh --all --remove-docker
-```
-
-Guarantees:
-
-- Docker is never removed automatically. `--all` deliberately excludes it, and on macOS Docker Desktop is always kept (remove the app manually if you want it gone).
-- Homebrew itself is kept on macOS, even when the installer installed it, because other tools depend on it; the uninstaller prints the official uninstall command instead.
-- Anything that already existed on the machine before the install — Docker, git, curl, Node.js, pnpm, Homebrew formulas — is left alone, because the manifest only records what the install added.
-- Removal targets must be specific absolute paths. `/`, `$HOME`, and any path that contains the git checkout are refused, so the default macOS layout (`~/vercelab` is both checkout and storage folder) cannot delete the repository.
-- Without `--purge`, `.env`, the storage folders, the database, and Docker volumes are kept, and the manifest stays so a later `--purge` still knows what to remove.
-
-## Operational Notes
-
-### Shared Host Root
-
-Vercelab talks to the host Docker daemon through the Docker socket. Docker build contexts and bind mounts referenced by deployment compose files must therefore exist at the same absolute path on both the host and inside the control-plane container.
-
-The root stack handles this by mounting `VERCELAB_HOST_ROOT` into the container at the exact same absolute path. Keep deployment workspaces, logs, locks, PostgreSQL data, and InfluxDB data under that root.
-
-### PostgreSQL Credentials
-
-PostgreSQL only applies `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` when it initializes an empty data directory. A data directory that already exists under `VERCELAB_POSTGRES_DATA_DIR` keeps its original credentials, even if `install.sh` later writes a new password to `.env`.
-
-To make that safe, `install.sh` verifies the credentials after the stack starts and reconciles them automatically: it detects the mismatch, resets the `VERCELAB_POSTGRES_USER` role password to `VERCELAB_POSTGRES_PASSWORD`, creates `VERCELAB_POSTGRES_DB` when it is missing, and fails with guidance if the data directory belongs to a different superuser. Rerunning `./install.sh` therefore repairs a stack that reports `password authentication failed for user "vercelab"`.
-
-To repair a running stack without rerunning the installer:
+**`password authentication failed for user "vercelab"`.** PostgreSQL only applies its credentials when it initializes an empty data directory, so an existing `data/postgres` keeps its original password. Rerun `./install.sh` to reconcile it, or fix it in place:
 
 ```bash
 docker compose exec -T postgres psql -U vercelab -d postgres \
   -c "ALTER ROLE vercelab WITH LOGIN PASSWORD '$(grep ^VERCELAB_POSTGRES_PASSWORD= .env | cut -d= -f2-)';"
 ```
 
-Replacing the password instead of reconciling it requires removing the data directory, which deletes all Vercelab state:
+Starting over instead (`docker compose down`, delete `data/postgres`, `./install.sh`) erases all Vercelab state.
+
+**Certificate warnings.** Import `traefik/certs/wildcard.crt` into your browser or system trust store.
+
+**Deployments cannot find their files.** Vercelab drives the host Docker daemon through its socket, so build contexts and bind mounts must exist at the same absolute path on the host and in the control-plane container. The stack mounts `VERCELAB_HOST_ROOT` at the identical path; keep workspaces, logs, locks, and databases under it.
+
+## Configuration
+
+The installer writes `.env`; `.env.example` is the template. The most important variables:
+
+| Variable                              | Purpose                                                                      |
+| ------------------------------------- | ---------------------------------------------------------------------------- |
+| `VERCELAB_BASE_DOMAIN`                | Wildcard domain for apps, such as `myhomelan.com`.                           |
+| `VERCELAB_ADMIN_HOST`                 | Dashboard hostname, such as `dash.myhomelan.com`.                            |
+| `VERCELAB_HOST_ROOT`                  | Storage root, mounted into the container at the same path.                   |
+| `VERCELAB_ENCRYPTION_SECRET`          | Encrypts stored GitHub tokens.                                               |
+| `VERCELAB_GITHUB_TOKEN`               | Optional default GitHub token.                                               |
+| `VERCELAB_DOCKER_SOCKET_PATH`         | Docker socket for Traefik and the control plane.                             |
+| `VERCELAB_PROXY_NETWORK`              | Shared Docker network for Traefik and apps.                                  |
+| `VERCELAB_HOST_LAN_IP`                | LAN IPv4 shown in the dashboard; allowed as a dev origin during development. |
+| `VERCELAB_TERMINAL_TARGET`            | `host` or `container`.                                                       |
+| `VERCELAB_DEV_POLL_INTERVAL_MS`       | Dev preview polling interval (default `60000`).                              |
+| `VERCELAB_DEV_BUILD_TIMEOUT_MS`       | Maximum preview build time (default `1800000`).                              |
+| `VERCELAB_METRICS_SAMPLE_INTERVAL_MS` | Host metrics sampling interval (default `10000`, minimum `5000`).            |
+| `NEXT_PUBLIC_TERMINAL_WS_URL`         | Optional full terminal WebSocket URL; set before building.                   |
+
+`NEXT_PUBLIC_*` values are baked in at build time, so rebuild after changing them.
+
+<details>
+<summary>All installer defaults</summary>
+
+| Variable                                    | Default                                                   | Notes                                                                              |
+| ------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `NODE_ENV`                                  | `production`                                              |                                                                                    |
+| `HOSTNAME` / `PORT`                         | `0.0.0.0` / `3000`                                        | Bind address and the internal port Traefik forwards to.                            |
+| `VERCELAB_BASE_DOMAIN`                      | `localhost` on macOS, `<ip>.sslip.io` on Linux            |                                                                                    |
+| `VERCELAB_ADMIN_HOST`                       | `dash.${VERCELAB_BASE_DOMAIN}`                            |                                                                                    |
+| `VERCELAB_PROXY_BIND_ADDRESS`               | `127.0.0.1` (`0.0.0.0` with `--lan`)                      | Host interface Traefik publishes on.                                               |
+| `VERCELAB_HTTP_PORT`                        | `80` (`8080` with `--lan`)                                |                                                                                    |
+| `VERCELAB_HTTPS_PORT`                       | `443` (`8443` with `--lan`)                               |                                                                                    |
+| `VERCELAB_PUBLIC_HTTPS_PORT`                | empty, or the HTTPS port when it is not 443               | Built in as `NEXT_PUBLIC_VERCELAB_PUBLIC_HTTPS_PORT`.                              |
+| `VERCELAB_HOST_LAN_IP`                      | primary LAN IPv4                                          | Also tags host metrics.                                                            |
+| `VERCELAB_PROXY_NETWORK`                    | `vercelab_proxy`                                          |                                                                                    |
+| `VERCELAB_PROXY_ENTRYPOINT`                 | `websecure`                                               |                                                                                    |
+| `VERCELAB_HOST_ROOT`                        | `/home/<username>/vercelab`                               | `~/vercelab` on macOS.                                                             |
+| `VERCELAB_DATA_ROOT`                        | `${VERCELAB_HOST_ROOT}/data`                              |                                                                                    |
+| `VERCELAB_TRAEFIK_DYNAMIC_DIR`              | `${VERCELAB_HOST_ROOT}/traefik/dynamic`                   |                                                                                    |
+| `VERCELAB_TRAEFIK_CERTS_DIR`                | `${VERCELAB_HOST_ROOT}/traefik/certs`                     |                                                                                    |
+| `VERCELAB_APPS_DIR`                         | `${VERCELAB_DATA_ROOT}/apps`                              |                                                                                    |
+| `VERCELAB_LOGS_DIR`                         | `${VERCELAB_DATA_ROOT}/logs`                              |                                                                                    |
+| `VERCELAB_LOCKS_DIR`                        | `${VERCELAB_DATA_ROOT}/locks`                             |                                                                                    |
+| `VERCELAB_POSTGRES_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/postgres`                          |                                                                                    |
+| `VERCELAB_INFLUXDB_DATA_DIR`                | `${VERCELAB_DATA_ROOT}/influxdb`                          |                                                                                    |
+| `VERCELAB_INFLUXDB_EXPLORER_DATA_DIR`       | `${VERCELAB_DATA_ROOT}/influxdb-explorer`                 |                                                                                    |
+| `VERCELAB_INFLUXDB_EXPLORER_CONFIG_DIR`     | `${VERCELAB_DATA_ROOT}/influxdb-explorer-config`          |                                                                                    |
+| `VERCELAB_DOCKER_SOCKET_PATH`               | `/var/run/docker.sock`                                    |                                                                                    |
+| `VERCELAB_DATABASE_PROVIDER`                | `postgres`                                                | PostgreSQL is required.                                                            |
+| `VERCELAB_POSTGRES_URL`                     | `postgres://vercelab:...@vercelab-postgres:5432/vercelab` |                                                                                    |
+| `VERCELAB_POSTGRES_USER` / `_DB`            | `vercelab` / `vercelab`                                   |                                                                                    |
+| `VERCELAB_POSTGRES_PASSWORD`                | generated                                                 |                                                                                    |
+| `VERCELAB_INFLUXDB_URL`                     | `http://influxdb:8181`                                    |                                                                                    |
+| `VERCELAB_INFLUXDB_DATABASE`                | `vercelab_metrics`                                        |                                                                                    |
+| `VERCELAB_INFLUXDB_TOKEN`                   | generated when empty                                      |                                                                                    |
+| `VERCELAB_INFLUXDB_RETENTION_DAYS`          | `90`                                                      |                                                                                    |
+| `VERCELAB_INFLUXDB_EXPLORER_HOST`           | `influx.${VERCELAB_BASE_DOMAIN}`                          |                                                                                    |
+| `VERCELAB_INFLUXDB_EXPLORER_URL`            | `https://${VERCELAB_INFLUXDB_EXPLORER_HOST}`              | Shown in the UI.                                                                   |
+| `VERCELAB_INFLUXDB_EXPLORER_SESSION_SECRET` | generated                                                 |                                                                                    |
+| `VERCELAB_ENCRYPTION_SECRET`                | generated 64-character hex secret                         |                                                                                    |
+| `VERCELAB_HOST_PROC_PATH`                   | `/host/proc`                                              | Host metrics mount inside the container.                                           |
+| `VERCELAB_HOST_TERMINAL_IMAGE`              | the control-plane image                                   | Helper image for host terminal access.                                             |
+| `VERCELAB_TERMINAL_WS_PORT`                 | `3001`                                                    | `NEXT_PUBLIC_TERMINAL_WS_PORT` sets the browser side (`3101` in the devcontainer). |
+
+</details>
+
+## Local development
+
+Requirements: Node.js 24, pnpm 11.27.1, Docker with the Compose plugin. Two isolated setups are supported and can run side by side.
+
+### Host (macOS)
+
+Infrastructure runs in Docker; Next.js runs on the host. Data lives in `./data/` inside the repository.
 
 ```bash
-docker compose down
-sudo rm -rf /home/<username>/vercelab/data/postgres
-./install.sh
+pnpm install --frozen-lockfile
+pnpm run setup-env      # writes .env.local: LAN IP, Docker socket, random secrets
+pnpm run dev:infra      # Postgres, InfluxDB, Explorer, Traefik
+pnpm run dev            # Next.js and the terminal WebSocket server
+pnpm run dev:infra:down # stop the infrastructure
 ```
 
-### Certificates
+`dev:infra` passes `.env.local` to Compose, so Postgres starts with the same credentials the app uses.
 
-The installer writes the wildcard certificate to `VERCELAB_TRAEFIK_CERTS_DIR/wildcard.crt`. Import that certificate into your workstation or browser trust store if you want to remove self-signed certificate warnings on your LAN.
+### VS Code devcontainer
 
-### Security
+Open the repository in VS Code and choose **Reopen in Container**. Dependencies install automatically and the post-start script bootstraps InfluxDB and Explorer. Then run `pnpm run dev` and open `http://localhost:3100`. Terminal sessions run inside the container.
 
-- GitHub tokens stored in the control plane are encrypted at rest with `VERCELAB_ENCRYPTION_SECRET`.
-- `.env`, `.env.local`, and runtime data directories should stay out of version control.
-- The project is intended for trusted homelab or LAN environments. Put it behind your own authentication, VPN, or access controls before exposing it to the public internet.
+| Resource           | Host                      | Devcontainer                |
+| ------------------ | ------------------------- | --------------------------- |
+| App                | `http://localhost:3000`   | `http://localhost:3100`     |
+| Terminal WebSocket | `localhost:3001`          | `localhost:3101`            |
+| Postgres           | `localhost:5432`          | not exposed                 |
+| InfluxDB API       | `http://localhost:8181`   | not exposed                 |
+| InfluxDB Explorer  | `http://influx.localhost` | `http://localhost:8888`     |
+| Traefik            | `:80`, dashboard `:8088`  | none                        |
+| Docker network     | `vercelab_dev_proxy`      | `vercelab_devcontainer_net` |
 
-## Development Notes
+### Tips
 
-`.github/workflows/ci.yml` runs lint, typecheck, unused-code, formatting, test, and build checks on every pull request and on pushes to `main`. Dependabot opens weekly npm and GitHub Actions update pull requests, and `.github/workflows/dependabot-auto-merge.yml` enables auto-merge for non-major updates; mark the CI `Lint, test, and build` check as required in the `main` branch protection rules so those merges wait for it to pass. Pushing a `v*` tag that matches `package.json` runs `.github/workflows/release.yml` to publish a GitHub release.
+- **Port 80 is busy.** The local Traefik binds port 80, so stop a production Vercelab stack on the same machine first (`docker compose down` in its install folder).
+- **Postgres password mismatch.** Changing the password in `.env.local` does not change an existing `./data/postgres`. Delete that folder to start fresh.
+- **Open from another device.** Keep `VERCELAB_HOST_LAN_IP` in `.env.local`; `next.config.ts` adds it to `allowedDevOrigins`.
+- **"Module not found" for a route that no longer exists.** Clear the stale Turbopack cache with `rm -rf .next/dev` and restart.
 
-Shared workspace types live in `lib/workspace-types.ts`. Every page under `app/(workspace)` renders inside `WorkspaceChromeShell`, which owns the header, live metrics polling, the selected time range, and the GitHub repository list; page shells read that state through `useWorkspaceChrome()`.
+### Commands
 
-Before opening a pull request, run:
+| Command                               | Purpose                                                        |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `pnpm run dev` / `pnpm run start`     | Run Next.js (dev or built) with the terminal WebSocket server. |
+| `pnpm run build`                      | Production build, plus the standalone bundle check.            |
+| `pnpm run lint`                       | ESLint.                                                        |
+| `pnpm run typecheck`                  | TypeScript, including unused locals.                           |
+| `pnpm run check:unused`               | knip: unused files, exports, and dependencies.                 |
+| `pnpm run test` / `pnpm run test:run` | Vitest in watch mode / once.                                   |
+| `pnpm run format` / `format:check`    | Prettier write / check.                                        |
 
-```bash
-pnpm run lint
-pnpm run typecheck
-pnpm run check:unused
-pnpm run test:run
-pnpm run build
-```
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, knip, format check, tests, and build on every pull request and on pushes to `main`. Run the same commands before opening a pull request. Dependabot opens weekly npm and GitHub Actions updates and auto-merges non-major ones, and pushing a `v*` tag that matches `package.json` publishes a GitHub release.
 
-`pnpm run build` also runs the standalone bundle verifier used by the Docker image.
+## Project layout
+
+| Path                       | Contents                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `app/(workspace)/`         | The five pages. All render inside `WorkspaceChromeShell`.                              |
+| `app/api/`                 | Route handlers for metrics, deployments, dev previews, containers, GitHub, and health. |
+| `components/*-shell.tsx`   | Page shells (`metrics-dashboard`, `git-app-page`, `dev`, `containers`).                |
+| `components/workspace/`    | Page sections, the shared header and footer, and `workspace-chrome-shell.tsx`.         |
+| `components/ui/`           | Shared primitives (button, input, popover, charts).                                    |
+| `lib/`                     | Server logic: Docker runtime, deployment engine, dev worker, metrics, persistence.     |
+| `lib/workspace-types.ts`   | Types shared across pages.                                                             |
+| `server/terminal-ws.mjs`   | Terminal WebSocket server.                                                             |
+| `scripts/`                 | `setup-env`, local infrastructure, InfluxDB bootstrap, and build verification scripts. |
+| `index.html`, `prototype/` | Static promotional page and interactive workspace preview.                             |
+
+`WorkspaceChromeShell` owns the header, live metrics polling, the selected time range, and the GitHub repository list; page shells read that state with `useWorkspaceChrome()`.
+
+| File                             | Role                                                      |
+| -------------------------------- | --------------------------------------------------------- |
+| `Dockerfile`                     | Standalone Next.js image with git and the Docker CLI.     |
+| `docker-compose.yml`             | Production stack.                                         |
+| `docker-compose.macos.yml`       | macOS override (mounts, metrics, Explorer volume, ports). |
+| `docker-compose.dev.yml`         | Local infrastructure without the control plane.           |
+| `.devcontainer/`                 | VS Code devcontainer stack.                               |
+| `install.sh`, `install-macos.sh` | Installers.                                               |
+| `uninstall.sh`                   | Manifest-driven removal.                                  |
+| `.env.example`                   | Production configuration template.                        |
+
+## Security
+
+- GitHub tokens and webhook secrets are encrypted at rest with `VERCELAB_ENCRYPTION_SECRET`.
+- Keep `.env`, `.env.local`, and `data/` out of version control (they are gitignored).
+- Vercelab is built for trusted homelab and LAN networks and has no login of its own. Put it behind your own authentication, VPN, or access controls before exposing it to the internet.
