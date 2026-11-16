@@ -649,24 +649,72 @@ detect_docker_socket() {
   printf '%s' ""
 }
 
-warn_if_ports_busy() {
+compose_project_name() {
+  local project=""
+  project="$(read_env_value COMPOSE_PROJECT_NAME)"
+
+  if [[ -z "$project" && -f "$COMPOSE_FILE" ]]; then
+    project="$(awk '$1 == "name:" { print $2; exit }' "$COMPOSE_FILE" 2>/dev/null || true)"
+  fi
+
+  printf '%s' "${project:-vercelab}"
+}
+
+# Traefik publishes 80 and 443, so a foreign listener makes the stack fail.
+# Refuse up front instead of bootstrapping everything and failing at start.
+ensure_ports_available() {
   local port=""
+  local project=""
   local listeners=""
+  local owners=""
+  local foreign_names=""
+  local foreign_projects=""
+  local other_project=""
 
   if ! command_exists lsof; then
     return 0
   fi
 
+  project="$(compose_project_name)"
+
   for port in 80 443; do
     listeners="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NR > 1 { print $1 }' | sort -u | tr '\n' ' ' || true)"
 
-    if [[ -n "$listeners" ]]; then
-      if docker_daemon_reachable && [[ -n "$(docker ps --filter "publish=$port" --format '{{.Names}}' 2>/dev/null || true)" ]]; then
-        log "Port ${port} is already bound by this Docker stack."
-      else
-        warn "Port ${port} is already in use by: ${listeners% }. Traefik will fail to bind it."
-      fi
+    [[ -n "$listeners" ]] || continue
+
+    owners=""
+    if docker_daemon_reachable; then
+      owners="$(docker ps --filter "publish=$port" --format '{{.Label "com.docker.compose.project"}}|{{.Names}}' 2>/dev/null || true)"
     fi
+
+    # Containers of this very stack are recreated by `compose up`, so they do
+    # not block a reinstall.
+    foreign_names="$(printf '%s\n' "$owners" | awk -F'|' -v own="$project" 'NF && $1 != own { print $2 }' | tr '\n' ' ')"
+    foreign_projects="$(printf '%s\n' "$owners" | awk -F'|' -v own="$project" 'NF && $1 != own && $1 != "" { print $1 }' | sort -u | tr '\n' ' ')"
+
+    if [[ -z "${foreign_names// /}" ]]; then
+      if [[ -n "${owners// /}" ]]; then
+        log "Port ${port} is already bound by this Vercelab stack; its containers will be recreated."
+        continue
+      fi
+
+      warn "Port ${port} is required by the Traefik proxy but is already in use by: ${listeners% }."
+      warn "Stop that process and run the installer again."
+
+      return 1
+    fi
+
+    warn "Port ${port} is required by the Traefik proxy but is already in use by: ${foreign_names% }."
+
+    if [[ -n "${foreign_projects// /}" ]]; then
+      for other_project in $foreign_projects; do
+        warn "Stop that Vercelab stack first: docker compose -p ${other_project} down"
+      done
+    else
+      warn "Stop that container and run the installer again."
+    fi
+
+    return 1
   done
 }
 
@@ -1038,9 +1086,28 @@ run_host_build_smoke_test() {
 }
 
 start_stack() {
+  local stale_services=()
+  local service=""
+  local up_args=(-d --build)
+
   log "Starting the Vercelab control plane stack."
 
-  if ! run_compose up -d --build; then
+  # Containers left behind by an interrupted start stay in the `created` state
+  # and Docker reuses them without wiring their published ports, so recreate
+  # exactly those services instead of starting a broken container.
+  while IFS= read -r service; do
+    if [[ -n "$service" ]]; then
+      stale_services[${#stale_services[@]}]="$service"
+    fi
+  done < <(run_compose ps -a --format '{{.Service}} {{.State}}' 2>/dev/null | awk '$2 == "created" { print $1 }' || true)
+
+  if (( ${#stale_services[@]} > 0 )); then
+    log "Recreating containers left over from an interrupted start: ${stale_services[*]}"
+    up_args+=(--force-recreate)
+    up_args+=("${stale_services[@]}")
+  fi
+
+  if ! run_compose up "${up_args[@]}"; then
     docker compose logs --tail=40 control-plane >&2 2>/dev/null || true
     fail "The stack did not start. Inspect it with: docker compose -f docker-compose.yml -f docker-compose.macos.yml logs"
   fi
@@ -1357,6 +1424,8 @@ main() {
 
   ensure_supported_host
   ensure_repo_layout
+  # Fail before touching dependencies if Traefik cannot bind its ports.
+  ensure_ports_available || exit 1
   ensure_homebrew
   ensure_git
   ensure_openssl
@@ -1371,7 +1440,6 @@ main() {
 
   COMPOSE_ARGS=(-f "$COMPOSE_FILE" -f "$MACOS_COMPOSE_FILE")
   validate_docker_socket
-  warn_if_ports_busy
 
   prepare_host_directories
   write_env_file
