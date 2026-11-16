@@ -237,10 +237,12 @@ export function DevDeploymentsContent({
               className="rounded-[7px] bg-[var(--surface-subtle)] px-2.5 py-1.5"
               key={stat.label}
             >
-              <div className="font-mono text-2xs uppercase tracking-[0.06em] text-[var(--quiet)]">
+              <div className="text-2xs font-medium tracking-[0.06em] text-[var(--muted-ink)] uppercase">
                 {stat.label}
               </div>
-              <div className={cn('text-sm font-semibold', stat.tone)}>{stat.value}</div>
+              <div className={cn('mt-0.5 text-base font-semibold tabular-nums', stat.tone)}>
+                {stat.value}
+              </div>
             </div>
           ))}
         </div>
@@ -367,7 +369,7 @@ export function DevDeploymentsContent({
               </div>
             ) : null}
 
-            <div className="hidden grid-cols-[1.25rem_minmax(0,1fr)_9rem_12rem_8.5rem] items-center gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-3 py-2 font-mono text-2xs uppercase tracking-[0.06em] text-[var(--quiet)] lg:grid">
+            <div className="hidden grid-cols-[1.25rem_minmax(0,1fr)_9.5rem_minmax(9rem,13rem)_11.5rem] h-9 items-center gap-3 border-b border-[var(--hairline)] bg-[var(--surface-subtle)] px-4 text-2xs font-medium tracking-[0.06em] whitespace-nowrap text-[var(--muted-ink)] uppercase lg:grid">
               <SelectionCheckbox
                 ariaLabel="Select all previews"
                 checked={allSelected}
@@ -397,10 +399,10 @@ export function DevDeploymentsContent({
                 return (
                   <div
                     className={cn(
-                      'grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-2 gap-y-2 px-3 py-3 transition-colors lg:grid-cols-[1.25rem_minmax(0,1fr)_9rem_12rem_8.5rem] lg:items-center lg:gap-3',
+                      'grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-2 gap-y-2 px-4 py-3 transition-colors duration-150 lg:min-h-14 lg:grid-cols-[1.25rem_minmax(0,1fr)_9.5rem_minmax(9rem,13rem)_11.5rem] lg:items-center lg:gap-3',
                       isSelected
-                        ? 'bg-[color-mix(in_srgb,var(--blue-soft)_60%,white)]'
-                        : 'hover:bg-[color-mix(in_srgb,var(--surface-subtle)_55%,white)]'
+                        ? 'bg-[color-mix(in_srgb,var(--blue-soft)_55%,white)] shadow-[inset_3px_0_0_var(--blue)]'
+                        : 'hover:bg-[var(--surface-subtle)]'
                     )}
                     key={deployment.id}
                   >
@@ -500,14 +502,14 @@ export function DevDeploymentsContent({
 
                     <div className="col-span-2 min-w-0 lg:col-span-1">
                       <a
-                        className="inline-flex max-w-full items-center gap-1 truncate font-mono text-2xs text-[var(--blue)] hover:underline"
+                        className="flex min-w-0 max-w-full items-center gap-1 font-mono text-xs tracking-[-0.01em] text-[var(--blue)] underline-offset-2 hover:underline"
                         href={previewUrl}
                         rel="noopener noreferrer"
                         target="_blank"
                         title={previewUrl}
                       >
                         <span className="truncate">{previewUrl.replace(/^https?:\/\//, '')}</span>
-                        <ArrowSquareOut aria-hidden="true" className="size-3 shrink-0" />
+                        <ArrowSquareOut aria-hidden="true" className="size-3 shrink-0 opacity-70" />
                       </a>
                     </div>
 

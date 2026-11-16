@@ -2,7 +2,6 @@
 
 import { type ReactNode } from 'react';
 import {
-  ArrowUpRight,
   Cube as Box,
   CaretRight as ChevronRight,
   Stack as Layers3,
@@ -10,12 +9,28 @@ import {
   X,
 } from '@phosphor-icons/react';
 
+import {
+  CellStack,
+  DataTable,
+  DataTableActionsHead,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableHeaderRow,
+  DataTableRow,
+  EntityCell,
+  getInitials,
+  InitialsAvatar,
+  RouteLink,
+  RowActionButton,
+  StatusPill,
+  type StatusTone,
+} from '@/components/workspace/data-table';
 import { WorkspaceDialog } from '@/components/workspace/workspace-dialog';
 import { SegmentedControl } from '@/components/workspace/segmented-control';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ContainerListEntry } from '@/components/workspace-shell';
-import { cn } from '@/lib/utils';
 
 export type ContainerStatusFilter = 'all' | 'running' | 'attention';
 
@@ -37,27 +52,6 @@ type ContainersInventoryContentProps = {
   statusFilter: ContainerStatusFilter;
   totalContainersCount: number;
 };
-
-const CONTAINER_TONES = [
-  'border-[var(--blue)]/20 bg-[var(--blue-soft)] text-[var(--blue)]',
-  'border-[var(--orange)]/25 bg-[var(--orange-soft)] text-[var(--orange)]',
-  'border-[var(--purple)]/20 bg-[var(--purple-soft)] text-[var(--purple)]',
-  'border-[var(--green)]/20 bg-[var(--green-soft)] text-[var(--green)]',
-];
-
-function getContainerInitials(name: string) {
-  const words = name.split(/[-_\s]+/).filter(Boolean);
-
-  if (words.length > 1) {
-    return words
-      .slice(0, 2)
-      .map((word) => word[0])
-      .join('')
-      .toUpperCase();
-  }
-
-  return name.slice(0, 2).toUpperCase();
-}
 
 function getContainerState(container: ContainerListEntry) {
   if (container.runtime?.health === 'unhealthy') {
@@ -87,16 +81,11 @@ function getContainerState(container: ContainerListEntry) {
   return { label: 'Stopped', tone: 'stopped' as const };
 }
 
-function getStateClassName(tone: ReturnType<typeof getContainerState>['tone']) {
-  switch (tone) {
-    case 'running':
-      return 'text-[var(--green)]';
-    case 'attention':
-      return 'text-[var(--orange)]';
-    case 'stopped':
-      return 'text-[var(--quiet)]';
-  }
-}
+const STATE_TONE: Record<ReturnType<typeof getContainerState>['tone'], StatusTone> = {
+  attention: 'warning',
+  running: 'success',
+  stopped: 'neutral',
+};
 
 function getStackLabel(container: ContainerListEntry) {
   return container.runtime?.projectName ?? container.display.stack ?? 'standalone';
@@ -230,161 +219,109 @@ export function ContainersInventoryContent({
           />
         </header>
 
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse">
-            <caption className="sr-only">Docker containers and current runtime state</caption>
-            <colgroup>
-              <col className="w-auto" />
-              <col className="w-[7rem] max-[760px]:w-[6.75rem]" />
-              <col className="w-[17%] max-[760px]:hidden" />
-              <col className="w-[21%] max-[760px]:hidden" />
-              <col className="w-[16%] max-[960px]:hidden" />
-              <col className="w-[12%] max-[760px]:hidden" />
-              <col className="w-[5.75rem] max-[760px]:w-[5.25rem]" />
-            </colgroup>
-            <thead className="bg-[var(--surface-subtle)]">
-              <tr className="h-9 border-b border-[var(--hairline)]">
-                {['Container', 'State', 'Stack', 'I/O', 'Route', 'Load'].map((label, index) => (
-                  <th
-                    className={cn(
-                      'px-3 text-left font-mono text-2xs font-semibold tracking-[0.08em] text-[var(--quiet)] uppercase',
-                      index >= 2 && index <= 3 && 'max-[760px]:hidden',
-                      index === 4 && 'max-[960px]:hidden',
-                      index === 5 && 'max-[760px]:hidden'
-                    )}
-                    key={label}
-                    scope="col"
-                  >
-                    {label}
-                  </th>
-                ))}
-                <th scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {containers.map((container, index) => {
-                const state = getContainerState(container);
-                const route = getRoute(container);
+        <DataTable caption="Docker containers and current runtime state">
+          <colgroup>
+            <col className="w-auto" />
+            <col className="w-[8.5rem] max-[760px]:w-[7.5rem]" />
+            <col className="w-[16%] max-[760px]:hidden" />
+            <col className="w-[18%] max-[960px]:hidden" />
+            <col className="w-[8rem] max-[760px]:hidden" />
+            <col className="w-[8rem] max-[760px]:hidden" />
+            <col className="w-[6.5rem]" />
+          </colgroup>
+          <DataTableHeaderRow>
+            <DataTableHead>Container</DataTableHead>
+            <DataTableHead>State</DataTableHead>
+            <DataTableHead className="max-[760px]:hidden">Stack</DataTableHead>
+            <DataTableHead className="max-[960px]:hidden">Route</DataTableHead>
+            <DataTableHead align="right" className="max-[760px]:hidden">
+              I/O
+            </DataTableHead>
+            <DataTableHead align="right" className="max-[760px]:hidden">
+              Load
+            </DataTableHead>
+            <DataTableActionsHead />
+          </DataTableHeaderRow>
+          <tbody>
+            {containers.map((container, index) => {
+              const state = getContainerState(container);
+              const route = getRoute(container);
 
-                return (
-                  <tr
-                    aria-label={`Manage ${container.sidebarName}`}
-                    className={cn(
-                      'group h-[58px] cursor-pointer border-b border-[var(--hairline)] outline-none transition-colors last:border-b-0 hover:bg-[#f8fafc] focus-visible:ring-2 focus-visible:ring-[var(--blue)] focus-visible:ring-inset',
-                      selectedContainerId === container.display.id &&
-                        'bg-[color-mix(in_srgb,var(--blue-soft)_34%,white)]'
-                    )}
-                    key={container.display.id}
-                    onClick={() => onContainerSelectAction(container.display.id)}
-                    onKeyDown={(event) => {
-                      if (event.target !== event.currentTarget) return;
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        onContainerSelectAction(container.display.id);
+              return (
+                <DataTableRow
+                  key={container.display.id}
+                  label={`Manage ${container.sidebarName}`}
+                  onSelectAction={() => onContainerSelectAction(container.display.id)}
+                  selected={selectedContainerId === container.display.id}
+                >
+                  <DataTableCell>
+                    <EntityCell
+                      avatar={
+                        <InitialsAvatar
+                          initials={getInitials(container.sidebarName)}
+                          toneIndex={index}
+                        />
                       }
-                    }}
-                    tabIndex={0}
-                  >
-                    <td className="px-3 py-1.5">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span
-                          className={cn(
-                            'grid size-8 shrink-0 place-items-center rounded-[7px] border font-mono text-2xs font-bold',
-                            CONTAINER_TONES[index % CONTAINER_TONES.length]
-                          )}
-                        >
-                          {getContainerInitials(container.sidebarName)}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-body font-semibold tracking-[-0.01em]">
-                            {container.sidebarName}
-                          </span>
-                          <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
-                            {container.display.id.slice(0, 12)}
-                          </span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-1.5">
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.04em] uppercase',
-                          getStateClassName(state.tone)
-                        )}
-                      >
-                        <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
-                        {state.label}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 max-[760px]:hidden">
-                      <span className="block truncate font-mono text-xs text-foreground">
-                        {getStackLabel(container)}
-                      </span>
-                      <span className="mt-0.5 block truncate font-mono text-2xs text-[var(--quiet)]">
-                        {getServiceLabel(container)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 max-[760px]:hidden">
-                      <span className="block whitespace-nowrap font-mono text-xs text-[var(--muted-ink)]">
-                        Net {formatBytesPerSecond(container.runtime?.networkTotalBytesPerSecond)}
-                      </span>
-                      <span className="mt-0.5 block whitespace-nowrap font-mono text-2xs text-[var(--quiet)]">
-                        Disk {formatBytesPerSecond(container.runtime?.diskTotalBytesPerSecond)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1.5 max-[960px]:hidden">
-                      {route.href && route.label ? (
-                        <a
-                          className="inline-flex max-w-full items-center gap-1 truncate font-mono text-xs text-[var(--blue)] underline-offset-2 hover:underline"
-                          href={route.href}
-                          onClick={(event) => event.stopPropagation()}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <span className="truncate">{route.label}</span>
-                          <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
-                        </a>
-                      ) : (
-                        <span className="font-mono text-xs text-[var(--quiet)]">not routed</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-1.5 max-[760px]:hidden">
-                      <span className="block whitespace-nowrap font-mono text-xs text-[var(--muted-ink)]">
-                        {container.display.cpu || '—'} CPU
-                      </span>
-                      <span className="mt-0.5 block whitespace-nowrap font-mono text-2xs text-[var(--quiet)]">
-                        {container.display.memory || 'No sample'}
-                      </span>
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      <Button
-                        className="group-hover:border-[var(--hairline-strong)]"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onContainerSelectAction(container.display.id);
-                        }}
-                        type="button"
-                        variant="secondary"
-                      >
-                        Manage
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      name={container.sidebarName}
+                      subtitle={container.display.id.slice(0, 12)}
+                    />
+                  </DataTableCell>
+                  <DataTableCell>
+                    <StatusPill label={state.label} tone={STATE_TONE[state.tone]} />
+                  </DataTableCell>
+                  <DataTableCell className="max-[760px]:hidden">
+                    <CellStack
+                      primary={getStackLabel(container)}
+                      secondary={getServiceLabel(container)}
+                    />
+                  </DataTableCell>
+                  <DataTableCell className="max-[960px]:hidden">
+                    <RouteLink href={route.href} label={route.label} />
+                  </DataTableCell>
+                  <DataTableCell align="right" className="max-[760px]:hidden">
+                    <CellStack
+                      primary={
+                        <>
+                          <span className="text-[var(--quiet)]">net </span>
+                          {formatBytesPerSecond(container.runtime?.networkTotalBytesPerSecond)}
+                        </>
+                      }
+                      secondary={
+                        <>disk {formatBytesPerSecond(container.runtime?.diskTotalBytesPerSecond)}</>
+                      }
+                    />
+                  </DataTableCell>
+                  <DataTableCell align="right" className="max-[760px]:hidden">
+                    <CellStack
+                      primary={
+                        <>
+                          {container.display.cpu || '—'}
+                          <span className="text-[var(--quiet)]"> cpu</span>
+                        </>
+                      }
+                      secondary={container.display.memory || 'no sample'}
+                    />
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActionButton
+                      onClickAction={() => onContainerSelectAction(container.display.id)}
+                    >
+                      Manage
+                    </RowActionButton>
+                  </DataTableCell>
+                </DataTableRow>
+              );
+            })}
+          </tbody>
+        </DataTable>
 
-          {containers.length === 0 ? (
-            <div className="px-4 py-10 text-center font-mono text-body text-[var(--quiet)]">
-              {totalContainersCount === 0
-                ? 'No containers available. Create a container or check the Docker connection.'
-                : 'No containers match this view.'}
-            </div>
-          ) : null}
-        </div>
+        {containers.length === 0 ? (
+          <DataTableEmpty>
+            {totalContainersCount === 0
+              ? 'No containers available. Create a container or check the Docker connection.'
+              : 'No containers match this view.'}
+          </DataTableEmpty>
+        ) : null}
       </section>
 
       {isCreatePanelOpen ? (

@@ -425,7 +425,7 @@ describe('MetricsDashboardShell', () => {
     expect(screen.getByRole('columnheader', { name: /endpoint/i })).toBeVisible();
     const controlPlaneRow = screen.getByRole('row', { name: /control-plane.*running/i });
     expect(within(controlPlaneRow).getByText('ctr')).toBeVisible();
-    expect(within(controlPlaneRow).getByText('Running')).toHaveClass('uppercase');
+    expect(within(controlPlaneRow).getByText('Running')).toBeVisible();
     expect(within(controlPlaneRow).getByText('not routed')).toBeVisible();
     expect(screen.getAllByTestId('echart-surface').length).toBe(2);
   });
