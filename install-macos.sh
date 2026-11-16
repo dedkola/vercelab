@@ -1000,6 +1000,14 @@ EOF
   chmod 644 "$config_file"
 }
 
+validate_compose_files() {
+  local output=""
+
+  if ! output="$(run_compose config --quiet 2>&1)"; then
+    fail "Docker Compose cannot read the generated configuration: ${output}"
+  fi
+}
+
 write_env_file() {
   log "Writing $ENV_FILE"
 
@@ -1008,7 +1016,7 @@ NODE_ENV=$NODE_ENV
 HOSTNAME=$CONTROL_PLANE_HOSTNAME
 PORT=$PORT
 
-# macOS runs the stack through the override file, so plain `docker compose`
+# macOS runs the stack through the override file, so plain docker compose
 # commands in this directory address the same containers the installer made.
 COMPOSE_FILE=docker-compose.yml:docker-compose.macos.yml
 
@@ -1454,6 +1462,7 @@ main() {
 
   prepare_host_directories
   write_env_file
+  validate_compose_files
   write_tls_config
   ensure_certificate
   write_influx_explorer_config
