@@ -9,7 +9,7 @@
 Deploy GitHub projects with Docker, route them through Traefik,<br />
 and monitor your host from a single dashboard.
 
-[Quick start](#quick-start) · [Features](#features) · [Installation](#installation) · [Configuration](#configuration) · [Development](#local-development)
+[Quick start](#quick-start) · [Features](#features) · [Installation](#installation) · [Configuration](#configuration) · [Development](#development)
 
 [![CI](https://github.com/dedkola/vercelab/actions/workflows/ci.yml/badge.svg)](https://github.com/dedkola/vercelab/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/package-json/v/dedkola/vercelab?style=flat-square&color=111827)](https://github.com/dedkola/vercelab/releases)
@@ -26,26 +26,12 @@ and monitor your host from a single dashboard.
 
 Vercelab turns an Ubuntu server or a Mac with Docker into a compact deployment workspace for Dockerized GitHub projects. From one interface you can deploy repositories, build a preview for every commit, operate any container on the host, open a shell, and follow live host telemetry.
 
-It is designed for a single trusted host on a home or lab network:
+It is built for a single trusted host on a home or lab network:
 
 - **One command to install.** The installer sets up Docker, generates a wildcard certificate, and starts the stack.
 - **No external services.** State lives in PostgreSQL and metrics in InfluxDB 3 Core, both running next to the control plane.
 - **Real URLs for every app.** Each deployment is published behind Traefik on your wildcard domain over HTTPS.
 - **Secrets stay encrypted.** GitHub tokens and webhook secrets are encrypted at rest.
-
-## Contents
-
-- [Features](#features)
-- [How it works](#how-it-works)
-- [Requirements](#requirements)
-- [Quick start](#quick-start)
-- [Using Vercelab](#using-vercelab)
-- [Installation](#installation)
-- [Operations](#operations)
-- [Configuration](#configuration)
-- [Local development](#local-development)
-- [Project layout](#project-layout)
-- [Security](#security)
 
 ## Features
 
@@ -134,63 +120,42 @@ pnpm run dev:infra
 pnpm run dev
 ```
 
-Then open `http://localhost:3000`. See [Local development](#local-development) for details.
+Then open `http://localhost:3000`. See [Development](#development) for details.
 
-## Using Vercelab
+## Usage
 
-Vercelab has five pages, all reachable from the header. Add a GitHub personal access token from the settings popover in the header first: it is encrypted with `VERCELAB_ENCRYPTION_SECRET` and used to list repositories, branches, and commits.
+Vercelab has five pages, all reachable from the header. Add a GitHub personal access token from the settings popover first: it is encrypted with `VERCELAB_ENCRYPTION_SECRET` and used to list repositories, branches, and commits.
 
-| Page                                 | Route           | Purpose                                         |
-| ------------------------------------ | --------------- | ----------------------------------------------- |
-| [Overview](#overview-)               | `/`             | Host telemetry and the workload table.          |
-| [Apps](#apps-git-app-page)           | `/git-app-page` | Deploy and manage GitHub repositories.          |
-| [Dev previews](#dev-previews-dev)    | `/dev`          | Per-commit and per-pull-request preview builds. |
-| [Containers](#containers-containers) | `/containers`   | Inventory and lifecycle of every container.     |
-| [Terminal](#terminal-terminal)       | `/terminal`     | Interactive shell.                              |
+| Page                          | Route           | Purpose                                         |
+| ----------------------------- | --------------- | ----------------------------------------------- |
+| [Overview](#overview)         | `/`             | Host telemetry and the workload table.          |
+| [Apps](#apps)                 | `/git-app-page` | Deploy and manage GitHub repositories.          |
+| [Dev previews](#dev-previews) | `/dev`          | Per-commit and per-pull-request preview builds. |
+| [Containers](#containers)     | `/containers`   | Inventory and lifecycle of every container.     |
+| [Terminal](#terminal)         | `/terminal`     | Interactive shell.                              |
 
-### Overview (`/`)
+### Overview
 
 - **System Pulse**: host state, one-minute load, memory, running workloads, and current traffic.
 - **Compute load** (CPU and memory) and **Throughput** (network in/out and disk) charts.
-- **Workloads**: every container with runtime type, status, CPU, memory, network, endpoint, and start/stop/restart actions. Select a row for per-container CPU, memory, network, and disk history.
-- A shared time range (1 min to 90 days, default 15 min) applies to all InfluxDB history queries.
+- **Workloads**: every container with runtime type, status, CPU, memory, network, endpoint, and start/stop/restart actions. Select a row for per-container history.
+- A shared time range (1 min to 90 days, default 15 min) applies to all history queries. Missing samples stay visible as gaps; the dashboard never fills them with demo data.
 
-Missing samples stay visible as gaps; the dashboard never fills them with demo data.
+### Apps
 
-**Workload logos** are resolved per container through `/api/workloads/<id>/logo`, in this order:
-
-1. The repository of the Vercelab deployment or dev preview that owns the container.
-2. A bundled mark for well-known images (PostgreSQL, InfluxDB, Traefik, Redis, Grafana, NGINX, Node.js, and more).
-3. A logo committed in the Compose project's working directory.
-4. The repository in the image's `org.opencontainers.image.source` label.
-
-To give your own app a logo, commit `app/icon.{svg,png,ico}` or `public/{logo,favicon,icon}.*` (also `src/app/`, `static/`, `assets/`, and `src/images/`) at the build-context root. Lookups are cached for five minutes.
-
-### Apps (`/git-app-page`)
-
-1. Choose a repository and branch, then **Review deploy**.
-2. Vercelab clones the repository into the managed apps directory.
-3. It detects `Dockerfile`, `docker-compose.yml`, `docker-compose.yaml`, `compose.yml`, or `compose.yaml` at the repository root.
-4. It writes a Vercelab-managed Compose override with Traefik labels and the shared proxy network.
-5. It runs Docker Compose, captures the operation log, and records the deployment in PostgreSQL.
+Choose a repository and branch, then **Review deploy**. Vercelab clones the repository, detects a root `Dockerfile`, `docker-compose.yml`, `docker-compose.yaml`, `compose.yml`, or `compose.yaml`, writes a managed Compose override with Traefik labels and the shared proxy network, runs Docker Compose, and records the deployment in PostgreSQL with its operation log.
 
 Multi-service Compose projects need a `serviceName`; single-service projects are detected automatically. For Dockerfile projects, the multiline `KEY=VALUE` environment is passed both as runtime variables and as build args.
 
-**Deployment files.** The app manager's **Files** tab uploads supporting files such as `.env` or `k3s.config` (5 MB each). Files are stored under `.vercelab-files/<deploymentId>` in the apps directory and copied into the workspace after every clone or pull, so they survive redeploys.
+**Deployment files.** The app manager's **Files** tab uploads supporting files such as `.env` or `k3s.config` (5 MB each). Files are stored under `.vercelab-files/<deploymentId>` in the apps directory and copied into the workspace after every clone or pull, so they survive redeploys. `.env` and `.env.*` default to `0600`, everything else to `0644`. Redeploy after changing files or permissions to recreate the containers.
 
-- **Private** (`0600`) is the default for `.env` and `.env.*`.
-- **Container-readable** (`0644`) is the default for everything else.
-
-Redeploy after changing files or permissions to recreate the containers.
-
-### Dev previews (`/dev`)
+### Dev previews
 
 The Dev workspace builds commits into their own image and container. Previews are fully separate from Apps deployments and never touch them.
 
-1. Select **Connect repository**.
-2. Choose the repository, branch, preview prefix, Dockerfile path, build context, container port, environment, and optional build args.
-3. Enable automatic previews, and optionally **Auto-deploy open pull requests**.
-4. Push a commit. Vercelab picks it up within 60 seconds by polling, or immediately through an optional signed webhook.
+1. Select **Connect repository** and choose the repository, branch, preview prefix, Dockerfile path, build context, container port, environment, and optional build args.
+2. Enable automatic previews, and optionally **Auto-deploy open pull requests**.
+3. Push a commit. Vercelab picks it up within 60 seconds by polling, or immediately through an optional signed webhook.
 
 Each preview gets its own URL:
 
@@ -198,47 +163,29 @@ Each preview gets its own URL:
 <preview-prefix>-<short-sha>.<VERCELAB_BASE_DOMAIN>     e.g. https://blade-a1b2c3d.home.com
 ```
 
-`VERCELAB_PROXY_ENTRYPOINT=web` produces `http://` URLs (local development); `websecure` produces HTTPS URLs.
-
-Each preview records its commit, author, build status, container status, build log, container log, and URL, and can be opened, stopped, started, restarted, retried, or deleted. Deleting a preview removes its container, image, workspace, and build log.
+`VERCELAB_PROXY_ENTRYPOINT=web` produces `http://` URLs (local development); `websecure` produces HTTPS URLs. Each preview records its commit, author, build status, container status, build log, container log, and URL, and can be opened, stopped, started, restarted, retried, or deleted. Deleting a preview removes its container, image, workspace, and build log.
 
 <details>
 <summary>Pull request previews, commit detection, and retention</summary>
 
-**Pull request previews.** With **Auto-deploy open pull requests** enabled, each poll and each **Sync now**:
+**Pull request previews.** With **Auto-deploy open pull requests** enabled, each poll and each **Sync now** builds every open pull request whose head commit has not been built, rebuilds on new commits, restarts a stopped preview while its pull request is open, and stops the preview once the pull request closes. Builds fetch `refs/pull/<number>/head`, so pull requests from forks work as long as the token can read the base repository. Pull request previews show a `PR #<number>` badge linking back to GitHub.
 
-- builds every open pull request whose head commit has not been built, and rebuilds on new commits;
-- restarts a stopped preview while its pull request is still open;
-- stops the preview once the pull request closes.
+**Commit detection.** Polling is on by default and works on private or LAN-only hosts. The webhook is optional: add one in GitHub for the `push` event with `application/json`, and Vercelab verifies `X-Hub-Signature-256`. Polling stays on as a fallback. **Sync now**, **Deploy latest**, and **Deploy commit** cover manual deploys.
 
-Builds fetch `refs/pull/<number>/head`, so pull requests from forks work as long as the token can read the base repository. Pull request previews show a `PR #<number>` badge linking back to GitHub.
-
-**Commit detection.**
-
-- **Polling** is on by default and works on private or LAN-only hosts.
-- **Webhook** is optional. Each project has a payload URL and an encrypted secret. In GitHub, add a webhook for the `push` event with `application/json`; Vercelab verifies `X-Hub-Signature-256`. Polling stays on as a fallback.
-- **Manual**: `Sync now`, `Deploy latest`, and `Deploy commit` for recent commits.
-
-**Lifecycle and storage.**
-
-- Images are tagged `vercelab-dev-<prefix>:<full-sha>`; containers are named `vercelab-dev-<prefix>-<short-sha>`, use `unless-stopped`, and publish no host ports.
-- Builds run one at a time from a PostgreSQL-backed queue. A restart marks interrupted builds as failed and resumes queued ones.
-- Retention is per project: `0` keeps every preview; a positive value removes the oldest settled previews after each successful build. Running pull request previews are exempt.
-- Build workspaces are temporary (`VERCELAB_APPS_DIR/dev`); logs live in `VERCELAB_LOGS_DIR/dev`; state lives in the `dev_projects` and `dev_deployments` tables.
-- Previews use a root or subdirectory Dockerfile. Compose-only repositories are not supported for previews yet.
+**Builds and retention.** Images are tagged `vercelab-dev-<prefix>:<full-sha>` and containers named `vercelab-dev-<prefix>-<short-sha>`, running `unless-stopped` without published host ports. Builds run one at a time from a PostgreSQL-backed queue; a restart marks interrupted builds as failed and resumes queued ones. Retention is per project: `0` keeps every preview, a positive value removes the oldest settled previews after each successful build, and running pull request previews are exempt. Build workspaces are temporary (`VERCELAB_APPS_DIR/dev`), logs live in `VERCELAB_LOGS_DIR/dev`, and state lives in the `dev_projects` and `dev_deployments` tables. Compose-only repositories are not supported for previews yet.
 
 </details>
 
-### Containers (`/containers`)
+### Containers
 
 Every container visible to the host Docker daemon, not only Vercelab-managed ones:
 
 - live inventory with status and resource usage;
 - inspect panel with full Docker metadata and a live log tail;
-- recreate (pull the latest image and restart with the same configuration);
+- recreate: pull the latest image and restart with the same configuration;
 - create from a catalog, with registry tag browsing and `traefik`, `host`, or `none` exposure.
 
-### Terminal (`/terminal`)
+### Terminal
 
 An interactive shell with resize, clickable links, copy and paste, and adjustable font size. `pnpm dev` and `pnpm start` launch its WebSocket server next to Next.js.
 
@@ -252,7 +199,7 @@ Locally the WebSocket listens on port `3001` (`3101` in the devcontainer); in pr
 
 ## Installation
 
-`install.sh` is the single entry point. On Linux it installs directly; on macOS it hands off to `install-macos.sh`. Both ask for one storage folder, write `.env`, generate a wildcard certificate, start the stack, and record what they created in `.vercelab-install-manifest` for `uninstall.sh`.
+`install.sh` is the single entry point: on Linux it installs directly, on macOS it hands off to `install-macos.sh`. Both ask for one storage folder, write `.env`, generate a wildcard certificate, start the stack, and record what they created in `.vercelab-install-manifest` for `uninstall.sh`.
 
 ```bash
 # Default: clone to ~/vercelab and run the wizard
@@ -282,18 +229,11 @@ The installer:
 - runs `pnpm install --frozen-lockfile` and builds in a clean temporary copy, so runtime data is never traced into the build;
 - creates the storage root (default `/home/<username>/vercelab`);
 - derives a reachable base domain from the primary LAN IPv4 when none is given, such as `10-10-0-36.sslip.io`;
-- generates the wildcard certificate and writes `.env`;
-- starts the stack, then verifies the PostgreSQL credentials and reconciles them with `.env`.
+- generates the wildcard certificate, writes `.env`, starts the stack, then verifies the PostgreSQL credentials and reconciles them with `.env`.
 
 ### macOS
 
-`install.sh` checks for the Xcode Command Line Tools and runs `install-macos.sh`, which:
-
-- installs and starts Docker Desktop from Homebrew if needed, and checks the Compose plugin;
-- installs Homebrew (if missing), Node.js 24, pnpm `11.27.1`, and a Homebrew OpenSSL when the system one lacks `-addext`;
-- asks once for the storage folder (default `~/vercelab`, which is also the checkout);
-- generates the certificate, writes `.env`, installs dependencies, and runs the production build smoke test;
-- starts the stack with `docker-compose.yml` plus `docker-compose.macos.yml`, and writes `COMPOSE_FILE` into `.env` so plain `docker compose ps`/`logs`/`up -d` target the same containers.
+`install.sh` checks for the Xcode Command Line Tools and runs `install-macos.sh`, which installs and starts Docker Desktop from Homebrew if needed, adds Node.js 24, pnpm `11.27.1`, and a Homebrew OpenSSL when the system one lacks `-addext`, generates the certificate, writes `.env`, runs a production build smoke test, and starts the stack with `docker-compose.yml` plus `docker-compose.macos.yml` (writing `COMPOSE_FILE` into `.env` so plain `docker compose ps`/`logs`/`up -d` target the same containers).
 
 **Default: loopback only.** Traefik binds `127.0.0.1:80` and `:443` and the base domain is `localhost`, so the dashboard is `https://dash.localhost`, the Explorer is `https://influx.localhost`, and apps are `https://<app>.localhost`. macOS resolves `*.localhost` on its own.
 
@@ -342,7 +282,7 @@ Everything lives under `VERCELAB_HOST_ROOT` (`/home/<username>/vercelab` on Linu
 
 ## Operations
 
-### Core containers
+### Stack
 
 The stack runs `vercelab-ui` (the `control-plane` Compose service), `vercelab-postgres`, `vercelab-influxdb`, `vercelab-influxdb-explorer`, and Traefik.
 
@@ -355,13 +295,15 @@ docker compose logs -f control-plane
 
 ```bash
 git pull
-./install.sh                                        # recommended: rebuilds and keeps config aligned
-
-docker compose up -d --build --no-deps control-plane       # rebuild only the UI
-docker compose up -d --force-recreate --no-deps control-plane  # recreate without rebuilding
+./install.sh   # recommended: rebuilds and keeps config aligned
 ```
 
-Rerun `./install.sh` after editing `.env`, changing the domain or storage paths, or pulling a new version. It rebuilds the stack, refreshes `.env`, reconciles the PostgreSQL password, and regenerates the certificate when the domain changes.
+Rerun `./install.sh` after editing `.env`, changing the domain or storage paths, or pulling a new version: it rebuilds the stack, refreshes `.env`, reconciles the PostgreSQL password, and regenerates the certificate when the domain changes. To touch only the UI:
+
+```bash
+docker compose up -d --build --no-deps control-plane          # rebuild only the UI
+docker compose up -d --force-recreate --no-deps control-plane # recreate without rebuilding
+```
 
 ### Health
 
@@ -464,11 +406,11 @@ The installer writes `.env`; `.env.example` is the template. The most important 
 
 </details>
 
-## Local development
+## Development
 
 Requirements: Node.js 24, pnpm 11.27.1, Docker with the Compose plugin. Two isolated setups are supported and can run side by side.
 
-### Host (macOS)
+### On the host (macOS)
 
 Infrastructure runs in Docker; Next.js runs on the host. Data lives in `./data/` inside the repository.
 
@@ -517,33 +459,29 @@ Open the repository in VS Code and choose **Reopen in Container**. Dependencies 
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, knip, format check, tests, and build on every pull request and on pushes to `main`. Run the same commands before opening a pull request. Dependabot opens weekly npm and GitHub Actions updates and auto-merges non-major ones, and pushing a `v*` tag that matches `package.json` publishes a GitHub release.
 
-## Project layout
+### Project layout
 
-| Path                       | Contents                                                                               |
-| -------------------------- | -------------------------------------------------------------------------------------- |
-| `app/(workspace)/`         | The five pages. All render inside `WorkspaceChromeShell`.                              |
-| `app/api/`                 | Route handlers for metrics, deployments, dev previews, containers, GitHub, and health. |
-| `components/*-shell.tsx`   | Page shells (`metrics-dashboard`, `git-app-page`, `dev`, `containers`).                |
-| `components/workspace/`    | Page sections, the shared header and footer, and `workspace-chrome-shell.tsx`.         |
-| `components/ui/`           | Shared primitives (button, input, popover, charts).                                    |
-| `lib/`                     | Server logic: Docker runtime, deployment engine, dev worker, metrics, persistence.     |
-| `lib/workspace-types.ts`   | Types shared across pages.                                                             |
-| `server/terminal-ws.mjs`   | Terminal WebSocket server.                                                             |
-| `scripts/`                 | `setup-env`, local infrastructure, InfluxDB bootstrap, and build verification scripts. |
-| `index.html`, `prototype/` | Static promotional page and interactive workspace preview.                             |
+| Path                             | Contents                                                                           |
+| -------------------------------- | ---------------------------------------------------------------------------------- |
+| `app/(workspace)/`               | The five pages, rendered inside `WorkspaceChromeShell`.                            |
+| `app/api/`                       | Route handlers for metrics, deployments, dev previews, containers, GitHub, health. |
+| `components/*-shell.tsx`         | Page shells (`metrics-dashboard`, `git-app-page`, `dev`, `containers`).            |
+| `components/workspace/`          | Page sections, the shared header and footer, `workspace-chrome-shell.tsx`.         |
+| `components/ui/`                 | Shared primitives (button, input, popover, charts).                                |
+| `lib/`                           | Server logic: Docker runtime, deployment engine, dev worker, metrics, persistence. |
+| `server/terminal-ws.mjs`         | Terminal WebSocket server.                                                         |
+| `scripts/`                       | `setup-env`, local infrastructure, InfluxDB bootstrap, build verification.         |
+| `index.html`, `prototype/`       | Static promotional page and interactive workspace preview.                         |
+| `Dockerfile`                     | Standalone Next.js image with git and the Docker CLI.                              |
+| `docker-compose.yml`             | Production stack.                                                                  |
+| `docker-compose.macos.yml`       | macOS override (mounts, metrics, Explorer volume, ports).                          |
+| `docker-compose.dev.yml`         | Local infrastructure without the control plane.                                    |
+| `.devcontainer/`                 | VS Code devcontainer stack.                                                        |
+| `install.sh`, `install-macos.sh` | Installers.                                                                        |
+| `uninstall.sh`                   | Manifest-driven removal.                                                           |
+| `.env.example`                   | Production configuration template.                                                 |
 
 `WorkspaceChromeShell` owns the header, live metrics polling, the selected time range, and the GitHub repository list; page shells read that state with `useWorkspaceChrome()`.
-
-| File                             | Role                                                      |
-| -------------------------------- | --------------------------------------------------------- |
-| `Dockerfile`                     | Standalone Next.js image with git and the Docker CLI.     |
-| `docker-compose.yml`             | Production stack.                                         |
-| `docker-compose.macos.yml`       | macOS override (mounts, metrics, Explorer volume, ports). |
-| `docker-compose.dev.yml`         | Local infrastructure without the control plane.           |
-| `.devcontainer/`                 | VS Code devcontainer stack.                               |
-| `install.sh`, `install-macos.sh` | Installers.                                               |
-| `uninstall.sh`                   | Manifest-driven removal.                                  |
-| `.env.example`                   | Production configuration template.                        |
 
 ## Security
 
