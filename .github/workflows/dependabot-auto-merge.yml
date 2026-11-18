@@ -20,7 +20,16 @@ jobs:
 
       - name: Enable auto-merge for non-major updates
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
-        run: gh pr merge --auto --squash "$PR_URL"
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh pr merge --auto --squash "$PR_URL"; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed; pull request may not be ready yet. Retrying in 30s..."
+            sleep 30
+          done
+          echo "Failed to enable auto-merge after 5 attempts" >&2
+          exit 1
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
