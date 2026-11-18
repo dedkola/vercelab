@@ -65,7 +65,7 @@
     "eslint-config-next": "16.4.5",
     "jsdom": "^31.0.0",
     "knip": "^6.44.2",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
     "vitest": "^5.1.0"
